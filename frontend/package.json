@@ -1,0 +1,59 @@
+{
+  "name": "customer-crm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:push": "npx prisma db push",
+    "db:seed": "npx prisma db seed",
+    "db:studio": "npx prisma studio",
+    "db:generate": "npx prisma generate",
+    "seed": "tsx --env-file=.env prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.7.0",
+    "@uploadthing/react": "^7.3.3",
+    "@vercel/analytics": "^2.0.1",
+    "bcryptjs": "^3.0.3",
+    "docx": "^9.6.1",
+    "file-saver": "^2.0.5",
+    "hanhchinhvn": "^1.6.0",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.8.0",
+    "nanoid": "^5.1.7",
+    "next": "16.2.3",
+    "nodemailer": "^8.0.5",
+    "prisma": "^7.7.0",
+    "qrcode": "^1.5.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-toastify": "^11.0.5",
+    "socket.io-client": "^4.8.3",
+    "uploadthing": "^7.7.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/file-saver": "^2.0.7",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20",
+    "@types/nodemailer": "^8.0.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.0",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.3",
+    "postcss": "^8.5.9",
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

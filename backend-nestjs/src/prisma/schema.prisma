@@ -1,0 +1,684 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String             @id @default(uuid())
+  role               Role               @default(CUSTOMER)
+  name               String
+  email              String?            @unique
+  phone              String?            @unique
+  password           String?
+  gender             Gender?
+  dob                DateTime?
+  address            String?            @db.Text
+  addressStreet      String?            @map("address_street") @db.Text
+  addressWard        String?            @map("address_ward")
+  addressDistrict    String?            @map("address_district")
+  addressProvince    String?            @map("address_province")
+  avatarUrl          String?
+  interests          Json?
+  onboardingComplete Boolean            @default(false) @map("onboarding_complete")
+  isActive           Boolean            @default(true) @map("is_active")
+  zaloUserId         String?            @unique @map("zalo_user_id")
+  fbUserId           String?            @unique @map("fb_user_id")
+  totalSpent         Float              @default(0)
+  rank               Rank               @default(MEMBER)
+  points             Int                @default(0)
+  spinTurns          Int                @default(0) @map("spin_turns")
+  commissionBalance  Float              @default(0) @map("commission_balance")
+  referralCode       String             @unique @map("referral_code")
+  referrerId         String?            @map("referrer_id")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  googleId           String?            @unique @map("google_id")
+  commissionsEarned  CommissionLedger[] @relation("CommissionEarner")
+  notifications      Notification[]
+  oauthAccounts      OAuthAccount[]
+  orders             Order[]
+  ancestorEntries    ReferralClosure[]  @relation("ClosureAncestor")
+  descendantEntries  ReferralClosure[]  @relation("ClosureDescendant")
+  refreshTokens      RefreshToken[]
+  spinHistories      SpinHistory[]
+  userVouchers       UserVoucher[]
+  wishlists          Wishlist[]
+  reviews            Review[]
+  cart               Cart?
+  store              Store?
+  staffStoreId       String?            @map("staff_store_id")
+  staffStore         Store?             @relation("StoreStaff", fields: [staffStoreId], references: [id], onDelete: SetNull)
+  staffPermissions   Json?              @map("staff_permissions")
+  ordersAsSeller     Order[]            @relation("OrderSeller")
+  ordersAsCare       Order[]            @relation("OrderCare")
+  referrer           User?              @relation("ReferralNetwork", fields: [referrerId], references: [id])
+  referees           User[]             @relation("ReferralNetwork")
+
+  @@index([referrerId])
+  @@index([rank])
+  @@map("users")
+}
+
+model OAuthAccount {
+  id             String   @id @default(uuid())
+  provider       String
+  providerUserId String   @map("provider_user_id")
+  profile        Json?
+  userId         String   @map("user_id")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "rt_user_fk")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model ReferralClosure {
+  id           String @id @default(uuid())
+  ancestorId   String @map("ancestor_id")
+  descendantId String @map("descendant_id")
+  depth        Int
+  ancestor     User   @relation("ClosureAncestor", fields: [ancestorId], references: [id], onDelete: Cascade)
+  descendant   User   @relation("ClosureDescendant", fields: [descendantId], references: [id], onDelete: Cascade)
+
+  @@unique([ancestorId, descendantId])
+  @@index([ancestorId, depth])
+  @@index([descendantId])
+  @@map("referral_closures")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?    @db.Text
+  parentId    String?    @map("parent_id")
+  externalId  String?    @map("external_id") // Pancake category ID
+  sortOrder   Int        @default(0) @map("sort_order")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]  @relation("categorytoproduct")
+
+  @@index([parentId])
+  @@index([externalId])
+  @@map("categories")
+}
+
+model Store {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  logoUrl     String?   @map("logo_url") @db.LongText
+  description String?   @db.Text
+  isActive    Boolean   @default(false) @map("is_active")
+  isBanned    Boolean   @default(false) @map("is_banned")
+  bannedReason String?  @map("banned_reason") @db.Text
+  ownerId     String    @unique @map("owner_id")
+
+  // Địa chỉ Shop (cho ViettelPost tính phí ship)
+  addressStreet   String?  @map("address_street")
+  addressWard     String?  @map("address_ward")
+  addressDistrict String?  @map("address_district")
+  addressProvince String?  @map("address_province")
+  phone           String?
+  email           String?
+
+  // Thanh toán
+  allowCOD        Boolean  @default(true) @map("allow_cod")
+  bankName        String?  @map("bank_name")
+  bankAccountNo   String?  @map("bank_account_no")
+  bankOwnerName   String?  @map("bank_owner_name")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  owner          User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)\n  staff          User[]            @relation(\"StoreStaff\")\n  products       Product[]\n  vouchers       Voucher[]\n  orders         Order[]\n  integrations   StoreIntegration[]
+
+  @@map("stores")
+}
+
+model StoreIntegration {
+  id          String   @id @default(uuid())
+  storeId     String   @map("store_id")
+  platform    String   // PANCAKE, SHOPEE, TIKTOK, LAZADA, ZALO, etc.
+  apiKey      String?  @map("api_key") @db.Text
+  apiSecret   String?  @map("api_secret") @db.Text
+  shopId      String?  @map("shop_id")
+  accessToken String?  @map("access_token") @db.Text
+  isActive    Boolean  @default(false) @map("is_active")
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, platform])
+  @@map("store_integrations")
+}
+
+model Product {
+  id             String          @id @default(uuid())
+  name           String
+  slug           String          @unique
+  sku            String?
+  externalId     String?         @map("external_id") // Pancake product ID
+  imageUrl       String?         @map("image_url") @db.LongText
+  description    String?         @db.Text
+  isComboSet     Boolean         @default(false) @map("is_combo_set")
+  originalPrice  Float           @map("original_price")
+  salePrice      Float?          @map("sale_price")
+  stockQuantity  Int             @default(0) @map("stock_quantity")
+  soldCount      Int             @default(0) @map("sold_count")
+  weight         Int             @default(500)
+  flashSaleEnd   DateTime?       @map("flash_sale_end")
+  isGiftItem     Boolean         @default(false) @map("is_gift_item")
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  orderItems     OrderItem[]
+  cartItems      CartItem[]
+  promoGifts     PromotionRule[] @relation("GiftProduct")
+  spinPrizeGifts SpinPrize[]     @relation("SpinGiftProduct")
+  categories     Category[]      @relation("categorytoproduct")
+  wishlists      Wishlist[]
+  variants       ProductVariant[]
+  reviews        Review[]
+  storeId        String?         @map("store_id")
+  store          Store?          @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  @@index([storeId])
+  @@index([sku])
+  @@index([externalId])
+  @@map("products")
+}
+
+model Order {
+  id               String             @id @default(uuid())
+  userId           String             @map("user_id")
+  orderCode        String             @unique @map("order_code")
+  source           String?
+  
+  // Thông tin giao hàng (không update vào user)
+  shippingName     String?            @map("shipping_name")
+  shippingPhone    String?            @map("shipping_phone")
+  shippingStreet   String?            @map("shipping_street") @db.Text
+  shippingWard     String?            @map("shipping_ward")
+  shippingProvince String?            @map("shipping_province")
+  
+  subtotal         Float
+  discountAmount   Float              @default(0) @map("discount_amount")
+  shippingFee      Float              @default(0) @map("shipping_fee")
+  shippingDiscount Float              @default(0) @map("shipping_discount")
+  totalAmount      Float              @map("total_amount")
+  status           OrderStatus        @default(PENDING)
+  paymentMethod    PaymentMethod?     @map("payment_method")
+  paymentStatus    PaymentStatus      @default(UNPAID) @map("payment_status")
+  paidAt           DateTime?          @map("paid_at")
+  note             String?            @db.Text
+  customerNote     String?            @map("customer_note") @db.Text
+  metadata         Json?
+  isRead           Boolean            @default(false) @map("is_read")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  commissions      CommissionLedger[]
+  items            OrderItem[]
+  appliedVouchers  OrderVoucher[]
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeId          String?            @map("store_id")
+  store            Store?             @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  assigningSellerId String?           @map("assigning_seller_id")
+  assigningSeller  User?              @relation("OrderSeller", fields: [assigningSellerId], references: [id], onDelete: SetNull)
+  assigningCareId  String?            @map("assigning_care_id")
+  assigningCare    User?              @relation("OrderCare", fields: [assigningCareId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([storeId])
+  @@index([assigningSellerId])
+  @@index([assigningCareId])
+  @@map("orders")
+}
+
+model OrderVoucher {
+  id              String      @id @default(uuid())
+  orderId         String      @map("order_id")
+  userVoucherId   String      @map("user_voucher_id")
+  discountApplied Float       @map("discount_applied")
+  order           Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userVoucher     UserVoucher @relation(fields: [userVoucherId], references: [id])
+
+  @@unique([orderId, userVoucherId])
+  @@index([orderId])
+  @@index([userVoucherId])
+  @@map("order_vouchers")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String  @map("order_id")
+  productId String  @map("product_id")
+  quantity  Int
+  price     Float
+  isGift    Boolean @default(false) @map("is_gift")
+  size      String?
+  color     String?
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Voucher {
+  id                 String           @id @default(uuid())
+  code               String           @unique
+  name               String
+  description        String?          @db.Text
+  campaignCategory   CampaignCategory @map("campaign_category")
+  type               VoucherType
+  value              Float
+  minOrderValue      Float            @default(0) @map("min_order_value")
+  maxDiscount        Float?           @map("max_discount")
+  totalUsageLimit    Int?             @map("total_usage_limit")
+  perCustomerLimit   Int              @default(1) @map("per_customer_limit")
+  usedCount          Int              @default(0) @map("used_count")
+  validFrom          DateTime?        @map("valid_from")
+  validTo            DateTime?        @map("valid_to")
+  durationDays       Int?             @map("duration_days")
+  requiredCategoryId String?          @map("required_category_id")
+  minProductCount    Int?             @map("min_product_count")
+  isStackable        Boolean          @default(false) @map("is_stackable")
+  isActive           Boolean          @default(true) @map("is_active")
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  promotionRules     PromotionRule[]  @relation("CashbackVoucher")
+  userVouchers       UserVoucher[]
+  spinPrizes         SpinPrize[]      @relation("SpinVoucherTemplate")
+  storeId            String?          @map("store_id")
+  store              Store?           @relation(fields: [storeId], references: [id], onDelete: SetNull)
+
+  @@index([storeId])
+  @@map("vouchers")
+}
+
+model UserVoucher {
+  id              String         @id @default(uuid())
+  userId          String         @map("user_id")
+  voucherId       String         @map("voucher_id")
+  isUsed          Boolean        @default(false) @map("is_used")
+  usedAt          DateTime?      @map("used_at")
+  expiresAt       DateTime?      @map("expires_at")
+  
+  // --- CÁC TRƯỜNG BỔ SUNG CHO TÍNH NĂNG CLAIM QR ---
+  sourceOrderCode String?        @unique @map("source_order_code") // Chống nhập trùng mã đơn
+  unlockAt        DateTime?      @map("unlock_at")                 // Thời gian giữ voucher 7 ngày
+  status          String         @default("ACTIVE")                // Enum ngầm: PENDING, ACTIVE, REJECTED
+  
+  createdAt       DateTime       @default(now())
+  appliedOrders   OrderVoucher[]
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voucher         Voucher        @relation(fields: [voucherId], references: [id])
+
+  @@index([userId, voucherId])
+  @@index([userId, isUsed])
+  @@index([voucherId], map: "user_vouchers_voucher_id_fkey")
+  @@index([status, unlockAt])
+  @@map("user_vouchers")
+}
+
+model PromotionRule {
+  id                String        @id @default(uuid())
+  name              String
+  type              PromotionType
+  isActive          Boolean       @default(true) @map("is_active")
+  minOrderValue     Float?        @map("min_order_value")
+  requiredProductId String?       @map("required_product_id")
+  rewardVoucherId   String?       @map("reward_voucher_id")
+  splitCount        Int?          @map("split_count")
+  splitAmount       Float?        @map("split_amount")
+  giftProductId     String?       @map("gift_product_id")
+  giftQuantity      Int           @default(1) @map("gift_quantity")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  giftProduct       Product?      @relation("GiftProduct", fields: [giftProductId], references: [id])
+  rewardVoucher     Voucher?      @relation("CashbackVoucher", fields: [rewardVoucherId], references: [id])
+
+  @@index([giftProductId], map: "promotion_rules_gift_product_id_fkey")
+  @@index([rewardVoucherId], map: "promotion_rules_reward_voucher_id_fkey")
+  @@map("promotion_rules")
+}
+
+model CommissionLedger {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  orderId    String           @map("order_id")
+  fromUserId String           @map("from_user_id")
+  level      Int
+  percentage Float
+  amount     Float
+  status     CommissionStatus @default(PENDING)
+  reversedAt DateTime?        @map("reversed_at")
+  createdAt  DateTime         @default(now())
+  order      Order            @relation(fields: [orderId], references: [id])
+  user       User             @relation("CommissionEarner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+  @@index([status])
+  @@map("commission_ledger")
+}
+
+model CommissionConfig {
+  id         String   @id @default(uuid())
+  level      Int      @unique
+  percentage Float
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("commission_configs")
+}
+
+model RankConfig {
+  id              String   @id @default(uuid())
+  rank            Rank     @unique
+  minTotalSpent   Float    @map("min_total_spent")
+  minOrdersMonth  Int?     @map("min_orders_month")
+  discountPercent Float?   @map("discount_percent")
+  description     String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("rank_configs")
+}
+
+model SpinPrize {
+  id            String         @id @default(uuid())
+  name          String
+  type          String
+  value         Float?
+  voucherId     String?        @map("voucher_id")
+  condition     PrizeCondition @default(NO_CONDITION)
+  giftProductId String?        @map("gift_product_id")
+  probability   Float
+  quantity      Int?
+  wonCount      Int            @default(0) @map("won_count")
+  imageUrl      String?        @map("image_url")
+  color         String?
+  isActive      Boolean        @default(true) @map("is_active")
+  sortOrder     Int            @default(0) @map("sort_order")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  histories     SpinHistory[]
+  giftProduct   Product?       @relation("SpinGiftProduct", fields: [giftProductId], references: [id])
+  voucher       Voucher?       @relation("SpinVoucherTemplate", fields: [voucherId], references: [id])
+
+  @@index([giftProductId], map: "spin_prizes_gift_product_id_fkey")
+  @@index([voucherId])
+  @@map("spin_prizes")
+}
+
+model SpinHistory {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  prizeId   String    @map("prize_id")
+  won       Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  prize     SpinPrize @relation(fields: [prizeId], references: [id])
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([prizeId], map: "spin_histories_prize_id_fkey")
+  @@map("spin_histories")
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String              @map("user_id")
+  channel   NotificationChannel
+  type      String
+  title     String
+  body      String              @db.Text
+  metadata  Json?
+  status    NotificationStatus  @default(QUEUED)
+  sentAt    DateTime?           @map("sent_at")
+  error     String?             @db.Text
+  createdAt DateTime            @default(now())
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, channel])
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id             String              @id @default(uuid())
+  channel        NotificationChannel
+  type           String
+  name           String
+  subject        String?
+  body           String              @db.Text
+  zaloTemplateId String?             @map("zalo_template_id")
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([channel, type])
+  @@map("notification_templates")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  MODERATOR
+  CUSTOMER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Rank {
+  MEMBER
+  SILVER
+  GOLD
+  DIAMOND
+  PLATINUM
+}
+
+enum VoucherType {
+  PERCENT
+  FIXED_AMOUNT
+  FREESHIP
+}
+
+enum CampaignCategory {
+  WELCOME
+  VIP
+  BUNDLE
+  FREESHIP
+  GAMIFICATION
+  REFERRAL
+  BIRTHDAY
+}
+
+enum OrderStatus {
+  PENDING
+  WAITING_FOR_GOODS
+  CONFIRMED
+  PACKAGING
+  WAITING_FOR_SHIPPING
+  SHIPPED
+  DELIVERED
+  PAYMENT_COLLECTED
+  RETURNING
+  EXCHANGING
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum NotificationChannel {
+  ZALO
+  FB_MESSENGER
+  SMS
+  EMAIL
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum PromotionType {
+  CASHBACK_VOUCHER_SPLIT
+  GIFT_WITH_PURCHASE
+}
+
+enum PrizeCondition {
+  NO_CONDITION
+  REQUIRE_PURCHASE
+}
+
+enum PaymentMethod {
+  STRIPE
+  VIETQR
+  COD
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  PARTIALLY_PAID
+  REFUNDED
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique @map("user_id")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String   @map("cart_id")
+  productId String   @map("product_id")
+  quantity  Int      @default(1)
+  size      String?
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+model Size {
+  id       String        @id @default(uuid())
+  name     String           @unique
+  variants ProductVariant[]
+
+  @@map("sizes")
+}
+
+model Color {
+  id       String         @id @default(uuid())
+  name     String         @unique
+  hexCode  String?
+  variants ProductVariant[]
+
+  @@map("colors")
+}
+
+model ProductVariant {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  sizeId    String?  @map("size_id")
+  colorId   String?  @map("color_id")
+  price     Float?
+  stock     Int      @default(0)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      Size?    @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+  color     Color?   @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sizeId, colorId])
+  @@index([productId])
+  @@index([sizeId])
+  @@index([colorId])
+  @@map("product_variants")
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@map("wishlists")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+  orderId   String?  @map("order_id")
+  rating    Int      // 1-5 stars
+  comment   String?  @db.Text
+  images    Json?    // Array of image URLs
+  size      String?
+  color     String?
+  isVerifiedPurchase Boolean @default(false) @map("is_verified_purchase")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+  @@index([userId])
+  @@map("reviews")
+}
