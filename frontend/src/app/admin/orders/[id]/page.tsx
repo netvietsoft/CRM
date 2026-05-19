@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import OrderStatusManager from '@/components/admin/OrderStatusManager';
 import OrderReadStatusManager from '@/components/admin/OrderReadStatusManager';
 import DeleteOrderButton from '@/components/admin/DeleteOrderButton';
 import CreateOrderVoucherButton from '@/components/admin/CreateOrderVoucherButton';
@@ -9,6 +10,7 @@ import OrderPaymentClient from '@/components/admin/OrderPaymentClient';
 import OrderNotesClient from '@/components/admin/OrderNotesClient';
 import OrderInfoClient from '@/components/admin/OrderInfoClient';
 import { OrderSaveProvider } from '@/components/admin/OrderSaveProvider';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 function fmt(amount: number) {
   return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
@@ -34,9 +36,187 @@ function fmtDate(d: string | Date) {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date);
-  } catch (e) {
+  } catch {
     return String(d);
   }
+}
+
+interface StaffSummary {
+  id: string;
+  name?: string | null;
+  phone?: string | null;
+}
+
+interface OrderUserSummary {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  rank?: string | null;
+  addressStreet?: string | null;
+  addressWard?: string | null;
+  addressProvince?: string | null;
+}
+
+interface OrderProductSummary {
+  name?: string | null;
+  imageUrl?: string | null;
+}
+
+interface OrderItem {
+  id: string;
+  product?: OrderProductSummary | null;
+  size?: string | null;
+  color?: string | null;
+  quantity: number;
+  price: number;
+  isGift?: boolean;
+}
+
+interface MetadataField {
+  name?: string | null;
+  keyValue?: string | null;
+  value?: string | number | null;
+}
+
+interface MetadataItem {
+  id?: string | number | null;
+  variationId?: string | number | null;
+  image?: string | null;
+  name?: string | null;
+  displayId?: string | null;
+  barcode?: string | null;
+  fields?: MetadataField[] | null;
+  quantity: number;
+  weight?: number | null;
+  isBonusProduct?: boolean;
+  discountEachProduct?: number | null;
+  isDiscountPercent?: boolean;
+  returnedCount?: number | null;
+  price: number;
+}
+
+interface VoucherApplication {
+  id: string;
+  discountApplied: number;
+  userVoucher?: {
+    voucher?: {
+      code?: string | null;
+    } | null;
+  } | null;
+}
+
+interface CourierUpdate {
+  status?: string | null;
+  key?: string | null;
+  note?: string | null;
+  address?: string | null;
+  location?: string | null;
+  update_at?: string | Date | null;
+  update_time?: string | Date | null;
+  time?: string | Date | null;
+}
+
+interface CommissionSummary {
+  id: string;
+  amount: number;
+  status?: string | null;
+  level?: number | string | null;
+  percentage?: number | string | null;
+  user?: {
+    name?: string | null;
+  } | null;
+}
+
+interface MetadataCustomer {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  fbId?: string | null;
+  pancakeCustomerId?: string | null;
+}
+
+interface ShippingAddressMetadata {
+  fullAddress?: string | null;
+  fullName?: string | null;
+  phoneNumber?: string | null;
+  address?: string | null;
+}
+
+interface SourceMetadata {
+  accountName?: string | null;
+  pageId?: string | null;
+  postId?: string | null;
+  isFromEcommerce?: boolean;
+  isLivestream?: boolean;
+  receivedAtShop?: boolean;
+}
+
+interface WarehouseInfo {
+  name?: string | null;
+  phone_number?: string | null;
+  full_address?: string | null;
+  address?: string | null;
+}
+
+interface StaffMetadata {
+  name?: string | null;
+}
+
+interface ReportByPhone {
+  order_success?: number;
+  order_fail?: number;
+  warning?: number;
+}
+
+type OrderTag = string | { name?: string | null };
+
+interface PartnerMetadata {
+  trackingCode?: string | null;
+  totalFee?: number;
+  deliveryName?: string | null;
+  deliveryPhone?: string | null;
+  pickedUpAt?: string | Date | null;
+  cod?: number;
+  sortCode?: string | null;
+  paidAt?: string | Date | null;
+  courierUpdates?: CourierUpdate[] | null;
+}
+
+interface OrderMetadata {
+  pancakeCreatedAt?: string | Date | null;
+  items?: MetadataItem[] | null;
+  partner?: PartnerMetadata | null;
+  shippingAddress?: ShippingAddressMetadata | null;
+  customer?: MetadataCustomer | null;
+  source?: SourceMetadata | null;
+  reportsByPhone?: Record<string, ReportByPhone> | null;
+  trackingLink?: string | null;
+  warehouseInfo?: WarehouseInfo | null;
+  tags?: OrderTag[] | null;
+  creator?: StaffMetadata | null;
+  marketer?: StaffMetadata | null;
+  assigningSeller?: StaffMetadata | null;
+  assigningCare?: StaffMetadata | null;
+}
+
+interface OrderDetail {
+  id: string;
+  orderCode: string;
+  status: string;
+  paymentStatus: string;
+  source?: string | null;
+  storeId?: string | null;
+  metadata?: OrderMetadata | null;
+  user?: OrderUserSummary | null;
+  items?: OrderItem[] | null;
+  isRead?: boolean;
+  shippingName?: string | null;
+  shippingPhone?: string | null;
+  shippingStreet?: string | null;
+  shippingWard?: string | null;
+  shippingProvince?: string | null;
+  appliedVouchers?: VoucherApplication[] | null;
+  commissions?: CommissionSummary[] | null;
 }
 
 const statusMap: Record<string, { cls: string; label: string }> = {
@@ -62,17 +242,7 @@ const paymentStatusMap: Record<string, { cls: string; label: string }> = {
   REFUNDED: { cls: 'bg-red-100 text-red-700', label: 'Đã hoàn tiền' },
 };
 
-/* ----------- helpers to read metadata safely ----------- */
-function meta(order: any, ...keys: string[]) {
-  let v = order?.metadata;
-  for (const k of keys) {
-    if (!v) return null;
-    v = v[k];
-  }
-  return v ?? null;
-}
-
-function InfoRow({ label, value, className }: { label: string; value: any; className?: string }) {
+function InfoRow({ label, value, className }: { label: string; value: ReactNode; className?: string }) {
   if (value === null || value === undefined || value === '') return null;
   return (
     <div>
@@ -90,13 +260,13 @@ export default async function OrderDetailPage(props: {
   const searchParams = await props.searchParams;
   const backUrl = searchParams?.from === 'order-vouchers' ? '/admin/order-vouchers' : '/admin/orders';
 
-  let order: any = null;
-  let staffList: any[] = [];
+  let order: OrderDetail | null = null;
+  let staffList: StaffSummary[] = [];
 
   try {
-    order = await apiClient.get<any>(`/orders/${params.id}`);
+    order = await apiClient.get<OrderDetail>(`/orders/${params.id}`);
     if (order?.storeId) {
-      staffList = await apiClient.get<any[]>(`/admin/staff?storeId=${order.storeId}`);
+      staffList = await apiClient.get<StaffSummary[]>(`/admin/staff?storeId=${order.storeId}`);
     }
   } catch (error) {
     console.error('Error fetching order details or staff:', error);
@@ -128,13 +298,11 @@ export default async function OrderDetailPage(props: {
   };
 
   const isPancake = order.source === 'PANCAKE';
-  const m = order.metadata || {};
-  const payment = m.payment || {};
-  const financial = m.financial || {};
-  const partner = m.partner || {};
-  const shippingAddr = m.shippingAddress || {};
-  const customer = m.customer || {};
-  const source = m.source || {};
+  const m: OrderMetadata = order.metadata ?? {};
+  const partner: PartnerMetadata = m.partner ?? {};
+  const shippingAddr: ShippingAddressMetadata = m.shippingAddress ?? {};
+  const customer: MetadataCustomer = m.customer ?? {};
+  const source: SourceMetadata = m.source ?? {};
 
   const fullAddress = isPancake
     ? shippingAddr.fullAddress
@@ -142,7 +310,7 @@ export default async function OrderDetailPage(props: {
 
   return (
     <>
-      <OrderReadStatusManager orderId={order.id} isRead={order.isRead} />
+      <OrderReadStatusManager orderId={order.id} isRead={order.isRead ?? false} />
       <div className="mb-6">
         <Link
           href={backUrl}
@@ -186,16 +354,20 @@ export default async function OrderDetailPage(props: {
             </h2>
             <div className="space-y-4">
               {/* Real order items (linked products) */}
-              {order.items?.map((item: any) => (
+              {order.items?.map((item) => (
                 <div
                   key={item.id}
                   className="flex gap-4 p-4 bg-gray-50 rounded-lg"
                 >
                   <div className="w-14 h-14 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                     {item.product?.imageUrl ? (
-                      <img
+                      <Image
+                        loader={passthroughImageLoader}
+                        unoptimized
                         src={item.product.imageUrl}
-                        alt={item.product.name}
+                        alt={item.product.name ?? 'Sản phẩm'}
+                        width={56}
+                        height={56}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -232,18 +404,22 @@ export default async function OrderDetailPage(props: {
               ))}
 
               {/* Fallback: show items from metadata if no linked items */}
-              {(!order.items || order.items.length === 0) && m.items?.length > 0 && (
+              {(!order.items || order.items.length === 0) && (m.items?.length ?? 0) > 0 && (
                 <>
-                  {m.items.map((item: any, idx: number) => (
+                  {m.items?.map((item, idx) => (
                     <div
                       key={idx}
                       className="flex gap-4 p-4 bg-gray-50 rounded-lg"
                     >
                       <div className="w-14 h-14 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                         {item.image ? (
-                          <img
+                          <Image
+                            loader={passthroughImageLoader}
+                            unoptimized
                             src={item.image}
-                            alt={item.name}
+                            alt={item.name ?? 'Sản phẩm'}
+                            width={56}
+                            height={56}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -272,7 +448,7 @@ export default async function OrderDetailPage(props: {
                         {/* Variant fields (size, color etc.) */}
                         {item.fields && item.fields.length > 0 && (
                           <p className="text-sm text-gray-600 mb-1">
-                            {item.fields.map((f: any) => `${f.name || f.keyValue}: ${f.value}`).join(' • ')}
+                            {item.fields.map((field) => `${field.name || field.keyValue}: ${field.value}`).join(' • ')}
                           </p>
                         )}
                         <p className="text-sm text-gray-600">
@@ -284,14 +460,14 @@ export default async function OrderDetailPage(props: {
                               Quà tặng
                             </span>
                           )}
-                          {item.discountEachProduct > 0 && (
+                          {(item.discountEachProduct ?? 0) > 0 && (
                             <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-                              -{item.isDiscountPercent ? `${item.discountEachProduct}%` : fmt(item.discountEachProduct)}
+                              -{item.isDiscountPercent ? `${item.discountEachProduct ?? 0}%` : fmt(item.discountEachProduct ?? 0)}
                             </span>
                           )}
-                          {item.returnedCount > 0 && (
+                          {(item.returnedCount ?? 0) > 0 && (
                             <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
-                              Hoàn: {item.returnedCount}
+                              Hoàn: {item.returnedCount ?? 0}
                             </span>
                           )}
                         </div>
@@ -319,13 +495,13 @@ export default async function OrderDetailPage(props: {
           </div>
 
           {/* Vouchers */}
-          {order.appliedVouchers?.length > 0 && (
+          {(order.appliedVouchers?.length ?? 0) > 0 && (
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h3 className="font-semibold text-gray-800 mb-2">
                 Voucher đã áp dụng:
               </h3>
               <div className="space-y-2">
-                {order.appliedVouchers.map((ov: any) => (
+                {order.appliedVouchers?.map((ov) => (
                   <div
                     key={ov.id}
                     className="flex justify-between items-center p-2 bg-gray-50 rounded"
@@ -357,7 +533,7 @@ export default async function OrderDetailPage(props: {
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-gray-500">Phí Ship</p>
-                    <p className="font-semibold text-gray-800">{fmt(partner.totalFee)}</p>
+                    <p className="font-semibold text-gray-800">{fmt(partner.totalFee ?? 0)}</p>
                   </div>
                 </div>
 
@@ -365,7 +541,7 @@ export default async function OrderDetailPage(props: {
                   <InfoRow label="Tên shipper" value={partner.deliveryName} />
                   <InfoRow label="SĐT shipper" value={partner.deliveryPhone} />
                   <InfoRow label="Thời điểm lấy hàng" value={partner.pickedUpAt ? fmtDate(partner.pickedUpAt) : null} />
-                  <InfoRow label="COD (ĐVVC)" value={partner.cod > 0 ? fmt(partner.cod) : null} />
+                  <InfoRow label="COD (ĐVVC)" value={(partner.cod ?? 0) > 0 ? fmt(partner.cod ?? 0) : null} />
                   <InfoRow label="Mã phân loại" value={partner.sortCode} />
                   <InfoRow label="Thời điểm đối soát" value={partner.paidAt ? fmtDate(partner.paidAt) : null} />
                 </div>
@@ -378,37 +554,41 @@ export default async function OrderDetailPage(props: {
                       {/* Vertical line */}
                       <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-200" />
                       <div className="space-y-4">
-                        {partner.courierUpdates.map((update: any, idx: number) => (
-                          <div key={idx} className="relative">
-                            {/* Dot */}
-                            <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center z-10 ${idx === 0
-                              ? 'bg-blue-500 border-blue-500'
-                              : 'bg-white border-gray-300'
-                              }`}>
-                              {idx === 0 && (
-                                <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                              )}
+                        {partner.courierUpdates.map((update, idx) => {
+                          const updatedAt = update.update_at ?? update.update_time ?? update.time;
+
+                          return (
+                            <div key={idx} className="relative">
+                              {/* Dot */}
+                              <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center z-10 ${idx === 0
+                                ? 'bg-blue-500 border-blue-500'
+                                : 'bg-white border-gray-300'
+                                }`}>
+                                {idx === 0 && (
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                                )}
+                              </div>
+                              {/* Content */}
+                              <div className="ml-2 pb-1">
+                                <p className={`text-sm ${idx === 0 ? 'text-black' : 'text-black'}`}>
+                                  <span className='font-semibold text-sm text-black'>Trạng thái VC:</span> {update.status || update.key || 'Cập nhật'}
+                                </p>
+                                {update.note && (
+                                  <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Ghi chú: </span>{update.note}</p>
+                                )}
+                                {update.address && (
+                                  <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Địa chỉ: </span>{update.address}</p>
+                                )}
+                                {update.location && (
+                                  <p className="text-xs text-black mt-0.5">Vị trí: {update.location}</p>
+                                )}
+                                {updatedAt && (
+                                  <p className="text-xs text-black mt-1"><span className='font-semibold text-xs text-black'>Cập nhật gần nhất:</span> {fmtDate(updatedAt)}</p>
+                                )}
+                              </div>
                             </div>
-                            {/* Content */}
-                            <div className="ml-2 pb-1">
-                              <p className={`text-sm ${idx === 0 ? 'text-black' : 'text-black'}`}>
-                                <span className='font-semibold text-sm text-black'>Trạng thái VC:</span> {update.status || update.key || 'Cập nhật'}
-                              </p>
-                              {update.note && (
-                                <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Ghi chú: </span>{update.note}</p>
-                              )}
-                              {update.address && (
-                                <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Địa chỉ: </span>{update.address}</p>
-                              )}
-                              {update.location && (
-                                <p className="text-xs text-black mt-0.5">Vị trí: {update.location}</p>
-                              )}
-                              {(update.update_at || update.update_time || update.time) && (
-                                <p className="text-xs text-black mt-1"><span className='font-semibold text-xs text-black'>Cập nhật gần nhất:</span> {fmtDate(update.update_at || update.update_time || update.time)}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -418,13 +598,13 @@ export default async function OrderDetailPage(props: {
           )}
 
           {/* Commissions */}
-          {order.commissions?.length > 0 && (
+          {(order.commissions?.length ?? 0) > 0 && (
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">
-                Hoa hồng ({order.commissions.length})
+                Hoa hồng ({order.commissions?.length ?? 0})
               </h2>
               <div className="space-y-3">
-                {order.commissions.map((comm: any) => (
+                {order.commissions?.map((comm) => (
                   <div
                     key={comm.id}
                     className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
@@ -484,7 +664,7 @@ export default async function OrderDetailPage(props: {
             {isPancake && m.reportsByPhone && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Lịch sử đơn hàng</h3>
-                {Object.entries(m.reportsByPhone).map(([phone, report]: [string, any]) => (
+                {Object.entries(m.reportsByPhone).map(([phone, report]) => (
                   <div key={phone} className="flex gap-3 text-sm">
                     <div className="flex-1 flex items-center gap-2">
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
@@ -493,9 +673,9 @@ export default async function OrderDetailPage(props: {
                       <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
                         ✗ {report.order_fail || 0}
                       </span>
-                      {report.warning > 0 && (
+                      {(report.warning ?? 0) > 0 && (
                         <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
-                          {report.warning}
+                          {report.warning ?? 0}
                         </span>
                       )}
                     </div>
@@ -582,9 +762,9 @@ export default async function OrderDetailPage(props: {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">🏷️ Thẻ</h2>
               <div className="flex gap-2 flex-wrap">
-                {m.tags.map((tag: any, idx: number) => (
+                {m.tags.map((tag, idx) => (
                   <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                    {tag.name || tag}
+                    {typeof tag === 'string' ? tag : tag.name || ''}
                   </span>
                 ))}
               </div>

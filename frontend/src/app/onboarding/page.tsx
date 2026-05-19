@@ -19,6 +19,12 @@ const GENDER_OPTIONS = [
   { value: 'OTHER', label: 'Khác' },
 ];
 
+interface UserProfileResponse {
+  onboardingComplete?: boolean;
+  phone?: string | null;
+  oauthAccounts?: unknown[] | null;
+}
+
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,7 +58,7 @@ function OnboardingContent() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const profile = await apiClientClient.get<any>('/users/profile');
+        const profile = await apiClientClient.get<UserProfileResponse>('/users/profile');
 
         if (profile.onboardingComplete) {
           router.push(returnTo);
@@ -64,7 +70,7 @@ function OnboardingContent() {
           phone: profile.phone || current.phone,
         }));
 
-        if (profile.oauthAccounts?.length > 0 && !profile.phone) {
+        if ((profile.oauthAccounts?.length ?? 0) > 0 && !profile.phone) {
           setHasGoogleAccount(true);
         }
       } catch (err) {

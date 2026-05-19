@@ -77,7 +77,7 @@ export class AdminController {
   async softDeleteCustomer(
     @GetUser() user: any,
     @GetEffectiveStoreId() effectiveStoreId: string | null,
-    @Param('id') id: string
+    @Param('id') id: string,
   ) {
     return this.adminService.softDeleteCustomer(id, user, effectiveStoreId);
   }
@@ -88,7 +88,7 @@ export class AdminController {
   async hardDeleteCustomer(
     @GetUser() user: any,
     @GetEffectiveStoreId() effectiveStoreId: string | null,
-    @Param('id') id: string
+    @Param('id') id: string,
   ) {
     return this.adminService.hardDeleteCustomer(id, user, effectiveStoreId);
   }

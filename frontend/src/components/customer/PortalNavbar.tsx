@@ -1,8 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 import PortalNavbarSearch from './PortalNavbarSearch';
 interface Props {
   user: {
@@ -62,8 +64,17 @@ export default function PortalNavbar({ user }: Props) {
   }, []);
 
   useEffect(() => {
-    setMobileMenuOpen(false);
-    setDropdownOpen(false);
+    let cancelled = false;
+
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      setMobileMenuOpen(false);
+      setDropdownOpen(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname]);
 
   const isActive = (href: string) => {
@@ -118,12 +129,16 @@ export default function PortalNavbar({ user }: Props) {
                 className="flex items-center gap-3 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
+                <div className="relative w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm overflow-hidden">
                   {user.avatarUrl ? (
-                    <img
+                    <Image
+                      loader={passthroughImageLoader}
+                      unoptimized
                       src={user.avatarUrl}
                       alt={user.name}
-                      className="w-full h-full rounded-full object-cover"
+                      fill
+                      sizes="36px"
+                      className="rounded-full object-cover"
                     />
                   ) : (
                     (user.name || 'User').charAt(0).toUpperCase()
@@ -140,12 +155,16 @@ export default function PortalNavbar({ user }: Props) {
               {dropdownOpen && (
                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                    <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                       {user.avatarUrl ? (
-                        <img
+                        <Image
+                          loader={passthroughImageLoader}
+                          unoptimized
                           src={user.avatarUrl}
                           alt={user.name}
-                          className="w-full h-full rounded-full object-cover"
+                          fill
+                          sizes="48px"
+                          className="rounded-full object-cover"
                         />
                       ) : (
                         (user.name || 'User').charAt(0).toUpperCase()

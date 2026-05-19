@@ -4,6 +4,56 @@ import { getSession } from '@/lib/auth';
 import OrdersTableClient from '@/components/admin/OrdersTableClient';
 import { apiClient } from '@/lib/apiClient';
 
+interface OrderUserSummary {
+  name?: string | null;
+  phone?: string | null;
+}
+
+interface OrderMetadataItem {
+  name?: string | null;
+  quantity?: number | null;
+}
+
+interface OrderMetadata {
+  items?: OrderMetadataItem[] | null;
+}
+
+interface OrderItemSummary {
+  quantity: number;
+  product?: {
+    name?: string | null;
+  } | null;
+}
+
+interface AdminOrder {
+  id: string;
+  orderCode: string;
+  totalAmount?: number | null;
+  status: string;
+  isRead?: boolean;
+  source?: string | null;
+  metadata?: OrderMetadata | null;
+  items?: OrderItemSummary[] | null;
+  user?: OrderUserSummary | null;
+  shippingPhone?: string | null;
+  shippingName?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface AdminOrdersResponse {
+  orders: AdminOrder[];
+  pagination: PaginationMeta;
+  statusCounts: Record<string, number>;
+}
+
 export default async function OrdersPage(props: {
   searchParams: Promise<{
     page?: string;
@@ -20,12 +70,12 @@ export default async function OrdersPage(props: {
   const session = await getSession();
   if (!session) return null;
 
-  let orders: any[] = [];
-  let pagination: any = { page: 1, limit: 11, total: 0, totalPages: 0 };
+  let orders: AdminOrder[] = [];
+  let pagination: PaginationMeta = { page: 1, limit: 11, total: 0, totalPages: 0 };
   let statusCounts: Record<string, number> = {};
 
   try {
-    const data = await apiClient.get<any>('/orders/admin', {
+    const data = await apiClient.get<AdminOrdersResponse>('/orders/admin', {
       params: {
         page: searchParams.page,
         status: searchParams.status,
@@ -35,7 +85,7 @@ export default async function OrdersPage(props: {
         dateSort: searchParams.dateSort,
         dateFilterType: searchParams.dateFilterType,
         dateValue: searchParams.dateValue,
-      }
+      },
     });
     orders = data.orders;
     pagination = data.pagination;

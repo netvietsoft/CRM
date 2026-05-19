@@ -1,6 +1,5 @@
-import { IsString, IsEmail, IsOptional, IsArray, IsEnum, MinLength } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsArray, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Permission } from '../../auth/enums/permissions.enum';
 
 export class CreateStaffDto {
   @ApiProperty()

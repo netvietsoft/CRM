@@ -7,7 +7,7 @@ export class CategoriesService {
 
   async create(data: any, user?: any, effectiveStoreId?: string | null) {
     let storeId = null;
-    
+
     if (user && user.role !== 'ADMIN') {
       if (!effectiveStoreId) {
         throw new NotFoundException('User has no assigned store');
@@ -41,10 +41,7 @@ export class CategoriesService {
     const where: any = isAdmin ? {} : { isActive: true };
     if (storeId) {
       // Filter categories that EITHER belong to the store OR have products belonging to the store
-      where.OR = [
-        { storeId: storeId },
-        { products: { some: { storeId: storeId } } }
-      ];
+      where.OR = [{ storeId: storeId }, { products: { some: { storeId: storeId } } }];
     }
     const categories = await this.prisma.category.findMany({
       where,
@@ -76,7 +73,7 @@ export class CategoriesService {
               products: storeProductCount,
             },
           };
-        })
+        }),
       );
       return categoriesWithStoreCount;
     }
@@ -113,7 +110,12 @@ export class CategoriesService {
       throw new NotFoundException('Category not found');
     }
 
-    if (user && user.role !== 'ADMIN' && effectiveStoreId && existing.storeId !== effectiveStoreId) {
+    if (
+      user &&
+      user.role !== 'ADMIN' &&
+      effectiveStoreId &&
+      existing.storeId !== effectiveStoreId
+    ) {
       throw new NotFoundException('Category not found or access denied');
     }
 
@@ -134,11 +136,16 @@ export class CategoriesService {
       throw new NotFoundException('Category not found');
     }
 
-    if (user && user.role !== 'ADMIN' && effectiveStoreId && category.storeId !== effectiveStoreId) {
+    if (
+      user &&
+      user.role !== 'ADMIN' &&
+      effectiveStoreId &&
+      category.storeId !== effectiveStoreId
+    ) {
       throw new NotFoundException('Category not found or access denied');
     }
 
-    // Cascade delete children is handled by Prisma if configured, 
+    // Cascade delete children is handled by Prisma if configured,
     // but here we just manually handle it to be safe or set null
     // Looking at the schema is better, but I'll assume we want to delete them for now
     if (category.children.length > 0) {

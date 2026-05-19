@@ -1,49 +1,26 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, CreditCard, Ticket, CheckCircle2, Loader2, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 import VietQRPaymentClient from './vietqr/VietQRPaymentClient';
 import Select from '@/components/ui/Select';
+import type {
+  CreateOrderResponse,
+  ShippingFeeResponse,
+} from '@/types/commerce';
+import type {
+  CheckoutClientProps,
+  CheckoutUserVoucher,
+  CheckoutVoucher,
+} from './types';
 
 interface AddressOption {
   code: string;
   name: string;
-}
-
-interface Voucher {
-  id: string;
-  code: string;
-  name: string;
-  type: 'FIXED_AMOUNT' | 'PERCENT' | 'FREESHIP' | 'STACK';
-  value: number;
-  maxDiscount?: number;
-  minOrderValue: number;
-  stackTiers?: Array<{
-    conditionType?: string;
-    minProducts?: number;
-    minAmount?: number;
-    discount: number;
-    type?: string;
-    maxDiscount?: number;
-  }>;
-}
-
-interface OrderItem {
-  cartItemId?: string;
-  product: any;
-  quantity: number;
-  size: string | null;
-  color: string | null;
-  price: number;
-}
-
-interface CheckoutClientProps {
-  user: any;
-  items: OrderItem[];
-  store: { id: string; name: string; addressStreet?: string | null; addressWard?: string | null; addressProvince?: string | null } | null;
-  cartMode: boolean;
 }
 
 export default function CheckoutClient({ user, items, store, cartMode }: CheckoutClientProps) {
@@ -63,9 +40,8 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
   const [ward, setWard] = useState(user.addressWard || '');
 
   // Vouchers and Points
-  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [vouchers, setVouchers] = useState<CheckoutVoucher[]>([]);
   const [selectedVoucherIds, setSelectedVoucherIds] = useState<string[]>([]);
-  const [useCommissionPoints, setUseCommissionPoints] = useState(false);
   const [commissionPointsInput, setCommissionPointsInput] = useState<string>('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
@@ -80,6 +56,9 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalWeight = items.reduce((sum, item) => sum + item.quantity * (item.product.weight || 500), 0);
   const distinctProductCount = new Set(items.map(item => item.product.id)).size;
+  const cartStoreId = items[0]?.product.storeId || items[0]?.product.store?.id || store?.id || null;
+  const isShippingAddressComplete = Boolean(province && ward && street && street.length >= 5);
+  const effectiveShippingFee = isShippingAddressComplete ? shippingFee : 0;
 
   const normalizeName = useCallback((name: string) => {
     return name
@@ -132,15 +111,12 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
 
   // Calculate shipping fee
   useEffect(() => {
-    if (!province || !ward || !street || street.length < 5) {
-      setShippingFee(0);
-      return;
-    }
+    if (!isShippingAddressComplete) return;
 
     const timer = setTimeout(async () => {
       setIsCalculatingFee(true);
       try {
-        const data = await apiClientClient.post<any>('/orders/shipping-fee', {
+        const data = await apiClientClient.post<ShippingFeeResponse>('/orders/shipping-fee', {
           province,
           ward,
           street,
@@ -160,7 +136,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [province, ward, street, totalWeight, store?.id]);
+  }, [isShippingAddressComplete, province, ward, street, totalWeight, store?.id]);
 
   const handleImportSavedAddress = async () => {
     setImportingAddress(true);
@@ -191,7 +167,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
     }
   };
 
-  const getMatchedStackTier = useCallback((voucher: Voucher) => {
+  const getMatchedStackTier = useCallback((voucher: CheckoutVoucher) => {
     if (voucher.type !== 'STACK' || !voucher.stackTiers || voucher.stackTiers.length === 0) {
       return null;
     }
@@ -210,33 +186,30 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
     }) || null;
   }, [distinctProductCount, subtotal]);
 
-  const isVoucherApplicable = useCallback((voucher: Voucher) => {
+  const isVoucherApplicable = useCallback((voucher: CheckoutVoucher) => {
     if (subtotal < voucher.minOrderValue) return false;
     if (voucher.type === 'STACK') return Boolean(getMatchedStackTier(voucher));
     return true;
   }, [getMatchedStackTier, subtotal]);
 
   useEffect(() => {
-    // Lấy storeId trực tiếp từ sản phẩm trong giỏ hàng để đảm bảo chính xác tuyệt đối
-    const cartStoreId = items?.[0]?.product?.storeId || items?.[0]?.product?.store?.id || store?.id;
-
     Promise.all([
-      apiClientClient.get<any[]>('/vouchers/user/my-vouchers'),
-      apiClientClient.get<Voucher[]>('/vouchers', { params: cartStoreId ? { storeId: cartStoreId } : undefined }),
+      apiClientClient.get<CheckoutUserVoucher[]>('/vouchers/user/my-vouchers'),
+      apiClientClient.get<CheckoutVoucher[]>('/vouchers', { params: cartStoreId ? { storeId: cartStoreId } : undefined }),
     ])
       .then(([userVoucherData, systemVoucherData]) => {
-        const voucherMap = new Map<string, Voucher>();
+        const voucherMap = new Map<string, CheckoutVoucher>();
 
         if (Array.isArray(userVoucherData)) {
           userVoucherData
-            .filter((uv: any) => !uv.isUsed && uv.voucher && uv.status === 'ACTIVE')
-            .filter((uv: any) => {
+            .filter((uv) => !uv.isUsed && uv.voucher && uv.status === 'ACTIVE')
+            .filter((uv) => {
               // Only show vouchers that match current store or have no store (system-wide)
               const voucherStoreId = uv.voucher?.store?.id || uv.voucher?.storeId || null;
               if (!voucherStoreId) return true; // System-wide voucher
               return voucherStoreId === cartStoreId; // Must match order store
             })
-            .forEach((uv: any) => {
+            .forEach((uv) => {
               if (uv.expiresAt && new Date(uv.expiresAt) <= new Date()) return;
               voucherMap.set(uv.voucher.id, {
                 id: uv.voucher.id,
@@ -260,20 +233,16 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
         setVouchers(Array.from(voucherMap.values()));
       })
       .catch(console.error);
-  }, [store?.id]);
+  }, [cartStoreId]);
 
-  useEffect(() => {
-    if (selectedVoucherIds.length > 0) {
-      setSelectedVoucherIds(prev => prev.filter(id => {
-        const v = vouchers.find(vv => vv.id === id);
-        return v && isVoucherApplicable(v);
-      }));
-    }
-  }, [vouchers, isVoucherApplicable]);
+  const activeSelectedVoucherIds = selectedVoucherIds.filter((id) => {
+    const voucher = vouchers.find((candidate) => candidate.id === id);
+    return voucher ? isVoucherApplicable(voucher) : false;
+  });
 
   // Calc Discounts - sum all selected vouchers
   let voucherDiscount = 0;
-  for (const vid of selectedVoucherIds) {
+  for (const vid of activeSelectedVoucherIds) {
     const sel = vouchers.find(v => v.id === vid);
     if (!sel) continue;
     let thisDiscount = 0;
@@ -296,7 +265,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
     voucherDiscount += thisDiscount;
   }
 
-  let finalAmount = subtotal + shippingFee - voucherDiscount;
+  let finalAmount = subtotal + effectiveShippingFee - voucherDiscount;
   if (finalAmount < 0) finalAmount = 0;
 
   const maxPointsApplicable = Math.min(user.commissionBalance || 0, finalAmount);
@@ -313,7 +282,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
 
     setLoading(true);
     try {
-      const data = await apiClientClient.post<any>('/orders', {
+      const data = await apiClientClient.post<CreateOrderResponse>('/orders', {
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -326,8 +295,8 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
         addressStreet: street,
         addressWard: ward,
         addressProvince: province,
-        shippingFee,
-        voucherIds: selectedVoucherIds.length > 0 ? selectedVoucherIds : undefined,
+        shippingFee: effectiveShippingFee,
+        voucherIds: activeSelectedVoucherIds.length > 0 ? activeSelectedVoucherIds : undefined,
         useCommissionPoints: pointDiscount > 0,
         appliedCommissionPoints: pointDiscount,
       });
@@ -340,8 +309,8 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
       } else {
         router.push(`/portal/checkout/success?orderId=${data.orderId}`);
       }
-    } catch (error: any) {
-      alert(error.message || 'Lỗi đặt hàng');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Lỗi đặt hàng');
     } finally {
       setLoading(false);
     }
@@ -445,7 +414,19 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
             {items.map((item, idx) => (
               <div key={idx} className="flex gap-3">
                 <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                  {item.product.imageUrl ? <img src={item.product.imageUrl} className="w-full h-full object-cover" /> : <span className="text-xl mt-3 block text-center">📦</span>}
+                  {item.product.imageUrl ? (
+                    <Image
+                      loader={passthroughImageLoader}
+                      unoptimized
+                      src={item.product.imageUrl}
+                      alt={item.product.name}
+                      width={64}
+                      height={64}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xl mt-3 block text-center">📦</span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-medium text-gray-800 line-clamp-2">{item.product.name}</h3>
@@ -486,7 +467,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                   <Ticket className="w-5 h-5 text-indigo-600" /> Mã giảm giá
                 </label>
                 <div className="flex items-center gap-3">
-                  {selectedVoucherIds.length > 0 && (
+                  {activeSelectedVoucherIds.length > 0 && (
                     <button type="button" onClick={() => setSelectedVoucherIds([])} className="text-xs text-rose-500 font-medium hover:underline border-0 bg-transparent p-0">Bỏ chọn</button>
                   )}
                   <button
@@ -494,13 +475,13 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                     onClick={() => setShowVoucherModal(true)}
                     className="text-indigo-600 font-bold hover:underline text-sm border-0 bg-transparent p-0"
                   >
-                    {selectedVoucherIds.length > 0 ? `${selectedVoucherIds.length} mã đã chọn` : 'Chọn mã'}
+                    {activeSelectedVoucherIds.length > 0 ? `${activeSelectedVoucherIds.length} mã đã chọn` : 'Chọn mã'}
                   </button>
                 </div>
               </div>
-              {selectedVoucherIds.length > 0 && (
+              {activeSelectedVoucherIds.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {selectedVoucherIds.map(id => {
+                  {activeSelectedVoucherIds.map(id => {
                     const v = vouchers.find(vv => vv.id === id);
                     return v ? (
                       <span key={id} className="inline-flex items-center gap-1 text-[11px] font-semibold bg-sky-50 text-sky-700 px-2 py-0.5 rounded-full border border-sky-200">
@@ -561,7 +542,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                   </svg>
                 )}
               </span>
-              <span>{shippingFee > 0 ? `+${formatPrice(shippingFee)}` : (isCalculatingFee ? 'Đang tính...' : '0 đ')}</span>
+              <span>{effectiveShippingFee > 0 ? `+${formatPrice(effectiveShippingFee)}` : (isCalculatingFee ? 'Đang tính...' : '0 đ')}</span>
             </div>
             {voucherDiscount > 0 && <div className="flex justify-between text-emerald-600"><span>Giảm giá Voucher</span><span>-{formatPrice(voucherDiscount)}</span></div>}
             {pointDiscount > 0 && <div className="flex justify-between text-orange-600"><span>Dùng Hoa hồng</span><span>-{formatPrice(pointDiscount)}</span></div>}
@@ -617,7 +598,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
               ) : (
                 vouchers.map(v => {
                   const isEligible = isVoucherApplicable(v);
-                  const isSelected = selectedVoucherIds.includes(v.id);
+                  const isSelected = activeSelectedVoucherIds.includes(v.id);
 
                   return (
                     <div

@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { CommissionsService } from '../commissions/commissions.service';
@@ -50,15 +50,11 @@ export class CassoService {
         return false;
       }
 
-      const formats = [
-        `${timestamp}.${payload}`,
-        payload,
-        `${timestamp}${payload}`,
-      ];
+      const formats = [`${timestamp}.${payload}`, payload, `${timestamp}${payload}`];
 
       for (let i = 0; i < formats.length; i++) {
         const signedPayload = formats[i];
-        
+
         const computedHash = crypto
           .createHmac('sha512', secret)
           .update(signedPayload)
@@ -85,11 +81,11 @@ export class CassoService {
     }
 
     const orderCode = match[1];
-    
+
     // Find the order
     const order = await this.prisma.order.findUnique({
       where: { orderCode },
-      include: { items: true, user: true }
+      include: { items: true, user: true },
     });
 
     if (!order) {
@@ -126,7 +122,9 @@ export class CassoService {
     const expectedAmount = Number(order.totalAmount);
     const tolerance = expectedAmount * 0.01;
     if (Math.abs(transaction.amount - expectedAmount) > tolerance) {
-      this.logger.warn(`Amount mismatch for order ${orderCode}: expected ${expectedAmount}, got ${transaction.amount}`);
+      this.logger.warn(
+        `Amount mismatch for order ${orderCode}: expected ${expectedAmount}, got ${transaction.amount}`,
+      );
       return false;
     }
 
@@ -140,7 +138,7 @@ export class CassoService {
           paidAt: new Date(),
         },
       });
-      
+
       // We do not increment user credits, as this is an ecommerce order
       // The commission logic will handle points calculation when the order reaches 'COMPLETED'
     });

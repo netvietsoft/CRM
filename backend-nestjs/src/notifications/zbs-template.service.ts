@@ -16,7 +16,13 @@ export class ZbsTemplateService {
    * Creates a new PROMOTION template via ZBS API.
    * Template content is tailored for sending promotional vouchers.
    */
-  async createPromotionTemplate(dto: { name: string; title: string; content: string; buttonName: string; buttonUrl: string }) {
+  async createPromotionTemplate(dto: {
+    name: string;
+    title: string;
+    content: string;
+    buttonName: string;
+    buttonUrl: string;
+  }) {
     const accessToken = await this.zaloTokenService.getAccessToken();
     if (!accessToken) {
       throw new HttpException('Zalo Access Token chưa được cấu hình.', HttpStatus.BAD_REQUEST);
@@ -86,7 +92,10 @@ export class ZbsTemplateService {
       this.logger.error(`Error calling ZBS create template API: ${error.message}`);
       if (error.response) {
         this.logger.error(`Zalo API Response: ${JSON.stringify(error.response.data)}`);
-        throw new HttpException(`Lỗi từ Zalo: ${error.response.data.message || 'Unknown error'}`, HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          `Lỗi từ Zalo: ${error.response.data.message || 'Unknown error'}`,
+          HttpStatus.BAD_REQUEST,
+        );
       }
       throw new HttpException('Lỗi kết nối đến hệ thống Zalo.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -104,7 +113,10 @@ export class ZbsTemplateService {
     });
 
     if (!template || !template.zaloTemplateId) {
-      throw new HttpException('Template không tồn tại hoặc không có Zalo Template ID.', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Template không tồn tại hoặc không có Zalo Template ID.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     const accessToken = await this.zaloTokenService.getAccessToken();
@@ -125,7 +137,7 @@ export class ZbsTemplateService {
       const data = response.data;
       if (data.error === 0 && data.data) {
         const newStatus = data.data.status; // ENABLE, PENDING_REVIEW, REJECT
-        
+
         await this.prisma.notificationTemplate.update({
           where: { id: templateId },
           data: { zaloStatus: newStatus },
@@ -137,7 +149,10 @@ export class ZbsTemplateService {
       }
     } catch (error: any) {
       this.logger.error(`Error syncing template status: ${error.message}`);
-      throw new HttpException('Lỗi khi đồng bộ trạng thái từ Zalo.', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException(
+        'Lỗi khi đồng bộ trạng thái từ Zalo.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

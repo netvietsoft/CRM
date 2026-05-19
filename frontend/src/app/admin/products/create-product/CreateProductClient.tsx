@@ -5,8 +5,57 @@ import { useRouter } from 'next/navigation';
 import ProductForm from '@/components/admin/ProductForm';
 import { apiClientClient } from '@/lib/apiClientClient';
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  parentId?: string | null;
+}
+
+interface ProductSubmitVariant {
+  id: string;
+  sizeId?: string;
+  colorId?: string;
+  price?: number;
+  stock: number;
+}
+
+interface ProductSubmitPayload {
+  name: string;
+  slug: string;
+  sku?: string;
+  description?: string;
+  imageUrl: string | null;
+  originalPrice: number;
+  salePrice?: number;
+  stockQuantity: number;
+  weight: number;
+  isComboSet: boolean;
+  isGiftItem: boolean;
+  isActive: boolean;
+  categoryIds: string[];
+  variants?: ProductSubmitVariant[];
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 interface CreateProductClientProps {
-  categories: any[];
+  categories: ProductCategory[];
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
 }
 
 export default function CreateProductClient({ categories }: CreateProductClientProps) {
@@ -14,16 +63,16 @@ export default function CreateProductClient({ categories }: CreateProductClientP
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: ProductSubmitPayload) => {
     setLoading(true);
     setError('');
 
     try {
-      await apiClientClient.post<any>('/products', data);
+      await apiClientClient.post('/products', data);
       router.push('/admin/products');
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi tạo sản phẩm');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Lỗi tạo sản phẩm'));
     } finally {
       setLoading(false);
     }

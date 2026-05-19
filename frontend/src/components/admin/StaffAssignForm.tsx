@@ -1,11 +1,60 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
-import { User, Lock, Mail, Phone, Check, AlertCircle, Loader2, UserPlus, Eye, EyeOff, ArrowLeft, Store, ShieldCheck } from 'lucide-react';
+import { User, Lock, Mail, Phone, Check, AlertCircle, Loader2, UserPlus, Eye, EyeOff, ArrowLeft, Store } from 'lucide-react';
 
-export default function StaffAssignForm({ stores, currentUser }: { stores: any[], currentUser: any }) {
+interface StoreSummary {
+  id: string;
+  name: string | null;
+}
+
+interface CurrentUser {
+  role?: string | null;
+  store?: {
+    id: string;
+  } | null;
+}
+
+interface StaffAssignUserDetail {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  staffStoreId?: string | null;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+function getInitialStoreId(currentUser: CurrentUser, stores: StoreSummary[]) {
+  if (currentUser.store?.id) {
+    return currentUser.store.id;
+  }
+
+  if (currentUser.role === 'MODERATOR' && stores.length > 0) {
+    return stores[0].id;
+  }
+
+  return '';
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
+export default function StaffAssignForm({ stores, currentUser }: { stores: StoreSummary[]; currentUser: CurrentUser }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editUserId = searchParams.get('userId');
@@ -22,18 +71,9 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: any[]
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(() => getInitialStoreId(currentUser, stores));
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  // Auto-select store based on current user
-  useEffect(() => {
-    if (currentUser?.store?.id) {
-      setSelectedStoreId(currentUser.store.id);
-    } else if (currentUser?.role === 'MODERATOR' && stores.length > 0) {
-      setSelectedStoreId(stores[0].id);
-    }
-  }, [currentUser, stores]);
 
   // If Edit Mode, fetch user details
   useEffect(() => {
@@ -41,7 +81,7 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: any[]
       const fetchUserDetails = async () => {
         setLoading(true);
         try {
-          const user = await apiClientClient.get<any>(`/admin/customers/${editUserId}`);
+          const user = await apiClientClient.get<StaffAssignUserDetail>(`/admin/customers/${editUserId}`);
           setFormData({
             name: user.name || '',
             phone: user.phone || '',
@@ -49,7 +89,7 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: any[]
             password: ''
           });
           if (user.staffStoreId) setSelectedStoreId(user.staffStoreId);
-        } catch (err) {
+        } catch {
           setError('Không tìm thấy thông tin người dùng');
         } finally {
           setLoading(false);
@@ -59,7 +99,7 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: any[]
     }
   }, [editUserId]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
 
     let storeIdToUse = selectedStoreId;
@@ -93,8 +133,8 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: any[]
         router.push('/admin/staff');
         router.refresh();
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || 'Đã xảy ra lỗi');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Đã xảy ra lỗi'));
     } finally {
       setSubmitting(false);
     }

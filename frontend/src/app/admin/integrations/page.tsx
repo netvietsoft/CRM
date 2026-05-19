@@ -1,21 +1,14 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Layers, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import type { Integration, IntegrationMetadata } from '@/types/integrations';
 
-interface Integration {
-  id: string;
-  platform: string;
-  apiKey: string | null;
-  apiSecret: string | null;
-  shopId: string | null;
-  accessToken: string | null;
-  isActive: boolean;
-  storeId: string;
-  metadata?: any;
+interface CurrentUser {
+  role?: string;
 }
 
 const PLATFORMS = [
@@ -30,7 +23,7 @@ export default function IntegrationsPage() {
   const router = useRouter();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(''); // For ADMIN role, allow selecting store
+  const selectedStoreId = '';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activePlatform, setActivePlatform] = useState('');
   const [userRole, setUserRole] = useState<string>('MODERATOR');
@@ -41,37 +34,50 @@ export default function IntegrationsPage() {
   const [formShopId, setFormShopId] = useState('');
   const [formAccessToken, setFormAccessToken] = useState('');
   const [formIsActive, setFormIsActive] = useState(false);
-  const [formMetadata, setFormMetadata] = useState<any>({});
+  const [formMetadata, setFormMetadata] = useState<IntegrationMetadata>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
-  const [isSyncingCategories, setIsSyncingCategories] = useState(false);
   const [showFields, setShowFields] = useState<Record<string, boolean>>({});
 
   const toggleField = (field: string) => {
     setShowFields(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  useEffect(() => {
-    fetchIntegrations();
+  const loadIntegrations = useCallback(async () => {
+    const [integrationsData, userProfile] = await Promise.all([
+      apiClientClient.get<Integration[]>('/integrations', {
+        params: { storeId: selectedStoreId }
+      }),
+      apiClientClient.get<CurrentUser>('/users/me')
+    ]);
+
+    return {
+      integrations: integrationsData,
+      role: userProfile?.role || 'MODERATOR',
+    };
   }, [selectedStoreId]);
 
-  const fetchIntegrations = async () => {
-    try {
-      const [integrationsData, userProfile] = await Promise.all([
-        apiClientClient.get<Integration[]>('/integrations', {
-          params: { storeId: selectedStoreId }
-        }),
-        apiClientClient.get<any>('/users/me')
-      ]);
-      setIntegrations(integrationsData || []);
-      setUserRole(userProfile?.role || 'MODERATOR');
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    let isCancelled = false;
+
+    void loadIntegrations()
+      .then((data) => {
+        if (isCancelled) return;
+        setIntegrations(data.integrations || []);
+        setUserRole(data.role);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [loadIntegrations]);
 
   const openConfig = (platformId: string) => {
     const existing = integrations.find(i => i.platform === platformId);
@@ -99,16 +105,18 @@ export default function IntegrationsPage() {
         accessToken: formAccessToken,
         isActive: formIsActive,
         metadata: formMetadata,
-        ...(selectedStoreId && { storeId: selectedStoreId })
+        ...(selectedStoreId ? { storeId: selectedStoreId } : {})
       };
 
-      await apiClientClient.post<any>('/integrations', payload);
-      fetchIntegrations();
+      await apiClientClient.post<Integration>('/integrations', payload);
+      const data = await loadIntegrations();
+      setIntegrations(data.integrations || []);
+      setUserRole(data.role);
       setIsModalOpen(false);
       alert('Lưu cấu hình thành công!');
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Lỗi khi lưu cấu hình');
+      alert(error instanceof Error ? error.message : 'Lỗi khi lưu cấu hình');
     } finally {
       setIsSaving(false);
     }
@@ -169,13 +177,6 @@ export default function IntegrationsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      {/* Sync message banner */}
-      {syncMessage && (
-        <div className={`p-4 rounded-xl border ${syncMessage.includes('thành công') || syncMessage.includes('Đã đồng bộ') ? 'bg-green-50 border-green-200 text-green-800' : syncMessage.includes('Đang') ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-          <p className="font-semibold">{syncMessage}</p>
-        </div>
-      )}
-
       {/* Connected Platforms */}
       {connectedPlatforms.length > 0 && (
         <div className="space-y-4">

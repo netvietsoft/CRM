@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import ImageUpload from './ImageUpload';
 import { apiClientClient } from '@/lib/apiClientClient';
 import Select from '@/components/ui/Select';
@@ -33,14 +32,92 @@ interface FormVariant {
   stock: string;
 }
 
+interface InitialCategory {
+  id: string;
+}
+
+interface InitialVariant {
+  id?: string | null;
+  sizeId?: string | null;
+  colorId?: string | null;
+  price?: number | null;
+  stock?: number | null;
+}
+
+interface ProductFormInitialData {
+  name?: string | null;
+  slug?: string | null;
+  sku?: string | null;
+  description?: string | null;
+  originalPrice?: number | null;
+  salePrice?: number | null;
+  stockQuantity?: number | null;
+  weight?: number | null;
+  imageUrl?: string | null;
+  isComboSet?: boolean;
+  isGiftItem?: boolean;
+  isActive?: boolean;
+  categories?: InitialCategory[] | null;
+  variants?: InitialVariant[] | null;
+}
+
+interface ProductSubmitVariant {
+  id: string;
+  sizeId?: string;
+  colorId?: string;
+  price?: number;
+  stock: number;
+}
+
+interface ProductSubmitPayload {
+  name: string;
+  slug: string;
+  sku?: string;
+  description?: string;
+  imageUrl: string | null;
+  originalPrice: number;
+  salePrice?: number;
+  stockQuantity: number;
+  weight: number;
+  isComboSet: boolean;
+  isGiftItem: boolean;
+  isActive: boolean;
+  categoryIds: string[];
+  variants?: ProductSubmitVariant[];
+}
+
+interface ProductFormState {
+  name: string;
+  slug: string;
+  sku: string;
+  description: string;
+  originalPrice: string;
+  salePrice: string;
+  stockQuantity: string;
+  weight: string;
+  imageUrl: string;
+  categoryLevel1: string;
+  categoryLevel2: string;
+  categoryLevel3: string;
+  categoryLevel4: string;
+  isComboSet: boolean;
+  isGiftItem: boolean;
+  isActive: boolean;
+  variants: FormVariant[];
+}
+
 interface ProductFormProps {
   categories: Category[];
-  initialData?: any;
-  onSubmit: (data: any) => Promise<void>;
+  initialData?: ProductFormInitialData;
+  onSubmit: (data: ProductSubmitPayload) => Promise<void>;
   loading: boolean;
   error: string;
   title: string;
   submitButtonText: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback;
 }
 
 export default function ProductForm({
@@ -52,7 +129,6 @@ export default function ProductForm({
   title,
   submitButtonText,
 }: ProductFormProps) {
-  const router = useRouter();
   const [sizes, setSizes] = useState<Size[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
 
@@ -87,7 +163,7 @@ export default function ProductForm({
     };
   };
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProductFormState>(() => ({
     name: initialData?.name || '',
     slug: initialData?.slug || '',
     sku: initialData?.sku || '',
@@ -101,39 +177,43 @@ export default function ProductForm({
     isComboSet: initialData?.isComboSet || false,
     isGiftItem: initialData?.isGiftItem || false,
     isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
-    variants: (initialData?.variants || []).map((v: any): FormVariant => ({
-      id: v.id || Date.now().toString() + Math.random().toString(),
-      sizeId: v.sizeId || '',
-      colorId: v.colorId || '',
-      price: v.price?.toString() || '',
-      stock: v.stock?.toString() || '0',
-    })) as FormVariant[],
-  });
+    variants: (initialData?.variants || []).map((variant, index): FormVariant => ({
+      id: variant.id || `variant-${index}`,
+      sizeId: variant.sizeId || '',
+      colorId: variant.colorId || '',
+      price: variant.price?.toString() || '',
+      stock: variant.stock?.toString() || '0',
+    })),
+  }));
 
   useEffect(() => {
-    apiClientClient.get<any[]>('/sizes').then(setSizes).catch(console.error);
-    apiClientClient.get<any[]>('/colors').then(setColors).catch(console.error);
+    apiClientClient.get<Size[]>('/sizes').then(setSizes).catch(console.error);
+    apiClientClient.get<Color[]>('/colors').then(setColors).catch(console.error);
   }, []);
 
   const handleCreateSize = async () => {
     if (!newSizeName.trim()) return;
     try {
-      const newSize = await apiClientClient.post<any>('/sizes', { name: newSizeName });
+      const newSize = await apiClientClient.post<Size, { name: string }>('/sizes', {
+        name: newSizeName,
+      });
       setSizes([...sizes, newSize]);
       setNewSizeName('');
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to create size');
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Failed to create size'));
     }
   };
 
   const handleCreateColor = async () => {
     if (!newColorName.trim()) return;
     try {
-      const newColor = await apiClientClient.post<any>('/colors', { name: newColorName });
+      const newColor = await apiClientClient.post<Color, { name: string }>('/colors', {
+        name: newColorName,
+      });
       setColors([...colors, newColor]);
       setNewColorName('');
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to create color');
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Failed to create color'));
     }
   };
 
@@ -170,7 +250,7 @@ export default function ProductForm({
     });
   };
 
-  const update = (field: string, value: any) => {
+  const update = <K extends keyof ProductFormState>(field: K, value: ProductFormState[K]) => {
     setForm(prev => {
       const newForm = { ...prev, [field]: value };
       if (field === 'name' && typeof value === 'string' && !initialData) {
@@ -201,7 +281,7 @@ export default function ProductForm({
   const addVariant = () => {
     setForm(prev => ({
       ...prev,
-      variants: [...prev.variants, { id: Date.now().toString(), sizeId: '', colorId: '', price: '', stock: '0' }]
+      variants: [...prev.variants, { id: `variant-${prev.variants.length}`, sizeId: '', colorId: '', price: '', stock: '0' }]
     }));
   };
 

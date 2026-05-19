@@ -1,6 +1,22 @@
 import { getSession } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 import { apiClient } from '@/lib/apiClient';
+import Link from 'next/link';
+import type {
+  UserVoucher,
+  VoucherDefinition,
+  VoucherStackTier,
+} from '@/types/commerce';
+
+interface VoucherGroup {
+  name: string;
+  slug: string;
+  vouchers: VoucherDefinition[];
+}
+
+function getTopStackTier(tiers: VoucherStackTier[]) {
+  return tiers.reduce((max, tier) => (tier.discount > max.discount ? tier : max), tiers[0]);
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
@@ -26,15 +42,15 @@ export default async function PortalVouchersPage() {
   const session = await getSession();
   if (!session) return null;
 
-  let userVouchers: any[] = [];
-  let systemVouchers: any[] = [];
+  let userVouchers: UserVoucher[] = [];
+  let systemVouchers: VoucherDefinition[] = [];
 
   const now = new Date();
 
   try {
     const [userVouchersData, systemVouchersData] = await Promise.all([
-      apiClient.get<any[]>('/vouchers/user/my-vouchers'),
-      apiClient.get<any[]>('/vouchers'),
+      apiClient.get<UserVoucher[]>('/vouchers/user/my-vouchers'),
+      apiClient.get<VoucherDefinition[]>('/vouchers'),
     ]);
     userVouchers = userVouchersData;
     systemVouchers = systemVouchersData;
@@ -71,11 +87,11 @@ export default async function PortalVouchersPage() {
     GAMIFICATION: '🎰', REFERRAL: '🔗', BIRTHDAY: '🎂',
   };
 
-  const renderVoucherCard = (uv: any) => (
+  const renderVoucherCard = (uv: UserVoucher) => (
     <div key={uv.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden transition-all hover:shadow-md">
       <div className="p-4">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className="text-xl">{campaignIcons[uv.voucher.campaignCategory] || '🎫'}</span>
+          <span className="text-xl">{campaignIcons[uv.voucher.campaignCategory ?? ''] || '🎫'}</span>
           <span className="font-bold text-gray-800">{uv.voucher.name}</span>
           {uv.voucher.store && (
             <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded border border-indigo-200 whitespace-nowrap">
@@ -94,7 +110,7 @@ export default async function PortalVouchersPage() {
             {uv.voucher.type === 'STACK' ? (() => {
               const tiers = uv.voucher.stackTiers;
               if (tiers && tiers.length > 0) {
-                const maxTier = tiers.reduce((max: any, t: any) => t.discount > max.discount ? t : max, tiers[0]);
+                const maxTier = getTopStackTier(tiers);
                 const condition = tiers[0].conditionType === 'amount' ? 'Theo giá trị' : 'Theo số SP';
                 return `📊 ${condition} (Đến ${maxTier.type === 'PERCENT' ? `${maxTier.discount}%` : fmt(maxTier.discount)})`;
               }
@@ -109,18 +125,18 @@ export default async function PortalVouchersPage() {
           </div>
         )}
         <div className="flex justify-end">
-          <a
+          <Link
             href="/portal/products"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors text-sm"
           >
             Sử dụng ngay
-          </a>
+          </Link>
         </div>
       </div>
     </div>
   );
 
-  const renderPendingVoucherCard = (uv: any) => {
+  const renderPendingVoucherCard = (uv: UserVoucher) => {
     const days = uv.unlockAt ? daysUntil(uv.unlockAt) : 0;
 
     return (
@@ -133,7 +149,7 @@ export default async function PortalVouchersPage() {
         </div>
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-xl">{campaignIcons[uv.voucher.campaignCategory] || '🎫'}</span>
+            <span className="text-xl">{campaignIcons[uv.voucher.campaignCategory ?? ''] || '🎫'}</span>
             <span className="font-bold text-gray-800">{uv.voucher.name}</span>
           </div>
           <div className="font-mono text-sm font-bold text-gray-400 tracking-wide mb-3 bg-gray-100 px-3 py-1.5 rounded inline-block">
@@ -153,7 +169,7 @@ export default async function PortalVouchersPage() {
               {days > 0 ? (
                 <span className="text-amber-700 font-medium">
                   Khả dụng sau <strong>{days} ngày</strong>
-                  <span className="text-gray-500 font-normal"> ({formatVnDate(uv.unlockAt)})</span>
+                  <span className="text-gray-500 font-normal"> ({formatVnDate(uv.unlockAt ?? null)})</span>
                 </span>
               ) : (
                 <span className="text-green-700 font-medium">
@@ -179,14 +195,14 @@ export default async function PortalVouchersPage() {
     );
   };
 
-  const renderSystemVoucherCard = (v: any) => {
+  const renderSystemVoucherCard = (v: VoucherDefinition) => {
     const isClaimed = userVouchers.some(uv => uv.voucher?.id === v.id || uv.voucherId === v.id);
 
     return (
       <div key={v.id} className="bg-white border-2 border-dashed border-gray-300 rounded-xl overflow-hidden transition-all hover:shadow-md opacity-90">
         <div className="p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">{campaignIcons[v.campaignCategory] || '🎫'}</span>
+            <span className="text-xl">{campaignIcons[v.campaignCategory ?? ''] || '🎫'}</span>
             <span className="font-bold text-gray-800">{v.name}</span>
           </div>
           <div className="font-mono text-sm font-bold text-blue-600 tracking-wide mb-3 bg-blue-50 px-3 py-1.5 rounded inline-block">
@@ -200,7 +216,7 @@ export default async function PortalVouchersPage() {
               {v.type === 'STACK' ? (() => {
                 const tiers = v.stackTiers;
                 if (tiers && tiers.length > 0) {
-                  const maxTier = tiers.reduce((max: any, t: any) => t.discount > max.discount ? t : max, tiers[0]);
+                  const maxTier = getTopStackTier(tiers);
                   const condition = tiers[0].conditionType === 'amount' ? 'Theo giá trị' : 'Theo số SP';
                   return `📊 ${condition} (Đến ${maxTier.type === 'PERCENT' ? `${maxTier.discount}%` : fmt(maxTier.discount)})`;
                 }
@@ -220,12 +236,12 @@ export default async function PortalVouchersPage() {
                 Đã nhận
               </span>
             ) : (
-              <a
+              <Link
                 href="/portal/products"
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors text-sm"
               >
                 Sử dụng ngay
-              </a>
+              </Link>
             )}
           </div>
         </div>
@@ -233,7 +249,7 @@ export default async function PortalVouchersPage() {
     );
   };
 
-  const groupedVouchersMap = systemVouchers.reduce((acc: any, v: any) => {
+  const groupedVouchersMap = systemVouchers.reduce<Record<string, VoucherGroup>>((acc, v) => {
     const storeName = v.store?.name || 'Voucher toàn sàn';
     const storeSlug = v.store?.slug || 'platform';
     const key = `${storeName}|${storeSlug}`;
@@ -241,7 +257,7 @@ export default async function PortalVouchersPage() {
     acc[key].vouchers.push(v);
     return acc;
   }, {});
-  const groupedVouchers = Object.values(groupedVouchersMap) as any[];
+  const groupedVouchers = Object.values(groupedVouchersMap);
 
   return (
     <>
@@ -327,9 +343,9 @@ export default async function PortalVouchersPage() {
                 {storeName === 'Voucher toàn sàn' ? (
                   <h3 className="text-lg font-bold text-gray-800">{storeName}</h3>
                 ) : (
-                  <a href={`/portal/stores/${storeSlug}`} className="text-lg font-bold text-gray-800 hover:text-indigo-600 transition-colors flex items-center gap-2">
+                  <Link href={`/portal/stores/${storeSlug}`} className="text-lg font-bold text-gray-800 hover:text-indigo-600 transition-colors flex items-center gap-2">
                     {storeName} <span className="text-sm font-normal text-indigo-600">Xem Shop →</span>
-                  </a>
+                  </Link>
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

@@ -31,14 +31,14 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user profile' })
   async updateProfile(@GetUser('id') userId: string, @Body() data: any) {
     const result = await this.usersService.updateProfile(userId, data);
-    
+
     // Auto sync pancake orders if phone is updated
     if (data.phone) {
-      this.pancakeService.syncOrdersForUser(data.phone, userId).catch(err => {
+      this.pancakeService.syncOrdersForUser(data.phone, userId).catch((err) => {
         console.error('Error auto-syncing pancake orders after profile update:', err);
       });
     }
-    
+
     return result;
   }
 
@@ -48,11 +48,7 @@ export class UsersController {
     @GetUser('id') userId: string,
     @Body() data: { currentPassword: string; newPassword: string },
   ) {
-    return this.usersService.updatePassword(
-      userId,
-      data.currentPassword,
-      data.newPassword,
-    );
+    return this.usersService.updatePassword(userId, data.currentPassword, data.newPassword);
   }
 
   @Post('onboarding')
@@ -73,10 +69,7 @@ export class UsersController {
 
     if (result.user.phone) {
       try {
-        const totalSpent = await this.pancakeService.syncOrdersForUser(
-          result.user.phone,
-          userId,
-        );
+        const totalSpent = await this.pancakeService.syncOrdersForUser(result.user.phone, userId);
         pancakeSync = {
           success: true,
           totalSpent,
@@ -110,10 +103,7 @@ export class UsersController {
       };
     }
 
-    const totalSpent = await this.pancakeService.syncOrdersForUser(
-      user.phone,
-      userId,
-    );
+    const totalSpent = await this.pancakeService.syncOrdersForUser(user.phone, userId);
 
     return {
       success: true,

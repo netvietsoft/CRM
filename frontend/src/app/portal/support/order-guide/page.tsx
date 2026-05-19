@@ -113,8 +113,8 @@ export default function OrderGuidePage() {
                       <li>Chọn <strong>màu sắc</strong> (nếu có nhiều màu)</li>
                       <li>Chọn <strong>kích thước</strong> (S, M, L, XL, ...)</li>
                       <li>Nhập <strong>số lượng</strong> muốn mua</li>
-                      <li>Nhấn nút <strong>"Thêm vào giỏ hàng"</strong></li>
-                      <li>Chọn <strong>"Tiếp tục mua sắm"</strong> hoặc <strong>"Thanh toán ngay"</strong></li>
+                      <li>Nhấn nút <strong>&quot;Thêm vào giỏ hàng&quot;</strong></li>
+                      <li>Chọn <strong>&quot;Tiếp tục mua sắm&quot;</strong> hoặc <strong>&quot;Thanh toán ngay&quot;</strong></li>
                     </ol>
                   </div>
                   <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
@@ -199,7 +199,7 @@ export default function OrderGuidePage() {
                     <ul className="space-y-2 text-sm text-gray-700 list-disc list-inside">
                       <li>Nhận <strong>email xác nhận</strong> với mã đơn hàng</li>
                       <li>Nhận <strong>SMS thông báo</strong> trạng thái đơn hàng</li>
-                      <li>Xem chi tiết đơn hàng trong mục <strong>"Đơn hàng của tôi"</strong></li>
+                      <li>Xem chi tiết đơn hàng trong mục <strong>&quot;Đơn hàng của tôi&quot;</strong></li>
                       <li>Theo dõi <strong>trạng thái vận chuyển</strong> realtime</li>
                     </ul>
                   </div>
@@ -314,7 +314,7 @@ export default function OrderGuidePage() {
                   <ul className="space-y-2 text-sm text-gray-700 list-disc list-inside">
                     <li>Lưu địa chỉ giao hàng thường dùng</li>
                     <li>Lưu phương thức thanh toán</li>
-                    <li>Sử dụng tính năng "Mua ngay"</li>
+                    <li>Sử dụng tính năng &quot;Mua ngay&quot;</li>
                     <li>Bật thông báo để không bỏ lỡ deal</li>
                   </ul>
                 </div>
@@ -333,7 +333,7 @@ export default function OrderGuidePage() {
                     Tôi có thể hủy đơn hàng không?
                   </summary>
                   <p className="mt-2 text-sm text-gray-700">
-                    Bạn có thể hủy đơn hàng miễn phí khi đơn hàng đang ở trạng thái "Chờ xác nhận". Sau khi đơn hàng đã được xác nhận và đang chuẩn bị, bạn cần liên hệ hotline để được hỗ trợ.
+                    Bạn có thể hủy đơn hàng miễn phí khi đơn hàng đang ở trạng thái &quot;Chờ xác nhận&quot;. Sau khi đơn hàng đã được xác nhận và đang chuẩn bị, bạn cần liên hệ hotline để được hỗ trợ.
                   </p>
                 </details>
 
@@ -361,5 +361,4 @@ export default function OrderGuidePage() {
     </div>
   );
 }
-
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 import Select from '@/components/ui/Select';
 
 export default function ReferralVoucherActions() {
@@ -56,8 +57,8 @@ export default function ReferralVoucherActions() {
         isStackable: false,
       });
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Lỗi tạo voucher');
+    } catch (error) {
+      setError(getApiErrorMessage(error, 'Lỗi tạo voucher'));
     } finally {
       setLoading(false);
     }

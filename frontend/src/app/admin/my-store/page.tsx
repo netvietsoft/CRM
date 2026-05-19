@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { apiClient } from '@/lib/apiClient';
-import StoreProfileForm from '@/components/admin/StoreProfileForm';
+import StoreProfileForm, {
+  type StoreProfileData,
+} from '@/components/admin/StoreProfileForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,9 +13,9 @@ export default async function MyStorePage() {
     redirect('/admin');
   }
 
-  let store = null;
+  let store: StoreProfileData | null = null;
   try {
-    store = await apiClient.get<any>('/stores/my-store');
+    store = await apiClient.get<StoreProfileData>('/stores/my-store');
   } catch (error) {
     console.error('Error fetching my store:', error);
   }

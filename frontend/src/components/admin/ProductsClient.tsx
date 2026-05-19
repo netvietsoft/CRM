@@ -1,10 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useState } from 'react';
 import ProductActions from '@/components/admin/ProductActions';
 import ProductRowActions from '@/components/admin/ProductRowActions';
 import { ChevronLeft, ChevronRight, SearchIcon } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 type Product = {
   id: string;
@@ -21,7 +23,7 @@ type Product = {
   isGiftItem: boolean;
   isActive: boolean;
   categories: { id: string; name: string }[];
-  variants: any[];
+  variants: Array<Record<string, unknown>>;
   store?: { id: string; name: string } | null;
   _count: { orderItems: number };
 };
@@ -48,7 +50,7 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-export default function ProductsClient({ products, categories, userRole }: Props) {
+export default function ProductsClient({ products }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 400);
@@ -73,11 +75,6 @@ export default function ProductsClient({ products, categories, userRole }: Props
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentProducts = filteredProducts.slice(startIndex, endIndex);
-
-  // Reset to page 1 when search changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch]);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -140,12 +137,18 @@ export default function ProductsClient({ products, categories, userRole }: Props
             type="text"
             placeholder="Tìm tên sản phẩm, slug, SKU..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
             className="w-full bg-white pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm shadow-sm"
           />
           {searchTerm && (
             <button
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setSearchTerm('');
+                setCurrentPage(1);
+              }}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               ✕
@@ -201,9 +204,13 @@ export default function ProductsClient({ products, categories, userRole }: Props
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {product.imageUrl ? (
-                          <img
+                          <Image
+                            loader={passthroughImageLoader}
+                            unoptimized
                             src={product.imageUrl}
                             alt={product.name}
+                            width={48}
+                            height={48}
                             className="w-12 h-12 rounded-lg object-cover"
                           />
                         ) : (

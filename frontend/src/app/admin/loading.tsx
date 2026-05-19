@@ -1,5 +1,4 @@
 import { Skeleton } from '@/components/ui/Skeleton';
-import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export default function AdminLoading() {
   return (

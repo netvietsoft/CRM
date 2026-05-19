@@ -10,9 +10,7 @@ import { UpdateCommissionConfigDto } from './dto/update-commission-config.dto';
 @ApiTags('Commission Config')
 @Controller('commission-config')
 export class CommissionConfigController {
-  constructor(
-    private readonly commissionConfigService: CommissionConfigService,
-  ) {}
+  constructor(private readonly commissionConfigService: CommissionConfigService) {}
 
   @Get()
   @Public()

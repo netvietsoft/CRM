@@ -28,6 +28,24 @@ interface SpinPrize {
   } | null;
 }
 
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function SpinPrizeRowActions({ prize }: { prize: SpinPrize }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -79,8 +97,8 @@ export default function SpinPrizeRowActions({ prize }: { prize: SpinPrize }) {
 
       setShowEditModal(false);
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi cập nhật giải thưởng');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Lỗi cập nhật giải thưởng'));
     } finally {
       setLoading(false);
     }
@@ -92,8 +110,8 @@ export default function SpinPrizeRowActions({ prize }: { prize: SpinPrize }) {
       await apiClientClient.delete(`/spin/admin/prizes/${prize.id}`);
       setShowDeleteModal(false);
       router.refresh();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Lỗi xóa giải thưởng');
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lỗi xóa giải thưởng'));
     } finally {
       setLoading(false);
     }

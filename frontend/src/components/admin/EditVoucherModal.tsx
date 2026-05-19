@@ -1,9 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import Select from '@/components/ui/Select';
+
+type StackConditionType = 'products' | 'amount';
+type StackDiscountType = 'FIXED_AMOUNT' | 'PERCENT';
+
+interface StackTier {
+  conditionType: StackConditionType;
+  minProducts: number;
+  minAmount: number;
+  discount: number;
+  type: StackDiscountType;
+  maxDiscount: number;
+}
+
+interface VoucherStackTierLike {
+  conditionType?: string | null;
+  minProducts?: number | null;
+  minAmount?: number | null;
+  discount?: number | null;
+  type?: string | null;
+  maxDiscount?: number | null;
+}
 
 interface VoucherData {
   id: string;
@@ -23,13 +43,47 @@ interface VoucherData {
   isStackable: boolean;
   isActive: boolean;
   usedCount: number;
-  stackTiers: any[] | null;
+  stackTiers: VoucherStackTierLike[] | null;
 }
 
 interface Props {
   voucher: VoucherData;
   onSaved: () => void;
   onClose: () => void;
+}
+
+interface UpdateVoucherResponse {
+  success?: boolean;
+}
+
+function createDefaultStackTier(index = 0): StackTier {
+  return {
+    conditionType: 'products',
+    minProducts: Math.max(1, index + 1),
+    minAmount: 0,
+    discount: index === 0 ? 200000 : 0,
+    type: 'FIXED_AMOUNT',
+    maxDiscount: 0,
+  };
+}
+
+function normalizeConditionType(value?: string | null): StackConditionType {
+  return value === 'amount' ? 'amount' : 'products';
+}
+
+function normalizeDiscountType(value?: string | null): StackDiscountType {
+  return value === 'PERCENT' ? 'PERCENT' : 'FIXED_AMOUNT';
+}
+
+function normalizeStackTier(tier: VoucherStackTierLike, index = 0): StackTier {
+  return {
+    conditionType: normalizeConditionType(tier.conditionType),
+    minProducts: tier.minProducts ?? Math.max(1, index + 1),
+    minAmount: tier.minAmount ?? 0,
+    discount: tier.discount ?? 0,
+    type: normalizeDiscountType(tier.type),
+    maxDiscount: tier.maxDiscount ?? 0,
+  };
 }
 
 export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
@@ -51,10 +105,10 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
     isActive: voucher.isActive,
   });
 
-  const [stackTiers, setStackTiers] = useState<any[]>(
-    voucher.stackTiers && Array.isArray(voucher.stackTiers) ? voucher.stackTiers : [
-      { conditionType: 'products', minProducts: 1, minAmount: 0, discount: 200000, type: 'FIXED_AMOUNT', maxDiscount: 0 },
-    ]
+  const [stackTiers, setStackTiers] = useState<StackTier[]>(
+    voucher.stackTiers && Array.isArray(voucher.stackTiers)
+      ? voucher.stackTiers.map((tier, index) => normalizeStackTier(tier, index))
+      : [createDefaultStackTier()]
   );
 
   const update = (field: string, value: string | boolean) => {
@@ -67,7 +121,7 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
     setError('');
 
     try {
-      await apiClientClient.patch(`/vouchers/${voucher.id}`, {
+      await apiClientClient.patch<UpdateVoucherResponse>(`/vouchers/${voucher.id}`, {
         name: form.name,
         description: form.description,
         campaignCategory: form.campaignCategory,
@@ -84,8 +138,8 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
       });
 
       onSaved();
-    } catch (err: any) {
-      setError(err.message || 'Lỗi cập nhật voucher');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Lỗi cập nhật voucher');
     } finally {
       setLoading(false);
     }
@@ -211,7 +265,7 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
                   <button
                     type="button"
                     className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 transition-colors"
-                    onClick={() => setStackTiers(prev => [...prev, { conditionType: 'products', minProducts: prev.length + 1, minAmount: 0, discount: 0, type: 'FIXED_AMOUNT', maxDiscount: 0 }])}
+                    onClick={() => setStackTiers(prev => [...prev, createDefaultStackTier(prev.length)])}
                   >
                     + Thêm mốc
                   </button>
@@ -233,7 +287,10 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
                         value={tier.conditionType || 'products'}
                         onChange={(val) => {
                           const updated = [...stackTiers];
-                          updated[idx] = { ...updated[idx], conditionType: val };
+                          updated[idx] = {
+                            ...updated[idx],
+                            conditionType: normalizeConditionType(val),
+                          };
                           setStackTiers(updated);
                         }}
                         options={[
@@ -275,7 +332,10 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
                         value={tier.type}
                         onChange={(val) => {
                           const updated = [...stackTiers];
-                          updated[idx] = { ...updated[idx], type: val };
+                          updated[idx] = {
+                            ...updated[idx],
+                            type: normalizeDiscountType(val),
+                          };
                           setStackTiers(updated);
                         }}
                         options={[

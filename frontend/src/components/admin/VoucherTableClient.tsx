@@ -5,6 +5,36 @@ import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import EditVoucherModal from './EditVoucherModal';
 
+interface VoucherStackTier {
+  conditionType?: string | null;
+  minProducts?: number | null;
+  minAmount?: number | null;
+  discount: number;
+  type: string;
+  maxDiscount?: number | null;
+}
+
+export interface VoucherTableRow {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  campaignCategory: string;
+  type: string;
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  totalUsageLimit: number | null;
+  perCustomerLimit: number;
+  validFrom: string | null;
+  validTo: string | null;
+  durationDays: number | null;
+  isStackable: boolean;
+  isActive: boolean;
+  usedCount: number;
+  stackTiers: VoucherStackTier[] | null;
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency', currency: 'VND', maximumFractionDigits: 0,
@@ -41,10 +71,10 @@ function getCampaignBadge(cat: string) {
   return map[cat] || { class: 'badge-member', label: cat };
 }
 
-export default function VoucherTableClient({ vouchers }: { vouchers: any[] }) {
+export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTableRow[] }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editVoucher, setEditVoucher] = useState<any>(null);
+  const [editVoucher, setEditVoucher] = useState<VoucherTableRow | null>(null);
 
   const handleDelete = async (id: string, code: string) => {
     if (!confirm(`Bạn chắc chắn muốn xoá voucher "${code}"?\nHành động này không thể hoàn tác.`)) return;
@@ -53,8 +83,8 @@ export default function VoucherTableClient({ vouchers }: { vouchers: any[] }) {
     try {
       await apiClientClient.delete(`/vouchers/${id}`);
       router.refresh();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi xoá voucher');
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Lỗi xoá voucher');
     } finally {
       setDeletingId(null);
     }
@@ -129,10 +159,10 @@ export default function VoucherTableClient({ vouchers }: { vouchers: any[] }) {
                   <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-800">
                     {voucher.type === 'STACK'
                       ? (() => {
-                          const tiers = voucher.stackTiers as any[] | null;
+                          const tiers = voucher.stackTiers;
                           if (tiers && tiers.length > 0) {
-                            const minTier = tiers.reduce((min: any, t: any) => t.discount < min.discount ? t : min, tiers[0]);
-                            const maxTier = tiers.reduce((max: any, t: any) => t.discount > max.discount ? t : max, tiers[0]);
+                            const minTier = tiers.reduce((min, tier) => tier.discount < min.discount ? tier : min, tiers[0]);
+                            const maxTier = tiers.reduce((max, tier) => tier.discount > max.discount ? tier : max, tiers[0]);
                             const isPercent = maxTier.type === 'PERCENT';
                             const condition = tiers[0].conditionType === 'amount' ? 'giá trị' : 'số SP';
                             return (

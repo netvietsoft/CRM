@@ -5,6 +5,39 @@ import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import EditVoucherModal from './EditVoucherModal';
 
+interface VoucherStackTier {
+  conditionType?: string | null;
+  minProducts?: number | null;
+  minAmount?: number | null;
+  discount?: number | null;
+  type?: string | null;
+  maxDiscount?: number | null;
+}
+
+interface ReferralVoucher {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  campaignCategory: string;
+  type: string;
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  totalUsageLimit: number | null;
+  perCustomerLimit: number;
+  validFrom: string | null;
+  validTo: string | null;
+  durationDays: number | null;
+  isStackable: boolean;
+  isActive: boolean;
+  usedCount: number;
+  stackTiers: VoucherStackTier[] | null;
+  _count?: {
+    userVouchers?: number;
+  } | null;
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency', currency: 'VND', maximumFractionDigits: 0,
@@ -21,10 +54,10 @@ function getTypeBadge(type: string) {
   return map[type] || { bg: 'bg-gray-100 text-gray-600', label: type };
 }
 
-export default function ReferralVoucherTable({ vouchers }: { vouchers: any[] }) {
+export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralVoucher[] }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [editVoucher, setEditVoucher] = useState<any>(null);
+  const [editVoucher, setEditVoucher] = useState<ReferralVoucher | null>(null);
 
   const handleDelete = async (id: string, code: string) => {
     if (!confirm(`Bạn chắc chắn muốn xoá voucher "${code}"?\nHành động này không thể hoàn tác.`)) return;
@@ -33,8 +66,8 @@ export default function ReferralVoucherTable({ vouchers }: { vouchers: any[] }) 
     try {
       await apiClientClient.delete(`/vouchers/${id}`);
       router.refresh();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi xoá voucher');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Lỗi xoá voucher');
     } finally {
       setDeletingId(null);
     }

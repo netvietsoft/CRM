@@ -25,7 +25,7 @@ describe('OrdersService VietQR expiry', () => {
       ),
     };
 
-    service = new OrdersService(prisma, {} as any, {} as any);
+    service = new OrdersService(prisma, {} as any, {} as any, {} as any);
   });
 
   it('cancels expired pending VietQR orders and restores stock', async () => {
@@ -44,9 +44,7 @@ describe('OrdersService VietQR expiry', () => {
           expired: false,
         },
       },
-      items: [
-        { productId: 'product-1', quantity: 2, size: 'M', color: 'Black' },
-      ],
+      items: [{ productId: 'product-1', quantity: 2, size: 'M', color: 'Black' }],
     };
     let txRef: any;
     prisma.$transaction.mockImplementationOnce((callback) => {

@@ -1,14 +1,18 @@
 import { getSession } from '@/lib/auth';
-import CartClient from './CartClient';
+import CartClient, { type CartItemData } from './CartClient';
 import { apiClient } from '@/lib/apiClient';
+
+interface CartResponse {
+  items?: CartItemData[] | null;
+}
 
 export default async function CartPage() {
   const session = await getSession();
   if (!session) return null;
 
-  let cartItems: any[] = [];
+  let cartItems: CartItemData[] = [];
   try {
-    const cart = await apiClient.get<any>('/cart');
+    const cart = await apiClient.get<CartResponse>('/cart');
     cartItems = cart.items || [];
   } catch (error) {
     console.error('Error fetching cart:', error);

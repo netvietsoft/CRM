@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Delete, Param, UseGuards, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Delete,
+  Param,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { VouchersService } from './vouchers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -47,7 +57,11 @@ export class VouchersController {
     @GetEffectiveStoreId() effectiveStoreId: string | null,
     @Query('excludeGamification') excludeGamification?: string,
   ) {
-    return this.vouchersService.findAllAdmin(excludeGamification === 'true', user, effectiveStoreId);
+    return this.vouchersService.findAllAdmin(
+      excludeGamification === 'true',
+      user,
+      effectiveStoreId,
+    );
   }
 
   @Get('user/my-vouchers')
@@ -122,19 +136,14 @@ export class VouchersController {
   @Post('send-otp')
   @Public()
   @ApiOperation({ summary: 'Send SMS OTP for QR claim' })
-  async sendOtp(
-    @Body() dto: { phone: string; orderCode: string }
-  ) {
+  async sendOtp(@Body() dto: { phone: string; orderCode: string }) {
     return this.vouchersService.sendOtp(dto.phone, dto.orderCode);
   }
 
   @Post('claim-qr')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Claim a QR voucher' })
-  async claimQRVoucher(
-    @GetUser('id') userId: string,
-    @Body() dto: ClaimQRVoucherDto,
-  ) {
+  async claimQRVoucher(@GetUser('id') userId: string, @Body() dto: ClaimQRVoucherDto) {
     return this.vouchersService.claimQRVoucher(
       userId,
       dto.orderCode,
@@ -161,17 +170,18 @@ export class VouchersController {
   async createOrderVoucher(
     @GetUser() user: any,
     @GetEffectiveStoreId() effectiveStoreId: string | null,
-    @Body() data: { 
-      orderId: string; 
+    @Body()
+    data: {
+      orderId: string;
       name?: string;
       type?: 'FIXED_AMOUNT' | 'PERCENT' | 'FREESHIP' | 'STACK';
-      value?: number; 
+      value?: number;
       maxDiscount?: number;
       minOrderValue?: number;
       durationDays?: number;
       perCustomerLimit?: number;
       stackTiers?: any;
-    }
+    },
   ) {
     return this.vouchersService.createOrderVoucher(data, user, effectiveStoreId);
   }

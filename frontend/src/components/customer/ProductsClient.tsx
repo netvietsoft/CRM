@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Heart, ShoppingCart, Eye, Star, Search, Share2, ChevronLeft, ChevronRight, Filter, X, Minus, Plus, Check } from 'lucide-react';
+import Image from 'next/image';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Heart, ShoppingCart, Eye, Star, Share2, ChevronLeft, ChevronRight, Filter, X, Minus, Plus, Check } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CategoryFilter from './CategoryFilter';
 import Select from '@/components/ui/Select';
 import tinhData from '@/data/tinh_tp.json';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 const provinces = Object.values(tinhData as Record<string, { code: string; name: string; type: string }>).map(p => ({
   id: p.code,
@@ -264,6 +266,7 @@ export default function ProductsClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
+  const syncedCategoryIdRef = useRef(searchParams.get('category'));
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
 
@@ -274,16 +277,19 @@ export default function ProductsClient({
   // Sync searchQuery and category with URL changes
   useEffect(() => {
     const q = searchParams.get('q') || '';
-    if (q !== searchQuery) {
-      setSearchQuery(q);
-    }
     const cat = searchParams.get('category');
-    if (cat && !selectedCategoryIds.includes(cat)) {
-      setSelectedCategoryIds([cat]);
-    } else if (!cat && searchParams.has('q') === false && selectedCategoryIds.length === 1 && searchParams.toString() !== '') {
-      // Just let it be unless specifically cleared by other means
-    }
-  }, [searchParams]);
+
+    Promise.resolve().then(() => {
+      if (q !== searchQuery) {
+        setSearchQuery(q);
+      }
+
+      if (cat !== syncedCategoryIdRef.current) {
+        syncedCategoryIdRef.current = cat;
+        setSelectedCategoryIds(cat ? [cat] : []);
+      }
+    });
+  }, [searchParams, searchQuery]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -308,7 +314,6 @@ export default function ProductsClient({
 
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set(initialWishlistIds));
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
-  const [addingToCart, setAddingToCart] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
   const [navigatingSlug, setNavigatingSlug] = useState<string | null>(null);
@@ -322,7 +327,9 @@ export default function ProductsClient({
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    setCurrentPage(1);
+    Promise.resolve().then(() => {
+      setCurrentPage(prev => (prev === 1 ? prev : 1));
+    });
   }, [debouncedSearchQuery, selectedCategoryIds, priceRange, selectedProvinceId]);
 
   // Filter products by selected category (including all child categories)
@@ -450,34 +457,6 @@ export default function ProductsClient({
       showToast('Có lỗi xảy ra', 'error');
     } finally {
       setTogglingIds(prev => {
-        const next = new Set(prev);
-        next.delete(productId);
-        return next;
-      });
-    }
-  };
-
-  const handleAddToCart = async (productId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (addingToCart.has(productId)) return;
-
-    setAddingToCart(prev => new Set(prev).add(productId));
-
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/cart`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ productId, quantity: 1 }),
-      });
-
-      if (res.ok) {
-        showToast('🛒 Đã thêm vào giỏ hàng!', 'success');
-      }
-    } catch {
-      showToast('Có lỗi xảy ra', 'error');
-    } finally {
-      setAddingToCart(prev => {
         const next = new Set(prev);
         next.delete(productId);
         return next;
@@ -827,10 +806,14 @@ export default function ProductsClient({
                       {/* Product Image */}
                       <div className="relative bg-gray-50 overflow-hidden" style={{ paddingBottom: '125%' }}>
                         {product.imageUrl ? (
-                          <img
+                          <Image
+                            loader={passthroughImageLoader}
+                            unoptimized
                             src={product.imageUrl}
                             alt={product.name}
-                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                            fill
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                           />
                         ) : (
                           <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-50">
@@ -910,9 +893,17 @@ export default function ProductsClient({
                         {/* Store Info */}
                         {product.store && !product.store.slug.startsWith('main-store') && (
                           <div className="flex items-center gap-1.5 mb-1.5">
-                            <div className="w-3.5 h-3.5 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <div className="relative w-3.5 h-3.5 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                               {product.store.logoUrl ? (
-                                <img src={product.store.logoUrl} alt={product.store.name} className="w-full h-full object-cover" />
+                                <Image
+                                  loader={passthroughImageLoader}
+                                  unoptimized
+                                  src={product.store.logoUrl}
+                                  alt={product.store.name}
+                                  fill
+                                  sizes="14px"
+                                  className="object-cover"
+                                />
                               ) : (
                                 <span className="text-[7px] font-bold text-gray-500">{(product.store.name || 'S').charAt(0)}</span>
                               )}

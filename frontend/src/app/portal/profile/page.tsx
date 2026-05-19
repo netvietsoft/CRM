@@ -1,20 +1,66 @@
+import Image from 'next/image';
 import { getSession } from '@/lib/auth';
 import ProfileForm from './ProfileForm';
 import { apiClient } from '@/lib/apiClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 export const dynamic = 'force-dynamic';
+
+interface UserProfile {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  dob: string | Date | null;
+  address?: string | null;
+  addressStreet: string | null;
+  addressWard: string | null;
+  addressDistrict?: string | null;
+  addressProvince: string | null;
+  avatarUrl: string | null;
+  createdAt: string | Date;
+  interests?: string[] | null;
+  onboardingComplete?: boolean;
+  role?: string;
+  referralCode: string;
+}
+
+interface DashboardUser {
+  totalSpent: number;
+  rank: string;
+  commissionBalance: number;
+  points: number;
+  referralCode: string;
+  dob: string | Date | null;
+}
+
+interface DashboardData {
+  user: DashboardUser;
+  voucherCount: number;
+  orderCount: number;
+  refereeCount: number;
+  recentOrders: Array<{
+    id: string;
+    orderCode: string;
+    totalAmount: number;
+    status: string;
+    createdAt: string | Date;
+  }>;
+  spentInLast30Days: number;
+}
 
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) return null;
 
-  let profileData: any;
-  let dashboardData: any;
+  let profileData: UserProfile;
+  let dashboardData: DashboardData;
 
   try {
     const [profile, dashboard] = await Promise.all([
-      apiClient.get<any>('/users/profile', { cache: 'no-store' }),
-      apiClient.get<any>('/users/dashboard', { cache: 'no-store' }),
+      apiClient.get<UserProfile>('/users/profile', { cache: 'no-store' }),
+      apiClient.get<DashboardData>('/users/dashboard', { cache: 'no-store' }),
     ]);
     profileData = profile;
     dashboardData = dashboard;
@@ -64,9 +110,13 @@ export default async function ProfilePage() {
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
             {detailedUser.avatarUrl ? (
-              <img
+              <Image
+                loader={passthroughImageLoader}
+                unoptimized
                 src={detailedUser.avatarUrl}
-                alt={detailedUser.name}
+                alt={detailedUser.name || 'Avatar người dùng'}
+                width={96}
+                height={96}
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
@@ -138,14 +188,14 @@ export default async function ProfilePage() {
       {/* Edit form */}
       <div className="mt-8">
         <ProfileForm user={{
-          name: detailedUser.name,
+          name: detailedUser.name || '',
           email: detailedUser.email,
           phone: detailedUser.phone,
           gender: detailedUser.gender,
           dob: detailedUser.dob ? new Date(detailedUser.dob).toISOString().split('T')[0] : '',
           addressStreet: detailedUser.addressStreet,
           addressWard: detailedUser.addressWard,
-          addressDistrict: detailedUser.addressDistrict,
+          addressDistrict: detailedUser.addressDistrict ?? null,
           addressProvince: detailedUser.addressProvince,
         }} />
       </div>

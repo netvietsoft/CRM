@@ -63,12 +63,12 @@ export class UsersService {
         isActive: true,
         createdAt: true,
         store: {
-          select: { id: true, name: true, slug: true }
+          select: { id: true, name: true, slug: true },
         },
         staffStoreId: true,
         staffStore: {
-          select: { id: true, name: true, slug: true }
-        }
+          select: { id: true, name: true, slug: true },
+        },
       },
     });
   }
@@ -98,8 +98,8 @@ export class UsersService {
         role: true,
         referralCode: true,
         oauthAccounts: {
-          select: { provider: true }
-        }
+          select: { provider: true },
+        },
       },
     });
 
@@ -139,7 +139,8 @@ export class UsersService {
       }
     }
 
-    const validGender = gender === 'MALE' || gender === 'FEMALE' || gender === 'OTHER' ? gender : null;
+    const validGender =
+      gender === 'MALE' || gender === 'FEMALE' || gender === 'OTHER' ? gender : null;
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -210,7 +211,7 @@ export class UsersService {
     // Process phone sync
     if (phone) {
       const existingPhone = await this.prisma.user.findFirst({
-        where: { phone, id: { not: userId } }
+        where: { phone, id: { not: userId } },
       });
       if (existingPhone) {
         throw new BadRequestException('Số điện thoại này đã được sử dụng ở tài khoản khác');
@@ -252,48 +253,49 @@ export class UsersService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-    const [user, voucherCount, orderCount, refereeCount, recentOrders, spentLast30Days] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          totalSpent: true,
-          rank: true,
-          commissionBalance: true,
-          points: true,
-          referralCode: true,
-          dob: true,
-        },
-      }),
-      this.prisma.userVoucher.count({
-        where: { userId, isUsed: false },
-      }),
-      this.prisma.order.count({
-        where: { userId },
-      }),
-      this.prisma.user.count({
-        where: { referrerId: userId },
-      }),
-      this.prisma.order.findMany({
-        where: { userId },
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          orderCode: true,
-          totalAmount: true,
-          status: true,
-          createdAt: true,
-        },
-      }),
-      this.prisma.order.aggregate({
-        where: {
-          userId,
-          status: { in: ['COMPLETED', 'DELIVERED'] },
-          createdAt: { gte: thirtyDaysAgo },
-        },
-        _sum: { totalAmount: true },
-      }),
-    ]);
+    const [user, voucherCount, orderCount, refereeCount, recentOrders, spentLast30Days] =
+      await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            totalSpent: true,
+            rank: true,
+            commissionBalance: true,
+            points: true,
+            referralCode: true,
+            dob: true,
+          },
+        }),
+        this.prisma.userVoucher.count({
+          where: { userId, isUsed: false },
+        }),
+        this.prisma.order.count({
+          where: { userId },
+        }),
+        this.prisma.user.count({
+          where: { referrerId: userId },
+        }),
+        this.prisma.order.findMany({
+          where: { userId },
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            orderCode: true,
+            totalAmount: true,
+            status: true,
+            createdAt: true,
+          },
+        }),
+        this.prisma.order.aggregate({
+          where: {
+            userId,
+            status: { in: ['COMPLETED', 'DELIVERED'] },
+            createdAt: { gte: thirtyDaysAgo },
+          },
+          _sum: { totalAmount: true },
+        }),
+      ]);
 
     if (!user) {
       throw new NotFoundException('User not found');

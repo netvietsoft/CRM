@@ -8,18 +8,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 
-interface UseApiOptions {
+interface UseApiOptions<TData> {
   skip?: boolean; // Skip initial fetch
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: TData) => void;
   onError?: (error: Error) => void;
 }
 
-export function useApi<T = any>(
+export function useApi<T = unknown>(
   url: string,
-  options: UseApiOptions = {}
+  options: UseApiOptions<T> = {}
 ) {
+  const { skip = false, onSuccess, onError } = options;
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(!options.skip);
+  const [loading, setLoading] = useState(!skip);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -28,21 +29,23 @@ export function useApi<T = any>(
       setError(null);
       const result = await apiClientClient.get<T>(url);
       setData(result);
-      options.onSuccess?.(result);
+      onSuccess?.(result);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
-      options.onError?.(error);
+      onError?.(error);
     } finally {
       setLoading(false);
     }
-  }, [url, options]);
+  }, [onError, onSuccess, url]);
 
   useEffect(() => {
-    if (!options.skip) {
-      fetchData();
+    if (!skip) {
+      Promise.resolve().then(() => {
+        void fetchData();
+      });
     }
-  }, [fetchData, options.skip]);
+  }, [fetchData, skip]);
 
   return {
     data,
@@ -59,7 +62,7 @@ export function useApi<T = any>(
  * const { mutate, loading, error } = useMutation('/api/customers', 'POST');
  * await mutate({ name: 'John' });
  */
-export function useMutation<TData = any, TResponse = any>(
+export function useMutation<TData = unknown, TResponse = unknown>(
   url: string,
   method: 'POST' | 'PUT' | 'DELETE' = 'POST'
 ) {

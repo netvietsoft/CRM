@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -26,10 +31,7 @@ export class AuthService {
     // Check if user exists
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { phone: phone || undefined },
-          { email: email || undefined },
-        ],
+        OR: [{ phone: phone || undefined }, { email: email || undefined }],
       },
     });
 
@@ -167,8 +169,8 @@ export class AuthService {
     const redirect = ['ADMIN', 'STAFF', 'MODERATOR'].includes(user.role)
       ? '/admin'
       : needsOnboarding
-      ? '/onboarding'
-      : '/portal/products';
+        ? '/onboarding'
+        : '/portal/products';
 
     return {
       success: true,
@@ -247,7 +249,7 @@ export class AuthService {
     if (!user) {
       // Create new user
       const userReferralCode = await this.generateUniqueReferralCode();
-      
+
       let referrerId: string | null = null;
       if (referralCode) {
         const referrer = await this.prisma.user.findUnique({

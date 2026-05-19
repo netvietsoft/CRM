@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import PortalOrderDetailClient from './OrderDetailClient';
+import PortalOrderDetailClient, { type PortalOrderDetail } from './OrderDetailClient';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
@@ -9,9 +9,9 @@ export default async function PortalOrderDetailPage(props: {
 }) {
   const params = await props.params;
 
-  let order: any = null;
+  let order: PortalOrderDetail | null = null;
   try {
-    order = await apiClient.get<any>(`/orders/${params.id}`);
+    order = await apiClient.get<PortalOrderDetail>(`/orders/${params.id}`);
   } catch (error) {
     console.error('Error fetching order:', error);
   }

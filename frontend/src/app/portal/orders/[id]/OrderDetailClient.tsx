@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import Image from 'next/image';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import OrderReviewForm from '@/components/customer/OrderReviewForm';
 import { Copy } from 'lucide-react';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 function fmt(amount: number) {
   return `${new Intl.NumberFormat('vi-VN').format(amount || 0)} đ`;
@@ -29,9 +31,120 @@ function fmtDate(d: string | Date) {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date);
-  } catch (e) {
+  } catch {
     return String(d);
   }
+}
+
+interface OrderProductSummary {
+  name?: string | null;
+  imageUrl?: string | null;
+  slug?: string | null;
+}
+
+interface OrderItemSummary {
+  id: string;
+  quantity: number;
+  price: number;
+  size?: string | null;
+  color?: string | null;
+  isGift?: boolean;
+  product?: OrderProductSummary | null;
+}
+
+interface MetadataField {
+  name?: string | null;
+  value?: string | number | null;
+}
+
+interface MetadataItem {
+  id?: string | number | null;
+  variationId?: string | number | null;
+  name?: string | null;
+  image?: string | null;
+  images?: string[] | null;
+  quantity: number;
+  price: number;
+  size?: string | null;
+  color?: string | null;
+  isBonusProduct?: boolean;
+  isGift?: boolean;
+  is_bonus_product?: boolean;
+  fields?: MetadataField[] | null;
+}
+
+interface CourierUpdate {
+  status?: string | null;
+  key?: string | null;
+  note?: string | null;
+  address?: string | null;
+  location?: string | null;
+  update_at?: string | Date | null;
+  update_time?: string | Date | null;
+  time?: string | Date | null;
+}
+
+interface PartnerMetadata {
+  trackingCode?: string | null;
+  deliveryName?: string | null;
+  deliveryPhone?: string | null;
+  courierUpdates?: CourierUpdate[] | null;
+  partnerId?: string | null;
+}
+
+interface PaymentMetadata {
+  totalPaid?: number;
+  transferMoney?: number;
+}
+
+interface ShippingAddressMetadata {
+  fullName?: string | null;
+  phoneNumber?: string | null;
+  fullAddress?: string | null;
+  address?: string | null;
+}
+
+interface OrderMetadata {
+  partner?: PartnerMetadata | null;
+  payment?: PaymentMetadata | null;
+  shippingAddress?: ShippingAddressMetadata | null;
+  items?: MetadataItem[] | null;
+  pancakeCreatedAt?: string | Date | null;
+  pancakeStatusName?: string | null;
+}
+
+export interface PortalOrderDetail {
+  id: string;
+  orderCode: string;
+  source?: string | null;
+  metadata?: OrderMetadata | null;
+  status: string;
+  hasReview?: boolean;
+  items?: OrderItemSummary[] | null;
+  subtotal: number;
+  discountAmount?: number;
+  totalAmount: number;
+  shippingName?: string | null;
+  shippingPhone?: string | null;
+  shippingStreet?: string | null;
+  shippingWard?: string | null;
+  shippingProvince?: string | null;
+  customerNote?: string | null;
+  createdAt: string | Date;
+  reviewRewardGranted?: boolean;
+}
+
+interface DisplayOrderItem {
+  id?: string | number | null;
+  name: string;
+  image?: string | null;
+  quantity: number;
+  price?: number | null;
+  size?: string | null;
+  color?: string | null;
+  isGift?: boolean;
+  product?: OrderProductSummary | null;
+  slug?: string | null;
 }
 
 const statusMap: Record<string, { label: string; cls: string; step: number }> = {
@@ -54,9 +167,7 @@ const statusMap: Record<string, { label: string; cls: string; step: number }> = 
   EXCHANGING: { label: 'Đang đổi', cls: 'bg-amber-100 text-amber-700', step: -1 },
 };
 
-const progressSteps = ['Đặt hàng', 'Xác nhận', 'Đóng gói', 'Vận chuyển', 'Nhận hàng', 'Hoàn thành'];
-
-export default function PortalOrderDetailClient({ order }: { order: any }) {
+export default function PortalOrderDetailClient({ order }: { order: PortalOrderDetail }) {
   const router = useRouter();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -65,10 +176,10 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
   const [confirmingReceived, setConfirmingReceived] = useState(false);
 
   const isPancake = order.source === 'PANCAKE';
-  const m = order.metadata || {};
-  const partner = m.partner || {};
-  const payment = m.payment || {};
-  const shippingAddr = m.shippingAddress || {};
+  const m: OrderMetadata = order.metadata || {};
+  const partner: PartnerMetadata = m.partner || {};
+  const payment: PaymentMetadata = m.payment || {};
+  const shippingAddr: ShippingAddressMetadata = m.shippingAddress || {};
 
   const st = statusMap[order.status] || {
     label: order.status,
@@ -79,10 +190,10 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
   const canConfirmReceived = ['DELIVERED', 'PAYMENT_COLLECTED'].includes(order.status);
   const canReview = order.status === 'COMPLETED' && !order.hasReview;
 
-  const hasLinkedItems = order.items && order.items.length > 0 && order.items.some((i: any) => i.product);
+  const hasLinkedItems = Array.isArray(order.items) && order.items.length > 0 && order.items.some((item) => item.product);
 
-  const displayItems = hasLinkedItems
-    ? order.items.map((item: any) => ({
+  const displayItems: DisplayOrderItem[] = hasLinkedItems
+    ? (order.items || []).map((item) => ({
       id: item.id,
       name: item.product?.name || 'Sản phẩm',
       image: item.product?.imageUrl,
@@ -94,24 +205,56 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
       product: item.product,
       slug: item.product?.slug,
     }))
-    : isPancake && m.items?.length > 0
-      ? m.items.map((item: any) => {
-        const sizeField = item.fields?.find((f: any) => f.name?.toLowerCase() === 'kích thước' || f.name?.toLowerCase() === 'size');
-        const colorField = item.fields?.find((f: any) => f.name?.toLowerCase() === 'màu sắc' || f.name?.toLowerCase() === 'màu' || f.name?.toLowerCase() === 'color');
+    : isPancake && (m.items?.length ?? 0) > 0
+      ? m.items?.map((item) => {
+        const sizeField = item.fields?.find((field) => {
+          const fieldName = field.name?.toLowerCase();
+          return fieldName === 'kích thước' || fieldName === 'size';
+        });
+        const colorField = item.fields?.find((field) => {
+          const fieldName = field.name?.toLowerCase();
+          return fieldName === 'màu sắc' || fieldName === 'màu' || fieldName === 'color';
+        });
+        const sizeValue = typeof sizeField?.value === 'string' ? sizeField.value : null;
+        const colorValue = typeof colorField?.value === 'string' ? colorField.value : null;
+
         return {
           id: item.id || item.variationId,
           name: item.name || 'Sản phẩm',
           image: item.image || item.images?.[0],
           quantity: item.quantity,
           price: item.price,
-          size: item.size || sizeField?.value,
-          color: item.color || colorField?.value,
+          size: item.size || sizeValue,
+          color: item.color || colorValue,
           isGift: item.isBonusProduct || item.isGift || item.is_bonus_product,
           product: null,
           slug: null,
         };
-      })
+      }) || []
       : [];
+
+  const reviewOrder = {
+    id: order.id,
+    orderCode: order.orderCode,
+    totalAmount: order.totalAmount,
+    status: order.status,
+    createdAt: new Date(order.createdAt),
+    items: (order.items || []).map((item) => ({
+      id: item.id,
+      product: item.product
+        ? {
+          id: item.product.slug || item.id,
+          name: item.product.name || 'Sản phẩm',
+          imageUrl: item.product.imageUrl || null,
+        }
+        : null,
+      quantity: item.quantity,
+      price: item.price,
+      isGift: item.isGift || false,
+      size: item.size || null,
+      color: item.color || null,
+    })),
+  };
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -223,13 +366,17 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
           <div className="rounded-xl bg-white p-6 border border-gray-200">
             <h2 className="mb-2 text-lg font-bold flex items-center gap-2 text-gray-800">Đơn hàng<p className='text-xm text-gray-700'>({displayItems.length})</p></h2>
             <div className="space-y-1">
-              {displayItems.map((item: any, idx: number) => (
+              {displayItems.map((item, idx) => (
                 <div key={item.id || idx} className="flex gap-4 rounded-lg p-3">
                   <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
                     {item.image || item.product?.imageUrl ? (
-                      <img
-                        src={item.image || item.product?.imageUrl}
-                        alt={item.name || item.product?.name}
+                      <Image
+                        loader={passthroughImageLoader}
+                        unoptimized
+                        src={item.image || item.product?.imageUrl || ''}
+                        alt={item.name || item.product?.name || 'Sản phẩm'}
+                        width={44}
+                        height={44}
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -247,7 +394,7 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
                       {item.price && <span>Giá: {fmt(item.price)}</span>}
                     </div>
                     <div className="mt-1 flex flex-wrap gap-2 items-center">
-                      {(item.isGift || item.isBonusProduct) && (
+                      {item.isGift && (
                         <span className="inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
                           Quà tặng
                         </span>
@@ -274,18 +421,18 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
                 <span>Tiền hàng:</span>
                 <span className="">{fmt(order.subtotal)}</span>
               </div>
-              {order.discountAmount > 0 && (
+              {(order.discountAmount ?? 0) > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>Giảm giá:</span>
-                  <span className="font-semibold">-{fmt(order.discountAmount)}</span>
+                  <span className="font-semibold">-{fmt(order.discountAmount ?? 0)}</span>
                 </div>
               )}
-              {isPancake && payment.totalPaid > 0 && (
+              {isPancake && (payment.totalPaid ?? 0) > 0 && (
                 <div className="mt-1">
-                  {payment.transferMoney > 0 && (
+                  {(payment.transferMoney ?? 0) > 0 && (
                     <div className="flex justify-between text-gray-600">
                       <span>Chuyển khoản:</span>
-                      <span className="font-medium">{fmt(payment.transferMoney)}</span>
+                      <span className="font-medium">{fmt(payment.transferMoney ?? 0)}</span>
                     </div>
                   )}
                 </div>
@@ -321,44 +468,48 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
               )}
 
               {/* Shipping Timeline */}
-              {partner.courierUpdates?.length > 0 && (
+              {(partner.courierUpdates?.length ?? 0) > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <h3 className="font-semibold text-gray-700 mb-4">Lịch sử vận chuyển</h3>
                   <div className="relative pl-6">
                     {/* Vertical line */}
                     <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-200" />
                     <div className="space-y-4">
-                      {partner.courierUpdates.map((update: any, idx: number) => (
-                        <div key={idx} className="relative">
-                          {/* Dot */}
-                          <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center z-10 ${idx === 0
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'bg-white border-gray-300'
-                            }`}>
-                            {idx === 0 && (
-                              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                            )}
+                      {partner.courierUpdates?.map((update, idx) => {
+                        const updatedAt = update.update_at || update.update_time || update.time;
+
+                        return (
+                          <div key={idx} className="relative">
+                            {/* Dot */}
+                            <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center z-10 ${idx === 0
+                              ? 'bg-blue-500 border-blue-500'
+                              : 'bg-white border-gray-300'
+                              }`}>
+                              {idx === 0 && (
+                                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                              )}
+                            </div>
+                            {/* Content */}
+                            <div className="ml-2 pb-1">
+                              <p className={`text-sm ${idx === 0 ? 'text-black' : 'text-black'}`}>
+                                <span className='font-semibold text-sm text-black'>Trạng thái VC:</span> {update.status || update.key || 'Cập nhật'}
+                              </p>
+                              {update.note && (
+                                <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Ghi chú: </span>{update.note}</p>
+                              )}
+                              {update.address && (
+                                <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Địa chỉ: </span>{update.address}</p>
+                              )}
+                              {update.location && (
+                                <p className="text-xs text-black mt-0.5">Vị trí: {update.location}</p>
+                              )}
+                              {updatedAt && (
+                                <p className="text-xs text-black mt-1"><span className='font-semibold text-xs text-black'>Cập nhật gần nhất:</span> {fmtDate(updatedAt)}</p>
+                              )}
+                            </div>
                           </div>
-                          {/* Content */}
-                          <div className="ml-2 pb-1">
-                            <p className={`text-sm ${idx === 0 ? 'text-black' : 'text-black'}`}>
-                              <span className='font-semibold text-sm text-black'>Trạng thái VC:</span> {update.status || update.key || 'Cập nhật'}
-                            </p>
-                            {update.note && (
-                              <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Ghi chú: </span>{update.note}</p>
-                            )}
-                            {update.address && (
-                              <p className="text-xs text-black mt-0.5"><span className='font-semibold text-xs text-black'>Địa chỉ: </span>{update.address}</p>
-                            )}
-                            {update.location && (
-                              <p className="text-xs text-black mt-0.5">Vị trí: {update.location}</p>
-                            )}
-                            {(update.update_at || update.update_time || update.time) && (
-                              <p className="text-xs text-black mt-1"><span className='font-semibold text-xs text-black'>Cập nhật gần nhất:</span> {fmtDate(update.update_at || update.update_time || update.time)}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -403,7 +554,7 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
               <div className="divide-y divide-gray-100 text-sm">
                 <div className="flex items-center justify-between py-2.5">
                   <p className="text-gray-500">Mã vận đơn:</p>
-                  <div className="font-medium text-blue-500 flex items-center gap-1 cursor-pointer" onClick={() => navigator.clipboard.writeText(partner.trackingCode)}>
+                  <div className="font-medium text-blue-500 flex items-center gap-1 cursor-pointer" onClick={() => navigator.clipboard.writeText(partner.trackingCode ?? '')}>
                     {partner.trackingCode}
                     <Copy className="w-4 h-4" />
                   </div>
@@ -415,7 +566,7 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
                 <div className="flex items-center justify-between py-2.5">
                   <p className="text-gray-500">Trạng thái đơn hàng:</p>
                   <p className="font-medium text-gray-800">
-                    {statusLabels[m.pancakeStatusName] || m.pancakeStatusName || st.label}
+                    {statusLabels[m.pancakeStatusName ?? ''] || m.pancakeStatusName || st.label}
                   </p>
                 </div>
                 <div className="flex items-center justify-between py-2.5">
@@ -479,7 +630,7 @@ export default function PortalOrderDetailClient({ order }: { order: any }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6">
             <OrderReviewForm
-              order={order}
+              order={reviewOrder}
               onSuccess={handleReviewSuccess}
               onCancel={() => setShowReviewModal(false)}
             />

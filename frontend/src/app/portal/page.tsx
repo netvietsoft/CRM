@@ -8,6 +8,34 @@ function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 }
 
+type Rank = 'MEMBER' | 'SILVER' | 'GOLD' | 'DIAMOND' | 'PLATINUM';
+
+interface RecentOrder {
+  id: string;
+  orderCode: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string | Date;
+}
+
+interface DashboardUser {
+  totalSpent: number;
+  rank: Rank;
+  commissionBalance: number;
+  points: number;
+  referralCode: string;
+  dob: string | Date | null;
+}
+
+interface PortalDashboardData {
+  user: DashboardUser;
+  voucherCount: number;
+  orderCount: number;
+  refereeCount: number;
+  recentOrders: RecentOrder[];
+  spentInLast30Days: number;
+}
+
 const rankProgress: Record<string, { next: string; target: number }> = {
   MEMBER: { next: 'SILVER', target: 2000000 },
   SILVER: { next: 'GOLD', target: 5000000 },
@@ -20,9 +48,9 @@ export default async function PortalDashboard() {
   const session = await getSession();
   if (!session) return null;
 
-  let dashboardData: any;
+  let dashboardData: PortalDashboardData;
   try {
-    dashboardData = await apiClient.get<any>('/users/dashboard');
+    dashboardData = await apiClient.get<PortalDashboardData>('/users/dashboard');
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return (
@@ -149,7 +177,7 @@ export default async function PortalDashboard() {
           </div>
           {/* Mobile View */}
           <div className="md:hidden flex flex-col divide-y divide-gray-100">
-            {recentOrders.map((o: any) => (
+            {recentOrders.map((o) => (
               <div key={o.id} className="p-4 flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-bold text-gray-800">{o.orderCode}</span>
@@ -180,7 +208,7 @@ export default async function PortalDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {recentOrders.map((o: any) => (
+                {recentOrders.map((o) => (
                   <tr key={o.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-xs font-mono text-gray-800">{o.orderCode}</td>
                     <td className="px-6 py-4 font-semibold text-rose-600">{fmt(o.totalAmount)}</td>

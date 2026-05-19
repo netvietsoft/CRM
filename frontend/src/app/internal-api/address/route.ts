@@ -4,7 +4,6 @@ import path from 'path';
 
 // Cache the data in memory after first load
 let provincesCache: Record<string, { name: string; name_with_type: string; code: string }> | null = null;
-let districtsCache: Record<string, { name: string; name_with_type: string; code: string; parent_code: string }> | null = null;
 let wardsCache: Record<string, { name: string; name_with_type: string; code: string; parent_code: string }> | null = null;
 
 function loadProvinces() {
@@ -13,14 +12,6 @@ function loadProvinces() {
     provincesCache = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
   }
   return provincesCache!;
-}
-
-function loadDistricts() {
-  if (!districtsCache) {
-    const filePath = path.join(process.cwd(), 'src/data/quan_huyen.json');
-    districtsCache = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  }
-  return districtsCache!;
 }
 
 function loadWards() {

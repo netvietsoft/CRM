@@ -28,7 +28,7 @@ export class WebhooksController {
   ) {
     // Get token from body (Pancake style) or header
     const token = payload.TOKEN || headerToken;
-    
+
     this.logger.log(`📨 Received ViettelPost webhook. Payload: ${JSON.stringify(payload)}`);
     this.logger.log(`🔑 Token used for validation: ${token}`);
 
@@ -42,9 +42,9 @@ export class WebhooksController {
     try {
       // Process the webhook
       const result = await this.webhooksService.processViettelPostWebhook(payload);
-      
+
       this.logger.log(`✅ Webhook processed successfully for order: ${payload.DATA?.ORDER_NUMBER}`);
-      
+
       return {
         success: true,
         message: 'Webhook processed successfully',

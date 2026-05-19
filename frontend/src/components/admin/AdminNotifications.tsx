@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Bell, ShoppingBag, Users, Truck, Check, X } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
-import { apiClientClient } from '@/lib/apiClientClient';
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import { Bell, ShoppingBag, Users, Truck, Check, X } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { apiClientClient } from '@/lib/apiClientClient';
 
-interface Notification {
+type NotificationTab = 'ORDER' | 'CUSTOMER' | 'VTP';
+
+interface AdminNotification {
   id: string;
   type: string;
   title: string;
@@ -14,15 +16,19 @@ interface Notification {
   isRead: boolean;
   link?: string;
   createdAt: string;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
+}
+
+interface NotificationsResponse {
+  items: AdminNotification[];
+  unreadCount: number;
 }
 
 export default function AdminNotifications() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ORDER' | 'CUSTOMER' | 'VTP'>('ORDER');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activeTab, setActiveTab] = useState<NotificationTab>('ORDER');
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [socket, setSocket] = useState<Socket | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -40,7 +46,9 @@ export default function AdminNotifications() {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const data = await apiClientClient.get<any>('/admin/notifications?limit=50');
+        const data = await apiClientClient.get<NotificationsResponse>('/admin/notifications', {
+          params: { limit: 50 },
+        });
         setNotifications(data.items);
         setUnreadCount(data.unreadCount);
       } catch (error) {
@@ -69,7 +77,7 @@ export default function AdminNotifications() {
       console.log('Connected to Admin Notification Gateway');
     });
 
-    newSocket.on('new_admin_notification', (notification: Notification) => {
+    newSocket.on('new_admin_notification', (notification: AdminNotification) => {
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
 
@@ -81,8 +89,6 @@ export default function AdminNotifications() {
         });
       }
     });
-
-    setSocket(newSocket);
 
     return () => {
       newSocket.disconnect();

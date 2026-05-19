@@ -28,8 +28,10 @@ export class AdminNotificationsService {
 
       // Broadcast to connected admins
       this.gateway.emitNewNotification(notification);
-      this.logger.log(`Admin notification created and emitted: ${notification.id} - ${notification.title}`);
-      
+      this.logger.log(
+        `Admin notification created and emitted: ${notification.id} - ${notification.title}`,
+      );
+
       return notification;
     } catch (error) {
       this.logger.error(`Failed to create admin notification: ${error.message}`);
@@ -41,7 +43,7 @@ export class AdminNotificationsService {
    */
   async getNotifications(page = 1, limit = 20, type?: string) {
     const skip = (page - 1) * limit;
-    
+
     const where: any = {};
     if (type) {
       where.type = type;

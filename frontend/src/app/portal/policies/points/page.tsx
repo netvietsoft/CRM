@@ -89,7 +89,7 @@ export default function PointsPolicyPage() {
 
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                   <h3 className="font-semibold text-pink-900 mb-3 text-lg">Đổi điểm lấy quà tặng</h3>
-                  <p className="mb-2">Truy cập mục <strong>"Đổi quà"</strong> để xem danh sách quà tặng độc quyền:</p>
+                  <p className="mb-2">Truy cập mục <strong>&quot;Đổi quà&quot;</strong> để xem danh sách quà tặng độc quyền:</p>
                   <ul className="space-y-2 list-disc list-inside">
                     <li>Sản phẩm độc quyền từ các thương hiệu nổi tiếng</li>
                     <li>Voucher dịch vụ spa, nhà hàng, du lịch</li>
@@ -169,7 +169,7 @@ export default function PointsPolicyPage() {
                   <h3 className="font-semibold text-red-900 mb-3 text-lg">⏰ Thời hạn điểm thưởng</h3>
                   <ul className="space-y-2 list-disc list-inside">
                     <li>Điểm thưởng có hiệu lực <strong>12 tháng</strong> kể từ ngày tích</li>
-                    <li>Điểm sẽ hết hạn theo nguyên tắc "vào trước - hết hạn trước"</li>
+                    <li>Điểm sẽ hết hạn theo nguyên tắc &quot;vào trước - hết hạn trước&quot;</li>
                     <li>Hệ thống sẽ gửi thông báo trước 30 ngày khi điểm sắp hết hạn</li>
                     <li>Điểm đã hết hạn không thể khôi phục</li>
                   </ul>
@@ -198,9 +198,9 @@ export default function PointsPolicyPage() {
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                   <ol className="space-y-3 list-decimal list-inside">
                     <li>Đăng nhập vào tài khoản của bạn</li>
-                    <li>Truy cập mục <strong>"Tài khoản của tôi"</strong></li>
+                    <li>Truy cập mục <strong>&quot;Tài khoản của tôi&quot;</strong></li>
                     <li>Xem số điểm hiện tại và lịch sử tích/tiêu điểm</li>
-                    <li>Kiểm tra điểm sắp hết hạn trong mục <strong>"Điểm thưởng"</strong></li>
+                    <li>Kiểm tra điểm sắp hết hạn trong mục <strong>&quot;Điểm thưởng&quot;</strong></li>
                   </ol>
                 </div>
               </div>
@@ -210,5 +210,4 @@ export default function PointsPolicyPage() {
     </div>
   );
 }
-
 

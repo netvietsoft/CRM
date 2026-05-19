@@ -5,6 +5,40 @@ function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 }
 
+interface AdminCommission {
+  id: string;
+  level: number;
+  percentage: number;
+  amount: number;
+  status: string;
+  user: {
+    name: string;
+    referralCode: string;
+  };
+  order: {
+    orderCode: string;
+    totalAmount: number;
+  };
+}
+
+interface CommissionConfig {
+  id: string;
+  level: number;
+  percentage: number;
+  isActive: boolean;
+}
+
+interface CommissionStats {
+  total: {
+    amount: number;
+    count: number;
+  };
+  pending: {
+    amount: number;
+    count: number;
+  };
+}
+
 const levelLabels: Record<number, string> = { 1: 'F1 → F0', 2: 'F2 → F0', 3: 'F3 → F0', 4: 'F4 → F0' };
 const statusMap: Record<string, { cls: string; label: string }> = {
   PENDING: { cls: 'bg-yellow-100 text-yellow-700', label: 'Chờ duyệt' },
@@ -14,15 +48,15 @@ const statusMap: Record<string, { cls: string; label: string }> = {
 };
 
 export default async function CommissionsPage() {
-  let commissions: any[] = [];
-  let configs: any[] = [];
-  let stats: any = { total: { amount: 0, count: 0 }, pending: { amount: 0, count: 0 } };
+  let commissions: AdminCommission[] = [];
+  let configs: CommissionConfig[] = [];
+  let stats: CommissionStats = { total: { amount: 0, count: 0 }, pending: { amount: 0, count: 0 } };
 
   try {
     const [ledgerRes, configsRes, statsRes] = await Promise.all([
-      apiClient.get<any[]>('/commissions/admin/ledger'),
-      apiClient.get<any[]>('/commissions/admin/configs'),
-      apiClient.get<any>('/commissions/admin/stats'),
+      apiClient.get<AdminCommission[]>('/commissions/admin/ledger'),
+      apiClient.get<CommissionConfig[]>('/commissions/admin/configs'),
+      apiClient.get<CommissionStats>('/commissions/admin/stats'),
     ]);
     commissions = ledgerRes;
     configs = configsRes;
@@ -49,7 +83,7 @@ export default async function CommissionsPage() {
           <div className="text-3xl font-bold text-gray-800 mb-2">{fmt(stats.pending.amount)}</div>
           <div className="text-xs text-gray-600">{stats.pending.count} giao dịch</div>
         </div>
-        {configs.map((c: any) => (
+        {configs.map((c) => (
           <div key={c.id} className="bg-white p-6 rounded-xl shadow-sm">
             <div className="text-sm text-gray-600 mb-2">Tầng F{c.level}</div>
             <div className="text-3xl font-bold text-gray-800 mb-2">{c.percentage}%</div>
@@ -64,7 +98,7 @@ export default async function CommissionsPage() {
           📊 Cấu hình tỷ lệ hoa hồng
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {configs.map((c: any) => (
+          {configs.map((c) => (
             <div key={c.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
               <div className="text-xs text-gray-500 mb-2">
                 Khi F{c.level} mua hàng
@@ -111,7 +145,7 @@ export default async function CommissionsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : commissions.map((c: any) => {
+              ) : commissions.map((c) => {
                 const st = statusMap[c.status] || { cls: 'bg-gray-100 text-gray-600', label: c.status };
                 return (
                   <tr key={c.id} className="hover:bg-gray-50">

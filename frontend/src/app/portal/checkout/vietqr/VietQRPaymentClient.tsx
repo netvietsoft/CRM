@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, CheckCircle, XCircle, Clock, Copy, Check, Download, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Check, Download, AlertTriangle } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 
 interface VietQRData {
@@ -15,6 +15,20 @@ interface VietQRData {
   expiresAt: string;
 }
 
+interface PaymentStatusResponse {
+  status: 'SUCCESS' | 'PENDING';
+  is_expired: boolean;
+}
+
+function parseStoredVietQRData(raw: string): VietQRData | null {
+  try {
+    return JSON.parse(raw) as VietQRData;
+  } catch (error) {
+    console.error('Failed to parse VietQR data', error);
+    return null;
+  }
+}
+
 export default function VietQRPaymentClient({ orderId }: { orderId: string }) {
   const router = useRouter();
   const [vietqrData, setVietqrData] = useState<VietQRData | null>(null);
@@ -23,19 +37,29 @@ export default function VietQRPaymentClient({ orderId }: { orderId: string }) {
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    // Load data from localStorage
+    let cancelled = false;
     const savedData = localStorage.getItem(`vietqr_${orderId}`);
-    if (savedData) {
-      try {
-        setVietqrData(JSON.parse(savedData));
-      } catch (e) {
-        console.error('Failed to parse VietQR data', e);
+
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+
+      if (!savedData) {
         setStatus('error');
+        return;
       }
-    } else {
-      // If no data, maybe fetch from server, but for now just error out
-      setStatus('error');
-    }
+
+      const parsed = parseStoredVietQRData(savedData);
+      if (!parsed) {
+        setStatus('error');
+        return;
+      }
+
+      setVietqrData(parsed);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [orderId]);
 
   // Auto-check payment status every 10 seconds
@@ -44,7 +68,7 @@ export default function VietQRPaymentClient({ orderId }: { orderId: string }) {
 
     const checkPayment = async () => {
       try {
-        const data = await apiClientClient.get<any>(`/orders/${orderId}/payment-status`);
+        const data = await apiClientClient.get<PaymentStatusResponse>(`/orders/${orderId}/payment-status`);
 
         if (data.status === 'SUCCESS') {
           setStatus('success');
@@ -88,18 +112,6 @@ export default function VietQRPaymentClient({ orderId }: { orderId: string }) {
     return () => clearInterval(interval);
   }, [vietqrData?.expiresAt]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(field);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
   const downloadQRImage = async () => {
     if (!vietqrData) return;
     try {
@@ -122,12 +134,10 @@ export default function VietQRPaymentClient({ orderId }: { orderId: string }) {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0
-    }).format(amount);
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (status === 'error' || !vietqrData) {

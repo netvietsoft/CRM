@@ -44,12 +44,7 @@ describe('CassoService VietQR processing', () => {
       createNotification: jest.fn(),
     };
 
-    service = new CassoService(
-      prisma,
-      ordersService,
-      {} as any,
-      adminNotificationsService,
-    );
+    service = new CassoService(prisma, ordersService, {} as any, adminNotificationsService);
   });
 
   it('does not mark expired cancelled VietQR orders as paid', async () => {
@@ -77,7 +72,8 @@ describe('CassoService VietQR processing', () => {
     expect(adminNotificationsService.createNotification).toHaveBeenCalledWith({
       type: 'ORDER',
       title: 'Thanh toán trễ cho đơn ORD123',
-      message: 'Đơn VietQR đã hết hạn và bị huỷ, nhưng Casso ghi nhận giao dịch CAS-1 với số tiền 100000.',
+      message:
+        'Đơn VietQR đã hết hạn và bị huỷ, nhưng Casso ghi nhận giao dịch CAS-1 với số tiền 100000.',
       link: '/admin/orders/order-1',
       metadata: {
         orderId: 'order-1',

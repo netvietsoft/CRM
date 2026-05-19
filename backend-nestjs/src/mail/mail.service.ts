@@ -23,10 +23,15 @@ export class MailService {
     });
   }
 
-  async sendModeratorCredentials(email: string, storeName: string, loginId: string, password: string) {
+  async sendModeratorCredentials(
+    email: string,
+    storeName: string,
+    loginId: string,
+    password: string,
+  ) {
     this.logger.log(`Attempting to send credentials email to: ${email} (Login ID: ${loginId})`);
     const from = this.configService.get<string>('MAIL_FROM', '"CRM System" <noreply@example.com>');
-    
+
     const mailOptions = {
       from,
       to: email,

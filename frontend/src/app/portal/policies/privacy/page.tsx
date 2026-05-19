@@ -247,7 +247,7 @@ export default function PrivacyPolicyPage() {
                       <span>✏️</span> Quyền chỉnh sửa
                     </h3>
                     <p className="text-sm">
-                      Cập nhật, sửa đổi thông tin cá nhân bất cứ lúc nào trong phần "Tài khoản của tôi".
+                      Cập nhật, sửa đổi thông tin cá nhân bất cứ lúc nào trong phần &quot;Tài khoản của tôi&quot;.
                     </p>
                   </div>
 
@@ -392,5 +392,4 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
-
 

@@ -41,7 +41,7 @@ export class ProductsController {
     @GetEffectiveStoreId() effectiveStoreId: string | null,
     @Body() createProductDto: CreateProductDto,
   ) {
-    return this.productsService.create(user.id, user.role, effectiveStoreId, createProductDto);
+    return this.productsService.create(user.role, effectiveStoreId, createProductDto);
   }
 
   @Get()
@@ -59,7 +59,6 @@ export class ProductsController {
   @ApiOperation({ summary: 'Get admin products with filters' })
   @ApiResponse({ status: 200, description: 'Products retrieved successfully' })
   findAdminProducts(
-    @GetUser() user: any,
     @GetEffectiveStoreId() effectiveStoreId: string | null,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -68,8 +67,6 @@ export class ProductsController {
     @Query('isActive') isActive?: string,
   ) {
     return this.productsService.findAdminProducts({
-      userId: user.id,
-      role: user.role,
       effectiveStoreId,
       page: page ? parseInt(page) : undefined,
       limit: limit ? parseInt(limit) : undefined,

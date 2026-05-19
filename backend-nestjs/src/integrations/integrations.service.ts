@@ -14,7 +14,7 @@ export class IntegrationsService {
       // Global integrations are attached to a store owned by an ADMIN
       const globalStore = await this.prisma.store.findFirst({
         where: { owner: { role: 'ADMIN' } },
-        select: { id: true }
+        select: { id: true },
       });
       targetStoreId = globalStore?.id || 'no-global-store';
     }
@@ -73,7 +73,7 @@ export class IntegrationsService {
         where: { owner: { role: 'ADMIN' } },
         select: { id: true },
       });
-      
+
       // If no admin store exists, create a default one
       if (!defaultStore) {
         // Get the first admin user
@@ -81,11 +81,11 @@ export class IntegrationsService {
           where: { role: 'ADMIN' },
           select: { id: true },
         });
-        
+
         if (!adminUser) {
           throw new Error('No admin user found. Cannot create default store.');
         }
-        
+
         defaultStore = await this.prisma.store.create({
           data: {
             name: 'Hệ thống Admin',

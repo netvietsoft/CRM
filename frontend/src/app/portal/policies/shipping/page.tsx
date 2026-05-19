@@ -247,7 +247,7 @@ export default function ShippingPolicyPage() {
                       <div className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-1">Qua website</h4>
-                        <p className="text-sm text-gray-700">Đăng nhập → <strong>"Đơn hàng của tôi"</strong> → Xem chi tiết đơn hàng</p>
+                        <p className="text-sm text-gray-700">Đăng nhập → <strong>&quot;Đơn hàng của tôi&quot;</strong> → Xem chi tiết đơn hàng</p>
                       </div>
                     </div>
                     <div className="flex gap-4 items-start">
@@ -352,5 +352,4 @@ export default function ShippingPolicyPage() {
     </div>
   );
 }
-
 

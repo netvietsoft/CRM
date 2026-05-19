@@ -46,8 +46,8 @@ export default function ProfileForm({ user }: ProfileFormProps) {
   // Address dropdown state
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
   const [wards, setWards] = useState<AddressOption[]>([]);
-  const [loadingProvinces, setLoadingProvinces] = useState(false);
-  const [loadingWards, setLoadingWards] = useState(false);
+  const [loadingProvinces, setLoadingProvinces] = useState(true);
+  const [loadingWards, setLoadingWards] = useState(Boolean(user.addressProvince));
 
   // Password change
   const [passwordForm, setPasswordForm] = useState({
@@ -58,18 +58,6 @@ export default function ProfileForm({ user }: ProfileFormProps) {
   const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  // Fetch provinces on mount
-  useEffect(() => {
-    setLoadingProvinces(true);
-    fetch('/internal-api/address?type=provinces')
-      .then(res => res.json())
-      .then(data => {
-        setProvinces(data);
-        setLoadingProvinces(false);
-      })
-      .catch(() => setLoadingProvinces(false));
-  }, []);
-
   const normalizeName = (name: string) => {
     return name
       .toLowerCase()
@@ -78,41 +66,124 @@ export default function ProfileForm({ user }: ProfileFormProps) {
       .replace(/\s+/g, ' ');
   };
 
-  // Fetch wards when province changes
-  const fetchWards = useCallback(async (provinceName: string) => {
+  const fetchAddressOptions = useCallback(async (url: string) => {
+    const res = await fetch(url);
+    return (await res.json()) as AddressOption[];
+  }, []);
+
+  const loadProvinces = useCallback(() => {
+    return fetchAddressOptions('/internal-api/address?type=provinces');
+  }, [fetchAddressOptions]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    void loadProvinces()
+      .then((data) => {
+        if (!isCancelled) {
+          setProvinces(data);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setProvinces([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoadingProvinces(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [loadProvinces]);
+
+  const loadWards = useCallback(async (provinceName: string) => {
+    if (!provinceName) {
+      return { wards: [] as AddressOption[], canonicalProvince: null as string | null };
+    }
+
+    const normSearch = normalizeName(provinceName);
+    const province = provinces.find(
+      (item) =>
+        normalizeName(item.name) === normSearch || normalizeName(item.name).includes(normSearch),
+    );
+    
+    if (!province) {
+      return { wards: [] as AddressOption[], canonicalProvince: null as string | null };
+    }
+
+    const data = await fetchAddressOptions(
+      `/internal-api/address?type=wards&provinceCode=${province.code}`,
+    );
+
+    return {
+      wards: data,
+      canonicalProvince: province.name,
+    };
+  }, [fetchAddressOptions, provinces]);
+
+  const fetchWards = useCallback((provinceName: string) => {
     if (!provinceName) {
       setWards([]);
+      setLoadingWards(false);
       return;
     }
-    // Find province code by flexible matching
-    const normSearch = normalizeName(provinceName);
-    const province = provinces.find(p => normalizeName(p.name) === normSearch || normalizeName(p.name).includes(normSearch));
-    
-    if (!province) return;
 
     setLoadingWards(true);
-    try {
-      const res = await fetch(`/internal-api/address?type=wards&provinceCode=${province.code}`);
-      const data = await res.json();
-      setWards(data);
-      
-      // If we matched exactly, update the form to use our canonical name
-      if (form.addressProvince !== province.name) {
-        setForm(prev => ({ ...prev, addressProvince: province.name }));
-      }
-    } catch {
-      setWards([]);
-    } finally {
-      setLoadingWards(false);
-    }
-  }, [provinces, form.addressProvince]);
+    void loadWards(provinceName)
+      .then(({ wards: nextWards, canonicalProvince }) => {
+        setWards(nextWards);
+        if (canonicalProvince) {
+          setForm((prev) =>
+            prev.addressProvince === canonicalProvince
+              ? prev
+              : { ...prev, addressProvince: canonicalProvince },
+          );
+        }
+      })
+      .catch(() => {
+        setWards([]);
+      })
+      .finally(() => {
+        setLoadingWards(false);
+      });
+  }, [loadWards]);
 
-  // Load wards for existing province on initial load
   useEffect(() => {
-    if (form.addressProvince && provinces.length > 0) {
-      fetchWards(form.addressProvince);
-    }
-  }, [provinces.length > 0]); // Run once when provinces are loaded
+    if (!form.addressProvince || provinces.length === 0) return;
+
+    let isCancelled = false;
+
+    void loadWards(form.addressProvince)
+      .then(({ wards: nextWards, canonicalProvince }) => {
+        if (isCancelled) return;
+        setWards(nextWards);
+        if (canonicalProvince) {
+          setForm((prev) =>
+            prev.addressProvince === canonicalProvince
+              ? prev
+              : { ...prev, addressProvince: canonicalProvince },
+          );
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setWards([]);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoadingWards(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [form.addressProvince, loadWards, provinces.length]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -141,8 +212,8 @@ export default function ProfileForm({ user }: ProfileFormProps) {
       await apiClientClient.put('/users/profile', form);
       setMessage({ type: 'success', text: 'Cập nhật hồ sơ thành công!' });
       router.refresh();
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Có lỗi xảy ra' });
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Có lỗi xảy ra' });
     } finally {
       setLoading(false);
     }
@@ -173,8 +244,11 @@ export default function ProfileForm({ user }: ProfileFormProps) {
 
       setPasswordMsg({ type: 'success', text: 'Đổi mật khẩu thành công!' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error: any) {
-      setPasswordMsg({ type: 'error', text: error.message || 'Có lỗi xảy ra' });
+    } catch (error: unknown) {
+      setPasswordMsg({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Có lỗi xảy ra',
+      });
     } finally {
       setPasswordLoading(false);
     }
@@ -192,8 +266,8 @@ export default function ProfileForm({ user }: ProfileFormProps) {
       await apiClientClient.delete('/users/profile');
       // Redirect to login page
       router.push('/login');
-    } catch (error: any) {
-      alert(error.message || 'Có lỗi xảy ra khi xóa tài khoản');
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Có lỗi xảy ra khi xóa tài khoản');
     } finally {
       setDeleteLoading(false);
       setShowDeleteModal(false);
@@ -518,7 +592,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
               
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-600">
-                  Nhập <span className="font-bold text-gray-900">"{user.name}"</span> hoặc <span className="font-bold text-gray-900">"{user.phone}"</span> để xác nhận:
+                  Nhập <span className="font-bold text-gray-900">&quot;{user.name}&quot;</span> hoặc <span className="font-bold text-gray-900">&quot;{user.phone}&quot;</span> để xác nhận:
                 </label>
                 <input
                   type="text"

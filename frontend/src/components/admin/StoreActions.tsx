@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 export default function StoreActions() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,9 +22,9 @@ export default function StoreActions() {
       await apiClientClient.post('/stores/admin', formData);
       setIsOpen(false);
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Lỗi tạo cửa hàng');
+      alert(getApiErrorMessage(error, 'Lỗi tạo cửa hàng'));
     } finally {
       setLoading(false);
     }

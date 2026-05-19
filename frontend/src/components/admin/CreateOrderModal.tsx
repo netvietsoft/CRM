@@ -1,8 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 import Select from '@/components/ui/Select';
 
 interface ProductVariant {
@@ -28,6 +30,14 @@ interface Customer {
   name: string | null;
   phone: string | null;
   email: string | null;
+}
+
+interface CustomerSearchResponse {
+  customers?: Customer[];
+}
+
+interface ProductSearchResponse {
+  data?: Product[];
 }
 
 interface OrderItem {
@@ -106,12 +116,6 @@ export default function CreateOrderModal({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!selectedCustomer) return;
-    setShippingName(selectedCustomer.name || '');
-    setShippingPhone(selectedCustomer.phone || '');
-  }, [selectedCustomer]);
-
-  useEffect(() => {
     const timer = setTimeout(async () => {
       if (!customerSearch || customerSearch.trim().length < 2) {
         setCustomers([]);
@@ -120,7 +124,7 @@ export default function CreateOrderModal({
 
       setSearchingCustomers(true);
       try {
-        const data = await apiClientClient.get<any>('/admin/customers', {
+        const data = await apiClientClient.get<CustomerSearchResponse>('/admin/customers', {
           params: {
             search: customerSearch.trim(),
             limit: 8,
@@ -147,7 +151,7 @@ export default function CreateOrderModal({
 
       setSearchingProducts(true);
       try {
-        const data = await apiClientClient.get<any>('/products/admin', {
+        const data = await apiClientClient.get<ProductSearchResponse>('/products/admin', {
           params: {
             search: productSearch.trim(),
             limit: 8,
@@ -163,6 +167,12 @@ export default function CreateOrderModal({
 
     return () => clearTimeout(timer);
   }, [productSearch]);
+
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setShippingName(customer.name || '');
+    setShippingPhone(customer.phone || '');
+  };
 
   const addProduct = (product: Product) => {
     setOrderItems((current) => [
@@ -318,7 +328,7 @@ export default function CreateOrderModal({
                         <button
                           key={customer.id}
                           type="button"
-                          onClick={() => setSelectedCustomer(customer)}
+                          onClick={() => handleSelectCustomer(customer)}
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-left hover:border-blue-500 hover:bg-blue-50 transition-colors"
                         >
                           <p className="text-sm font-medium text-gray-900">
@@ -364,9 +374,13 @@ export default function CreateOrderModal({
                           className="w-full rounded-xl border border-gray-200 px-4 py-3 text-left hover:border-blue-500 hover:bg-blue-50 transition-colors flex items-center gap-3"
                         >
                           {product.imageUrl ? (
-                            <img
+                            <Image
+                              loader={passthroughImageLoader}
+                              unoptimized
                               src={product.imageUrl}
                               alt={product.name}
+                              width={48}
+                              height={48}
                               className="w-12 h-12 rounded-lg object-cover border border-gray-200"
                             />
                           ) : (

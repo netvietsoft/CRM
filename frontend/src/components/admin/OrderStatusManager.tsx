@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 import Select from '@/components/ui/Select';
 
 interface OrderStatusManagerProps {
@@ -62,9 +63,9 @@ export default function OrderStatusManager({
 
       setMessage({ text: 'Cập nhật thành công!', type: 'success' });
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       setMessage({
-        text: error.response?.data?.message || 'Có lỗi xảy ra',
+        text: getApiErrorMessage(error, 'Có lỗi xảy ra'),
         type: 'error',
       });
     } finally {

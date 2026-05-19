@@ -19,7 +19,10 @@ export class StoresService implements OnModuleInit {
         where: { slug: 'admin-global-store' },
       });
       if (adminStore) {
-        let newSlug = adminStore.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        let newSlug = adminStore.name
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
         if (!newSlug || newSlug === 'admin-global-store') {
           newSlug = `admin-store-${Date.now()}`;
         }
@@ -27,7 +30,9 @@ export class StoresService implements OnModuleInit {
           where: { id: adminStore.id },
           data: { slug: newSlug, isActive: true },
         });
-        console.log(`[StoresService] Fixed admin store slug from admin-global-store to: ${newSlug}`);
+        console.log(
+          `[StoresService] Fixed admin store slug from admin-global-store to: ${newSlug}`,
+        );
       }
     } catch (error) {
       console.error('[StoresService] Error fixing admin store slug:', error);
@@ -109,7 +114,8 @@ export class StoresService implements OnModuleInit {
     });
 
     if (!store) throw new NotFoundException('Store not found');
-    if (!store.isActive || store.isBanned) throw new ForbiddenException('Store is currently unavailable');
+    if (!store.isActive || store.isBanned)
+      throw new ForbiddenException('Store is currently unavailable');
 
     return store;
   }
@@ -122,7 +128,7 @@ export class StoresService implements OnModuleInit {
       where: { slug },
       select: { id: true },
     });
-    
+
     if (!store) throw new NotFoundException('Store not found');
 
     return this.prisma.review.findMany({
@@ -172,17 +178,28 @@ export class StoresService implements OnModuleInit {
       throw new ForbiddenException('Bạn đã có cửa hàng rồi');
     }
 
-    const { 
-      name, slug, description, addressStreet, addressWard, 
-      addressDistrict, addressProvince, phone, email, logoUrl,
-      allowCOD, bankName, bankAccountNo, bankOwnerName
+    const {
+      name,
+      slug,
+      description,
+      addressStreet,
+      addressWard,
+      addressDistrict,
+      addressProvince,
+      phone,
+      email,
+      logoUrl,
+      allowCOD,
+      bankName,
+      bankAccountNo,
+      bankOwnerName,
     } = data;
 
     const store = await this.prisma.store.create({
       data: {
         ownerId: userId,
         name,
-        slug: slug || (name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now()),
+        slug: slug || name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
         description: description || null,
         addressStreet: addressStreet || null,
         addressWard: addressWard || null,
@@ -194,6 +211,7 @@ export class StoresService implements OnModuleInit {
         allowCOD: allowCOD !== undefined ? allowCOD : true,
         bankName: bankName || null,
         bankAccountNo: bankAccountNo || null,
+        bankOwnerName: bankOwnerName || null,
         isActive: false, // Default to false, wait for admin approval
       },
     });
@@ -222,10 +240,21 @@ export class StoresService implements OnModuleInit {
       throw new NotFoundException('Store not found');
     }
 
-    const { 
-      name, description, addressStreet, addressWard, addressDistrict, 
-      addressProvince, phone, email, logoUrl, allowCOD, 
-      bankName, bankAccountNo, bankOwnerName, isActive 
+    const {
+      name,
+      description,
+      addressStreet,
+      addressWard,
+      addressDistrict,
+      addressProvince,
+      phone,
+      email,
+      logoUrl,
+      allowCOD,
+      bankName,
+      bankAccountNo,
+      bankOwnerName,
+      isActive,
     } = data;
 
     return this.prisma.store.update({
@@ -254,7 +283,7 @@ export class StoresService implements OnModuleInit {
    */
   async createStoreAdmin(adminId: string, data: any) {
     const { name, slug, ownerId } = data;
-    
+
     const finalOwnerId = ownerId || adminId;
 
     // Check if owner already has a store
@@ -269,7 +298,7 @@ export class StoresService implements OnModuleInit {
     const user = await this.prisma.user.findUnique({
       where: { id: finalOwnerId },
     });
-    
+
     if (!user) {
       throw new NotFoundException('Không tìm thấy người dùng chủ sở hữu');
     }
@@ -286,7 +315,7 @@ export class StoresService implements OnModuleInit {
       data: {
         ownerId: finalOwnerId,
         name,
-        slug: slug || (name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now()),
+        slug: slug || name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
         isActive: true,
       },
     });
@@ -377,7 +406,7 @@ export class StoresService implements OnModuleInit {
     // Format: localPart@admin.com
     let modEmail = '';
     const baseEmail = store.email || store.owner.email || store.slug;
-    
+
     if (baseEmail.includes('@')) {
       const localPart = baseEmail.split('@')[0];
       modEmail = `${localPart}@admin.com`;
@@ -391,7 +420,7 @@ export class StoresService implements OnModuleInit {
     let emailExists = true;
     let counter = 0;
     const baseModEmail = modEmail;
-    
+
     while (emailExists) {
       const existing = await this.prisma.user.findUnique({ where: { email: modEmail } });
       if (existing) {
@@ -402,7 +431,7 @@ export class StoresService implements OnModuleInit {
         emailExists = false;
       }
     }
-    
+
     // Ensure phone is unique
     if (modPhone) {
       let phoneExists = true;
@@ -410,7 +439,8 @@ export class StoresService implements OnModuleInit {
         const existing = await this.prisma.user.findUnique({ where: { phone: modPhone } });
         if (existing) {
           modPhone = `0${modPhone}`; // Keep adding 0 prefix until unique
-          if (modPhone.length > 20) { // Safety break
+          if (modPhone.length > 20) {
+            // Safety break
             modPhone = null;
             phoneExists = false;
           }
@@ -436,7 +466,7 @@ export class StoresService implements OnModuleInit {
     // Update store: Activate and switch owner to the new MODERATOR user
     const updatedStore = await this.prisma.store.update({
       where: { id },
-      data: { 
+      data: {
         isActive: true,
         ownerId: modUser.id, // Switch owner to the separate manager account
       },
@@ -459,7 +489,10 @@ export class StoresService implements OnModuleInit {
   /**
    * Update store status (Admin Only)
    */
-  async updateStatus(id: string, data: { isActive?: boolean; isBanned?: boolean; bannedReason?: string }) {
+  async updateStatus(
+    id: string,
+    data: { isActive?: boolean; isBanned?: boolean; bannedReason?: string },
+  ) {
     const store = await this.prisma.store.findUnique({
       where: { id },
     });

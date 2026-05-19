@@ -14,7 +14,7 @@ const logger = new Logger('VouchersModule');
 function getQueueImports(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
-  
+
   // Skip queue registration if Redis is not configured
   if (!redisHost && !redisUrl) {
     logger.warn('⚠️  Redis not configured - Voucher queue disabled');
@@ -24,8 +24,6 @@ function getQueueImports(): any[] {
   return [
     BullModule.registerQueue({
       name: 'voucher-queue',
-      // @ts-ignore
-
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -53,14 +51,14 @@ function getQueueImports(): any[] {
 function getProviders(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
-  
+
   const providers: any[] = [VouchersService];
-  
+
   // Only add VoucherProcessor if Redis is configured
   if (redisHost || redisUrl) {
     providers.push(VoucherProcessor);
   }
-  
+
   return providers;
 }
 

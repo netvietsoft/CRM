@@ -5,30 +5,41 @@ import CustomerSearch from '@/components/admin/CustomerSearch';
 import CustomersTableClient from '@/components/admin/CustomersTableClient';
 import { apiClient } from '@/lib/apiClient';
 
+interface CustomerSummary {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  rank: string;
+  totalSpent: number;
+  commissionBalance: number;
+  createdAt: string | Date;
+  _count?: {
+    orders?: number;
+    referees?: number;
+  };
+}
+
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+interface CustomersResponse {
+  customers: CustomerSummary[];
+  pagination: PaginationData;
+}
+
+interface ZaloConfigResponse {
+  isConfigured?: boolean;
+}
+
 interface SearchParams {
   page?: string;
   search?: string;
   rank?: string;
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency', currency: 'VND', maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function getRankBadgeClass(rank: string) {
-  const map: Record<string, string> = {
-    MEMBER: 'badge-member', SILVER: 'badge-silver',
-    GOLD: 'badge-gold', DIAMOND: 'badge-diamond', PLATINUM: 'badge-platinum',
-  };
-  return map[rank] || 'badge-member';
-}
-
-function formatDate(date: string | Date) {
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  }).format(new Date(date));
 }
 
 export default async function CustomersPage(props: {
@@ -36,24 +47,24 @@ export default async function CustomersPage(props: {
 }) {
   const searchParams = await props.searchParams;
 
-  let customers: any[] = [];
-  let pagination: any = { page: 1, limit: 20, total: 0, totalPages: 0 };
+  let customers: CustomerSummary[] = [];
+  let pagination: PaginationData = { page: 1, limit: 20, total: 0, totalPages: 0 };
   let isZaloEnabled = false;
 
   try {
     const [data, zaloConfig] = await Promise.all([
-      apiClient.get<any>('/admin/customers', {
+      apiClient.get<CustomersResponse>('/admin/customers', {
         params: {
           page: searchParams.page,
           search: searchParams.search,
           rank: searchParams.rank,
         }
       }),
-      apiClient.get<any>('/notifications/zalo/config').catch(() => ({ isConfigured: false }))
+      apiClient.get<ZaloConfigResponse>('/notifications/zalo/config').catch(() => ({ isConfigured: false }))
     ]);
     customers = data.customers;
     pagination = data.pagination;
-    isZaloEnabled = zaloConfig.isConfigured;
+    isZaloEnabled = Boolean(zaloConfig.isConfigured);
   } catch (error) {
     console.error('Error fetching customers:', error);
   }

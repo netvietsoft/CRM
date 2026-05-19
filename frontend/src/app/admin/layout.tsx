@@ -3,6 +3,12 @@ import { getSession } from '@/lib/auth';
 import AdminShell from '@/components/admin/AdminShell';
 import { apiClient } from '@/lib/apiClient';
 
+interface AdminDashboardMeta {
+  unreadCount?: number;
+  pendingStoresCount?: number;
+  isStoreActive?: boolean;
+}
+
 export default async function AdminLayout({
   children,
 }: {
@@ -24,10 +30,10 @@ export default async function AdminLayout({
   let isStoreActive = true;
 
   try {
-    const meta = await apiClient.get<any>('/admin/dashboard-meta');
-    unreadCount = meta.unreadCount;
-    pendingStoresCount = meta.pendingStoresCount;
-    isStoreActive = meta.isStoreActive;
+    const meta = await apiClient.get<AdminDashboardMeta>('/admin/dashboard-meta');
+    unreadCount = meta.unreadCount ?? 0;
+    pendingStoresCount = meta.pendingStoresCount ?? 0;
+    isStoreActive = meta.isStoreActive ?? true;
   } catch (error) {
     console.error('Error fetching admin dashboard meta:', error);
   }
@@ -37,10 +43,15 @@ export default async function AdminLayout({
     redirect('/portal/seller-register');
   }
 
+  const adminUser = {
+    ...session,
+    name: session.name || 'Quản trị viên',
+  };
+
   return (
-    <AdminShell 
-      user={session} 
-      unreadCount={unreadCount} 
+    <AdminShell
+      user={adminUser}
+      unreadCount={unreadCount}
       pendingStoresCount={pendingStoresCount}
     >
       {children}

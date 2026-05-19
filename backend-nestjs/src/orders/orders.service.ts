@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
@@ -47,7 +53,12 @@ export class OrdersService {
     );
   }
 
-  isPaymentExpired(order: { paymentMethod: any; paymentStatus: string; status: string; metadata: any }): boolean {
+  isPaymentExpired(order: {
+    paymentMethod: any;
+    paymentStatus: string;
+    status: string;
+    metadata: any;
+  }): boolean {
     return (
       order.paymentMethod === 'VIETQR' &&
       order.paymentStatus !== 'PAID' &&
@@ -100,12 +111,23 @@ export class OrdersService {
   }
 
   private async cancelExpiredVietqrOrder(
-    order: { id: string; orderCode: string; metadata: any; items: Array<{ productId: string; quantity: number; size: string | null; color: string | null }> },
+    order: {
+      id: string;
+      orderCode: string;
+      metadata: any;
+      items: Array<{
+        productId: string;
+        quantity: number;
+        size: string | null;
+        color: string | null;
+      }>;
+    },
     now: Date,
   ): Promise<boolean> {
-    const metadata = order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
-      ? order.metadata
-      : {};
+    const metadata =
+      order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+        ? order.metadata
+        : {};
     const vietqr = metadata.vietqr && typeof metadata.vietqr === 'object' ? metadata.vietqr : {};
 
     return this.prisma.$transaction(async (tx) => {
@@ -224,13 +246,9 @@ export class OrdersService {
             (v: any) => v.size?.name === item.size && v.color?.name === item.color,
           );
         } else if (item.size) {
-          matchingVariant = product.variants.find(
-            (v: any) => v.size?.name === item.size,
-          );
+          matchingVariant = product.variants.find((v: any) => v.size?.name === item.size);
         } else if (item.color) {
-          matchingVariant = product.variants.find(
-            (v: any) => v.color?.name === item.color,
-          );
+          matchingVariant = product.variants.find((v: any) => v.color?.name === item.color);
         }
 
         if (matchingVariant) {
@@ -267,7 +285,8 @@ export class OrdersService {
     const appliedUserVoucherIds: string[] = [];
 
     // Resolve voucher IDs from either voucherIds array or legacy voucherId
-    const resolvedVoucherIds = (voucherIds && voucherIds.length > 0) ? voucherIds : (voucherId ? [voucherId] : []);
+    const resolvedVoucherIds =
+      voucherIds && voucherIds.length > 0 ? voucherIds : voucherId ? [voucherId] : [];
 
     // Apply Vouchers
     for (const currentVoucherId of resolvedVoucherIds) {
@@ -281,24 +300,40 @@ export class OrdersService {
         },
       });
 
-      const isVoucherInDateRange = targetVoucher
-        && (!targetVoucher.validFrom || targetVoucher.validFrom <= now)
-        && (!targetVoucher.validTo || targetVoucher.validTo > now);
-      const hasVoucherStock = targetVoucher
-        && (targetVoucher.totalUsageLimit === null || targetVoucher._count.userVouchers < targetVoucher.totalUsageLimit);
-      const isVoucherForOrderStore = targetVoucher
-        && (!targetVoucher.storeId || targetVoucher.storeId === (orderStoreId || null));
+      const isVoucherInDateRange =
+        targetVoucher &&
+        (!targetVoucher.validFrom || targetVoucher.validFrom <= now) &&
+        (!targetVoucher.validTo || targetVoucher.validTo > now);
+      const hasVoucherStock =
+        targetVoucher &&
+        (targetVoucher.totalUsageLimit === null ||
+          targetVoucher._count.userVouchers < targetVoucher.totalUsageLimit);
+      const isVoucherForOrderStore =
+        targetVoucher &&
+        (!targetVoucher.storeId || targetVoucher.storeId === (orderStoreId || null));
 
-      if (targetVoucher && targetVoucher.isActive && isVoucherInDateRange && hasVoucherStock && isVoucherForOrderStore) {
+      if (
+        targetVoucher &&
+        targetVoucher.isActive &&
+        isVoucherInDateRange &&
+        hasVoucherStock &&
+        isVoucherForOrderStore
+      ) {
         if (targetVoucher.code.startsWith('QR-ORDER-')) {
           let resolvedStatus = (targetVoucher as any).status || 'AUTO';
           if (resolvedStatus === 'AUTO') {
             const orderCode = targetVoucher.code.replace('QR-ORDER-', '');
-            const sourceOrder = await this.prisma.order.findUnique({ where: { orderCode }, select: { status: true, updatedAt: true } });
+            const sourceOrder = await this.prisma.order.findUnique({
+              where: { orderCode },
+              select: { status: true, updatedAt: true },
+            });
             if (!sourceOrder) {
               resolvedStatus = 'PENDING';
             } else {
-              const isDelivered = sourceOrder.status === 'DELIVERED' || sourceOrder.status === 'PAYMENT_COLLECTED' || sourceOrder.status === 'COMPLETED';
+              const isDelivered =
+                sourceOrder.status === 'DELIVERED' ||
+                sourceOrder.status === 'PAYMENT_COLLECTED' ||
+                sourceOrder.status === 'COMPLETED';
               if (isDelivered && sourceOrder.updatedAt) {
                 const deliveredDate = new Date(sourceOrder.updatedAt);
                 const diffTime = Math.abs(now.getTime() - deliveredDate.getTime());
@@ -308,7 +343,11 @@ export class OrdersService {
                 } else {
                   resolvedStatus = 'PENDING';
                 }
-              } else if (sourceOrder.status === 'CANCELLED' || sourceOrder.status === 'REFUNDED' || sourceOrder.status === 'RETURNING') {
+              } else if (
+                sourceOrder.status === 'CANCELLED' ||
+                sourceOrder.status === 'REFUNDED' ||
+                sourceOrder.status === 'RETURNING'
+              ) {
                 resolvedStatus = 'LOCKED';
               } else {
                 resolvedStatus = 'PENDING';
@@ -333,18 +372,25 @@ export class OrdersService {
 
           if (targetVoucher.type === 'STACK') {
             // STACK voucher: discount depends on condition type per tier
-            const distinctProductCount = new Set(items.map(i => i.productId)).size;
-            const tiers = (targetVoucher as any).stackTiers as Array<{ minProducts?: number; minAmount?: number; conditionType?: string; discount: number; type?: string; maxDiscount?: number }> | null;
+            const distinctProductCount = new Set(items.map((i) => i.productId)).size;
+            const tiers = (targetVoucher as any).stackTiers as Array<{
+              minProducts?: number;
+              minAmount?: number;
+              conditionType?: string;
+              discount: number;
+              type?: string;
+              maxDiscount?: number;
+            }> | null;
 
             if (tiers && Array.isArray(tiers) && tiers.length > 0) {
               // Sort tiers descending by threshold and find the best match
               const sortedTiers = [...tiers].sort((a, b) => {
-                const aVal = a.conditionType === 'amount' ? (a.minAmount || 0) : (a.minProducts || 0);
-                const bVal = b.conditionType === 'amount' ? (b.minAmount || 0) : (b.minProducts || 0);
+                const aVal = a.conditionType === 'amount' ? a.minAmount || 0 : a.minProducts || 0;
+                const bVal = b.conditionType === 'amount' ? b.minAmount || 0 : b.minProducts || 0;
                 return bVal - aVal;
               });
 
-              const matchedTier = sortedTiers.find(t => {
+              const matchedTier = sortedTiers.find((t) => {
                 if (t.conditionType === 'amount') {
                   return subtotal >= (t.minAmount || 0);
                 }
@@ -386,10 +432,7 @@ export class OrdersService {
               voucherId: targetVoucher.id,
               isUsed: false,
               status: { notIn: ['PENDING', 'REJECTED'] },
-              OR: [
-                { expiresAt: null },
-                { expiresAt: { gt: now } },
-              ],
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
             orderBy: { createdAt: 'asc' },
           });
@@ -430,7 +473,8 @@ export class OrdersService {
         user.commissionBalance,
         Math.max(0, subtotal - discountAmount),
       );
-      const requestedPoints = appliedCommissionPoints !== undefined ? appliedCommissionPoints : maxApplicable;
+      const requestedPoints =
+        appliedCommissionPoints !== undefined ? appliedCommissionPoints : maxApplicable;
       const actualApplicable = Math.min(requestedPoints, maxApplicable);
       if (actualApplicable > 0) {
         commissionDiscount = actualApplicable;
@@ -446,15 +490,10 @@ export class OrdersService {
     let totalAmount = subtotal - discountAmount + parsedShippingFee;
     if (totalAmount < 0) totalAmount = 0;
 
-
-
     const orderCode = this.generateOrderCode();
-    const vietqrExpiresAt = paymentMethod === 'VIETQR'
-      ? new Date(Date.now() + 30 * 60 * 1000)
-      : null;
-    const vietqrTransactionCode = paymentMethod === 'VIETQR'
-      ? `ORDER:${orderCode}`
-      : null;
+    const vietqrExpiresAt =
+      paymentMethod === 'VIETQR' ? new Date(Date.now() + 30 * 60 * 1000) : null;
+    const vietqrTransactionCode = paymentMethod === 'VIETQR' ? `ORDER:${orderCode}` : null;
 
     // Create Order
     const order = await this.prisma.order.create({
@@ -494,9 +533,10 @@ export class OrdersService {
         ...(appliedUserVoucherIds.length > 0
           ? {
               appliedVouchers: {
-                create: appliedUserVoucherIds.map(uvId => ({
+                create: appliedUserVoucherIds.map((uvId) => ({
                   userVoucherId: uvId,
-                  discountApplied: (discountAmount - commissionDiscount) / appliedUserVoucherIds.length,
+                  discountApplied:
+                    (discountAmount - commissionDiscount) / appliedUserVoucherIds.length,
                 })),
               },
             }
@@ -519,9 +559,9 @@ export class OrdersService {
       const template = process.env.VIETQR_TEMPLATE || 'compact2';
       const amount = totalAmount;
       const addInfo = vietqrTransactionCode || `ORDER:${order.orderCode}`;
-      
+
       const qrImageUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-${template}.png?amount=${amount}&addInfo=${encodeURIComponent(addInfo)}&accountName=${encodeURIComponent(accountName)}`;
-      
+
       vietqrData = {
         qrImageUrl,
         transactionCode: addInfo,
@@ -533,11 +573,11 @@ export class OrdersService {
       };
     }
 
-    return { 
-      success: true, 
-      orderId: order.id, 
+    return {
+      success: true,
+      orderId: order.id,
       orderCode: order.orderCode,
-      ...(vietqrData ? { vietqr: vietqrData } : {})
+      ...(vietqrData ? { vietqr: vietqrData } : {}),
     };
   }
 
@@ -688,10 +728,7 @@ export class OrdersService {
       0,
       Math.min(subtotal, parseFloat(discountAmount.toString()) || 0),
     );
-    const totalAmount = Math.max(
-      0,
-      subtotal - parsedDiscountAmount + parsedShippingFee,
-    );
+    const totalAmount = Math.max(0, subtotal - parsedDiscountAmount + parsedShippingFee);
 
     const order = await this.prisma.order.create({
       data: {
@@ -780,9 +817,10 @@ export class OrdersService {
     }
 
     // Also update metadata for backward compat
-    const existingMeta = order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
-      ? (order.metadata as Record<string, any>)
-      : {};
+    const existingMeta =
+      order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+        ? (order.metadata as Record<string, any>)
+        : {};
     if (body.assigningSellerId !== undefined) {
       existingMeta.assigningSellerId = body.assigningSellerId || null;
     }
@@ -825,33 +863,44 @@ export class OrdersService {
     }
 
     const updateData: any = {};
-    
+
     // Core fields
     if (body.shippingFee !== undefined) updateData.shippingFee = body.shippingFee;
     if (body.discountAmount !== undefined) updateData.discountAmount = body.discountAmount;
 
     // Recalculate totalAmount if needed
-    if (body.shippingFee !== undefined || body.discountAmount !== undefined || body.surcharge !== undefined) {
+    if (
+      body.shippingFee !== undefined ||
+      body.discountAmount !== undefined ||
+      body.surcharge !== undefined
+    ) {
       const shippingFee = body.shippingFee !== undefined ? body.shippingFee : order.shippingFee;
-      const discountAmount = body.discountAmount !== undefined ? body.discountAmount : order.discountAmount;
-      
-      const existingMeta = order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
-        ? (order.metadata as Record<string, any>)
-        : {};
-      const surcharge = body.surcharge !== undefined ? body.surcharge : existingMeta.financial?.surcharge || 0;
-      
-      updateData.totalAmount = Math.max(0, order.subtotal - discountAmount + shippingFee + surcharge);
+      const discountAmount =
+        body.discountAmount !== undefined ? body.discountAmount : order.discountAmount;
+
+      const existingMeta =
+        order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+          ? (order.metadata as Record<string, any>)
+          : {};
+      const surcharge =
+        body.surcharge !== undefined ? body.surcharge : existingMeta.financial?.surcharge || 0;
+
+      updateData.totalAmount = Math.max(
+        0,
+        order.subtotal - discountAmount + shippingFee + surcharge,
+      );
     }
 
     // Metadata update
-    const existingMeta = order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
-      ? (order.metadata as Record<string, any>)
-      : {};
-    
+    const existingMeta =
+      order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+        ? (order.metadata as Record<string, any>)
+        : {};
+
     if (body.reasonValue !== undefined) existingMeta.reasonValue = body.reasonValue;
     if (body.delayValue !== undefined) existingMeta.delayValue = body.delayValue;
     if (body.tags !== undefined) existingMeta.tags = body.tags;
-    
+
     // Financial/Payment metadata
     if (body.surcharge !== undefined) {
       if (!existingMeta.financial) existingMeta.financial = {};
@@ -878,8 +927,6 @@ export class OrdersService {
   }
 
   async findAdminOrders(params: {
-    userId: string;
-    role: string;
     effectiveStoreId?: string | null;
     page?: number;
     limit?: number;
@@ -891,7 +938,7 @@ export class OrdersService {
     dateFilterType?: string;
     dateValue?: string;
   }) {
-    const { userId, role, effectiveStoreId } = params;
+    const { effectiveStoreId } = params;
     const page = params.page || 1;
     const limit = params.limit || 11;
     const search = params.search || '';
@@ -968,10 +1015,13 @@ export class OrdersService {
       }),
     ]);
 
-    const statusCounts = countsData.reduce((acc, curr) => {
-      acc[curr.status] = curr._count;
-      return acc;
-    }, {} as Record<string, number>);
+    const statusCounts = countsData.reduce(
+      (acc, curr) => {
+        acc[curr.status] = curr._count;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       orders,
@@ -1022,7 +1072,7 @@ export class OrdersService {
     return null;
   }
 
-  async findAll(userId: string, filters?: any) {
+  async findAll(userId: string) {
     return this.prisma.order.findMany({
       where: { userId },
       include: {
@@ -1045,12 +1095,7 @@ export class OrdersService {
     });
   }
 
-  async findOne(
-    id: string,
-    userId: string,
-    role: string,
-    effectiveStoreId?: string | null,
-  ) {
+  async findOne(id: string, userId: string, role: string, effectiveStoreId?: string | null) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
@@ -1167,7 +1212,9 @@ export class OrdersService {
       }
     }
 
-    this.logger.log(`Updating status for order ${id}: ${currentOrder.status} -> ${status}. Role: ${role}`);
+    this.logger.log(
+      `Updating status for order ${id}: ${currentOrder.status} -> ${status}. Role: ${role}`,
+    );
 
     const updatedOrder = await this.prisma.order.update({
       where: { id },
@@ -1175,7 +1222,12 @@ export class OrdersService {
     });
 
     // Send notification if status changed manually by admin/staff
-    if (status && status !== currentOrder.status && role && (role === 'ADMIN' || role === 'STAFF' || role === 'MODERATOR')) {
+    if (
+      status &&
+      status !== currentOrder.status &&
+      role &&
+      (role === 'ADMIN' || role === 'STAFF' || role === 'MODERATOR')
+    ) {
       this.logger.log(`Creating manual update notification for order ${updatedOrder.orderCode}`);
       const statusLabels: Record<string, string> = {
         PENDING: 'Chờ xác nhận',
@@ -1207,13 +1259,14 @@ export class OrdersService {
           oldStatus: currentOrder.status,
           newStatus: status,
           actorId: userId,
-        }
+        },
       });
     }
 
     // Handle creditable status (COMPLETED, DELIVERED)
     const isCreditable = status === 'COMPLETED' || status === 'DELIVERED';
-    const wasCreditable = currentOrder.status === 'COMPLETED' || currentOrder.status === 'DELIVERED';
+    const wasCreditable =
+      currentOrder.status === 'COMPLETED' || currentOrder.status === 'DELIVERED';
 
     if (isCreditable && !wasCreditable) {
       // Update soldCount
@@ -1367,8 +1420,7 @@ export class OrdersService {
     const token = vtpConfig?.accessToken || process.env.VIETTELPOST_TOKEN;
 
     let senderAddress =
-      process.env.VIETTELPOST_SENDER_ADDRESS ||
-      'Trần Duy Hưng, Trung Hoà, Cầu Giấy, Hà Nội';
+      process.env.VIETTELPOST_SENDER_ADDRESS || 'Trần Duy Hưng, Trung Hoà, Cầu Giấy, Hà Nội';
 
     // Get store address if provided
     if (storeId) {
@@ -1424,17 +1476,14 @@ export class OrdersService {
     };
 
     try {
-      const response = await fetch(
-        'https://partner.viettelpost.vn/v2/order/getPriceNlp',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Token: token,
-          },
-          body: JSON.stringify(payload),
+      const response = await fetch('https://partner.viettelpost.vn/v2/order/getPriceNlp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Token: token,
         },
-      );
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         console.error('ViettelPost HTTP error:', response.statusText);
@@ -1555,11 +1604,11 @@ export class OrdersService {
         items: {
           include: {
             product: {
-              select: { name: true, imageUrl: true }
-            }
-          }
-        }
-      }
+              select: { name: true, imageUrl: true },
+            },
+          },
+        },
+      },
     });
 
     if (!order) {
@@ -1578,7 +1627,7 @@ export class OrdersService {
         name: item.product?.name || 'Sản phẩm',
         image: item.product?.imageUrl,
         quantity: item.quantity,
-      }))
+      })),
     };
   }
 
@@ -1609,11 +1658,11 @@ export class OrdersService {
         items: {
           include: {
             product: {
-              select: { name: true, imageUrl: true }
-            }
-          }
-        }
-      }
+              select: { name: true, imageUrl: true },
+            },
+          },
+        },
+      },
     });
 
     if (potentialOrders.length === 0) {
@@ -1626,13 +1675,16 @@ export class OrdersService {
       if (order.shippingPhone && order.shippingPhone.includes(cleanPhone)) {
         return true;
       }
-      
+
       // Check Pancake shippingAddress phone
       const metadata = order.metadata as any;
-      if (metadata?.shippingAddress?.phoneNumber && metadata.shippingAddress.phoneNumber.includes(cleanPhone)) {
+      if (
+        metadata?.shippingAddress?.phoneNumber &&
+        metadata.shippingAddress.phoneNumber.includes(cleanPhone)
+      ) {
         return true;
       }
-      
+
       return false;
     });
 
@@ -1640,9 +1692,9 @@ export class OrdersService {
       throw new BadRequestException('Số điện thoại không đúng với đơn hàng này');
     }
 
-    // Return safe data only (exclude user details, exact address, etc. if not needed, 
+    // Return safe data only (exclude user details, exact address, etc. if not needed,
     // but we can return basic tracking info)
-    const m = matchedOrder.metadata as any || {};
+    const m = (matchedOrder.metadata as any) || {};
     return {
       id: matchedOrder.id,
       orderCode: matchedOrder.orderCode,
@@ -1650,10 +1702,12 @@ export class OrdersService {
       createdAt: matchedOrder.createdAt,
       totalAmount: matchedOrder.totalAmount,
       shippingName: matchedOrder.shippingName || m.shippingAddress?.fullName,
-      paymentMethod: matchedOrder.paymentMethod || (matchedOrder.source === 'PANCAKE' ? 'Thanh toán qua Pancake' : 'Chưa xác định'),
+      paymentMethod:
+        matchedOrder.paymentMethod ||
+        (matchedOrder.source === 'PANCAKE' ? 'Thanh toán qua Pancake' : 'Chưa xác định'),
       paymentStatus: matchedOrder.paymentStatus,
       isPancake: matchedOrder.source === 'PANCAKE',
-      items: (matchedOrder as any).items.map(item => ({
+      items: (matchedOrder as any).items.map((item) => ({
         name: item.product?.name || 'Sản phẩm',
         image: item.product?.imageUrl,
         quantity: item.quantity,
@@ -1662,13 +1716,15 @@ export class OrdersService {
         color: item.color,
         isGift: item.isGift,
       })),
-      tracking: m.partner ? {
-        trackingCode: m.partner.trackingCode,
-        deliveryName: m.partner.deliveryName,
-        deliveryPhone: m.partner.deliveryPhone,
-        totalFee: m.partner.totalFee,
-        courierUpdates: m.partner.courierUpdates || []
-      } : null
+      tracking: m.partner
+        ? {
+            trackingCode: m.partner.trackingCode,
+            deliveryName: m.partner.deliveryName,
+            deliveryPhone: m.partner.deliveryPhone,
+            totalFee: m.partner.totalFee,
+            courierUpdates: m.partner.courierUpdates || [],
+          }
+        : null,
     };
   }
 
@@ -1677,7 +1733,7 @@ export class OrdersService {
       throw new ForbiddenException('You do not have permission to delete orders');
     }
 
-    const order = await this.findOne(id, userId, role, effectiveStoreId);
+    await this.findOne(id, userId, role, effectiveStoreId);
 
     await this.prisma.$transaction(async (tx) => {
       // Delete commission ledger entries

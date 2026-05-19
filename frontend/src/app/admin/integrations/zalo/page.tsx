@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Plus, ArrowLeft, RefreshCcw, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
@@ -14,6 +14,30 @@ interface Template {
   zaloTemplateId: string;
   zaloStatus: string;
   createdAt: string;
+}
+
+interface ZaloConfigResponse {
+  isConfigured: boolean;
+}
+
+interface MessageResponse {
+  message?: string;
+}
+
+interface SyncStatusResponse {
+  status?: string;
+}
+
+interface CreateTemplatePayload {
+  name: string;
+  title: string;
+  content: string;
+  buttonName: string;
+  buttonUrl: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback;
 }
 
 export default function ZaloIntegrationPage() {
@@ -33,33 +57,58 @@ export default function ZaloIntegrationPage() {
 
   const [isZaloConfigured, setIsZaloConfigured] = useState<boolean>(true);
 
-  useEffect(() => {
-    fetchTemplates();
+  const loadTemplates = useCallback(async () => {
+    const [data, configData] = await Promise.all([
+      apiClientClient.get<Template[]>('/notifications/zalo/templates'),
+      apiClientClient
+        .get<ZaloConfigResponse>('/notifications/zalo/config')
+        .catch(() => ({ isConfigured: false })),
+    ]);
+
+    return {
+      templates: data || [],
+      isConfigured: configData.isConfigured,
+    };
   }, []);
 
-  const fetchTemplates = async () => {
-    try {
-      setLoading(true);
-      const [data, configData] = await Promise.all([
-        apiClientClient.get<Template[]>('/notifications/zalo/templates'),
-        apiClientClient.get<any>('/notifications/zalo/config').catch(() => ({ isConfigured: false }))
-      ]);
-      setTemplates(data || []);
-      setIsZaloConfigured(configData.isConfigured);
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const applyTemplateData = useCallback((data: { templates: Template[]; isConfigured: boolean }) => {
+    setTemplates(data.templates);
+    setIsZaloConfigured(data.isConfigured);
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    void loadTemplates()
+      .then((data) => {
+        if (!isCancelled) {
+          applyTemplateData(data);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [applyTemplateData, loadTemplates]);
 
   const handleRefreshToken = async () => {
     setRefreshingToken(true);
     try {
-      const res = await apiClientClient.post<any>('/notifications/zalo/token/refresh', {});
+      const res = await apiClientClient.post<MessageResponse, Record<string, never>>(
+        '/notifications/zalo/token/refresh',
+        {},
+      );
       alert(res.message || 'Thao tác thành công');
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Có lỗi xảy ra khi làm mới token');
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Có lỗi xảy ra khi làm mới token'));
     } finally {
       setRefreshingToken(false);
     }
@@ -67,11 +116,15 @@ export default function ZaloIntegrationPage() {
 
   const handleSyncStatus = async (id: string) => {
     try {
-      const res = await apiClientClient.post<any>(`/notifications/zalo/templates/${id}/sync`, {});
+      const res = await apiClientClient.post<SyncStatusResponse, Record<string, never>>(
+        `/notifications/zalo/templates/${id}/sync`,
+        {},
+      );
       alert(`Trạng thái mới: ${res.status}`);
-      fetchTemplates();
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Không thể đồng bộ trạng thái');
+      const data = await loadTemplates();
+      applyTemplateData(data);
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Không thể đồng bộ trạng thái'));
     }
   };
 
@@ -79,12 +132,12 @@ export default function ZaloIntegrationPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await apiClientClient.post<any>('/notifications/zalo/templates', {
+      await apiClientClient.post<MessageResponse, CreateTemplatePayload>('/notifications/zalo/templates', {
         name: formName,
         title: formTitle,
         content: formContent,
         buttonName: formBtnName,
-        buttonUrl: formBtnUrl
+        buttonUrl: formBtnUrl,
       });
       alert('Tạo mẫu tin nhắn thành công. Đang chờ Zalo duyệt!');
       setIsModalOpen(false);
@@ -92,9 +145,10 @@ export default function ZaloIntegrationPage() {
       setFormTitle('');
       setFormContent('');
       setFormBtnUrl('');
-      fetchTemplates();
-    } catch (e: any) {
-      alert(e.response?.data?.message || 'Có lỗi khi tạo mẫu');
+      const data = await loadTemplates();
+      applyTemplateData(data);
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Có lỗi khi tạo mẫu'));
     } finally {
       setIsSubmitting(false);
     }

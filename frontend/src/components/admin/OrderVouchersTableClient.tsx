@@ -4,17 +4,55 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { Pencil, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import Select from '@/components/ui/Select';
+
+interface OrderVoucher {
+  id: string;
+  name: string;
+  code: string;
+  orderId: string | null;
+  orderCode: string;
+  phone: string;
+  type: 'PERCENT' | 'FIXED';
+  value: number;
+  durationDays: number | null;
+  status: 'AUTO' | 'ACTIVE' | 'PENDING' | 'LOCKED' | null;
+  resolvedStatus: 'AUTO' | 'ACTIVE' | 'PENDING' | 'LOCKED' | string;
+  isActive: boolean;
+  totalUsageLimit: number | null;
+  usedCount: number;
+  claimedCount: number;
+  totalDiscountUsed: number;
+  voucherMonetaryValue: number;
+  remainingValue: number;
+  orderTotalAmount: number;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 function fmtVND(amount: number) {
   return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' VND';
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function OrderVouchersTableClient() {
-  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<OrderVoucher[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   // Search / filter state
   const [searchOrderCode, setSearchOrderCode] = useState('');
@@ -28,7 +66,7 @@ export default function OrderVouchersTableClient() {
   async function fetchVouchers() {
     try {
       setLoading(true);
-      const data = await apiClientClient.get<any[]>('/vouchers/order-vouchers');
+      const data = await apiClientClient.get<OrderVoucher[]>('/vouchers/order-vouchers');
       setVouchers(data || []);
     } catch (error) {
       console.error('Error fetching order vouchers', error);
@@ -61,9 +99,9 @@ export default function OrderVouchersTableClient() {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await apiClientClient.patch(`/vouchers/${id}`, { status: newStatus });
-      fetchVouchers();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi cập nhật trạng thái');
+      await fetchVouchers();
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lỗi cập nhật trạng thái'));
     }
   };
 
@@ -72,8 +110,8 @@ export default function OrderVouchersTableClient() {
     try {
       await apiClientClient.delete(`/vouchers/${id}`);
       setVouchers(prev => prev.filter(v => v.id !== id));
-    } catch (err: any) {
-      alert(err.message || 'Lỗi xoá voucher');
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lỗi xoá voucher'));
     }
   };
 
@@ -85,7 +123,7 @@ export default function OrderVouchersTableClient() {
     );
   }
 
-  function getStatus(v: any) {
+  function getStatus(v: OrderVoucher) {
     if (v.totalUsageLimit && v.usedCount >= v.totalUsageLimit) {
       return { label: 'Đã sử dụng', cls: 'bg-gray-100 text-gray-700 border border-gray-200' };
     }

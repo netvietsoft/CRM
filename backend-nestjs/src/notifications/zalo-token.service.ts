@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import axios from 'axios';
 
 @Injectable()
@@ -48,7 +48,9 @@ export class ZaloTokenService {
       });
 
       if (!rtConfig || !rtConfig.value) {
-        this.logger.warn('No ZALO_REFRESH_TOKEN found in SystemConfig. Please authorize manually first.');
+        this.logger.warn(
+          'No ZALO_REFRESH_TOKEN found in SystemConfig. Please authorize manually first.',
+        );
         return false;
       }
 
@@ -76,7 +78,10 @@ export class ZaloTokenService {
         await this.prisma.systemConfig.upsert({
           where: { key: 'ZALO_ACCESS_TOKEN' },
           update: { value: { token: data.access_token, expires_in: data.expires_in } },
-          create: { key: 'ZALO_ACCESS_TOKEN', value: { token: data.access_token, expires_in: data.expires_in } },
+          create: {
+            key: 'ZALO_ACCESS_TOKEN',
+            value: { token: data.access_token, expires_in: data.expires_in },
+          },
         });
 
         // Save new refresh token
@@ -109,7 +114,10 @@ export class ZaloTokenService {
     if (success) {
       return { success: true, message: 'Làm mới Zalo Token thành công.' };
     } else {
-      return { success: false, message: 'Làm mới thất bại. Vui lòng kiểm tra log hệ thống hoặc thử cập nhật tay.' };
+      return {
+        success: false,
+        message: 'Làm mới thất bại. Vui lòng kiểm tra log hệ thống hoặc thử cập nhật tay.',
+      };
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 import Select from '@/components/ui/Select';
 
 interface Category {
@@ -54,8 +55,8 @@ export default function CategoryActions({ categories = [] }: CategoryActionsProp
         isActive: true,
       });
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi tạo danh mục');
+    } catch (error) {
+      setError(getApiErrorMessage(error, 'Lỗi tạo danh mục'));
     } finally {
       setLoading(false);
     }

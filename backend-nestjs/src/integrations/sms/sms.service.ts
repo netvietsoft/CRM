@@ -6,7 +6,7 @@ export class SmsService {
   private readonly logger = new Logger(SmsService.name);
   private readonly apiUrl = 'http://125.212.226.79:9020/service/sms_api';
 
-  constructor(private configService: ConfigService) { }
+  constructor(private configService: ConfigService) {}
 
   /**
    * Send an OTP via SMS using the provided API
@@ -58,7 +58,9 @@ export class SmsService {
 
       if (!response.ok) {
         const errText = await response.text();
-        this.logger.error(`[SMS] Failed to send SMS. Status: ${response.status}. Response: ${errText}`);
+        this.logger.error(
+          `[SMS] Failed to send SMS. Status: ${response.status}. Response: ${errText}`,
+        );
         return false;
       }
 
@@ -67,7 +69,9 @@ export class SmsService {
       // Response format: {"code":10,"message":11,"transId":12,"oper":13,"totalSMS":14}
       // Usually code=1 means success, but need to check provider's docs. Let's assume code=1 is success.
       if (data.code === 1 || data.message === 'Success' || data.code === '1' || data.code === 0) {
-        this.logger.log(`[SMS] OTP sent successfully to ${formattedPhone}. Response: ${JSON.stringify(data)}`);
+        this.logger.log(
+          `[SMS] OTP sent successfully to ${formattedPhone}. Response: ${JSON.stringify(data)}`,
+        );
         return true;
       } else {
         this.logger.error(`[SMS] Provider returned error: ${JSON.stringify(data)}`);
@@ -75,9 +79,10 @@ export class SmsService {
         // For now, return true only if successful.
         return false;
       }
-
     } catch (error: any) {
-      this.logger.error(`[SMS] Exception when sending SMS to ${phone}. Error Name: ${error.name}, Message: ${error.message}, Cause: ${error.cause ? JSON.stringify(error.cause) : 'N/A'}, Code: ${error.code || 'N/A'}`);
+      this.logger.error(
+        `[SMS] Exception when sending SMS to ${phone}. Error Name: ${error.name}, Message: ${error.message}, Cause: ${error.cause ? JSON.stringify(error.cause) : 'N/A'}, Code: ${error.code || 'N/A'}`,
+      );
       console.error('[SMS] Full error details:', error);
       return false;
     }

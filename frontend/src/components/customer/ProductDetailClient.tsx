@@ -1,9 +1,11 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Heart, ShoppingBag, Truck, ShieldCheck, Undo2, Sparkles, Share2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { persistReferralCode } from '@/lib/referral-client';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 import ProductReviews from './ProductReviews';
 
 interface Size {
@@ -15,20 +17,6 @@ interface Color {
   id: string;
   name: string;
   hexCode?: string | null;
-}
-
-interface ProductSize {
-  id: string;
-  sizeId: string;
-  stock: number;
-  size: Size;
-}
-
-interface ProductColor {
-  id: string;
-  colorId: string;
-  stock: number;
-  color: Color;
 }
 
 interface ProductVariant {
@@ -149,7 +137,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
     (!selectedColorId || v.colorId === selectedColorId)
   );
 
-  let currentStock = variants.length > 0
+  const currentStock = variants.length > 0
     ? matchingVariants.reduce((sum, v) => sum + v.stock, 0)
     : product.stockQuantity;
 
@@ -170,15 +158,19 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
     currentPrice = currentVariant.price;
   }
 
-  // Effect to clear invalid color when size changes
-  useEffect(() => {
-    if (selectedSizeId && selectedColorId) {
-      const isValid = variants.some(v => v.sizeId === selectedSizeId && v.colorId === selectedColorId);
-      if (!isValid) {
+  const handleSizeSelect = (sizeId: string) => {
+    setSelectedSizeId(sizeId);
+
+    if (selectedColorId) {
+      const isValidColorForSize = variants.some(
+        variant => variant.sizeId === sizeId && variant.colorId === selectedColorId,
+      );
+
+      if (!isValidColorForSize) {
         setSelectedColorId(null);
       }
     }
-  }, [selectedSizeId]);
+  };
 
   const hasDiscount = currentPrice < product.originalPrice;
   const discountPercent = hasDiscount
@@ -327,12 +319,18 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
             {/* Left: Image Box */}
             <div className="flex-shrink-0 relative w-full md:w-auto flex justify-center md:justify-start pt-2 md:pt-8 md:pl-10">
               {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  onClick={() => setIsImageModalOpen(true)}
-                  className="w-[85%] sm:w-full max-w-[280px] aspect-[3/4] object-cover rounded-2xl shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
-                />
+                <div className="relative w-[85%] sm:w-full max-w-[280px] aspect-[3/4]">
+                  <Image
+                    loader={passthroughImageLoader}
+                    unoptimized
+                    src={product.imageUrl}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 640px) 85vw, 280px"
+                    onClick={() => setIsImageModalOpen(true)}
+                    className="object-cover rounded-2xl shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
+                  />
+                </div>
               ) : (
                 <div className="w-full max-w-[280px] aspect-[3/4] bg-gray-200 rounded-2xl flex items-center justify-center shadow-xl">
                   <span className="text-6xl">📦</span>
@@ -374,9 +372,17 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                           onClick={() => router.push(`/portal/stores/${product.store?.slug}`)}
                           className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-md cursor-pointer hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
                         >
-                          <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center overflow-hidden shadow-sm border border-gray-200">
+                          <div className="relative w-6 h-6 rounded-full bg-white flex items-center justify-center overflow-hidden shadow-sm border border-gray-200">
                             {product.store.logoUrl ? (
-                              <img src={product.store.logoUrl} alt={product.store.name} className="w-full h-full object-cover" />
+                              <Image
+                                loader={passthroughImageLoader}
+                                unoptimized
+                                src={product.store.logoUrl}
+                                alt={product.store.name}
+                                fill
+                                sizes="24px"
+                                className="object-cover"
+                              />
                             ) : (
                               <span className="text-[11px] font-bold text-gray-500">{(product.store.name || 'S').charAt(0)}</span>
                             )}
@@ -442,7 +448,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                       return (
                         <button
                           key={size.id}
-                          onClick={() => setSelectedSizeId(size.id)}
+                          onClick={() => handleSizeSelect(size.id)}
                           className={`min-w-[3.5rem] px-3 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ${selectedSizeId === size.id
                             ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 border-2 border-indigo-600'
                             : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-indigo-600 hover:text-indigo-600'
@@ -642,10 +648,14 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                     {/* Product Image */}
                     <div className="relative bg-gray-50 overflow-hidden" style={{ paddingBottom: '125%' }}>
                       {rp.imageUrl ? (
-                        <img
+                        <Image
+                          loader={passthroughImageLoader}
+                          unoptimized
                           src={rp.imageUrl}
                           alt={rp.name}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                          fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                         />
                       ) : (
                         <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-50">
@@ -734,9 +744,17 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                       {/* Store Info */}
                       {rp.store && !rp.store.slug.startsWith('main-store') && (
                         <div className="flex items-center gap-1.5 mb-1.5">
-                          <div className="w-3.5 h-3.5 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <div className="relative w-3.5 h-3.5 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
                             {rp.store.logoUrl ? (
-                              <img src={rp.store.logoUrl} alt={rp.store.name} className="w-full h-full object-cover" />
+                              <Image
+                                loader={passthroughImageLoader}
+                                unoptimized
+                                src={rp.store.logoUrl}
+                                alt={rp.store.name}
+                                fill
+                                sizes="14px"
+                                className="object-cover"
+                              />
                             ) : (
                               <span className="text-[7px] font-bold text-gray-500">{(rp.store.name || 'S').charAt(0)}</span>
                             )}
@@ -794,12 +812,18 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
           >
             <X className="w-8 h-8" />
           </button>
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="max-w-full max-h-full object-contain select-none"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative w-full h-full max-w-[90vw] max-h-[90vh]">
+            <Image
+              loader={passthroughImageLoader}
+              unoptimized
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="90vw"
+              className="object-contain select-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       )}
     </div>

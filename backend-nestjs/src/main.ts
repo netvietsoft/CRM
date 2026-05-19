@@ -7,9 +7,37 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const configuredOrigins = [process.env.CORS, process.env.FRONTEND_URL]
+    .flatMap((value) => (value ? value.split(',') : []))
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const allowedOrigins = new Set(
+    configuredOrigins.length > 0
+      ? configuredOrigins
+      : [
+          'http://localhost:3000',
+          'http://localhost:3002',
+          'http://127.0.0.1:3000',
+          'http://127.0.0.1:3002',
+        ],
+  );
+
   // Enable CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      const isLocalDevOrigin =
+        !!origin &&
+        /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) &&
+        process.env.NODE_ENV !== 'production';
+
+      if (!origin || allowedOrigins.has(origin) || isLocalDevOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
     credentials: true,
   });
 

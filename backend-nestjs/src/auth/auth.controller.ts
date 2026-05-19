@@ -1,5 +1,14 @@
-import { Controller, Post, Body, UseGuards, Get, Req, Res, HttpCode, HttpStatus } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Req,
+  Res,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -18,15 +27,12 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private pancakeService: PancakeService,
-  ) { }
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Register new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
-  async register(
-    @Body() registerDto: RegisterDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.register(registerDto);
 
     // Set cookies
@@ -46,7 +52,7 @@ export class AuthController {
 
     // Auto sync pancake orders if phone is provided
     if (result.user.phone) {
-      this.pancakeService.syncOrdersForUser(result.user.phone, result.user.id).catch(err => {
+      this.pancakeService.syncOrdersForUser(result.user.phone, result.user.id).catch((err) => {
         console.error('Error auto-syncing pancake orders after registration:', err);
       });
     }
@@ -63,10 +69,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({ status: 200, description: 'Login successful' })
-  async login(
-    @Body() loginDto: LoginDto,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(loginDto);
 
     // Set cookies
@@ -125,10 +128,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Logout user' })
-  async logout(
-    @GetUser('userId') userId: string,
-    @Res({ passthrough: true }) response: Response,
-  ) {
+  async logout(@GetUser('userId') userId: string, @Res({ passthrough: true }) response: Response) {
     await this.authService.logout(userId);
 
     // Clear cookies
@@ -141,17 +141,14 @@ export class AuthController {
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth login' })
-  async googleAuth(@Req() req: Request) {
+  async googleAuth() {
     // Guard redirects to Google with state parameter
   }
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
-  async googleAuthCallback(
-    @Req() req: any,
-    @Res() response: Response,
-  ) {
+  async googleAuthCallback(@Req() req: any, @Res() response: Response) {
     const result = await this.authService.googleLogin(req.user);
 
     // Set cookies

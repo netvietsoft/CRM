@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Star, User, Check, Image as ImageIcon, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
+import { useState, useEffect, useCallback } from 'react';
+import { Star, User, Check } from 'lucide-react';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 import ReviewForm from './ReviewForm';
 import Select from '@/components/ui/Select';
 
@@ -27,6 +29,15 @@ interface ReviewStatistics {
   averageRating: number;
   totalReviews: number;
   distribution: { rating: number; count: number }[];
+}
+
+interface ReviewsResponse {
+  reviews: Review[];
+  statistics: ReviewStatistics | null;
+  allImages?: string[];
+  pagination: {
+    totalPages: number;
+  };
 }
 
 interface ProductReviewsProps {
@@ -55,42 +66,63 @@ export default function ProductReviews({ productId, productName, userCompletedOr
   const [loading, setLoading] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const fetchReviews = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        productId,
-        rating: selectedRating,
-        sort: sortBy,
-        page: page.toString(),
-        limit: '10',
-      });
+  const fetchReviews = useCallback(async () => {
+    const params = new URLSearchParams({
+      productId,
+      rating: selectedRating,
+      sort: sortBy,
+      page: page.toString(),
+      limit: '10',
+    });
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/reviews?${params}`);
-      const data = await res.json();
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/reviews?${params}`);
+    const data = await res.json() as ReviewsResponse;
 
-      if (res.ok) {
-        setReviews(data.reviews);
-        setStatistics(data.statistics);
-        setAllImages(data.allImages || []);
-        setTotalPages(data.pagination.totalPages);
-      }
-    } catch (error) {
-      console.error('Error fetching reviews:', error);
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      throw new Error('Failed to fetch reviews');
     }
-  };
+
+    return data;
+  }, [page, productId, selectedRating, sortBy]);
 
   useEffect(() => {
-    fetchReviews();
-  }, [productId, selectedRating, sortBy, page]);
+    let cancelled = false;
+
+    Promise.resolve()
+      .then(() => {
+        if (!cancelled) {
+          setLoading(true);
+        }
+        return fetchReviews();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setReviews(data.reviews);
+          setStatistics(data.statistics);
+          setAllImages(data.allImages || []);
+          setTotalPages(data.pagination.totalPages);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching reviews:', error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchReviews, refreshKey]);
 
   const handleReviewSubmitted = () => {
     setShowReviewForm(false);
     setPage(1);
-    fetchReviews();
+    setRefreshKey(prev => prev + 1);
   };
 
   if (loading && page === 1) {
@@ -170,9 +202,17 @@ export default function ProductReviews({ productId, productName, userCompletedOr
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(img)}
-                      className="aspect-square rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
+                      className="relative aspect-square rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
                     >
-                      <img src={img} alt="" className="w-full h-full object-cover" />
+                      <Image
+                        loader={passthroughImageLoader}
+                        unoptimized
+                        src={img}
+                        alt=""
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                      />
                     </button>
                   ))}
                   {allImages.length > 10 && (
@@ -216,7 +256,10 @@ export default function ProductReviews({ productId, productName, userCompletedOr
           <span className="text-sm text-gray-600">Lọc đánh giá:</span>
           <div className="flex gap-2">
             <button
-              onClick={() => setSelectedRating('all')}
+              onClick={() => {
+                setSelectedRating('all');
+                setPage(1);
+              }}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 selectedRating === 'all'
                   ? 'bg-indigo-600 text-white'
@@ -228,7 +271,10 @@ export default function ProductReviews({ productId, productName, userCompletedOr
             {[5, 4, 3, 2, 1].map((star) => (
               <button
                 key={star}
-                onClick={() => setSelectedRating(star.toString())}
+                onClick={() => {
+                  setSelectedRating(star.toString());
+                  setPage(1);
+                }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   selectedRating === star.toString()
                     ? 'bg-indigo-600 text-white'
@@ -245,7 +291,10 @@ export default function ProductReviews({ productId, productName, userCompletedOr
           <span className="text-sm text-gray-600">Sắp xếp:</span>
           <Select
             value={sortBy}
-            onChange={(val) => setSortBy(val)}
+            onChange={(val) => {
+              setSortBy(val);
+              setPage(1);
+            }}
             className="w-40"
             options={[
               { value: 'newest', label: 'Mới nhất' },
@@ -268,9 +317,13 @@ export default function ProductReviews({ productId, productName, userCompletedOr
                 {/* Avatar */}
                 <div className="flex-shrink-0">
                   {review.user.avatarUrl ? (
-                    <img
+                    <Image
+                      loader={passthroughImageLoader}
+                      unoptimized
                       src={review.user.avatarUrl}
                       alt={review.user.name}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-full object-cover"
                     />
                   ) : (
@@ -329,9 +382,17 @@ export default function ProductReviews({ productId, productName, userCompletedOr
                         <button
                           key={idx}
                           onClick={() => setSelectedImage(img)}
-                          className="w-20 h-20 rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
+                          className="relative w-20 h-20 rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
                         >
-                          <img src={img} alt="" className="w-full h-full object-cover" />
+                          <Image
+                            loader={passthroughImageLoader}
+                            unoptimized
+                            src={img}
+                            alt=""
+                            fill
+                            sizes="80px"
+                            className="object-cover"
+                          />
                         </button>
                       ))}
                     </div>
@@ -379,12 +440,18 @@ export default function ProductReviews({ productId, productName, userCompletedOr
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedImage(null)}
         >
-          <img
-            src={selectedImage}
-            alt=""
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative w-full h-full max-w-[90vw] max-h-[90vh]">
+            <Image
+              loader={passthroughImageLoader}
+              unoptimized
+              src={selectedImage}
+              alt=""
+              fill
+              sizes="90vw"
+              className="object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       )}
     </div>

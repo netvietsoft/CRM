@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
@@ -28,7 +28,7 @@ export class WebhooksService {
 
     if (token) {
       const storeIntegration = await this.prisma.storeIntegration.findFirst({
-        where: { platform: 'VIETTELPOST', isActive: true, accessToken: token }
+        where: { platform: 'VIETTELPOST', isActive: true, accessToken: token },
       });
       if (storeIntegration) {
         return true;
@@ -37,7 +37,9 @@ export class WebhooksService {
 
     // If no token configured, log warning but allow (for development)
     if (!expectedToken) {
-      this.logger.warn('⚠️ VIETTELPOST_WEBHOOK_TOKEN not configured and no store integration matched');
+      this.logger.warn(
+        '⚠️ VIETTELPOST_WEBHOOK_TOKEN not configured and no store integration matched',
+      );
       return true; // Allow in development
     }
 
@@ -60,7 +62,7 @@ export class WebhooksService {
   }
 
   async processViettelPostWebhook(payload: ViettelPostWebhookDto) {
-    const { ORDER_NUMBER, ORDER_STATUS, STATUS_NAME, ORDER_STATUSDATE, NOTE, LOCALION_CURRENTLY, LOCATION_CURRENTLY, MONEY_COLLECTION } = payload.DATA;
+    const { ORDER_NUMBER, ORDER_STATUS, STATUS_NAME } = payload.DATA;
 
     this.logger.log(
       `🔍 Processing order ${ORDER_NUMBER} with status ${ORDER_STATUS} (${STATUS_NAME})`,
@@ -93,9 +95,7 @@ export class WebhooksService {
     });
 
     if (!userVoucher) {
-      this.logger.log(
-        `ℹ️ No voucher found for order ${ORDER_NUMBER}. Skipping voucher logic.`,
-      );
+      this.logger.log(`ℹ️ No voucher found for order ${ORDER_NUMBER}. Skipping voucher logic.`);
       return {
         action: 'order_updated',
         voucherAction: 'skipped',
@@ -132,7 +132,17 @@ export class WebhooksService {
    * Find the Order by tracking code and update its status + metadata
    */
   private async updateOrderFromWebhook(payload: ViettelPostWebhookDto) {
-    const { ORDER_NUMBER, ORDER_STATUS, STATUS_NAME, ORDER_STATUSDATE, NOTE, LOCALION_CURRENTLY, LOCATION_CURRENTLY, MONEY_COLLECTION, ORDER_REFERENCE } = payload.DATA;
+    const {
+      ORDER_NUMBER,
+      ORDER_STATUS,
+      STATUS_NAME,
+      ORDER_STATUSDATE,
+      NOTE,
+      LOCALION_CURRENTLY,
+      LOCATION_CURRENTLY,
+      MONEY_COLLECTION,
+      ORDER_REFERENCE,
+    } = payload.DATA;
 
     let pancakeOrderId: string | null = null;
     if (ORDER_REFERENCE) {
@@ -169,15 +179,17 @@ export class WebhooksService {
 
     // If order not found but we have a pancakeOrderId, try to sync from Pancake directly
     if (orders.length === 0 && pancakeOrderId) {
-      this.logger.warn(`⚠️ No order found for tracking code ${ORDER_NUMBER}. Attempting to sync from Pancake using ORDER_REFERENCE ID: ${pancakeOrderId}`);
+      this.logger.warn(
+        `⚠️ No order found for tracking code ${ORDER_NUMBER}. Attempting to sync from Pancake using ORDER_REFERENCE ID: ${pancakeOrderId}`,
+      );
       const synced = await this.tryPancakeSyncById(Number(pancakeOrderId));
-      
+
       if (synced) {
         // Re-query after sync
         orders = await this.prisma.order.findMany({
           where: { OR: searchConditions },
         });
-        
+
         if (orders.length > 0) {
           this.logger.log(`✅ Found order after Pancake sync, continuing webhook processing.`);
         }
@@ -185,7 +197,9 @@ export class WebhooksService {
     }
 
     if (orders.length === 0) {
-      this.logger.warn(`⚠️ No order found for tracking code ${ORDER_NUMBER} after all sync attempts.`);
+      this.logger.warn(
+        `⚠️ No order found for tracking code ${ORDER_NUMBER} after all sync attempts.`,
+      );
 
       // Fire notification so admin knows a webhook came in
       await this.adminNotificationsService.createNotification({
@@ -193,7 +207,12 @@ export class WebhooksService {
         title: `Cập nhật vận chuyển: ${ORDER_NUMBER}`,
         message: `${STATUS_NAME || `VTP-${ORDER_STATUS}`} (không tìm thấy đơn hàng liên kết)`,
         link: '/admin/orders',
-        metadata: { trackingCode: ORDER_NUMBER, status: ORDER_STATUS, statusName: STATUS_NAME, reference: ORDER_REFERENCE },
+        metadata: {
+          trackingCode: ORDER_NUMBER,
+          status: ORDER_STATUS,
+          statusName: STATUS_NAME,
+          reference: ORDER_REFERENCE,
+        },
       });
       return;
     }
@@ -208,7 +227,8 @@ export class WebhooksService {
         status: STATUS_NAME || `VTP-${ORDER_STATUS}`,
         key: `VTP_${ORDER_STATUS}`,
         note: [NOTE, location].filter(Boolean).join(' - ') || null,
-        update_at: this.parseProviderDate(ORDER_STATUSDATE)?.toISOString() || new Date().toISOString(),
+        update_at:
+          this.parseProviderDate(ORDER_STATUSDATE)?.toISOString() || new Date().toISOString(),
       };
 
       // Get existing metadata
@@ -222,7 +242,9 @@ export class WebhooksService {
       );
 
       if (isDuplicate) {
-        this.logger.log(`ℹ️ Duplicate webhook for order ${order.orderCode}, skipping metadata update.`);
+        this.logger.log(
+          `ℹ️ Duplicate webhook for order ${order.orderCode}, skipping metadata update.`,
+        );
         continue;
       }
 
@@ -258,10 +280,18 @@ export class WebhooksService {
       const previousStatus = order.status;
       const statusChanged = newOrderStatus && newOrderStatus !== previousStatus;
       const statusLabelMap: Record<string, string> = {
-        PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', WAITING_FOR_GOODS: 'Chờ hàng',
-        PACKAGING: 'Đang đóng gói', WAITING_FOR_SHIPPING: 'Chờ vận chuyển', SHIPPED: 'Đang giao hàng',
-        DELIVERED: 'Đã nhận hàng', PAYMENT_COLLECTED: 'Đã thu tiền', COMPLETED: 'Hoàn thành',
-        CANCELLED: 'Đã hủy', REFUNDED: 'Hoàn trả', RETURNING: 'Đang hoàn',
+        PENDING: 'Chờ xác nhận',
+        CONFIRMED: 'Đã xác nhận',
+        WAITING_FOR_GOODS: 'Chờ hàng',
+        PACKAGING: 'Đang đóng gói',
+        WAITING_FOR_SHIPPING: 'Chờ vận chuyển',
+        SHIPPED: 'Đang giao hàng',
+        DELIVERED: 'Đã nhận hàng',
+        PAYMENT_COLLECTED: 'Đã thu tiền',
+        COMPLETED: 'Hoàn thành',
+        CANCELLED: 'Đã hủy',
+        REFUNDED: 'Hoàn trả',
+        RETURNING: 'Đang hoàn',
       };
 
       let nMessage: string;
@@ -279,7 +309,13 @@ export class WebhooksService {
         title: `Đơn hàng ${order.orderCode} cập nhật vận chuyển`,
         message: nMessage,
         link: `/admin/orders/${order.id}`,
-        metadata: { orderId: order.id, orderCode: order.orderCode, status: newOrderStatus, previousStatus, trackingCode: ORDER_NUMBER },
+        metadata: {
+          orderId: order.id,
+          orderCode: order.orderCode,
+          status: newOrderStatus,
+          previousStatus,
+          trackingCode: ORDER_NUMBER,
+        },
       });
     }
   }
@@ -291,7 +327,8 @@ export class WebhooksService {
     const parsed = new Date(normalized);
     if (!Number.isNaN(parsed.getTime())) return parsed;
 
-    const dateTimeMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(normalized);
+    const dateTimeMatch =
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(normalized);
     if (dateTimeMatch) {
       const [, day, month, year, hour = '0', minute = '0', second = '0'] = dateTimeMatch;
       const localDate = new Date(
@@ -305,7 +342,8 @@ export class WebhooksService {
       return Number.isNaN(localDate.getTime()) ? null : localDate;
     }
 
-    const sqlDateTimeMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(normalized);
+    const sqlDateTimeMatch =
+      /^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(normalized);
     if (sqlDateTimeMatch) {
       const [, year, month, day, hour = '0', minute = '0', second = '0'] = sqlDateTimeMatch;
       const localDate = new Date(
@@ -367,7 +405,7 @@ export class WebhooksService {
   ): 'SCHEDULE_UNLOCK' | 'REJECT_IMMEDIATELY' | 'ACTIVATE_IMMEDIATELY' | 'NO_ACTION' {
     // ViettelPost status codes mapping
     // Reference: https://partner2.viettelpost.vn/document/webhook
-    
+
     switch (status) {
       // Delivered successfully - Schedule unlock after 7 days
       case 501: // Đã giao hàng
@@ -393,7 +431,9 @@ export class WebhooksService {
 
     // Check if queue is available
     if (!this.voucherQueue) {
-      this.logger.warn('⚠️  Queue not available - cannot schedule voucher unlock. Activating immediately instead.');
+      this.logger.warn(
+        '⚠️  Queue not available - cannot schedule voucher unlock. Activating immediately instead.',
+      );
       return await this.activateVoucherImmediately(userVoucher, payload);
     }
 
@@ -470,7 +510,7 @@ export class WebhooksService {
       // Cancel any pending unlock jobs
       const jobId = `unlock-voucher-${userVoucher.id}`;
       const existingJob = await this.voucherQueue.getJob(jobId);
-      
+
       if (existingJob) {
         await existingJob.remove();
         this.logger.log(`🗑️ Cancelled pending unlock job ${jobId}`);
@@ -549,25 +589,29 @@ export class WebhooksService {
 
       // Fetch order by ID from Pancake
       const orderDetail = await this.pancakeService.fetchOrderDetail(orderId, integration.storeId);
-      
+
       if (!orderDetail) {
         this.logger.log(`[VTP→Pancake] Pancake order ID ${orderId} not found or failed to fetch.`);
         return false;
       }
 
       this.logger.log(`[VTP→Pancake] Found Pancake order ${orderId}. Syncing...`);
-      
+
       const result = await this.pancakeService.syncSingleOrder(orderDetail, integration.storeId);
-      
+
       if (result.synced) {
         this.logger.log(`[VTP→Pancake] Successfully synced order PCK-${orderId}`);
         return true;
       }
 
-      this.logger.log(`[VTP→Pancake] Order PCK-${orderId} was found but sync logic returned false (e.g. no phone number)`);
+      this.logger.log(
+        `[VTP→Pancake] Order PCK-${orderId} was found but sync logic returned false (e.g. no phone number)`,
+      );
       return false;
     } catch (error) {
-      this.logger.error(`[VTP→Pancake] Error during sync attempt for ID ${orderId}: ${error.message}`);
+      this.logger.error(
+        `[VTP→Pancake] Error during sync attempt for ID ${orderId}: ${error.message}`,
+      );
       return false;
     }
   }

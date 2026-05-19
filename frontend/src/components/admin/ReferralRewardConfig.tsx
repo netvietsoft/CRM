@@ -12,9 +12,35 @@ interface RewardTier {
   voucherName?: string;
 }
 
+interface VoucherSummary {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  value: number;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
 interface Props {
   initialTiers: RewardTier[];
-  vouchers: any[];
+  vouchers: VoucherSummary[];
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
 }
 
 export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) {
@@ -33,7 +59,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const updateTier = (idx: number, field: string, value: any) => {
+  const updateTier = <K extends keyof RewardTier>(idx: number, field: K, value: RewardTier[K]) => {
     setTiers(prev => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], [field]: value };
@@ -63,14 +89,14 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
       await apiClientClient.post('/vouchers/referral-rewards-config', { tiers });
       setSuccess(true);
       router.refresh();
-    } catch (err: any) {
-      alert(err.message || 'Lỗi lưu cấu hình');
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lỗi lưu cấu hình'));
     } finally {
       setSaving(false);
     }
   };
 
-  const getVoucherLabel = (v: any) => {
+  const getVoucherLabel = (v: VoucherSummary | null | undefined) => {
     if (!v) return '';
     const valStr = v.type === 'PERCENT'
       ? `${v.value}%`
@@ -136,7 +162,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                     <select
                       className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                       value={tier.rewardType}
-                      onChange={e => updateTier(idx, 'rewardType', e.target.value)}
+                      onChange={e => updateTier(idx, 'rewardType', e.target.value as RewardTier['rewardType'])}
                     >
                       <option value="SPIN">Lượt quay</option>
                       <option value="VOUCHER">Voucher</option>
@@ -161,7 +187,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                         onChange={e => updateTier(idx, 'voucherId', e.target.value || null)}
                       >
                         <option value="">— Chọn voucher —</option>
-                        {vouchers.map((v: any) => (
+                        {vouchers.map((v) => (
                           <option key={v.id} value={v.id}>
                             {getVoucherLabel(v)}
                           </option>

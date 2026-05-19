@@ -1,22 +1,15 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
-
-interface Integration {
-  id: string;
-  platform: string;
-  apiKey: string | null;
-  apiSecret: string | null;
-  shopId: string | null;
-  accessToken: string | null;
-  isActive: boolean;
-  storeId: string;
-  metadata?: any;
-}
+import type {
+  Integration,
+  IntegrationMetadata,
+  IntegrationSyncResponse,
+} from '@/types/integrations';
 
 const PLATFORMS = [
   { id: 'PANCAKE', name: 'Pancake Pos', icon: '🥞', color: 'bg-orange-500', desc: 'Đồng bộ đơn hàng, kho hàng đa kênh' },
@@ -34,7 +27,7 @@ export default function IntegrationDetailPage() {
   const platformInfo = PLATFORMS.find(p => p.id === platformId);
 
   const [loading, setLoading] = useState(true);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const selectedStoreId = '';
 
   // Form states
   const [formApiKey, setFormApiKey] = useState('');
@@ -42,7 +35,7 @@ export default function IntegrationDetailPage() {
   const [formShopId, setFormShopId] = useState('');
   const [formAccessToken, setFormAccessToken] = useState('');
   const [formIsActive, setFormIsActive] = useState(false);
-  const [formMetadata, setFormMetadata] = useState<any>({});
+  const [formMetadata, setFormMetadata] = useState<IntegrationMetadata>({});
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -57,33 +50,45 @@ export default function IntegrationDetailPage() {
     setShowFields(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
-  useEffect(() => {
-    if (platformId) {
-      fetchIntegration();
-    }
+  const loadExistingIntegration = useCallback(async () => {
+    if (!platformId) return;
+
+    const data = await apiClientClient.get<Integration[]>('/integrations', {
+      params: { storeId: selectedStoreId }
+    });
+
+    return data.find(i => i.platform === platformId);
   }, [platformId, selectedStoreId]);
 
-  const fetchIntegration = async () => {
-    try {
-      const data = await apiClientClient.get<Integration[]>('/integrations', {
-        params: { storeId: selectedStoreId }
+  useEffect(() => {
+    if (!platformId) return;
+
+    let isCancelled = false;
+
+    void loadExistingIntegration()
+      .then((existing) => {
+        if (isCancelled) return;
+
+        setFormApiKey(existing?.apiKey || '');
+        setFormApiSecret(existing?.apiSecret || '');
+        setFormShopId(existing?.shopId || '');
+        setFormAccessToken(existing?.accessToken || '');
+        setFormIsActive(existing?.isActive || false);
+        setFormMetadata(existing?.metadata || {});
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setLoading(false);
+        }
       });
 
-      const existing = (data || []).find(i => i.platform === platformId);
-      if (existing) {
-        setFormApiKey(existing.apiKey || '');
-        setFormApiSecret(existing.apiSecret || '');
-        setFormShopId(existing.shopId || '');
-        setFormAccessToken(existing.accessToken || '');
-        setFormIsActive(existing.isActive || false);
-        setFormMetadata(existing.metadata || {});
-      }
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      isCancelled = true;
+    };
+  }, [platformId, loadExistingIntegration]);
 
   const saveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,15 +103,21 @@ export default function IntegrationDetailPage() {
         accessToken: formAccessToken,
         isActive: formIsActive,
         metadata: formMetadata,
-        ...(selectedStoreId && { storeId: selectedStoreId })
+        ...(selectedStoreId ? { storeId: selectedStoreId } : {})
       };
 
-      await apiClientClient.post<any>('/integrations', payload);
+      await apiClientClient.post<Integration>('/integrations', payload);
+      const existing = await loadExistingIntegration();
+      setFormApiKey(existing?.apiKey || '');
+      setFormApiSecret(existing?.apiSecret || '');
+      setFormShopId(existing?.shopId || '');
+      setFormAccessToken(existing?.accessToken || '');
+      setFormIsActive(existing?.isActive || false);
+      setFormMetadata(existing?.metadata || {});
       alert('Lưu cấu hình thành công!');
-      fetchIntegration();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Lỗi khi lưu cấu hình');
+      alert(error instanceof Error ? error.message : 'Lỗi khi lưu cấu hình');
     } finally {
       setIsSaving(false);
     }
@@ -121,15 +132,15 @@ export default function IntegrationDetailPage() {
     setSyncMessage('Đang đồng bộ sản phẩm...');
 
     try {
-      const data = await apiClientClient.post<any>('/integrations/pancake/sync-products', {
+      const data = await apiClientClient.post<IntegrationSyncResponse>('/integrations/pancake/sync-products', {
         storeId: selectedStoreId
       });
 
       setSyncMessage(data.message || 'Đồng bộ thành công!');
       setTimeout(() => setSyncMessage(''), 5000);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setSyncMessage(error.response?.data?.message || 'Lỗi khi đồng bộ sản phẩm');
+      setSyncMessage(error instanceof Error ? error.message : 'Lỗi khi đồng bộ sản phẩm');
       setTimeout(() => setSyncMessage(''), 5000);
     } finally {
       setIsSyncing(false);
@@ -145,13 +156,13 @@ export default function IntegrationDetailPage() {
     setSyncMessage('Đang đồng bộ danh mục...');
 
     try {
-      const data = await apiClientClient.post<any>('/integrations/pancake/sync-categories', {});
+      const data = await apiClientClient.post<IntegrationSyncResponse>('/integrations/pancake/sync-categories', {});
 
       setSyncMessage(data.message || 'Đồng bộ danh mục thành công!');
       setTimeout(() => setSyncMessage(''), 5000);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setSyncMessage(error.response?.data?.message || 'Lỗi khi đồng bộ danh mục');
+      setSyncMessage(error instanceof Error ? error.message : 'Lỗi khi đồng bộ danh mục');
       setTimeout(() => setSyncMessage(''), 5000);
     } finally {
       setIsSyncingCategories(false);
@@ -227,16 +238,16 @@ export default function IntegrationDetailPage() {
     setSyncMessage('Đang quét và đồng bộ đơn hàng theo ngày đã chọn...');
 
     try {
-      const data = await apiClientClient.post<any>('/integrations/pancake/sync-all-orders', {
+      const data = await apiClientClient.post<IntegrationSyncResponse>('/integrations/pancake/sync-all-orders', {
         storeId: selectedStoreId,
         dates: selectedOrderDates,
       });
 
       setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng từ ${data.total || 0} đơn Pancake. Tổng tiền: ${(data.totalAmount || 0).toLocaleString()}đ`);
       setTimeout(() => setSyncMessage(''), 8000);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setSyncMessage(error.response?.data?.message || 'Lỗi khi đồng bộ đơn hàng');
+      setSyncMessage(error instanceof Error ? error.message : 'Lỗi khi đồng bộ đơn hàng');
       setTimeout(() => setSyncMessage(''), 5000);
     } finally {
       setIsSyncing(false);
@@ -252,16 +263,16 @@ export default function IntegrationDetailPage() {
     setSyncMessage('Đang quét và đồng bộ TOÀN BỘ đơn hàng từ trước đến nay...');
 
     try {
-      const data = await apiClientClient.post<any>('/integrations/pancake/sync-all-orders', {
+      const data = await apiClientClient.post<IntegrationSyncResponse>('/integrations/pancake/sync-all-orders', {
         storeId: selectedStoreId,
         syncAll: true,
       });
 
       setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng mới. Tổng tiền: ${(data.totalAmount || 0).toLocaleString()}đ`);
       setTimeout(() => setSyncMessage(''), 8000);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      setSyncMessage(error.response?.data?.message || 'Lỗi khi đồng bộ toàn bộ đơn hàng');
+      setSyncMessage(error instanceof Error ? error.message : 'Lỗi khi đồng bộ toàn bộ đơn hàng');
       setTimeout(() => setSyncMessage(''), 5000);
     } finally {
       setIsSyncing(false);

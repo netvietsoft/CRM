@@ -1,10 +1,32 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
-import { Pencil, Trash2, Shield, Mail, Phone, Store, UserCheck, Search, ShieldCheck, Edit2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Trash2, Shield, Store, UserCheck, Search, Edit2 } from 'lucide-react';
+
+interface StaffRecord {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  createdAt: string | Date;
+  staffStore?: {
+    name?: string | null;
+  } | null;
+  _count?: {
+    ordersAsSeller?: number;
+  };
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
 
 function fmtDate(d: string | Date) {
   return new Intl.DateTimeFormat('vi-VN', {
@@ -14,30 +36,49 @@ function fmtDate(d: string | Date) {
   }).format(new Date(d));
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function StaffTableClient() {
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   // Filter state
   const [searchName, setSearchName] = useState('');
   const [searchStore, setSearchStore] = useState('');
 
-  useEffect(() => {
-    fetchStaff();
+  const fetchStaff = useCallback(() => {
+    return apiClientClient.get<StaffRecord[]>('/admin/staff');
   }, []);
 
-  async function fetchStaff() {
-    try {
-      setLoading(true);
-      const data = await apiClientClient.get<any[]>('/admin/staff');
-      setStaff(data || []);
-    } catch (error) {
-      console.error('Error fetching staff', error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStaff()
+      .then((data) => {
+        if (!cancelled) {
+          setStaff(data || []);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching staff', error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchStaff]);
 
   const filtered = useMemo(() => {
     let list = staff;
@@ -56,13 +97,13 @@ export default function StaffTableClient() {
     return list;
   }, [staff, searchName, searchStore]);
 
-  const handleRemoveStaff = async (id: string, name: string) => {
+  const handleRemoveStaff = async (id: string, name: string | null) => {
     if (!confirm(`Gỡ quyền nhân viên của "${name}"?\nNgười dùng này sẽ trở lại vai trò Khách hàng.`)) return;
     try {
       await apiClientClient.delete(`/admin/staff/${id}`);
       setStaff(prev => prev.filter(s => s.id !== id));
-    } catch (err: any) {
-      alert(err.message || 'Lỗi khi gỡ quyền nhân viên');
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lỗi khi gỡ quyền nhân viên'));
     }
   };
 

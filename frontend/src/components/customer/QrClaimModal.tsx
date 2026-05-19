@@ -1,8 +1,24 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, useTransition, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { claimQrRewardAction } from '@/actions/qrClaimActions';
+import { apiClientClient } from '@/lib/apiClientClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
+
+interface QrOrderSummaryItem {
+  name: string;
+  image?: string | null;
+  quantity: number;
+}
+
+interface QrOrderSummary {
+  orderCode: string;
+  totalAmount: number;
+  discountAmount: number;
+  items: QrOrderSummaryItem[];
+}
 
 export default function QrClaimModal() {
   const searchParams = useSearchParams();
@@ -19,7 +35,7 @@ export default function QrClaimModal() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [orderInfo, setOrderInfo] = useState<any>(null);
+  const [orderInfo, setOrderInfo] = useState<QrOrderSummary | null>(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(false);
 
   useEffect(() => {
@@ -32,38 +48,47 @@ export default function QrClaimModal() {
 
   useEffect(() => {
     const campaign = searchParams.get('campaign');
-    if (campaign === 'qr_claim') {
-      setIsOpen(true);
-      
-      const urlOrderCode = searchParams.get('orderCode');
-      if (urlOrderCode) {
-        const cleanCode = urlOrderCode.toUpperCase();
-        setOrderCode(cleanCode);
-        fetchOrderInfo(cleanCode);
-      }
-      
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('campaign');
-      params.delete('orderCode');
-      const newUrl = pathname + (params.toString() ? `?${params.toString()}` : '');
-      router.replace(newUrl, { scroll: false });
-    }
-  }, [searchParams, router, pathname]);
+    if (campaign !== 'qr_claim') return;
 
-  const fetchOrderInfo = async (code: string) => {
-    setIsLoadingOrder(true);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/orders/public/qr-summary/${code}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrderInfo(data);
+    let cancelled = false;
+    const urlOrderCode = searchParams.get('orderCode');
+
+    void Promise.resolve().then(async () => {
+      if (cancelled) return;
+
+      setIsOpen(true);
+
+      if (!urlOrderCode) return;
+
+      const cleanCode = urlOrderCode.toUpperCase();
+      setOrderCode(cleanCode);
+      setIsLoadingOrder(true);
+      setOrderInfo(null);
+
+      try {
+        const data = await apiClientClient.get<QrOrderSummary>(`/orders/public/qr-summary/${cleanCode}`);
+        if (!cancelled) {
+          setOrderInfo(data);
+        }
+      } catch (error) {
+        console.error('Error fetching order info:', error);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingOrder(false);
+        }
       }
-    } catch (error) {
-      console.error('Error fetching order info:', error);
-    } finally {
-      setIsLoadingOrder(false);
-    }
-  };
+    });
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('campaign');
+    params.delete('orderCode');
+    const newUrl = pathname + (params.toString() ? `?${params.toString()}` : '');
+    router.replace(newUrl, { scroll: false });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router, pathname]);
 
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -108,7 +133,7 @@ export default function QrClaimModal() {
       } else {
         setMessage({ type: 'error', text: result.message });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Không thể gửi mã. Vui lòng thử lại.' });
     } finally {
       setIsSendingOtp(false);
@@ -171,6 +196,8 @@ export default function QrClaimModal() {
 
   // Format voucher amount based on order total or fallback
   const voucherAmount = orderInfo ? new Intl.NumberFormat('vi-VN').format(orderInfo.totalAmount || orderInfo.discountAmount || 0) : '...';
+  const previewItem = orderInfo?.items[0] ?? null;
+  const orderAmountDisplay = new Intl.NumberFormat('vi-VN').format(orderInfo?.totalAmount ?? 0);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-fadeIn">
@@ -199,23 +226,31 @@ export default function QrClaimModal() {
           {/* Order Info Skeleton or Content */}
           {isLoadingOrder ? (
             <div className="w-full h-32 bg-gray-100 animate-pulse rounded-xl mb-6"></div>
-          ) : orderInfo && orderInfo.items && orderInfo.items.length > 0 ? (
+          ) : previewItem ? (
             <div className="w-full flex items-start gap-4 mb-6 text-left">
               <div className="w-24 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                {orderInfo.items[0].image ? (
-                  <img src={orderInfo.items[0].image} alt={orderInfo.items[0].name} className="w-full h-full object-cover" />
+                {previewItem.image ? (
+                  <Image
+                    loader={passthroughImageLoader}
+                    unoptimized
+                    src={previewItem.image}
+                    alt={previewItem.name}
+                    width={96}
+                    height={128}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No image</div>
                 )}
               </div>
               <div className="flex-1 text-[15px]">
-                <p className="text-gray-800 font-medium mb-2 leading-tight">Đơn hàng : {orderInfo.items[0].name}</p>
-                <p className="text-gray-700 mb-2">Số lượng : {orderInfo.items[0].quantity}</p>
+                <p className="text-gray-800 font-medium mb-2 leading-tight">Đơn hàng : {previewItem.name}</p>
+                <p className="text-gray-700 mb-2">Số lượng : {previewItem.quantity}</p>
                 <p className="text-gray-700 mb-2">
-                  Thanh toán : {new Intl.NumberFormat('vi-VN').format(orderInfo.totalAmount)}
+                  Thanh toán : {orderAmountDisplay}
                 </p>
                 <p className="text-[#ff3b3b] font-medium mt-4 text-sm">
-                  Đã thanh toán: {new Intl.NumberFormat('vi-VN').format(orderInfo.totalAmount)}
+                  Đã thanh toán: {orderAmountDisplay}
                 </p>
               </div>
             </div>

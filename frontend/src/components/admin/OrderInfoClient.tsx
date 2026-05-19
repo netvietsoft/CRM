@@ -1,17 +1,45 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronUp, Calendar, X, ChevronRight } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
 import { useOrderSave } from '@/components/admin/OrderSaveProvider';
 import { apiClientClient } from '@/lib/apiClientClient';
 
+interface OrderInfoTag {
+  name?: string | null;
+}
+
+interface OrderInfoMetadata {
+  tags?: Array<string | OrderInfoTag> | null;
+  pancakeCreatedAt?: string | Date | null;
+  reasonValue?: string | null;
+  delayValue?: string | null;
+}
+
+interface StaffMember {
+  id: string;
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  role?: string | null;
+  staffStoreId?: string | null;
+  createdAt?: string | Date | null;
+}
+
+interface OrderInfoOrder {
+  id: string;
+  assigningSellerId?: string | null;
+  assigningCareId?: string | null;
+  createdAt?: string | Date | null;
+}
+
 interface OrderInfoClientProps {
-  order: any;
-  metadata: any;
+  order: OrderInfoOrder;
+  metadata?: OrderInfoMetadata | null;
   isPancake: boolean;
-  staffList?: any[];
+  staffList?: StaffMember[];
   statusLabel?: string;
 }
 
@@ -59,14 +87,21 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
-  const m = metadata || {};
+  const m = metadata ?? {};
+  const initialTags = Array.isArray(m.tags)
+    ? m.tags
+        .map(tag => (typeof tag === 'string' ? tag : tag.name || ''))
+        .filter((tag): tag is string => Boolean(tag))
+    : statusLabel
+      ? [statusLabel]
+      : [];
   
   // Tags initialization: use existing tags or the status label as default
-  const [tags, setTags] = useState<string[]>(m.tags || []);
+  const [tags, setTags] = useState<string[]>(initialTags);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Staff State
-  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(staffList);
   const [assigningSellerId, setAssigningSellerId] = useState(order.assigningSellerId || '');
   const [assigningCareId, setAssigningCareId] = useState(order.assigningCareId || '');
   const [savingStaff, setSavingStaff] = useState(false);
@@ -80,16 +115,25 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
 
   // Fetch staff members from API
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchMembers() {
       try {
-        const data = await apiClientClient.get<{ staff: any[] }>('/admin/staff/members');
-        setStaffMembers(data?.staff || []);
+        const data = await apiClientClient.get<{ staff: StaffMember[] }>('/admin/staff/members');
+        if (!cancelled) {
+          setStaffMembers(data?.staff || staffList);
+        }
       } catch (err) {
         console.error('Error fetching staff members:', err);
       }
     }
-    fetchMembers();
-  }, []);
+
+    void fetchMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [staffList]);
 
   // Register Save Action for metadata fields
   useEffect(() => {
@@ -100,7 +144,7 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
         tags,
       });
     });
-  }, [reasonValue, delayValue, tags, order.id]);
+  }, [delayValue, order.id, reasonValue, registerSaveAction, tags]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -129,7 +173,11 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
     setHasChanges(true);
   };
 
-  const fmtDate = (d: string | Date) => {
+  const fmtDate = (d?: string | Date | null) => {
+    if (!d) {
+      return '';
+    }
+
     try {
       const date = new Date(d);
       if (isNaN(date.getTime())) return '';

@@ -6,14 +6,25 @@ export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
+function getErrorMessage(data: unknown, fallback: string) {
+  if (typeof data === 'object' && data !== null && 'message' in data) {
+    const message = (data as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
 /**
  * Custom error class that carries the HTTP status code from API responses.
  */
-export class ApiError extends Error {
+export class ApiError<TData = unknown> extends Error {
   status: number;
-  response: { status: number; data: any };
+  response: { status: number; data: TData | undefined };
 
-  constructor(message: string, status: number, data?: any) {
+  constructor(message: string, status: number, data?: TData) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
@@ -55,14 +66,14 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    let errorData;
+    let errorData: unknown;
     try {
       errorData = await response.json();
     } catch {
       errorData = { message: 'An unknown error occurred' };
     }
     throw new ApiError(
-      errorData.message || `Request failed with status ${response.status}`,
+      getErrorMessage(errorData, `Request failed with status ${response.status}`),
       response.status,
       errorData,
     );
@@ -74,21 +85,21 @@ export async function apiRequest<T>(
 export const apiClient = {
   get: <T>(endpoint: string, options?: ApiOptions) =>
     apiRequest<T>(endpoint, { ...options, method: 'GET' }),
-  
-  post: <T>(endpoint: string, body?: any, options?: ApiOptions) =>
+
+  post: <T, TBody = unknown>(endpoint: string, body?: TBody, options?: ApiOptions) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  
-  patch: <T>(endpoint: string, body?: any, options?: ApiOptions) =>
+
+  patch: <T, TBody = unknown>(endpoint: string, body?: TBody, options?: ApiOptions) =>
     apiRequest<T>(endpoint, {
       ...options,
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
-  
+
   delete: <T>(endpoint: string, options?: ApiOptions) =>
     apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
 };

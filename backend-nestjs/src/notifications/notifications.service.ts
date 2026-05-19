@@ -118,7 +118,10 @@ export class NotificationsService {
     });
 
     if (!template || template.channel !== 'ZALO' || template.zaloStatus !== 'ENABLE') {
-      throw new HttpException('Template không hợp lệ hoặc chưa được Zalo duyệt (ENABLE).', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Template không hợp lệ hoặc chưa được Zalo duyệt (ENABLE).',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // 2. Fetch users and filter out those without phone numbers
@@ -131,12 +134,15 @@ export class NotificationsService {
     });
 
     if (users.length === 0) {
-      throw new HttpException('Không có khách hàng nào có số điện thoại hợp lệ để gửi.', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Không có khách hàng nào có số điện thoại hợp lệ để gửi.',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // 3. Create Notification records
     const notifications = await Promise.all(
-      users.map(user => 
+      users.map((user) =>
         this.prisma.notification.create({
           data: {
             userId: user.id,
@@ -146,9 +152,9 @@ export class NotificationsService {
             body: template.body, // In a real scenario, you might replace placeholders here too
             status: 'QUEUED',
             metadata: dto.templateData as any,
-          }
-        })
-      )
+          },
+        }),
+      ),
     );
 
     // 4. Enqueue jobs with delay to respect rate limits (e.g. 200ms per message = 5 msgs/sec)
@@ -162,23 +168,26 @@ export class NotificationsService {
         templateId: template.zaloTemplateId,
         templateData: dto.templateData,
       };
-      
+
       const currentDelay = delay;
       delay += delayIncrement;
 
       return {
         name: 'send-zns',
         data: jobData,
-        opts: { 
+        opts: {
           delay: currentDelay,
           attempts: 3,
-          backoff: { type: 'exponential', delay: 2000 } 
+          backoff: { type: 'exponential', delay: 2000 },
         },
       };
     });
 
     if (!this.zaloQueue) {
-      throw new HttpException('Zalo ZNS queue is not available (Redis not configured)', HttpStatus.SERVICE_UNAVAILABLE);
+      throw new HttpException(
+        'Zalo ZNS queue is not available (Redis not configured)',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
     await this.zaloQueue.addBulk(jobs);
 
@@ -200,4 +209,3 @@ export class NotificationsService {
     });
   }
 }
-

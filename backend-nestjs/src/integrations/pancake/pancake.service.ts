@@ -40,7 +40,7 @@ export class PancakeService {
       searchTerms.add(`84${normalizedPhone.slice(1)}`);
     }
 
-    return Array.from(searchTerms).filter(term => term.length >= 9);
+    return Array.from(searchTerms).filter((term) => term.length >= 9);
   }
 
   private async getActivePancakeIntegrations(storeId?: string) {
@@ -72,11 +72,13 @@ export class PancakeService {
     if (shopId) whereClause.shopId = shopId;
 
     const pConfig = await this.prisma.storeIntegration.findFirst({
-      where: whereClause
+      where: whereClause,
     });
-    
+
     if (!pConfig) {
-      this.logger.error(`[Pancake] No active Pancake integration found in database (storeId: ${storeId}, shopId: ${shopId})`);
+      this.logger.error(
+        `[Pancake] No active Pancake integration found in database (storeId: ${storeId}, shopId: ${shopId})`,
+      );
       return null;
     }
 
@@ -88,7 +90,9 @@ export class PancakeService {
       return null;
     }
 
-    this.logger.log(`[Pancake] Using config from database - Shop ID: ${configShopId.substring(0, 8)}...`);
+    this.logger.log(
+      `[Pancake] Using config from database - Shop ID: ${configShopId.substring(0, 8)}...`,
+    );
     return { shopId: configShopId, apiKey };
   }
 
@@ -98,10 +102,10 @@ export class PancakeService {
 
     try {
       const url = `https://pos.pages.fm/api/v1/shops/${config.shopId}/orders?api_key=${config.apiKey}&search=${encodeURIComponent(phone)}&page_size=100`;
-      
+
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -113,7 +117,7 @@ export class PancakeService {
       if (data.success && Array.isArray(data.data)) {
         return data.data;
       }
-      
+
       return [];
     } catch (error) {
       this.logger.error('[Pancake] Error fetching orders:', error);
@@ -222,7 +226,7 @@ export class PancakeService {
       const url = `https://pos.pages.fm/api/v1/shops/${config.shopId}/orders/${orderId}?api_key=${config.apiKey}`;
       const response = await fetch(url, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) return null;
@@ -236,7 +240,7 @@ export class PancakeService {
 
   private extractItemsMetadata(items: any[]) {
     if (!items || items.length === 0) return [];
-    return items.map(item => ({
+    return items.map((item) => ({
       name: item.variation_info?.name || 'Sản phẩm không rõ',
       price: item.variation_info?.retail_price || 0,
       quantity: item.quantity || 1,
@@ -281,9 +285,18 @@ export class PancakeService {
     const rawGender = customer?.gender;
     let parsedGender = null;
     const genderStr = String(rawGender).toLowerCase().trim();
-    if (rawGender === 1 || genderStr === '1' || genderStr === 'male' || genderStr === 'nam') parsedGender = 'MALE';
-    else if (rawGender === 2 || genderStr === '2' || genderStr === 'female' || genderStr === 'nữ' || genderStr === 'nu') parsedGender = 'FEMALE';
-    else if (genderStr === 'other' || genderStr === 'khác' || genderStr === 'khac') parsedGender = 'OTHER';
+    if (rawGender === 1 || genderStr === '1' || genderStr === 'male' || genderStr === 'nam')
+      parsedGender = 'MALE';
+    else if (
+      rawGender === 2 ||
+      genderStr === '2' ||
+      genderStr === 'female' ||
+      genderStr === 'nữ' ||
+      genderStr === 'nu'
+    )
+      parsedGender = 'FEMALE';
+    else if (genderStr === 'other' || genderStr === 'khác' || genderStr === 'khac')
+      parsedGender = 'OTHER';
 
     return {
       name: customer?.name || shippingAddr?.full_name || null,
@@ -302,20 +315,20 @@ export class PancakeService {
 
     const normalized = value.trim();
     let toParse = normalized;
-    
+
     // Handle ISO-like strings (e.g., 2026-05-07T04:38:46.664424 or 2026-05-07T04:38:46Z)
     if (/^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}/.test(normalized)) {
       // Normalize to ISO format with T separator
       toParse = normalized.replace(' ', 'T');
-      
+
       // Truncate fractional seconds to 3 digits for consistent parsing
       toParse = toParse.replace(/(\.\d{3})\d+/, '$1');
-      
+
       // If no timezone info, assume it's GMT+0 (Pancake default)
       if (!toParse.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(toParse)) {
         toParse = toParse + 'Z';
       }
-      
+
       const parsed = new Date(toParse);
       if (!Number.isNaN(parsed.getTime())) {
         // Convert GMT+0 to GMT+7 by adding 7 hours
@@ -324,18 +337,22 @@ export class PancakeService {
       }
     }
 
-    const dateTimeMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(normalized) ||
-      /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s+(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(normalized);
+    const dateTimeMatch =
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/.exec(
+        normalized,
+      ) || /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s+(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(normalized);
 
     if (dateTimeMatch) {
-      const isDateFirst = normalized.includes('/') && (normalized.indexOf('/') < normalized.indexOf(':') || normalized.indexOf(':') === -1);
+      const isDateFirst =
+        normalized.includes('/') &&
+        (normalized.indexOf('/') < normalized.indexOf(':') || normalized.indexOf(':') === -1);
       let day, month, year, hour, minute, second;
       if (isDateFirst) {
         [, day, month, year, hour = '00', minute = '00', second = '00'] = dateTimeMatch;
       } else {
         [, hour, minute, second = '00', day, month, year] = dateTimeMatch;
       }
-      
+
       // Pad single digits
       const pad = (v: any) => String(v).padStart(2, '0');
       // Create date string in ISO format with Vietnam timezone offset
@@ -348,7 +365,7 @@ export class PancakeService {
 
   private normalizeCourierUpdates(updates: any[]) {
     if (!updates || !Array.isArray(updates)) return [];
-    return updates.map(u => {
+    return updates.map((u) => {
       if (typeof u === 'string') {
         const timeMatch = u.match(/^(\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{1,2}(?::\d{1,2})?)/);
         const altTimeMatch = u.match(/^(\d{1,2}:\d{1,2}(?::\d{1,2})?\s+\d{1,2}\/\d{1,2}\/\d{4})/);
@@ -362,7 +379,8 @@ export class PancakeService {
           update_at: this.parseDate(timeStr) || new Date().toISOString(),
         };
       }
-      const timeField = u.updated_at || u.update_at || u.update_time || u.time || u.inserted_at || u.created_at;
+      const timeField =
+        u.updated_at || u.update_at || u.update_time || u.time || u.inserted_at || u.created_at;
       return {
         status: u.status || u.key || 'Cập nhật',
         note: u.note || null,
@@ -380,9 +398,7 @@ export class PancakeService {
     if (searchTerms.length === 0) return 0;
 
     let totalNewSpent = 0;
-    let syncedCount = 0;
     let customerInfoSynced = false;
-    let totalFetchedOrders = 0;
     const processedOrders = new Set<string>();
 
     for (const integration of integrations) {
@@ -391,7 +407,6 @@ export class PancakeService {
         const orders = await this.fetchOrdersByPhone(searchTerm, integration.storeId);
         for (const order of orders) orderMap.set(String(order.id), order);
       }
-      totalFetchedOrders += orderMap.size;
       for (const pOrder of orderMap.values()) {
         const dedupeKey = `${integration.storeId}:${pOrder.id}`;
         if (processedOrders.has(dedupeKey)) continue;
@@ -400,7 +415,6 @@ export class PancakeService {
           const result = await this.syncSingleOrder(pOrder, integration.storeId, userId);
           if (result.synced) {
             totalNewSpent += result.amount;
-            syncedCount++;
             if (!customerInfoSynced) {
               const orderDetail = await this.fetchOrderDetail(pOrder.id, integration.storeId);
               if (orderDetail) {
@@ -445,7 +459,7 @@ export class PancakeService {
     }
   }
 
-  private async updateUserRankAndSpent(userId: string, _addedSpent?: number) {
+  private async updateUserRankAndSpent(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) return;
     const result = await this.prisma.order.aggregate({
@@ -462,7 +476,10 @@ export class PancakeService {
     if (!config) return [];
     try {
       const url = `https://pos.pages.fm/api/v1/shops/${config.shopId}/categories?api_key=${config.apiKey}`;
-      const response = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
       if (!response.ok) return [];
       const data = await response.json();
       return data.success && Array.isArray(data.data) ? data.data : [];
@@ -488,17 +505,36 @@ export class PancakeService {
   }
 
   private async syncCategoryRecursive(pCategory: any, parentId: string | null) {
-    const slug = pCategory.text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[dđ]/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + `-${pCategory.id}`;
-    const existingCategory = await this.prisma.category.findFirst({ where: { OR: [{ externalId: String(pCategory.id) }, { slug }] } });
-    const categoryData = { name: pCategory.text, slug, parentId, externalId: String(pCategory.id), isActive: true };
+    const slug =
+      pCategory.text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[dđ]/g, 'd')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') + `-${pCategory.id}`;
+    const existingCategory = await this.prisma.category.findFirst({
+      where: { OR: [{ externalId: String(pCategory.id) }, { slug }] },
+    });
+    const categoryData = {
+      name: pCategory.text,
+      slug,
+      parentId,
+      externalId: String(pCategory.id),
+      isActive: true,
+    };
     let category;
     if (existingCategory) {
-      category = await this.prisma.category.update({ where: { id: existingCategory.id }, data: categoryData });
+      category = await this.prisma.category.update({
+        where: { id: existingCategory.id },
+        data: categoryData,
+      });
     } else {
       category = await this.prisma.category.create({ data: categoryData });
     }
     if (pCategory.nodes && Array.isArray(pCategory.nodes) && pCategory.nodes.length > 0) {
-      for (const childCategory of pCategory.nodes) await this.syncCategoryRecursive(childCategory, category.id);
+      for (const childCategory of pCategory.nodes)
+        await this.syncCategoryRecursive(childCategory, category.id);
     }
     return category;
   }
@@ -508,11 +544,18 @@ export class PancakeService {
     if (!config) return { variations: [], hasMore: false, total: 0 };
     try {
       const url = `https://pos.pages.fm/api/v1/shops/${config.shopId}/products/variations?api_key=${config.apiKey}&page=${page}&page_size=${pageSize}`;
-      const response = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
       if (!response.ok) return { variations: [], hasMore: false, total: 0 };
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
-        return { variations: data.data, hasMore: (data.page_number || page) < (data.total_pages || 0), total: data.total_entries || 0 };
+        return {
+          variations: data.data,
+          hasMore: (data.page_number || page) < (data.total_pages || 0),
+          total: data.total_entries || 0,
+        };
       }
       return { variations: [], hasMore: false, total: 0 };
     } catch (error) {
@@ -525,15 +568,31 @@ export class PancakeService {
     let color = null;
     let size = null;
     if (Array.isArray(itemFields)) {
-      const sizeField = itemFields.find(f => { const n = String(f?.name || '').toLowerCase(); return n.includes('size') || n.includes('kich') || n.includes('kích'); });
-      const colorField = itemFields.find(f => { const n = String(f?.name || '').toLowerCase(); return n.includes('color') || n.includes('mau') || n.includes('màu'); });
+      const sizeField = itemFields.find((f) => {
+        const n = String(f?.name || '').toLowerCase();
+        return n.includes('size') || n.includes('kich') || n.includes('kích');
+      });
+      const colorField = itemFields.find((f) => {
+        const n = String(f?.name || '').toLowerCase();
+        return n.includes('color') || n.includes('mau') || n.includes('màu');
+      });
       if (sizeField?.value) size = String(sizeField.value).trim().toUpperCase();
       if (colorField?.value) color = String(colorField.value).trim();
     }
-    const sizePattern = /\s+(?:Size|size|ize)\s+([X]{1,3}L|2XL|3XL|[LMS]|Freesize|Free\s*size)\b|\s+([X]{1,3}L|[LMS]|Freesize|Free\s*size)\b(?=\s*$)/gi;
+    const sizePattern =
+      /\s+(?:Size|size|ize)\s+([X]{1,3}L|2XL|3XL|[LMS]|Freesize|Free\s*size)\b|\s+([X]{1,3}L|[LMS]|Freesize|Free\s*size)\b(?=\s*$)/gi;
     const matches = Array.from(baseName.matchAll(sizePattern));
-    if (matches.length > 0 && !size) size = (matches[matches.length - 1][1] || matches[matches.length - 1][2] || '').toUpperCase().trim();
-    baseName = baseName.replace(/\s+(?:Size|size|ize)\s+[X]{1,3}L\b/gi, ' ').replace(/\s+(?:Size|size|ize)\s+[LMS]\b/gi, ' ').replace(/\s+[X]{1,3}L\s*$/gi, '').replace(/\s+[LMS]\s*$/gi, '').replace(/\s+(?:Size|size|ize)\b/gi, ' ').trim();
+    if (matches.length > 0 && !size)
+      size = (matches[matches.length - 1][1] || matches[matches.length - 1][2] || '')
+        .toUpperCase()
+        .trim();
+    baseName = baseName
+      .replace(/\s+(?:Size|size|ize)\s+[X]{1,3}L\b/gi, ' ')
+      .replace(/\s+(?:Size|size|ize)\s+[LMS]\b/gi, ' ')
+      .replace(/\s+[X]{1,3}L\s*$/gi, '')
+      .replace(/\s+[LMS]\s*$/gi, '')
+      .replace(/\s+(?:Size|size|ize)\b/gi, ' ')
+      .trim();
     const colorPattern = /(Đen|Đỏ|Xanh|Trắng|Hồng|Be|Tím|Vàng|Nâu|Xám|Cam)\b/gi;
     const colorMatches = Array.from(baseName.matchAll(colorPattern));
     if (colorMatches.length > 0 && !color) color = colorMatches[0][1];
@@ -546,7 +605,10 @@ export class PancakeService {
     let store = null;
     if (storeId) store = await this.prisma.store.findUnique({ where: { id: storeId } });
     else {
-      const integration = await this.prisma.storeIntegration.findFirst({ where: { platform: 'PANCAKE', isActive: true }, include: { store: true } });
+      const integration = await this.prisma.storeIntegration.findFirst({
+        where: { platform: 'PANCAKE', isActive: true },
+        include: { store: true },
+      });
       store = integration?.store;
     }
     if (!store) return { synced: 0, errors: 0, total: 0 };
@@ -571,7 +633,7 @@ export class PancakeService {
       if (page > 100) break;
     }
 
-    for (const [baseName, variations] of productMap.entries()) {
+    for (const variations of productMap.values()) {
       try {
         await this.syncProductFromVariations(variations, store.id);
         totalSynced++;
@@ -590,45 +652,87 @@ export class PancakeService {
 
     const { baseName } = this.extractProductInfo(productData.name);
     const pancakeProductId = baseName.toLowerCase().replace(/\s+/g, '-');
-    const slug = baseName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[dđ]/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const slug = baseName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[dđ]/g, 'd')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     const totalStock = variations.reduce((sum, v) => sum + Math.max(0, v.remain_quantity || 0), 0);
-    let mainImage = productData.image || (firstVariation.images?.[0]) || null;
+    const mainImage = productData.image || firstVariation.images?.[0] || null;
     const retailPrice = firstVariation.retail_price || 0;
     const salePrice = firstVariation.price_at_counter || retailPrice;
 
-    const existingProduct = await this.prisma.product.findFirst({ where: { externalId: pancakeProductId } });
-    const productPayload = { name: baseName, slug, sku: productData.display_id || null, externalId: pancakeProductId, imageUrl: mainImage, description: productData.note_product || productData.note || null, originalPrice: retailPrice, salePrice, stockQuantity: totalStock, weight: 500, isActive: productData.is_published !== false, storeId };
+    const existingProduct = await this.prisma.product.findFirst({
+      where: { externalId: pancakeProductId },
+    });
+    const productPayload = {
+      name: baseName,
+      slug,
+      sku: productData.display_id || null,
+      externalId: pancakeProductId,
+      imageUrl: mainImage,
+      description: productData.note_product || productData.note || null,
+      originalPrice: retailPrice,
+      salePrice,
+      stockQuantity: totalStock,
+      weight: 500,
+      isActive: productData.is_published !== false,
+      storeId,
+    };
 
     let product;
-    if (existingProduct) product = await this.prisma.product.update({ where: { id: existingProduct.id }, data: productPayload });
+    if (existingProduct)
+      product = await this.prisma.product.update({
+        where: { id: existingProduct.id },
+        data: productPayload,
+      });
     else product = await this.prisma.product.create({ data: productPayload });
 
     if (productData.categories && Array.isArray(productData.categories)) {
-      const categoryIds = productData.categories.map((cat: any) => typeof cat === 'number' ? cat : (cat?.id || null)).filter((id: any) => id !== null);
+      const categoryIds = productData.categories
+        .map((cat: any) => (typeof cat === 'number' ? cat : cat?.id || null))
+        .filter((id: any) => id !== null);
       if (categoryIds.length > 0) await this.syncProductCategories(product.id, categoryIds);
     }
     await this.syncProductVariations(product.id, variations);
   }
 
   private async syncProductCategories(productId: string, pancakeCategoryIds: number[]) {
-    const categories = await this.prisma.category.findMany({ where: { externalId: { in: pancakeCategoryIds.map(id => String(id)) } } });
+    const categories = await this.prisma.category.findMany({
+      where: { externalId: { in: pancakeCategoryIds.map((id) => String(id)) } },
+    });
     if (categories.length === 0) return;
-    const product = await this.prisma.product.findUnique({ where: { id: productId }, include: { categories: true } });
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: { categories: true },
+    });
     if (!product) return;
-    const categoryIdsToConnect = categories.map(c => c.id);
-    const existingCategoryIds = product.categories.map(c => c.id);
-    const categoriesToAdd = categoryIdsToConnect.filter(id => !existingCategoryIds.includes(id));
+    const categoryIdsToConnect = categories.map((c) => c.id);
+    const existingCategoryIds = product.categories.map((c) => c.id);
+    const categoriesToAdd = categoryIdsToConnect.filter((id) => !existingCategoryIds.includes(id));
     if (categoriesToAdd.length > 0) {
-      await this.prisma.product.update({ where: { id: productId }, data: { categories: { connect: categoriesToAdd.map(id => ({ id })) } } });
+      await this.prisma.product.update({
+        where: { id: productId },
+        data: { categories: { connect: categoriesToAdd.map((id) => ({ id })) } },
+      });
     }
   }
 
   private async syncProductVariations(productId: string, variations: any[]) {
-    const variantMap = new Map<string, { sizeId: string | null; colorId: string | null; price: number | null; stock: number }>();
+    const variantMap = new Map<
+      string,
+      { sizeId: string | null; colorId: string | null; price: number | null; stock: number }
+    >();
     for (const variation of variations) {
-      const { color, size } = this.extractProductInfo(variation.product?.name || '', variation.fields);
+      const { color, size } = this.extractProductInfo(
+        variation.product?.name || '',
+        variation.fields,
+      );
       if (!size && !color) continue;
-      let sizeId = null, colorId = null;
+      let sizeId = null,
+        colorId = null;
       if (size) {
         let sizeRecord = await this.prisma.size.findUnique({ where: { name: size } });
         if (!sizeRecord) sizeRecord = await this.prisma.size.create({ data: { name: size } });
@@ -639,35 +743,78 @@ export class PancakeService {
         if (!colorRecord) colorRecord = await this.prisma.color.create({ data: { name: color } });
         colorId = colorRecord.id;
       }
-      const stock = Math.max(0, variation.remain_quantity || 0), price = variation.price_at_counter || variation.retail_price || null;
+      const stock = Math.max(0, variation.remain_quantity || 0),
+        price = variation.price_at_counter || variation.retail_price || null;
       const key = `${sizeId || 'null'}_${colorId || 'null'}`;
       if (variantMap.has(key)) {
-        const e = variantMap.get(key)!; e.stock += stock; if (price && (!e.price || price > e.price)) e.price = price;
+        const e = variantMap.get(key)!;
+        e.stock += stock;
+        if (price && (!e.price || price > e.price)) e.price = price;
       } else variantMap.set(key, { sizeId, colorId, price, stock });
     }
     for (const [, variant] of variantMap) {
       try {
-        const existingVariant = await this.prisma.productVariant.findFirst({ where: { productId, sizeId: variant.sizeId, colorId: variant.colorId } });
-        if (existingVariant) await this.prisma.productVariant.update({ where: { id: existingVariant.id }, data: { price: variant.price, stock: variant.stock } });
-        else await this.prisma.productVariant.create({ data: { productId, sizeId: variant.sizeId, colorId: variant.colorId, price: variant.price, stock: variant.stock } });
+        const existingVariant = await this.prisma.productVariant.findFirst({
+          where: { productId, sizeId: variant.sizeId, colorId: variant.colorId },
+        });
+        if (existingVariant)
+          await this.prisma.productVariant.update({
+            where: { id: existingVariant.id },
+            data: { price: variant.price, stock: variant.stock },
+          });
+        else
+          await this.prisma.productVariant.create({
+            data: {
+              productId,
+              sizeId: variant.sizeId,
+              colorId: variant.colorId,
+              price: variant.price,
+              stock: variant.stock,
+            },
+          });
       } catch (error: any) {
         if (error.code === 'P2002') {
-          const existing = await this.prisma.productVariant.findFirst({ where: { productId, sizeId: variant.sizeId, colorId: variant.colorId } });
-          if (existing) await this.prisma.productVariant.update({ where: { id: existing.id }, data: { price: variant.price, stock: variant.stock } });
+          const existing = await this.prisma.productVariant.findFirst({
+            where: { productId, sizeId: variant.sizeId, colorId: variant.colorId },
+          });
+          if (existing)
+            await this.prisma.productVariant.update({
+              where: { id: existing.id },
+              data: { price: variant.price, stock: variant.stock },
+            });
         }
       }
     }
   }
 
-  async syncAllOrders(storeId?: string, startDate?: string, endDate?: string, dates?: string[], syncAll?: boolean) {
+  async syncAllOrders(
+    storeId?: string,
+    startDate?: string,
+    endDate?: string,
+    dates?: string[],
+    syncAll?: boolean,
+  ) {
     const integrations = await this.getActivePancakeIntegrations(storeId);
     if (integrations.length === 0) return { synced: 0, errors: 0, total: 0, totalAmount: 0 };
-    const dateRanges = syncAll ? [{ start: new Date('2010-01-01'), end: new Date() }] : dates && dates.length > 0 ? Array.from(new Set(dates)).map(date => this.buildDateRange(date)) : startDate && endDate ? [{ start: new Date(startDate), end: new Date(endDate) }] : [this.buildDateRange(new Date().toISOString().slice(0, 10))];
-    let totalSynced = 0, totalErrors = 0, totalAmount = 0, totalFetched = 0;
+    const dateRanges = syncAll
+      ? [{ start: new Date('2010-01-01'), end: new Date() }]
+      : dates && dates.length > 0
+        ? Array.from(new Set(dates)).map((date) => this.buildDateRange(date))
+        : startDate && endDate
+          ? [{ start: new Date(startDate), end: new Date(endDate) }]
+          : [this.buildDateRange(new Date().toISOString().slice(0, 10))];
+    let totalSynced = 0,
+      totalErrors = 0,
+      totalAmount = 0,
+      totalFetched = 0;
     const processedOrders = new Set<string>();
     for (const integration of integrations) {
       for (const range of dateRanges) {
-        const orders = await this.fetchOrdersByDateRangeForIntegration(integration, range.start, range.end);
+        const orders = await this.fetchOrdersByDateRangeForIntegration(
+          integration,
+          range.start,
+          range.end,
+        );
         totalFetched += orders.length;
         for (const order of orders) {
           const dedupeKey = `${integration.storeId}:${order.id}`;
@@ -675,14 +822,25 @@ export class PancakeService {
           processedOrders.add(dedupeKey);
           try {
             const result = await this.syncSingleOrder(order, integration.storeId);
-            if (result.synced) { totalAmount += result.amount; totalSynced++; }
-          } catch (error) { totalErrors++; }
-          await new Promise(r => setTimeout(r, 50));
+            if (result.synced) {
+              totalAmount += result.amount;
+              totalSynced++;
+            }
+          } catch (error) {
+            totalErrors++;
+          }
+          await new Promise((r) => setTimeout(r, 50));
         }
       }
     }
     if (totalSynced > 0) {
-      await this.adminNotificationsService.createNotification({ type: 'ORDER', title: `Đồng bộ đơn hàng từ Pancake`, message: `Đã đồng bộ ${totalSynced}/${totalFetched} đơn hàng, tổng ${new Intl.NumberFormat('vi-VN').format(totalAmount)} VND`, link: '/admin/orders', metadata: { synced: totalSynced, errors: totalErrors, total: totalFetched, totalAmount } });
+      await this.adminNotificationsService.createNotification({
+        type: 'ORDER',
+        title: `Đồng bộ đơn hàng từ Pancake`,
+        message: `Đã đồng bộ ${totalSynced}/${totalFetched} đơn hàng, tổng ${new Intl.NumberFormat('vi-VN').format(totalAmount)} VND`,
+        link: '/admin/orders',
+        metadata: { synced: totalSynced, errors: totalErrors, total: totalFetched, totalAmount },
+      });
     }
     return { synced: totalSynced, errors: totalErrors, total: totalFetched, totalAmount };
   }
@@ -693,49 +851,72 @@ export class PancakeService {
     const phone = pOrder.bill_phone_number || pOrder.shipping_address?.phone_number;
     if (!phone) return { synced: false, amount: 0 };
     const phoneSearchTerms = this.buildPhoneSearchTerms(phone);
-    let user = targetUserId ? await this.prisma.user.findUnique({ where: { id: targetUserId } }) : await this.prisma.user.findFirst({ where: { phone: { in: phoneSearchTerms } } });
-    
-    if (user && (!user.email && pOrder.bill_email)) {
+    const user = targetUserId
+      ? await this.prisma.user.findUnique({ where: { id: targetUserId } })
+      : await this.prisma.user.findFirst({ where: { phone: { in: phoneSearchTerms } } });
+
+    if (user && !user.email && pOrder.bill_email) {
       await this.prisma.user.update({ where: { id: user.id }, data: { email: pOrder.bill_email } });
     }
 
     const detailData = (await this.fetchOrderDetail(pOrder.id, storeId)) || pOrder;
-    const subtotal = detailData.total_price || pOrder.total_price || 0, 
-          shippingFee = detailData.shipping_fee || pOrder.shipping_fee || 0, 
-          discount = detailData.total_discount || pOrder.total_discount || 0, 
-          surcharge = detailData.surcharge || pOrder.surcharge || 0, 
-          totalAmount = subtotal - discount + shippingFee + surcharge;
-    
+    const subtotal = detailData.total_price || pOrder.total_price || 0,
+      shippingFee = detailData.shipping_fee || pOrder.shipping_fee || 0,
+      discount = detailData.total_discount || pOrder.total_discount || 0,
+      surcharge = detailData.surcharge || pOrder.surcharge || 0,
+      totalAmount = subtotal - discount + shippingFee + surcharge;
+
     if (totalAmount <= 0) return { synced: false, amount: 0 };
 
-    const cod = detailData.cod || 0, cash = detailData.cash || 0, transferMoney = detailData.transfer_money || 0, 
-          totalPaid = cash + transferMoney + (detailData.charged_by_momo || 0) + (detailData.charged_by_vnpay || 0) + 
-                     (detailData.charged_by_card || 0) + (detailData.charged_by_qrpay || 0) + (detailData.charged_by_fundiin || 0) + 
-                     (detailData.charged_by_kredivo || 0);
-    
-    const status = this.mapPancakeOrderStatus(detailData.status || pOrder.status), 
-          paymentStatus = totalPaid >= totalAmount && totalAmount > 0 ? 'PAID' : totalPaid > 0 ? 'PARTIALLY_PAID' : 'UNPAID';
-    
-    const shippingAddr = detailData.shipping_address || pOrder.shipping_address, 
-          partner = detailData.partner || pOrder.partner || null;
-    
+    const cash = detailData.cash || 0,
+      transferMoney = detailData.transfer_money || 0,
+      totalPaid =
+        cash +
+        transferMoney +
+        (detailData.charged_by_momo || 0) +
+        (detailData.charged_by_vnpay || 0) +
+        (detailData.charged_by_card || 0) +
+        (detailData.charged_by_qrpay || 0) +
+        (detailData.charged_by_fundiin || 0) +
+        (detailData.charged_by_kredivo || 0);
+
+    const status = this.mapPancakeOrderStatus(detailData.status || pOrder.status),
+      paymentStatus =
+        totalPaid >= totalAmount && totalAmount > 0
+          ? 'PAID'
+          : totalPaid > 0
+            ? 'PARTIALLY_PAID'
+            : 'UNPAID';
+
+    const shippingAddr = detailData.shipping_address || pOrder.shipping_address,
+      partner = detailData.partner || pOrder.partner || null;
+
     const orderItemsData = [];
-    for (const item of (detailData.items || pOrder.items || [])) {
-      const { baseName, color, size } = this.extractProductInfo(item.variation_info?.name || item.name || '', item.variation_info?.fields);
+    for (const item of detailData.items || pOrder.items || []) {
+      const { baseName, color, size } = this.extractProductInfo(
+        item.variation_info?.name || item.name || '',
+        item.variation_info?.fields,
+      );
       if (!baseName) continue;
-      
-      const matchingProduct = await this.prisma.product.findFirst({ 
-        where: { storeId, OR: [{ externalId: baseName.toLowerCase().replace(/\s+/g, '-') }, { name: { contains: baseName } }] } 
+
+      const matchingProduct = await this.prisma.product.findFirst({
+        where: {
+          storeId,
+          OR: [
+            { externalId: baseName.toLowerCase().replace(/\s+/g, '-') },
+            { name: { contains: baseName } },
+          ],
+        },
       });
-      
+
       if (matchingProduct) {
-        orderItemsData.push({ 
-          productId: matchingProduct.id, 
-          quantity: item.quantity || 1, 
-          price: item.variation_info?.retail_price || item.price || 0, 
-          isGift: item.is_bonus_product || false, 
-          size, 
-          color 
+        orderItemsData.push({
+          productId: matchingProduct.id,
+          quantity: item.quantity || 1,
+          price: item.variation_info?.retail_price || item.price || 0,
+          isGift: item.is_bonus_product || false,
+          size,
+          color,
         });
       }
     }
@@ -755,24 +936,33 @@ export class PancakeService {
         fbId: detailData.customer?.fb_id || null,
         pancakeCustomerId: detailData.customer?.id || null,
       },
-      shippingAddress: shippingAddr ? {
-        fullName: shippingAddr.full_name || null,
-        phoneNumber: shippingAddr.phone_number || null,
-        address: shippingAddr.address || null,
-        fullAddress: shippingAddr.full_address || null,
-      } : null,
-      partner: partner ? {
-        partnerId: partner.partner_id || null,
-        trackingCode: partner.extend_code || null,
-        deliveryName: partner.delivery_name || null,
-        deliveryPhone: partner.delivery_tel || null,
-        totalFee: partner.total_fee || null,
-        cod: partner.cod || null,
-        sortCode: partner.sort_code || null,
-        pickedUpAt: partner.picked_up_at ? this.parseDate(partner.picked_up_at) : null,
-        paidAt: partner.paid_at ? this.parseDate(partner.paid_at) : null,
-        courierUpdates: this.normalizeCourierUpdates(partner.partner_shipping_updates || partner.extend_update || detailData.partner_shipping_updates || []),
-      } : null,
+      shippingAddress: shippingAddr
+        ? {
+            fullName: shippingAddr.full_name || null,
+            phoneNumber: shippingAddr.phone_number || null,
+            address: shippingAddr.address || null,
+            fullAddress: shippingAddr.full_address || null,
+          }
+        : null,
+      partner: partner
+        ? {
+            partnerId: partner.partner_id || null,
+            trackingCode: partner.extend_code || null,
+            deliveryName: partner.delivery_name || null,
+            deliveryPhone: partner.delivery_tel || null,
+            totalFee: partner.total_fee || null,
+            cod: partner.cod || null,
+            sortCode: partner.sort_code || null,
+            pickedUpAt: partner.picked_up_at ? this.parseDate(partner.picked_up_at) : null,
+            paidAt: partner.paid_at ? this.parseDate(partner.paid_at) : null,
+            courierUpdates: this.normalizeCourierUpdates(
+              partner.partner_shipping_updates ||
+                partner.extend_update ||
+                detailData.partner_shipping_updates ||
+                [],
+            ),
+          }
+        : null,
       payment: {
         totalPaid,
         cod: detailData.cod || 0,
@@ -797,37 +987,47 @@ export class PancakeService {
         isLivestream: detailData.is_livestream || false,
         receivedAtShop: detailData.received_at_shop || false,
       },
-      warehouseInfo: detailData.warehouse_info ? {
-        name: detailData.warehouse_info.name || null,
-        phone_number: detailData.warehouse_info.phone_number || null,
-        address: detailData.warehouse_info.address || null,
-        full_address: detailData.warehouse_info.full_address || null,
-      } : null,
+      warehouseInfo: detailData.warehouse_info
+        ? {
+            name: detailData.warehouse_info.name || null,
+            phone_number: detailData.warehouse_info.phone_number || null,
+            address: detailData.warehouse_info.address || null,
+            full_address: detailData.warehouse_info.full_address || null,
+          }
+        : null,
       tags: detailData.tags && Array.isArray(detailData.tags) ? detailData.tags : [],
-      creator: detailData.creator ? {
-        id: detailData.creator.id || null,
-        name: detailData.creator.name || null,
-        email: detailData.creator.email || null,
-        fbId: detailData.creator.fb_id || null,
-      } : null,
-      marketer: detailData.marketer ? {
-        id: detailData.marketer.id || null,
-        name: detailData.marketer.name || null,
-        email: detailData.marketer.email || null,
-        fbId: detailData.marketer.fb_id || null,
-      } : null,
-      assigningSeller: detailData.assigning_seller ? {
-        id: detailData.assigning_seller.id || null,
-        name: detailData.assigning_seller.name || null,
-        email: detailData.assigning_seller.email || null,
-        fbId: detailData.assigning_seller.fb_id || null,
-      } : null,
-      assigningCare: detailData.assigning_care ? {
-        id: detailData.assigning_care.id || null,
-        name: detailData.assigning_care.name || null,
-        email: detailData.assigning_care.email || null,
-        fbId: detailData.assigning_care.fb_id || null,
-      } : null,
+      creator: detailData.creator
+        ? {
+            id: detailData.creator.id || null,
+            name: detailData.creator.name || null,
+            email: detailData.creator.email || null,
+            fbId: detailData.creator.fb_id || null,
+          }
+        : null,
+      marketer: detailData.marketer
+        ? {
+            id: detailData.marketer.id || null,
+            name: detailData.marketer.name || null,
+            email: detailData.marketer.email || null,
+            fbId: detailData.marketer.fb_id || null,
+          }
+        : null,
+      assigningSeller: detailData.assigning_seller
+        ? {
+            id: detailData.assigning_seller.id || null,
+            name: detailData.assigning_seller.name || null,
+            email: detailData.assigning_seller.email || null,
+            fbId: detailData.assigning_seller.fb_id || null,
+          }
+        : null,
+      assigningCare: detailData.assigning_care
+        ? {
+            id: detailData.assigning_care.id || null,
+            name: detailData.assigning_care.name || null,
+            email: detailData.assigning_care.email || null,
+            fbId: detailData.assigning_care.fb_id || null,
+          }
+        : null,
       reportsByPhone: detailData.reports_by_phone || null,
       trackingLink: detailData.tracking_link || null,
     };
@@ -836,7 +1036,7 @@ export class PancakeService {
     const orderCreatedAt = this.parsePancakeDate(pancakeCreatedAt) || new Date();
     const pancakeUpdatedAt = detailData.updated_at || pOrder.updated_at || null;
     const orderUpdatedAt = this.parsePancakeDate(pancakeUpdatedAt) || new Date();
-    
+
     let order;
     try {
       if (existing) {
@@ -858,7 +1058,7 @@ export class PancakeService {
             storeId,
             updatedAt: orderUpdatedAt,
             items: orderItemsData.length > 0 ? { create: orderItemsData } : undefined,
-          }
+          },
         });
       } else {
         order = await this.prisma.order.create({
@@ -880,19 +1080,31 @@ export class PancakeService {
             createdAt: orderCreatedAt,
             updatedAt: orderUpdatedAt,
             items: orderItemsData.length > 0 ? { create: orderItemsData } : undefined,
-          }
+          },
         });
       }
     } catch (err) {
-      this.logger.error(`[Pancake] Error ${existing ? 'updating' : 'creating'} order ${orderCode}: ${err.message}`);
+      this.logger.error(
+        `[Pancake] Error ${existing ? 'updating' : 'creating'} order ${orderCode}: ${err.message}`,
+      );
       return { synced: false, amount: 0, error: err.message };
     }
 
-    const isCreditable = status === 'COMPLETED' || status === 'DELIVERED', wasCreditable = existing && (existing.status === 'COMPLETED' || existing.status === 'DELIVERED');
-    if (isCreditable && user && (!existing || !wasCreditable)) await this.updateUserRankAndSpent(user.id, totalAmount);
-    else if (!isCreditable && wasCreditable && user) await this.updateUserRankAndSpent(user.id, -totalAmount);
-    
-    return { synced: true, amount: totalAmount, orderId: order.id, isUpdate: !!existing, status: order.status, previousStatus: existing?.status || null };
+    const isCreditable = status === 'COMPLETED' || status === 'DELIVERED',
+      wasCreditable =
+        existing && (existing.status === 'COMPLETED' || existing.status === 'DELIVERED');
+    if (isCreditable && user && (!existing || !wasCreditable))
+      await this.updateUserRankAndSpent(user.id);
+    else if (!isCreditable && wasCreditable && user) await this.updateUserRankAndSpent(user.id);
+
+    return {
+      synced: true,
+      amount: totalAmount,
+      orderId: order.id,
+      isUpdate: !!existing,
+      status: order.status,
+      previousStatus: existing?.status || null,
+    };
   }
 
   private parsePancakeDate(value?: string | Date | null): Date | null {
@@ -915,32 +1127,72 @@ export class PancakeService {
 
   private mapPancakeOrderStatus(pancakeStatus: number | string): OrderStatus {
     const s = typeof pancakeStatus === 'string' ? parseInt(pancakeStatus) : pancakeStatus;
-    const m: Record<number, OrderStatus> = { 0: OrderStatus.PENDING, 17: OrderStatus.PENDING, 11: OrderStatus.WAITING_FOR_GOODS, 20: OrderStatus.CONFIRMED, 1: OrderStatus.CONFIRMED, 12: OrderStatus.CONFIRMED, 13: OrderStatus.CONFIRMED, 8: OrderStatus.PACKAGING, 9: OrderStatus.WAITING_FOR_SHIPPING, 2: OrderStatus.SHIPPED, 3: OrderStatus.DELIVERED, 16: OrderStatus.PAYMENT_COLLECTED, 4: OrderStatus.RETURNING, 15: OrderStatus.RETURNING, 5: OrderStatus.REFUNDED, 6: OrderStatus.CANCELLED, 7: OrderStatus.CANCELLED };
+    const m: Record<number, OrderStatus> = {
+      0: OrderStatus.PENDING,
+      17: OrderStatus.PENDING,
+      11: OrderStatus.WAITING_FOR_GOODS,
+      20: OrderStatus.CONFIRMED,
+      1: OrderStatus.CONFIRMED,
+      12: OrderStatus.CONFIRMED,
+      13: OrderStatus.CONFIRMED,
+      8: OrderStatus.PACKAGING,
+      9: OrderStatus.WAITING_FOR_SHIPPING,
+      2: OrderStatus.SHIPPED,
+      3: OrderStatus.DELIVERED,
+      16: OrderStatus.PAYMENT_COLLECTED,
+      4: OrderStatus.RETURNING,
+      15: OrderStatus.RETURNING,
+      5: OrderStatus.REFUNDED,
+      6: OrderStatus.CANCELLED,
+      7: OrderStatus.CANCELLED,
+    };
     return m[s] || OrderStatus.PENDING;
   }
 
   async handleWebhookEvent(payload: any, shopId?: string) {
-    const type = payload.type || payload.event_type, data = payload.data || payload;
+    const type = payload.type || payload.event_type,
+      data = payload.data || payload;
     switch (type) {
-      case 'orders': case 'order': return await this.handleOrderWebhook(data, shopId);
-      case 'customers': case 'customer': return await this.handleCustomerWebhook(data, shopId);
-      case 'products': case 'product': return await this.handleProductWebhook(data, shopId);
-      case 'variations_warehouses': case 'inventory': return await this.handleInventoryWebhook(data, shopId);
-      default: return { processed: false };
+      case 'orders':
+      case 'order':
+        return await this.handleOrderWebhook(data, shopId);
+      case 'customers':
+      case 'customer':
+        return await this.handleCustomerWebhook(data);
+      case 'products':
+      case 'product':
+        return await this.handleProductWebhook(shopId);
+      case 'variations_warehouses':
+      case 'inventory':
+        return await this.handleInventoryWebhook(data, shopId);
+      default:
+        return { processed: false };
     }
   }
 
   private async handleOrderWebhook(orderData: any, shopId?: string) {
-    const integration = await this.prisma.storeIntegration.findFirst({ where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) }, include: { store: true } });
+    const integration = await this.prisma.storeIntegration.findFirst({
+      where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) },
+      include: { store: true },
+    });
     if (!integration?.store) return { processed: false };
     const result = await this.syncSingleOrder(orderData, integration.store.id);
     if (result.synced) {
-      const orderCode = `PCK-${orderData.id}`, existing = await this.prisma.order.findFirst({ where: { orderCode } });
+      const orderCode = `PCK-${orderData.id}`,
+        existing = await this.prisma.order.findFirst({ where: { orderCode } });
       const statusLabelMap: Record<string, string> = {
-        PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận', WAITING_FOR_GOODS: 'Chờ hàng',
-        PACKAGING: 'Đang đóng gói', WAITING_FOR_SHIPPING: 'Chờ vận chuyển', SHIPPED: 'Đang giao hàng',
-        DELIVERED: 'Đã nhận hàng', PAYMENT_COLLECTED: 'Đã thu tiền', COMPLETED: 'Hoàn thành',
-        CANCELLED: 'Đã hủy', REFUNDED: 'Hoàn trả', RETURNING: 'Đang hoàn',
+        PENDING: 'Chờ xác nhận',
+        CONFIRMED: 'Đã xác nhận',
+        WAITING_FOR_GOODS: 'Chờ hàng',
+        PACKAGING: 'Đang đóng gói',
+        WAITING_FOR_SHIPPING: 'Chờ vận chuyển',
+        SHIPPED: 'Đang giao hàng',
+        DELIVERED: 'Đã nhận hàng',
+        PAYMENT_COLLECTED: 'Đã thu tiền',
+        COMPLETED: 'Hoàn thành',
+        CANCELLED: 'Đã hủy',
+        REFUNDED: 'Hoàn trả',
+        RETURNING: 'Đang hoàn',
       };
       let nMessage: string;
       if (result.isUpdate && result.previousStatus && result.previousStatus !== result.status) {
@@ -951,12 +1203,17 @@ export class PancakeService {
         const newLabel = statusLabelMap[result.status] || result.status;
         nMessage = result.isUpdate ? `Trạng thái: ${newLabel}` : `Đơn mới - ${newLabel}`;
       }
-      await this.adminNotificationsService.createNotification({ type: 'ORDER', title: `Đơn hàng ${orderCode} ${result.isUpdate ? 'cập nhật' : 'mới'}`, message: nMessage, link: existing ? `/admin/orders/${existing.id}` : '/admin/orders' });
+      await this.adminNotificationsService.createNotification({
+        type: 'ORDER',
+        title: `Đơn hàng ${orderCode} ${result.isUpdate ? 'cập nhật' : 'mới'}`,
+        message: nMessage,
+        link: existing ? `/admin/orders/${existing.id}` : '/admin/orders',
+      });
     }
     return { processed: true };
   }
 
-  private async handleCustomerWebhook(customerData: any, shopId?: string) {
+  private async handleCustomerWebhook(customerData: any) {
     const phone = customerData.phone_number || customerData.phone;
     if (!phone) return { processed: false };
     const user = await this.prisma.user.findFirst({ where: { phone } });
@@ -964,26 +1221,49 @@ export class PancakeService {
     const update: any = {};
     if (customerData.name && !user.name) update.name = customerData.name;
     if (customerData.email && !user.email) update.email = customerData.email;
-    if (Object.keys(update).length > 0) await this.prisma.user.update({ where: { id: user.id }, data: update });
+    if (Object.keys(update).length > 0)
+      await this.prisma.user.update({ where: { id: user.id }, data: update });
     return { processed: true };
   }
 
-  private async handleProductWebhook(productData: any, shopId?: string) {
-    const integration = await this.prisma.storeIntegration.findFirst({ where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) } });
+  private async handleProductWebhook(shopId?: string) {
+    const integration = await this.prisma.storeIntegration.findFirst({
+      where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) },
+    });
     if (integration?.storeId) this.syncAllProducts(integration.storeId).catch(() => {});
     return { processed: true };
   }
 
   private async handleInventoryWebhook(inventoryData: any, shopId?: string) {
-    const integration = await this.prisma.storeIntegration.findFirst({ where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) } });
+    const integration = await this.prisma.storeIntegration.findFirst({
+      where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) },
+    });
     if (integration?.storeId) this.syncAllProducts(integration.storeId).catch(() => {});
     return { processed: true };
   }
 
-  async configureWebhook(webhookUrl: string, webhookTypes: string[] = ['orders', 'customers'], storeId?: string) {
+  async configureWebhook(
+    webhookUrl: string,
+    webhookTypes: string[] = ['orders', 'customers'],
+    storeId?: string,
+  ) {
     const config = await this.getPancakeConfig(storeId);
     if (!config) throw new Error('Pancake configuration not found');
-    const response = await fetch(`https://pos.pages.fm/api/v1/shops/${config.shopId}?api_key=${config.apiKey}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shop: { webhook_enable: true, webhook_url: webhookUrl, webhook_types: webhookTypes, webhook_headers: { 'X-API-KEY': config.apiKey, 'Content-Type': 'application/json' } } }) });
+    const response = await fetch(
+      `https://pos.pages.fm/api/v1/shops/${config.shopId}?api_key=${config.apiKey}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shop: {
+            webhook_enable: true,
+            webhook_url: webhookUrl,
+            webhook_types: webhookTypes,
+            webhook_headers: { 'X-API-KEY': config.apiKey, 'Content-Type': 'application/json' },
+          },
+        }),
+      },
+    );
     const data = await response.json();
     if (data.success) return { success: true, webhookUrl };
     throw new Error('Failed to configure webhook');
@@ -992,10 +1272,18 @@ export class PancakeService {
   async getWebhookConfig(storeId?: string) {
     const config = await this.getPancakeConfig(storeId);
     if (!config) throw new Error('Pancake configuration not found');
-    const response = await fetch(`https://pos.pages.fm/api/v1/shops/${config.shopId}?api_key=${config.apiKey}`, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
+    const response = await fetch(
+      `https://pos.pages.fm/api/v1/shops/${config.shopId}?api_key=${config.apiKey}`,
+      { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    );
     const data = await response.json();
     if (data.success && data.data) {
-      const s = data.data; return { enabled: s.webhook_enable || false, url: s.webhook_url || null, types: s.webhook_types || [] };
+      const s = data.data;
+      return {
+        enabled: s.webhook_enable || false,
+        url: s.webhook_url || null,
+        types: s.webhook_types || [],
+      };
     }
     return null;
   }

@@ -292,7 +292,12 @@ export class AdminService {
         },
         referees: {
           select: {
-            id: true, name: true, phone: true, rank: true, totalSpent: true, createdAt: true,
+            id: true,
+            name: true,
+            phone: true,
+            rank: true,
+            totalSpent: true,
+            createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
           take: 20,
@@ -300,8 +305,13 @@ export class AdminService {
         orders: {
           where: orderWhere,
           select: {
-            id: true, orderCode: true, totalAmount: true, status: true,
-            paymentStatus: true, source: true, createdAt: true,
+            id: true,
+            orderCode: true,
+            totalAmount: true,
+            status: true,
+            paymentStatus: true,
+            source: true,
+            createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
           take: 20,
@@ -309,8 +319,12 @@ export class AdminService {
         commissionsEarned: {
           where: effectiveStoreId ? { order: { storeId: effectiveStoreId } } : {},
           select: {
-            id: true, amount: true, percentage: true, level: true,
-            status: true, createdAt: true,
+            id: true,
+            amount: true,
+            percentage: true,
+            level: true,
+            status: true,
+            createdAt: true,
             order: { select: { orderCode: true, totalAmount: true } },
           },
           orderBy: { createdAt: 'desc' },
@@ -318,18 +332,23 @@ export class AdminService {
         },
         userVouchers: {
           select: {
-            id: true, isUsed: true, usedAt: true, createdAt: true,
+            id: true,
+            isUsed: true,
+            usedAt: true,
+            createdAt: true,
             voucher: { select: { code: true, type: true, value: true, validTo: true } },
           },
           orderBy: { createdAt: 'desc' },
           take: 10,
         },
         _count: {
-          select: { 
-            orders: { where: orderWhere }, 
-            referees: true, 
-            commissionsEarned: { where: effectiveStoreId ? { order: { storeId: effectiveStoreId } } : {} }, 
-            userVouchers: true 
+          select: {
+            orders: { where: orderWhere },
+            referees: true,
+            commissionsEarned: {
+              where: effectiveStoreId ? { order: { storeId: effectiveStoreId } } : {},
+            },
+            userVouchers: true,
           },
         },
       },
@@ -347,7 +366,11 @@ export class AdminService {
         _count: true,
       }),
       this.prisma.commissionLedger.aggregate({
-        where: { userId: id, status: 'PAID', ...(effectiveStoreId ? { order: { storeId: effectiveStoreId } } : {}) },
+        where: {
+          userId: id,
+          status: 'PAID',
+          ...(effectiveStoreId ? { order: { storeId: effectiveStoreId } } : {}),
+        },
         _sum: { amount: true },
       }),
     ]);
@@ -477,7 +500,6 @@ export class AdminService {
     });
   }
 
-
   async getStoreStaff(storeId?: string) {
     const where: any = { role: 'STAFF' };
     if (storeId) {
@@ -570,7 +592,9 @@ export class AdminService {
 
     // Check if email already exists
     if (email) {
-      const existingEmail = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      const existingEmail = await this.prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+      });
       if (existingEmail) {
         throw new ConflictException('Email already exists');
       }
@@ -584,10 +608,14 @@ export class AdminService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const staffPermissions = [
-      'CUSTOMERS_VIEW', 'CUSTOMERS_MANAGE',
-      'ORDERS_VIEW', 'ORDERS_MANAGE',
-      'PRODUCTS_VIEW', 'PRODUCTS_MANAGE',
-      'CATEGORIES_VIEW', 'CATEGORIES_MANAGE'
+      'CUSTOMERS_VIEW',
+      'CUSTOMERS_MANAGE',
+      'ORDERS_VIEW',
+      'ORDERS_MANAGE',
+      'PRODUCTS_VIEW',
+      'PRODUCTS_MANAGE',
+      'CATEGORIES_VIEW',
+      'CATEGORIES_MANAGE',
     ];
 
     return this.prisma.user.create({
@@ -617,10 +645,14 @@ export class AdminService {
   async assignStaff(dto: { userId: string; storeId: string }) {
     const { userId, storeId } = dto;
     const staffPermissions = [
-      'CUSTOMERS_VIEW', 'CUSTOMERS_MANAGE',
-      'ORDERS_VIEW', 'ORDERS_MANAGE',
-      'PRODUCTS_VIEW', 'PRODUCTS_MANAGE',
-      'CATEGORIES_VIEW', 'CATEGORIES_MANAGE'
+      'CUSTOMERS_VIEW',
+      'CUSTOMERS_MANAGE',
+      'ORDERS_VIEW',
+      'ORDERS_MANAGE',
+      'PRODUCTS_VIEW',
+      'PRODUCTS_MANAGE',
+      'CATEGORIES_VIEW',
+      'CATEGORIES_MANAGE',
     ];
 
     return this.prisma.user.update({

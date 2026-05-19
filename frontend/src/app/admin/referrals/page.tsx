@@ -1,16 +1,41 @@
 export const dynamic = 'force-dynamic';
 import { apiClient } from '@/lib/apiClient';
 import CommissionRateEdit from '@/components/admin/CommissionRateEdit';
+
+interface TopReferrer {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  referralCode: string;
+  commissionBalance: number;
+  rank: string;
+  _count: {
+    referees: number;
+  };
+}
+
+interface ReferralStats {
+  totalReferrals: number;
+  totalCommPaid: number;
+  topReferrersCount: number;
+}
+
+interface CommissionConfig {
+  level: number;
+  percentage: number;
+}
+
 export default async function ReferralsPage() {
-  let topReferrers: any[] = [];
-  let referralStats: any = { totalReferrals: 0, totalCommPaid: 0, topReferrersCount: 0 };
-  let commissionConfigs: any[] = [];
+  let topReferrers: TopReferrer[] = [];
+  let referralStats: ReferralStats = { totalReferrals: 0, totalCommPaid: 0, topReferrersCount: 0 };
+  let commissionConfigs: CommissionConfig[] = [];
 
   try {
     const [statsRes, referrersRes, configsRes] = await Promise.all([
-      apiClient.get<any>('/commissions/admin/referral-stats'),
-      apiClient.get<any[]>('/commissions/admin/top-referrers'),
-      apiClient.get<any[]>('/commissions/admin/configs'),
+      apiClient.get<ReferralStats>('/commissions/admin/referral-stats'),
+      apiClient.get<TopReferrer[]>('/commissions/admin/top-referrers'),
+      apiClient.get<CommissionConfig[]>('/commissions/admin/configs'),
     ]);
     referralStats = statsRes || referralStats;
     topReferrers = referrersRes || [];
@@ -19,10 +44,10 @@ export default async function ReferralsPage() {
     console.error('Error fetching admin referral data:', error);
   }
 
-  const { totalReferrals, totalCommPaid, topReferrersCount } = referralStats;
+  const { totalReferrals, totalCommPaid } = referralStats;
 
   // Create a map for easy lookup, with defaults
-  const configMap = new Map(commissionConfigs.map((c: any) => [c.level, c.percentage]));
+  const configMap = new Map(commissionConfigs.map((config) => [config.level, config.percentage]));
   const getRate = (level: number) => configMap.get(level) || 0;
 
   const fmt = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);

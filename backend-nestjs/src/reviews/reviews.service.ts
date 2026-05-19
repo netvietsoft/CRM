@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -26,9 +31,7 @@ export class ReviewsService {
     }
 
     // Build orderBy clause
-    const orderBy: any = sort === 'oldest' 
-      ? { createdAt: 'asc' } 
-      : { createdAt: 'desc' };
+    const orderBy: any = sort === 'oldest' ? { createdAt: 'asc' } : { createdAt: 'desc' };
 
     // Get reviews with pagination
     const [reviews, totalCount, stats] = await Promise.all([
@@ -62,15 +65,16 @@ export class ReviewsService {
 
     // Calculate average rating and distribution
     const totalReviews = await this.prisma.review.count({ where: { productId } });
-    const avgRating = totalReviews > 0
-      ? await this.prisma.review.aggregate({
-          where: { productId },
-          _avg: { rating: true },
-        })
-      : { _avg: { rating: 0 } };
+    const avgRating =
+      totalReviews > 0
+        ? await this.prisma.review.aggregate({
+            where: { productId },
+            _avg: { rating: true },
+          })
+        : { _avg: { rating: 0 } };
 
-    const distribution = [1, 2, 3, 4, 5].map(star => {
-      const found = stats.find(s => s.rating === star);
+    const distribution = [1, 2, 3, 4, 5].map((star) => {
+      const found = stats.find((s) => s.rating === star);
       return {
         rating: star,
         count: found ? found._count.rating : 0,
@@ -82,9 +86,9 @@ export class ReviewsService {
       where: { productId },
       select: { images: true },
     });
-    
+
     const allImages: string[] = [];
-    allReviews.forEach(review => {
+    allReviews.forEach((review) => {
       if (review.images && Array.isArray(review.images)) {
         allImages.push(...(review.images as string[]));
       }

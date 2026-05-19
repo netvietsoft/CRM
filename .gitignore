@@ -1,0 +1,21 @@
+# Workspace-level build artifacts
+/.next/
+/dist/
+/coverage/
+
+# Database dumps and local export archives
+/*.sql
+/*.sql.gz
+/*.dump
+/*.tar
+/*.tar.gz
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor noise
+.DS_Store

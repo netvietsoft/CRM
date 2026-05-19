@@ -33,7 +33,7 @@ export default function CommissionRateEdit({
 
       setIsEditing(false);
       router.refresh();
-    } catch (error) {
+    } catch {
       alert('Lỗi cập nhật tỷ lệ hoa hồng');
       setPercentage(initialPercentage.toString());
     } finally {

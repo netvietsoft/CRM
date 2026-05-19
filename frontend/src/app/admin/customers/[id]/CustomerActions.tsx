@@ -148,10 +148,10 @@ export default function CustomerActions({
 
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-600">
-                  Nhập <span className="font-bold text-gray-900">"{customerName}"</span>{' '}
+                  Nhập <span className="font-bold text-gray-900">&quot;{customerName}&quot;</span>{' '}
                   {customerPhone && (
                     <>
-                      hoặc <span className="font-bold text-gray-900">"{customerPhone}"</span>
+                      hoặc <span className="font-bold text-gray-900">&quot;{customerPhone}&quot;</span>
                     </>
                   )}{' '}
                   để xác nhận:
@@ -229,10 +229,10 @@ export default function CustomerActions({
 
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-600">
-                  Nhập <span className="font-bold text-gray-900">"{customerName}"</span>{' '}
+                  Nhập <span className="font-bold text-gray-900">&quot;{customerName}&quot;</span>{' '}
                   {customerPhone && (
                     <>
-                      hoặc <span className="font-bold text-gray-900">"{customerPhone}"</span>
+                      hoặc <span className="font-bold text-gray-900">&quot;{customerPhone}&quot;</span>
                     </>
                   )}{' '}
                   để xác nhận:

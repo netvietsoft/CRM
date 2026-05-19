@@ -17,6 +17,13 @@ interface SpinWheelClientProps {
   spinTurns: number;
 }
 
+interface SpinResultResponse {
+  remainingTurns: number;
+  prizeId: string;
+  prizeName: string;
+  won: boolean;
+}
+
 export default function SpinWheelClient({ prizes, spinTurns: initialSpinTurns }: SpinWheelClientProps) {
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<{ name: string; won: boolean } | null>(null);
@@ -32,7 +39,7 @@ export default function SpinWheelClient({ prizes, spinTurns: initialSpinTurns }:
     setResult(null);
 
     try {
-      const data = await apiClientClient.post<any>('/spin', {});
+      const data = await apiClientClient.post<SpinResultResponse>('/spin', {});
 
       // Update remaining turns
       setSpinTurns(data.remainingTurns);

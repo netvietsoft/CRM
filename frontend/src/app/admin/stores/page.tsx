@@ -1,10 +1,39 @@
 import { redirect } from 'next/navigation';
 export const dynamic = 'force-dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import StoreActions from '@/components/admin/StoreActions';
 import StoreApprovalButton from '@/components/admin/StoreApprovalButton';
 import { apiClient } from '@/lib/apiClient';
 import { getSession } from '@/lib/auth';
+import { passthroughImageLoader } from '@/lib/imageLoader';
+
+interface StoreOwner {
+  name: string;
+  email?: string | null;
+}
+
+interface StoreCounts {
+  products: number;
+  orders: number;
+}
+
+interface AdminStore {
+  id: string;
+  name: string;
+  slug: string;
+  phone?: string | null;
+  logoUrl?: string | null;
+  bankName?: string | null;
+  bankAccountNo?: string | null;
+  bankOwnerName?: string | null;
+  isActive: boolean;
+  isBanned: boolean;
+  bannedReason?: string | null;
+  createdAt: string | Date;
+  owner: StoreOwner;
+  _count: StoreCounts;
+}
 
 function fmtDate(d: string | Date) {
   return new Intl.DateTimeFormat('vi-VN', {
@@ -22,9 +51,9 @@ export default async function StoresPage() {
     redirect('/admin');
   }
 
-  let stores: any[] = [];
+  let stores: AdminStore[] = [];
   try {
-    stores = await apiClient.get<any[]>('/stores/admin');
+    stores = await apiClient.get<AdminStore[]>('/stores/admin');
   } catch (error) {
     console.error('Error fetching admin stores:', error);
   }
@@ -136,7 +165,15 @@ export default async function StoresPage() {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         {store.logoUrl ? (
-                          <img src={store.logoUrl} alt={store.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                          <Image
+                            loader={passthroughImageLoader}
+                            unoptimized
+                            src={store.logoUrl}
+                            alt={store.name}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                          />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
                             {store.name.charAt(0).toUpperCase()}

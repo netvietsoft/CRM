@@ -5,7 +5,13 @@ import { Plus } from 'lucide-react';
 import { useOrderSave } from './OrderSaveProvider';
 import { apiClientClient } from '@/lib/apiClientClient';
 
-export default function OrderNotesClient({ order }: { order: any }) {
+interface OrderNotesData {
+  id: string;
+  note?: string | null;
+  customerNote?: string | null;
+}
+
+export default function OrderNotesClient({ order }: { order: OrderNotesData }) {
   const [activeTab, setActiveTab] = useState<'internal' | 'print' | 'exchange'>('internal');
   const [note, setNote] = useState(order.note || '');
   const [customerNote, setCustomerNote] = useState(order.customerNote || '');

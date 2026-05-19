@@ -22,10 +22,10 @@ export class VoucherProcessor extends WorkerHost {
     switch (job.name) {
       case 'unlock-voucher-task':
         return await this.handleUnlockVoucher(job);
-      
+
       case 'verify-qr-vouchers-job':
         return await this.handleBatchVerification(job);
-      
+
       default:
         this.logger.warn(`⚠️ Unknown job type: ${job.name}`);
         return { success: false, reason: 'Unknown job type' };
@@ -180,9 +180,7 @@ export class VoucherProcessor extends WorkerHost {
 
         // Process batch with Promise.allSettled to handle individual failures
         const results = await Promise.allSettled(
-          batch.map((userVoucher) =>
-            this.verifyAndUpdateVoucher(userVoucher),
-          ),
+          batch.map((userVoucher) => this.verifyAndUpdateVoucher(userVoucher)),
         );
 
         // Count results
@@ -195,9 +193,7 @@ export class VoucherProcessor extends WorkerHost {
             }
           } else {
             errorCount++;
-            this.logger.error(
-              `❌ Error processing voucher ${batch[index].id}: ${result.reason}`,
-            );
+            this.logger.error(`❌ Error processing voucher ${batch[index].id}: ${result.reason}`);
           }
         });
 
@@ -245,10 +241,7 @@ export class VoucherProcessor extends WorkerHost {
         this.logger.log(
           `✅ Voucher ${userVoucher.id} ACTIVATED for user ${userVoucher.user.name} (Order: ${orderCode})`,
         );
-      } else if (
-        shippingStatus.status === 'RETURNED' ||
-        shippingStatus.status === 'CANCELLED'
-      ) {
+      } else if (shippingStatus.status === 'RETURNED' || shippingStatus.status === 'CANCELLED') {
         // Order returned or cancelled - reject voucher
         newStatus = 'REJECTED';
         await this.prisma.userVoucher.update({
@@ -269,16 +262,12 @@ export class VoucherProcessor extends WorkerHost {
 
       return newStatus;
     } catch (error) {
-      this.logger.error(
-        `⚠️ Failed to verify order ${orderCode}: ${error.message}`,
-      );
+      this.logger.error(`⚠️ Failed to verify order ${orderCode}: ${error.message}`);
       throw error;
     }
   }
 
-  private async checkShippingStatus(
-    orderCode: string,
-  ): Promise<ShippingStatus> {
+  private async checkShippingStatus(orderCode: string): Promise<ShippingStatus> {
     try {
       const token = process.env.VIETTELPOST_TOKEN;
 
@@ -319,9 +308,7 @@ export class VoucherProcessor extends WorkerHost {
       if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
         this.logger.warn(`⏱️ Timeout checking order ${orderCode}`);
       } else {
-        this.logger.error(
-          `❌ Error checking shipping status for ${orderCode}: ${error.message}`,
-        );
+        this.logger.error(`❌ Error checking shipping status for ${orderCode}: ${error.message}`);
       }
 
       // Return PENDING on error to retry later
@@ -332,9 +319,7 @@ export class VoucherProcessor extends WorkerHost {
     }
   }
 
-  private mapViettelPostStatus(
-    viettelStatus: number,
-  ): ShippingStatus['status'] {
+  private mapViettelPostStatus(viettelStatus: number): ShippingStatus['status'] {
     // ViettelPost status codes mapping
     // Reference: https://viettelpost.vn/thong-tin-don-hang/
     switch (viettelStatus) {

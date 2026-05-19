@@ -1,12 +1,24 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { apiClientClient } from '@/lib/apiClientClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
-interface CartItemData {
+interface ProductVariant {
+  price: number | null;
+  size?: {
+    name: string;
+  } | null;
+  color?: {
+    name: string;
+  } | null;
+}
+
+export interface CartItemData {
   id: string;
   quantity: number;
   size: string | null;
@@ -21,7 +33,7 @@ interface CartItemData {
     isActive: boolean;
     storeId: string | null;
     store: { id: string; name: string } | null;
-    variants?: any[];
+    variants?: ProductVariant[];
   };
 }
 
@@ -40,18 +52,19 @@ function formatCurrency(amount: number) {
 const getCartItemPrice = (item: CartItemData) => {
   let price = item.product.salePrice || item.product.originalPrice;
   if (item.product.variants && item.product.variants.length > 0) {
-    let variant = null;
+    let variant: ProductVariant | undefined;
     if (item.size && item.color) {
       variant = item.product.variants.find(
-        (v: any) => v.size?.name === item.size && v.color?.name === item.color
+        (variantItem) =>
+          variantItem.size?.name === item.size && variantItem.color?.name === item.color,
       );
     } else if (item.size) {
       variant = item.product.variants.find(
-        (v: any) => v.size?.name === item.size
+        (variantItem) => variantItem.size?.name === item.size,
       );
     } else if (item.color) {
       variant = item.product.variants.find(
-        (v: any) => v.color?.name === item.color
+        (variantItem) => variantItem.color?.name === item.color,
       );
     }
     if (variant && variant.price) {
@@ -65,7 +78,6 @@ export default function CartClient({ initialItems }: CartClientProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Group items by store
   const storeGroups = items.reduce<Record<string, { storeName: string; storeId: string | null; items: CartItemData[] }>>((acc, item) => {
@@ -140,9 +152,9 @@ export default function CartClient({ initialItems }: CartClientProps) {
     setItems(items.map(i => i.id === itemId ? { ...i, quantity: newQuantity } : i));
     try {
       await apiClientClient.patch(`/cart/${itemId}`, { quantity: newQuantity });
-    } catch (error: any) {
+    } catch (error: unknown) {
       setItems(prevItems);
-      alert(error.message || 'Có lỗi xảy ra');
+      alert(error instanceof Error ? error.message : 'Có lỗi xảy ra');
     }
   };
 
@@ -202,7 +214,6 @@ export default function CartClient({ initialItems }: CartClientProps) {
           const group = storeGroups[storeKey];
           const groupIds = group.items.map(i => i.id);
           const allGroupSelected = groupIds.every(id => selectedIds.has(id));
-          const someGroupSelected = groupIds.some(id => selectedIds.has(id));
           const isThisStoreDisabled = selectedStoreId !== null && selectedStoreId !== storeKey;
 
           return (
@@ -252,7 +263,15 @@ export default function CartClient({ initialItems }: CartClientProps) {
                         {/* Image */}
                         <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-100">
                           {item.product.imageUrl ? (
-                            <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+                            <Image
+                              loader={passthroughImageLoader}
+                              unoptimized
+                              src={item.product.imageUrl}
+                              alt={item.product.name}
+                              width={80}
+                              height={80}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
                           )}

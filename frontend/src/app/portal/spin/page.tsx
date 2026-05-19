@@ -3,19 +3,43 @@ import SpinWheelClient from '@/components/customer/SpinWheelClient';
 export const dynamic = 'force-dynamic';
 import { apiClient } from '@/lib/apiClient';
 
+interface SpinAttemptsResponse {
+  spinAttempts: number;
+}
+
+interface SpinPrize {
+  id: string;
+  name: string;
+  color: string | null;
+  type: string;
+  value: number | null;
+  probability: number;
+}
+
+interface SpinHistoryItem {
+  id: string;
+  won: boolean;
+  createdAt: string | Date;
+  prize?: {
+    name: string;
+    type: string;
+    value: number | null;
+  } | null;
+}
+
 export default async function PortalSpinPage() {
   const session = await getSession();
   if (!session) return null;
 
   let spinTurns = 0;
-  let prizes: any[] = [];
-  let recentWins: any[] = [];
+  let prizes: SpinPrize[] = [];
+  let recentWins: SpinHistoryItem[] = [];
 
   try {
     const [attemptsData, prizesData, historyData] = await Promise.all([
-      apiClient.get<any>('/spin/attempts'),
-      apiClient.get<any[]>('/spin/prizes'),
-      apiClient.get<any[]>('/spin/history'),
+      apiClient.get<SpinAttemptsResponse>('/spin/attempts'),
+      apiClient.get<SpinPrize[]>('/spin/prizes'),
+      apiClient.get<SpinHistoryItem[]>('/spin/history'),
     ]);
     spinTurns = attemptsData.spinAttempts || 0;
     prizes = prizesData;

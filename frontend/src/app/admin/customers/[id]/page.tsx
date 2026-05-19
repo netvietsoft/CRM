@@ -2,6 +2,93 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/apiClient';
 import CustomerActions from './CustomerActions';
 
+interface CustomerOrder {
+  id: string;
+  orderCode: string;
+  totalAmount: number;
+  status: string;
+  paymentStatus?: string | null;
+  source?: string | null;
+  createdAt: string | Date;
+}
+
+interface CustomerCommission {
+  id: string;
+  amount: number;
+  percentage: number;
+  level: number;
+  status: string;
+  createdAt: string | Date;
+  order?: {
+    orderCode: string;
+    totalAmount: number;
+  } | null;
+}
+
+interface CustomerVoucher {
+  id: string;
+  isUsed: boolean;
+  usedAt?: string | Date | null;
+  createdAt: string | Date;
+  voucher?: {
+    code: string;
+    type: string;
+    value: number;
+    validTo?: string | Date | null;
+  } | null;
+}
+
+interface CustomerReferrer {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  referralCode: string;
+}
+
+interface CustomerReferee {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  rank: string;
+  totalSpent: number;
+  createdAt: string | Date;
+}
+
+interface CustomerDetail {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  dob: string | Date | null;
+  rank: string;
+  totalSpent: number;
+  commissionBalance: number;
+  referralCode: string;
+  addressStreet: string | null;
+  addressWard: string | null;
+  addressProvince: string | null;
+  isActive: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  referrer?: CustomerReferrer | null;
+  referees: CustomerReferee[];
+  orders: CustomerOrder[];
+  commissionsEarned: CustomerCommission[];
+  userVouchers: CustomerVoucher[];
+  _count?: {
+    orders?: number;
+    referees?: number;
+    commissionsEarned?: number;
+    userVouchers?: number;
+  };
+  stats?: {
+    completedOrders: number;
+    completedRevenue: number;
+    totalCommission: number;
+  };
+}
+
 function formatMoney(amount: number) {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
@@ -56,9 +143,9 @@ export default async function CustomerDetailPage(props: {
 }) {
   const params = await props.params;
 
-  let customer: any = null;
+  let customer: CustomerDetail | null = null;
   try {
-    customer = await apiClient.get(`/admin/customers/${params.id}`);
+    customer = await apiClient.get<CustomerDetail>(`/admin/customers/${params.id}`);
   } catch (error) {
     console.error('Failed to load customer detail', error);
   }
@@ -199,7 +286,7 @@ export default async function CustomerDetailPage(props: {
             <div className="p-4">
               {customer.orders?.length ? (
                 <div className="space-y-2">
-                  {customer.orders.map((order: any) => {
+                  {customer.orders.map((order) => {
                     const status = statusMap[order.status] || {
                       label: order.status,
                       className: 'bg-gray-50 text-gray-700 border-gray-200',
@@ -240,7 +327,7 @@ export default async function CustomerDetailPage(props: {
                 <h2 className="text-sm font-semibold text-gray-900">Lịch sử hoa hồng</h2>
               </div>
               <div className="p-4 space-y-2">
-                {customer.commissionsEarned.map((commission: any) => (
+                {customer.commissionsEarned.map((commission) => (
                   <div key={commission.id} className="rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-900">
@@ -287,7 +374,7 @@ export default async function CustomerDetailPage(props: {
                 <h2 className="text-sm font-semibold text-gray-900">Khách hàng được giới thiệu</h2>
               </div>
               <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
-                {customer.referees.map((referee: any) => (
+                {customer.referees.map((referee) => (
                   <Link
                     key={referee.id}
                     href={`/admin/customers/${referee.id}`}
@@ -312,7 +399,7 @@ export default async function CustomerDetailPage(props: {
                 <h2 className="text-sm font-semibold text-gray-900">Voucher</h2>
               </div>
               <div className="p-4 space-y-2">
-                {customer.userVouchers.map((item: any) => (
+                {customer.userVouchers.map((item) => (
                   <div key={item.id} className="rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-900 font-mono">{item.voucher?.code}</p>

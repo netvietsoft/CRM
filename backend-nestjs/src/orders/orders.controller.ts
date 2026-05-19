@@ -72,8 +72,6 @@ export class OrdersController {
   @Permissions(Permission.ORDERS_VIEW)
   @ApiOperation({ summary: 'Get all orders for admin/staff' })
   async findAdminOrders(
-    @GetUser('id') userId: string,
-    @GetUser('role') role: string,
     @GetEffectiveStoreId() effectiveStoreId: string | null,
     @Query('page') page?: number,
     @Query('status') status?: string,
@@ -85,8 +83,6 @@ export class OrdersController {
     @Query('dateValue') dateValue?: string,
   ) {
     return this.ordersService.findAdminOrders({
-      userId,
-      role,
       effectiveStoreId,
       page: page ? Number(page) : undefined,
       status,
@@ -170,10 +166,7 @@ export class OrdersController {
 
   @Get('check-purchase/:productId')
   @ApiOperation({ summary: 'Check if user has purchased a product' })
-  checkProductPurchase(
-    @GetUser('id') userId: string,
-    @Param('productId') productId: string,
-  ) {
+  checkProductPurchase(@GetUser('id') userId: string, @Param('productId') productId: string) {
     return this.ordersService.checkProductPurchase(userId, productId);
   }
 
@@ -191,10 +184,7 @@ export class OrdersController {
   @Patch(':id/confirm-received')
   @ApiOperation({ summary: 'Customer confirms order received' })
   @ApiResponse({ status: 200, description: 'Order marked as completed by customer' })
-  confirmReceived(
-    @Param('id') id: string,
-    @GetUser('id') userId: string,
-  ) {
+  confirmReceived(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.ordersService.customerConfirmReceived(id, userId);
   }
 
@@ -208,10 +198,7 @@ export class OrdersController {
   @Get('public/track')
   @Public()
   @ApiOperation({ summary: 'Publicly track order by code and phone' })
-  trackPublicOrder(
-    @Query('code') code: string,
-    @Query('phone') phone: string,
-  ) {
+  trackPublicOrder(@Query('code') code: string, @Query('phone') phone: string) {
     return this.ordersService.trackPublicOrder(code, phone);
   }
   @Get(':id/payment-status')

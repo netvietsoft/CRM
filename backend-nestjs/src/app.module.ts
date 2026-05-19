@@ -1,10 +1,9 @@
-import { Module, DynamicModule, Logger } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { BullModule } from '@nestjs/bullmq';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
-import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -34,16 +33,18 @@ const logger = new Logger('AppModule');
 function getQueueModules(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
-  
+
   // Skip BullMQ if Redis is not configured
   if (!redisHost && !redisUrl) {
-    logger.warn('⚠️  Redis not configured - BullMQ queues disabled. Voucher verification and background jobs will not work.');
+    logger.warn(
+      '⚠️  Redis not configured - BullMQ queues disabled. Voucher verification and background jobs will not work.',
+    );
     logger.warn('⚠️  To enable queues, set REDIS_HOST or REDIS_URL in .env file');
     return [];
   }
 
   logger.log('✅ Redis configured - BullMQ queues enabled');
-  
+
   return [
     // BullMQ Configuration with Redis
     BullModule.forRootAsync({

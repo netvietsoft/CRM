@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const apiKey = process.env.PANCAKE_API_KEY;
-    
+
     if (!apiKey) {
       return NextResponse.json(
         { error: 'PANCAKE_API_KEY not found in environment variables' },
@@ -30,9 +30,9 @@ export async function GET() {
     }
 
     const data = await response.json();
-    
+
     console.log('[Pancake] Shops response:', JSON.stringify(data, null, 2));
-    
+
     if (data.success && Array.isArray(data.data) && data.data.length > 0) {
       const shop = data.data[0]; // Get first shop
       return NextResponse.json({
@@ -52,13 +52,16 @@ export async function GET() {
     return NextResponse.json({
       success: false,
       message: 'No shops found',
-      data: data
+      data,
     });
-    
-  } catch (error: any) {
+
+  } catch (error) {
     console.error('[Pancake] Error fetching shop ID:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }

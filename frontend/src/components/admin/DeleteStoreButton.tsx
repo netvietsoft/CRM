@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 interface Props {
   storeId: string;
@@ -23,9 +24,9 @@ export default function DeleteStoreButton({ storeId, storeName }: Props) {
       await apiClientClient.delete(`/stores/admin/${storeId}`);
       router.push('/admin/stores');
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Lỗi khi xoá cửa hàng');
+      alert(getApiErrorMessage(error, 'Lỗi khi xoá cửa hàng'));
     } finally {
       setLoading(false);
     }

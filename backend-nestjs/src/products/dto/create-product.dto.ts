@@ -123,7 +123,9 @@ export class CreateProductDto {
   @Type(() => ProductVariantDto)
   variants?: ProductVariantDto[];
 
-  @ApiPropertyOptional({ description: 'Store ID - required for ADMIN, auto-assigned for MODERATOR' })
+  @ApiPropertyOptional({
+    description: 'Store ID - required for ADMIN, auto-assigned for MODERATOR',
+  })
   @IsOptional()
   @IsString()
   storeId?: string;

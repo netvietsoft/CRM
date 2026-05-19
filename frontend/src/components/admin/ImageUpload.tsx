@@ -1,7 +1,9 @@
 'use client';
 
+import Image from 'next/image';
 import { useUploadThing } from '@/lib/uploadthing';
 import { useState } from 'react';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 interface ImageUploadProps {
   value: string;
@@ -48,7 +50,7 @@ export default function ImageUpload({ value, onChange, endpoint }: ImageUploadPr
 
     try {
       await startUpload([file]);
-    } catch (err) {
+    } catch {
       setError('Lỗi upload hình ảnh');
       setUploading(false);
     }
@@ -64,10 +66,14 @@ export default function ImageUpload({ value, onChange, endpoint }: ImageUploadPr
       {/* Preview */}
       {value && (
         <div className="relative w-full aspect-video bg-gray-100 rounded-lg overflow-hidden">
-          <img
+          <Image
+            loader={passthroughImageLoader}
+            unoptimized
             src={value}
             alt="Preview"
-            className="w-full h-full object-cover"
+            fill
+            sizes="100vw"
+            className="object-cover"
           />
           <button
             type="button"

@@ -1,8 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { Star, X } from 'lucide-react';
 import { UploadButton } from '@/lib/uploadthing';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 type OrderItem = {
   id: string;
@@ -112,12 +114,16 @@ export default function OrderReviewForm({
         <div className="space-y-2">
           {reviewableProducts.map((item) => (
             <div key={item.id} className="flex items-center gap-3 bg-white p-2 rounded-lg">
-              <div className="w-12 h-12 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
+              <div className="relative w-12 h-12 rounded bg-gray-100 flex items-center justify-center overflow-hidden">
                 {item.product?.imageUrl ? (
-                  <img
+                  <Image
+                    loader={passthroughImageLoader}
+                    unoptimized
                     src={item.product.imageUrl}
                     alt={item.product.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    sizes="48px"
+                    className="object-cover"
                   />
                 ) : (
                   <span className="text-xl">📦</span>
@@ -194,9 +200,13 @@ export default function OrderReviewForm({
           <div className="flex flex-wrap gap-3 mb-3">
             {images.map((img, idx) => (
               <div key={idx} className="relative group">
-                <img
+                <Image
+                  loader={passthroughImageLoader}
+                  unoptimized
                   src={img}
                   alt=""
+                  width={96}
+                  height={96}
                   className="w-24 h-24 object-cover rounded-lg border border-gray-200"
                 />
                 <button

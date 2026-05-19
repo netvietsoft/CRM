@@ -5,14 +5,22 @@ import SellerRegisterClient from './SellerRegisterClient';
 
 export const dynamic = 'force-dynamic';
 
+interface SellerRegisterMeta {
+  hasStore: boolean;
+  store: {
+    name: string;
+    isActive: boolean;
+  } | null;
+}
+
 export default async function SellerRegisterPage() {
   const session = await getSession();
   if (!session) redirect('/login?callbackUrl=/portal/seller-register');
 
   // Check if user already has a store using the portal-layout-meta endpoint
-  let meta: any = { hasStore: false, store: null };
+  let meta: SellerRegisterMeta = { hasStore: false, store: null };
   try {
-    meta = await apiClient.get<any>('/users/portal-layout-meta');
+    meta = await apiClient.get<SellerRegisterMeta>('/users/portal-layout-meta');
   } catch (error) {
     console.error('Error fetching portal layout meta for seller register:', error);
   }

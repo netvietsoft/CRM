@@ -15,6 +15,28 @@ interface ProductRowActionsProps {
   product: Product;
 }
 
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+interface DeleteProductResponse {
+  success?: boolean;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function ProductRowActions({ product }: ProductRowActionsProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -26,11 +48,11 @@ export default function ProductRowActions({ product }: ProductRowActionsProps) {
     setError('');
 
     try {
-      await apiClientClient.delete<any>(`/products/${product.id}`);
+      await apiClientClient.delete<DeleteProductResponse>(`/products/${product.id}`);
       setShowDeleteModal(false);
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi xóa sản phẩm');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Lỗi xóa sản phẩm'));
     } finally {
       setLoading(false);
     }

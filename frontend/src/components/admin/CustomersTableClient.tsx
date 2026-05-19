@@ -4,9 +4,30 @@ import Link from 'next/link';
 import { MessageSquareShare } from 'lucide-react';
 import ZaloZnsModal from './ZaloZnsModal';
 
+interface CustomerSummary {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  rank: string;
+  totalSpent: number;
+  commissionBalance: number;
+  createdAt: string | Date;
+  _count?: {
+    orders?: number;
+    referees?: number;
+  };
+}
+
+interface CustomersTableSearchParams {
+  page?: string;
+  search?: string;
+  rank?: string;
+}
+
 interface CustomersTableClientProps {
-  customers: any[];
-  searchParams: any;
+  customers: CustomerSummary[];
+  searchParams: CustomersTableSearchParams;
   isZaloEnabled?: boolean;
 }
 

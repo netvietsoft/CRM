@@ -3,14 +3,45 @@ import { apiClient } from '@/lib/apiClient';
 import SpinPrizeActions from '@/components/admin/SpinPrizeActions';
 import SpinPrizeRowActions from '@/components/admin/SpinPrizeRowActions';
 
+interface SpinVoucher {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  type: string;
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  perCustomerLimit: number;
+  durationDays: number | null;
+  isStackable: boolean;
+}
+
+interface SpinPrize {
+  id: string;
+  name: string;
+  type: string;
+  color: string | null;
+  probability: number;
+  quantity: number | null;
+  wonCount: number;
+  isActive: boolean;
+  voucher: SpinVoucher | null;
+}
+
+interface SpinStats {
+  totalSpins: number;
+  totalWins: number;
+}
+
 export default async function SpinConfigPage() {
-  let prizes: any[] = [];
-  let stats = { totalSpins: 0, totalWins: 0 };
+  let prizes: SpinPrize[] = [];
+  let stats: SpinStats = { totalSpins: 0, totalWins: 0 };
 
   try {
     const [prizesRes, statsRes] = await Promise.all([
-      apiClient.get<any[]>('/spin/admin/prizes'),
-      apiClient.get<any>('/spin/admin/stats'),
+      apiClient.get<SpinPrize[]>('/spin/admin/prizes'),
+      apiClient.get<SpinStats>('/spin/admin/stats'),
     ]);
     prizes = prizesRes;
     stats = statsRes;

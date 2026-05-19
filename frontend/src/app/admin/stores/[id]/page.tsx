@@ -1,10 +1,70 @@
 export const dynamic = 'force-dynamic';
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import StoreStatusManager from '@/components/admin/StoreStatusManager';
 import { apiClient } from '@/lib/apiClient';
 import { getSession } from '@/lib/auth';
 import DeleteStoreButton from '@/components/admin/DeleteStoreButton';
+import { passthroughImageLoader } from '@/lib/imageLoader';
+
+interface StoreOrder {
+  id: string;
+  orderCode: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string | Date;
+  user?: {
+    name: string | null;
+  } | null;
+}
+
+interface StoreProduct {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  salePrice: number | null;
+  originalPrice: number;
+  stockQuantity: number;
+  soldCount: number;
+  isActive: boolean;
+}
+
+interface StoreDetail {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  createdAt: string | Date;
+  addressStreet: string | null;
+  addressWard: string | null;
+  addressProvince: string | null;
+  phone: string | null;
+  email: string | null;
+  description: string | null;
+  isActive: boolean;
+  isBanned: boolean;
+  bannedReason: string | null;
+  allowCOD: boolean;
+  bankName: string | null;
+  bankAccountNo: string | null;
+  bankOwnerName: string | null;
+  owner?: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+    rank: string | null;
+    createdAt: string | Date;
+  } | null;
+  _count?: {
+    products?: number;
+    orders?: number;
+    vouchers?: number;
+  };
+  orders?: StoreOrder[];
+  products?: StoreProduct[];
+}
 
 function fmt(amount: number) {
   return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
@@ -31,10 +91,10 @@ export default async function StoreDetailPage(props: { params: Promise<{ id: str
   if (session?.role !== 'ADMIN') redirect('/admin');
 
   const { id } = await props.params;
-  let store: any = null;
+  let store: StoreDetail | null = null;
 
   try {
-    store = await apiClient.get<any>(`/stores/admin/${id}`);
+    store = await apiClient.get<StoreDetail>(`/stores/admin/${id}`);
   } catch (error) {
     console.error('Error fetching admin store detail:', error);
   }
@@ -49,7 +109,7 @@ export default async function StoreDetailPage(props: { params: Promise<{ id: str
   }
 
   const fullAddress = [store.addressStreet, store.addressWard, store.addressProvince].filter(Boolean).join(', ');
-  const totalRevenue = (store.orders || []).reduce((sum: number, o: any) => sum + o.totalAmount, 0);
+  const totalRevenue = (store.orders || []).reduce((sum, order) => sum + order.totalAmount, 0);
 
   return (
     <>
@@ -57,7 +117,15 @@ export default async function StoreDetailPage(props: { params: Promise<{ id: str
         <Link href="/admin/stores" className="text-blue-600 hover:text-blue-700 font-medium text-sm mb-4 inline-block">← Quay lại danh sách</Link>
         <div className="flex items-center gap-4">
           {store.logoUrl ? (
-            <img src={store.logoUrl} alt={store.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-gray-200" />
+            <Image
+              loader={passthroughImageLoader}
+              unoptimized
+              src={store.logoUrl}
+              alt={store.name}
+              width={64}
+              height={64}
+              className="w-16 h-16 rounded-2xl object-cover border-2 border-gray-200"
+            />
           ) : (
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
               {store.name.charAt(0).toUpperCase()}
@@ -114,7 +182,7 @@ export default async function StoreDetailPage(props: { params: Promise<{ id: str
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {store.orders.map((order: any) => {
+                    {store.orders.map((order) => {
                       const st = statusMap[order.status] || { cls: 'bg-gray-100 text-gray-700', label: order.status };
                       return (
                         <tr key={order.id} className="hover:bg-gray-50">
@@ -145,11 +213,19 @@ export default async function StoreDetailPage(props: { params: Promise<{ id: str
               <p className="text-gray-500 text-center py-6">Chưa có sản phẩm nào</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {store.products.map((product: any) => (
+                {store.products.map((product) => (
                   <div key={product.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
                     <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                       {product.imageUrl ? (
-                        <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                        <Image
+                          loader={passthroughImageLoader}
+                          unoptimized
+                          src={product.imageUrl}
+                          alt={product.name}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-400">📦</div>
                       )}

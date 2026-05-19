@@ -4,14 +4,57 @@ import ReferralVoucherActions from '@/components/admin/ReferralVoucherActions';
 import ReferralRewardConfig from '@/components/admin/ReferralRewardConfig';
 import ReferralVoucherTable from '@/components/admin/ReferralVoucherTable';
 
+interface ReferralRewardTier {
+  milestone: number;
+  rewardType: 'SPIN' | 'VOUCHER';
+  spinTurns: number;
+  voucherId: string | null;
+  voucherName?: string;
+}
+
+interface ReferralRewardConfigData {
+  tiers: ReferralRewardTier[];
+}
+
+interface ReferralVoucher {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  campaignCategory: string;
+  type: string;
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  totalUsageLimit: number | null;
+  perCustomerLimit: number;
+  validFrom: string | null;
+  validTo: string | null;
+  durationDays: number | null;
+  isStackable: boolean;
+  isActive: boolean;
+  usedCount: number;
+  stackTiers: Array<{
+    conditionType?: string | null;
+    minProducts?: number | null;
+    minAmount?: number | null;
+    discount?: number | null;
+    type?: string | null;
+    maxDiscount?: number | null;
+  }> | null;
+  _count?: {
+    userVouchers?: number;
+  } | null;
+}
+
 export default async function ReferralVouchersPage() {
-  let vouchers: any[] = [];
-  let rewardConfig: any = { tiers: [] };
+  let vouchers: ReferralVoucher[] = [];
+  let rewardConfig: ReferralRewardConfigData = { tiers: [] };
 
   try {
     const [vouchersRes, configRes] = await Promise.all([
-      apiClient.get<any[]>('/vouchers/referral-vouchers'),
-      apiClient.get<any>('/vouchers/referral-rewards-config'),
+      apiClient.get<ReferralVoucher[]>('/vouchers/referral-vouchers'),
+      apiClient.get<ReferralRewardConfigData>('/vouchers/referral-rewards-config'),
     ]);
     vouchers = vouchersRes || [];
     rewardConfig = configRes || { tiers: [] };
@@ -19,8 +62,8 @@ export default async function ReferralVouchersPage() {
     console.error('Error fetching referral vouchers data:', error);
   }
 
-  const activeCount = vouchers.filter(v => v.isActive).length;
-  const usedCount = vouchers.reduce((sum, v) => sum + (v._count?.userVouchers || 0), 0);
+  const activeCount = vouchers.filter(voucher => voucher.isActive).length;
+  const usedCount = vouchers.reduce((sum, voucher) => sum + (voucher._count?.userVouchers || 0), 0);
 
   return (
     <>

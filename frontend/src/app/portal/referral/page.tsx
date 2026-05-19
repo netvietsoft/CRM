@@ -2,24 +2,65 @@ import { getSession } from '@/lib/auth';
 import ReferralCard from './ReferralCard';
 import { apiClient } from '@/lib/apiClient';
 import { headers } from 'next/headers';
+import type { UserProfile } from '@/types/commerce';
+
+interface ReferralUser extends UserProfile {
+  referralCode?: string | null;
+}
+
+interface Referee {
+  id: string;
+  name: string;
+  level: number;
+  createdAt: string | Date;
+  _count: {
+    orders: number;
+  };
+}
+
+interface ReferralCommission {
+  id: string;
+  level: number;
+  amount: number;
+  status: string;
+  order?: {
+    orderCode?: string | null;
+  } | null;
+}
+
+interface CommissionConfig {
+  level: number;
+  percentage: number;
+}
+
+interface RewardTier {
+  milestone: number;
+  rewardType: 'SPIN' | 'VOUCHER' | string;
+  spinTurns?: number | null;
+  voucherName?: string | null;
+}
+
+interface ReferralRewardConfig {
+  tiers: RewardTier[];
+}
 
 export default async function PortalReferralPage() {
   const session = await getSession();
   if (!session) return null;
 
-  let user: any = null;
-  let referees: any[] = [];
-  let commissions: any[] = [];
-  let commissionConfigs: any[] = [];
-  let rewardConfig: any = { tiers: [] };
+  let user: ReferralUser | null = null;
+  let referees: Referee[] = [];
+  let commissions: ReferralCommission[] = [];
+  let commissionConfigs: CommissionConfig[] = [];
+  let rewardConfig: ReferralRewardConfig = { tiers: [] };
 
   try {
     const [userData, networkData, ledgerData, configsData, rewardConfigData] = await Promise.all([
-      apiClient.get<any>('/users/profile'),
-      apiClient.get<any[]>('/commissions/network'),
-      apiClient.get<any[]>('/commissions/ledger'),
-      apiClient.get<any[]>('/commissions/configs'),
-      apiClient.get<any>('/vouchers/referral-rewards-config/public').catch(() => ({ tiers: [] })),
+      apiClient.get<ReferralUser>('/users/profile'),
+      apiClient.get<Referee[]>('/commissions/network'),
+      apiClient.get<ReferralCommission[]>('/commissions/ledger'),
+      apiClient.get<CommissionConfig[]>('/commissions/configs'),
+      apiClient.get<ReferralRewardConfig>('/vouchers/referral-rewards-config/public').catch(() => ({ tiers: [] })),
     ]);
     user = userData;
     referees = networkData;
@@ -86,7 +127,7 @@ export default async function PortalReferralPage() {
           </h3>
           <div className="space-y-6">
             {(rewardConfig.tiers && rewardConfig.tiers.length > 0) ? (
-              rewardConfig.tiers.map((tier: any, idx: number) => {
+              rewardConfig.tiers.map((tier, idx) => {
                 const colors = [
                   'bg-rose-100 text-rose-600',
                   'bg-purple-100 text-purple-600',

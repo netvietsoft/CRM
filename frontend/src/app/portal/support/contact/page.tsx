@@ -148,7 +148,7 @@ export default function ContactPage() {
                     </h3>
                     <div className="space-y-2 text-sm text-gray-700">
                       <p>• <strong>Xe bus:</strong> Tuyến 03, 23, 34 - Dừng Trần Đăng Ninh</p>
-                      <p>• <strong>Taxi/Grab:</strong> Nhập địa chỉ "72 Trần Đăng Ninh"</p>
+                      <p>• <strong>Taxi/Grab:</strong> Nhập địa chỉ &quot;72 Trần Đăng Ninh&quot;</p>
                       <p>• <strong>Xe máy:</strong> Có bãi đỗ xe miễn phí</p>
                       <p>• <strong>Ô tô:</strong> Bãi đỗ xe trong tòa nhà</p>
                     </div>
@@ -174,7 +174,7 @@ export default function ContactPage() {
                     Làm thế nào để theo dõi đơn hàng của tôi?
                   </summary>
                   <p className="mt-3 text-sm text-gray-700 leading-relaxed">
-                    Bạn có thể theo dõi đơn hàng bằng cách đăng nhập vào tài khoản, truy cập mục "Đơn hàng của tôi" và xem chi tiết trạng thái đơn hàng. Bạn cũng sẽ nhận được email và SMS thông báo khi đơn hàng thay đổi trạng thái.
+                    Bạn có thể theo dõi đơn hàng bằng cách đăng nhập vào tài khoản, truy cập mục &quot;Đơn hàng của tôi&quot; và xem chi tiết trạng thái đơn hàng. Bạn cũng sẽ nhận được email và SMS thông báo khi đơn hàng thay đổi trạng thái.
                   </p>
                 </details>
 
@@ -210,7 +210,7 @@ export default function ContactPage() {
                     Tôi quên mật khẩu, phải làm sao?
                   </summary>
                   <p className="mt-3 text-sm text-gray-700 leading-relaxed">
-                    Tại trang đăng nhập, nhấn vào "Quên mật khẩu", nhập email đã đăng ký. Chúng tôi sẽ gửi link đặt lại mật khẩu đến email của bạn trong vòng vài phút.
+                    Tại trang đăng nhập, nhấn vào &quot;Quên mật khẩu&quot;, nhập email đã đăng ký. Chúng tôi sẽ gửi link đặt lại mật khẩu đến email của bạn trong vòng vài phút.
                   </p>
                 </details>
               </div>
@@ -229,5 +229,4 @@ export default function ContactPage() {
     </div>
   );
 }
-
 

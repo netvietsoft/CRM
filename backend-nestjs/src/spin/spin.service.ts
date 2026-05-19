@@ -113,7 +113,7 @@ export class SpinService {
       });
 
       // 2. Record history
-      const history = await tx.spinHistory.create({
+      await tx.spinHistory.create({
         data: {
           userId,
           prizeId: selectedPrize.id,
@@ -295,7 +295,7 @@ export class SpinService {
       // Delete prize
       const deleted = await tx.spinPrize.delete({ where: { id } });
 
-      // If it has a voucher template, maybe keep it or delete it? 
+      // If it has a voucher template, maybe keep it or delete it?
       // Usually template vouchers are unique to the prize, so we delete.
       if (existing.voucherId) {
         await tx.voucher.delete({ where: { id: existing.voucherId } }).catch(() => {

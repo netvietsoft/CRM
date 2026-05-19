@@ -76,9 +76,7 @@ export class SpinController {
   @Post('add-attempts')
   @Roles('ADMIN')
   @ApiOperation({ summary: 'Add spin attempts to user (Admin only)' })
-  async addSpinAttempts(
-    @Body() data: { userId: string; attempts: number },
-  ) {
+  async addSpinAttempts(@Body() data: { userId: string; attempts: number }) {
     return this.spinService.addSpinAttempts(data.userId, data.attempts);
   }
 }

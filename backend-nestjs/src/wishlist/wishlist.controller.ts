@@ -19,10 +19,7 @@ export class WishlistController {
 
   @Post()
   @ApiOperation({ summary: 'Toggle wishlist (add/remove)' })
-  async toggleWishlist(
-    @GetUser() user: any,
-    @Body() body: { productId: string },
-  ) {
+  async toggleWishlist(@GetUser() user: any, @Body() body: { productId: string }) {
     return this.wishlistService.toggleWishlist(user.id, body.productId);
   }
 }

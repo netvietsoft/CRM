@@ -1,8 +1,14 @@
-import { Injectable, Logger, OnModuleInit, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  BadRequestException,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { SmsService } from '../integrations/sms/sms.service';
 
 @Injectable()
@@ -82,15 +88,18 @@ export class VouchersService implements OnModuleInit {
     });
 
     // Filter out vouchers that have reached their total usage limit
-    return vouchers.filter(v => {
-      if (v.totalUsageLimit !== null && v._count.userVouchers >= v.totalUsageLimit) {
-        return false;
-      }
-      return true;
-    }).map(v => {
-      const { _count, ...rest } = v;
-      return rest;
-    });
+    return vouchers
+      .filter((v) => {
+        if (v.totalUsageLimit !== null && v._count.userVouchers >= v.totalUsageLimit) {
+          return false;
+        }
+        return true;
+      })
+      .map((v) => {
+        const voucher = { ...v };
+        delete voucher._count;
+        return voucher;
+      });
   }
 
   async findOne(id: string) {
@@ -156,8 +165,14 @@ export class VouchersService implements OnModuleInit {
 
     // Verify phone number matches
     const orderPhone = (order.shippingPhone || order.user?.phone || '').replace(/[\s\-]/g, '');
-    if (!orderPhone || !normalizedPhone.endsWith(orderPhone.slice(-9)) && !orderPhone.endsWith(normalizedPhone.slice(-9))) {
-      throw new BadRequestException('Số điện thoại không khớp với đơn hàng. Vui lòng nhập đúng SĐT đặt hàng để lấy mã.');
+    if (
+      !orderPhone ||
+      (!normalizedPhone.endsWith(orderPhone.slice(-9)) &&
+        !orderPhone.endsWith(normalizedPhone.slice(-9)))
+    ) {
+      throw new BadRequestException(
+        'Số điện thoại không khớp với đơn hàng. Vui lòng nhập đúng SĐT đặt hàng để lấy mã.',
+      );
     }
 
     // Check if there's an existing unexpired OTP to prevent spam
@@ -205,9 +220,15 @@ export class VouchersService implements OnModuleInit {
     };
   }
 
-  async claimQRVoucher(userId: string, orderCode: string, phone: string, voucherId?: string, otp?: string) {
+  async claimQRVoucher(
+    userId: string,
+    orderCode: string,
+    phone: string,
+    voucherId?: string,
+    otp?: string,
+  ) {
     const MAX_QR_CLAIMS = 5;
-    
+
     // Get lock duration from system config, fallback to 7 days
     const sysConfig = await this.prisma.systemConfig.findUnique({
       where: { key: 'qr_voucher_default' },
@@ -298,8 +319,14 @@ export class VouchersService implements OnModuleInit {
 
     // Verify phone number matches
     const orderPhone = (order.shippingPhone || order.user?.phone || '').replace(/[\s\-]/g, '');
-    if (!orderPhone || !normalizedPhone.endsWith(orderPhone.slice(-9)) && !orderPhone.endsWith(normalizedPhone.slice(-9))) {
-      throw new BadRequestException('Số điện thoại không khớp với đơn hàng. Vui lòng nhập đúng SĐT đặt hàng.');
+    if (
+      !orderPhone ||
+      (!normalizedPhone.endsWith(orderPhone.slice(-9)) &&
+        !orderPhone.endsWith(normalizedPhone.slice(-9)))
+    ) {
+      throw new BadRequestException(
+        'Số điện thoại không khớp với đơn hàng. Vui lòng nhập đúng SĐT đặt hàng.',
+      );
     }
 
     // Check order status - only allow for delivered/completed orders
@@ -315,7 +342,9 @@ export class VouchersService implements OnModuleInit {
         REFUNDED: 'Đơn hàng đã hoàn trả',
       };
       const msg = statusMessages[order.status] || `Trạng thái đơn hàng: ${order.status}`;
-      throw new BadRequestException(`Chưa thể nhận voucher. ${msg}. Bạn cần nhận hàng thành công trước khi nhận quà.`);
+      throw new BadRequestException(
+        `Chưa thể nhận voucher. ${msg}. Bạn cần nhận hàng thành công trước khi nhận quà.`,
+      );
     }
 
     // Check user claim count for gamification
@@ -350,7 +379,11 @@ export class VouchersService implements OnModuleInit {
 
         // Ensure we have an array of values (support both new 'values' array and old 'value' fallback)
         let configValues = [50000, 40000, 30000, 20000, 10000]; // Absolute fallback
-        if (configData?.values && Array.isArray(configData.values) && configData.values.length > 0) {
+        if (
+          configData?.values &&
+          Array.isArray(configData.values) &&
+          configData.values.length > 0
+        ) {
           configValues = configData.values;
         } else if (configData?.value) {
           configValues = [configData.value];
@@ -361,11 +394,14 @@ export class VouchersService implements OnModuleInit {
         if (configData?.minOrderValues && Array.isArray(configData.minOrderValues)) {
           configMinOrderValues = configData.minOrderValues;
         }
-        
+
         // Determine amount and min order based on claim count (if count exceeds array, use the last value)
         const voucherAmount = configValues[userClaimCount] || configValues[configValues.length - 1];
-        const voucherMinOrder = configMinOrderValues[userClaimCount] ?? configMinOrderValues[configMinOrderValues.length - 1] ?? 0;
-        
+        const voucherMinOrder =
+          configMinOrderValues[userClaimCount] ??
+          configMinOrderValues[configMinOrderValues.length - 1] ??
+          0;
+
         // Include minOrderValue in the code to allow different constraints for the same amount
         const voucherCode = `QR-DEFAULT-${voucherAmount}-${voucherMinOrder}`;
 
@@ -389,8 +425,6 @@ export class VouchersService implements OnModuleInit {
           });
         }
         finalVoucherId = defaultVoucher.id;
-
-
       }
     }
 
@@ -413,7 +447,10 @@ export class VouchersService implements OnModuleInit {
     if (voucher.code.startsWith('QR-ORDER-')) {
       let resolvedStatus = voucher.status || 'AUTO';
       if (resolvedStatus === 'AUTO') {
-        const isDelivered = order.status === 'DELIVERED' || order.status === 'PAYMENT_COLLECTED' || order.status === 'COMPLETED';
+        const isDelivered =
+          order.status === 'DELIVERED' ||
+          order.status === 'PAYMENT_COLLECTED' ||
+          order.status === 'COMPLETED';
         if (isDelivered && order.updatedAt) {
           const deliveredDate = new Date(order.updatedAt);
           const now = new Date();
@@ -424,7 +461,11 @@ export class VouchersService implements OnModuleInit {
           } else {
             resolvedStatus = 'PENDING';
           }
-        } else if (order.status === 'CANCELLED' || order.status === 'REFUNDED' || order.status === 'RETURNING') {
+        } else if (
+          order.status === 'CANCELLED' ||
+          order.status === 'REFUNDED' ||
+          order.status === 'RETURNING'
+        ) {
           resolvedStatus = 'LOCKED';
         } else {
           resolvedStatus = 'PENDING';
@@ -438,7 +479,10 @@ export class VouchersService implements OnModuleInit {
       }
     }
 
-    if (voucher.totalUsageLimit !== null && voucher._count.userVouchers >= voucher.totalUsageLimit) {
+    if (
+      voucher.totalUsageLimit !== null &&
+      voucher._count.userVouchers >= voucher.totalUsageLimit
+    ) {
       throw new BadRequestException('Voucher này đã hết số lượng phát hành');
     }
 
@@ -471,7 +515,7 @@ export class VouchersService implements OnModuleInit {
 
     return {
       success: true,
-      message: isImmediatelyActive 
+      message: isImmediatelyActive
         ? `Chúc mừng! Bạn đã nhận được voucher ${voucher.value.toLocaleString('vi-VN')}đ. Voucher đã có thể sử dụng ngay.`
         : `Chúc mừng! Bạn đã nhận được voucher ${voucher.value.toLocaleString('vi-VN')}đ. Voucher sẽ khả dụng sau ${LOCK_DURATION_DAYS} ngày.`,
       userVoucher,
@@ -483,10 +527,10 @@ export class VouchersService implements OnModuleInit {
    */
   async createOrderVoucher(
     data: {
-      orderId: string; 
+      orderId: string;
       name?: string;
       type?: 'FIXED_AMOUNT' | 'PERCENT' | 'FREESHIP' | 'STACK';
-      value?: number; 
+      value?: number;
       maxDiscount?: number;
       minOrderValue?: number;
       durationDays?: number;
@@ -496,7 +540,17 @@ export class VouchersService implements OnModuleInit {
     user?: any,
     effectiveStoreId?: string | null,
   ) {
-    const { orderId, name, type, value, maxDiscount, minOrderValue, durationDays, perCustomerLimit, stackTiers } = data;
+    const {
+      orderId,
+      name,
+      type,
+      value,
+      maxDiscount,
+      minOrderValue,
+      durationDays,
+      perCustomerLimit,
+      stackTiers,
+    } = data;
 
     // Find the order
     const order = await this.prisma.order.findUnique({
@@ -509,7 +563,9 @@ export class VouchersService implements OnModuleInit {
     }
 
     if (user && user.role !== 'ADMIN' && effectiveStoreId && order.storeId !== effectiveStoreId) {
-      throw new BadRequestException('Bạn chỉ có thể tạo voucher cho đơn hàng thuộc cửa hàng của mình');
+      throw new BadRequestException(
+        'Bạn chỉ có thể tạo voucher cho đơn hàng thuộc cửa hàng của mình',
+      );
     }
 
     // Check if this order already has a dedicated voucher
@@ -530,10 +586,11 @@ export class VouchersService implements OnModuleInit {
         where: { key: 'qr_voucher_default' },
       });
       const configData = config?.value as any;
-      
+
       // Fallback to first mốc if array exists, otherwise old single value
       voucherValue = configData?.values?.[0] ?? configData?.value ?? 50000;
-      voucherMinOrder = voucherMinOrder ?? configData?.minOrderValues?.[0] ?? configData?.minOrderValue ?? 0;
+      voucherMinOrder =
+        voucherMinOrder ?? configData?.minOrderValues?.[0] ?? configData?.minOrderValue ?? 0;
     }
 
     const voucherType = type || 'FIXED_AMOUNT';
@@ -575,7 +632,7 @@ export class VouchersService implements OnModuleInit {
    */
   async getOrderVoucher(orderCode: string, user?: any, effectiveStoreId?: string | null) {
     const voucher = await this.prisma.voucher.findFirst({
-      where: { 
+      where: {
         code: `QR-ORDER-${orderCode}`,
         ...(effectiveStoreId ? { storeId: effectiveStoreId } : {}),
       },
@@ -617,8 +674,8 @@ export class VouchersService implements OnModuleInit {
 
     if (vouchers.length === 0) return [];
 
-    const orderCodes = vouchers.map(v => v.code.replace('QR-ORDER-', ''));
-    
+    const orderCodes = vouchers.map((v) => v.code.replace('QR-ORDER-', ''));
+
     const orders = await this.prisma.order.findMany({
       where: { orderCode: { in: orderCodes } },
       select: {
@@ -632,30 +689,33 @@ export class VouchersService implements OnModuleInit {
       },
     });
 
-    const orderMap = new Map(orders.map(o => [o.orderCode, o]));
+    const orderMap = new Map(orders.map((o) => [o.orderCode, o]));
 
-    return vouchers.map(v => {
+    return vouchers.map((v) => {
       const orderCode = v.code.replace('QR-ORDER-', '');
       const order = orderMap.get(orderCode);
-      const usedCount = v.userVouchers.filter(uv => uv.isUsed).length;
+      const usedCount = v.userVouchers.filter((uv) => uv.isUsed).length;
       const claimedCount = v.userVouchers.length;
       const totalDiscountUsed = v.userVouchers.reduce((sum, uv) => {
         return sum + uv.appliedOrders.reduce((s, ao) => s + (ao.discountApplied || 0), 0);
       }, 0);
       // Compute voucher monetary value
-      const voucherMonetaryValue = v.type === 'PERCENT'
-        ? (order ? order.totalAmount * (v.value / 100) : 0)
-        : v.value;
+      const voucherMonetaryValue =
+        v.type === 'PERCENT' ? (order ? order.totalAmount * (v.value / 100) : 0) : v.value;
       const remainingValue = Math.max(0, voucherMonetaryValue - totalDiscountUsed);
 
-      const { userVouchers, ...voucherData } = v;
+      const voucherData = { ...v };
+      delete voucherData.userVouchers;
 
       let resolvedStatus = voucherData.status || 'AUTO';
       if (resolvedStatus === 'AUTO') {
         if (!order) {
           resolvedStatus = 'PENDING';
         } else {
-          const isDelivered = order.status === 'DELIVERED' || order.status === 'PAYMENT_COLLECTED' || order.status === 'COMPLETED';
+          const isDelivered =
+            order.status === 'DELIVERED' ||
+            order.status === 'PAYMENT_COLLECTED' ||
+            order.status === 'COMPLETED';
           if (isDelivered) {
             if (order.updatedAt) {
               const deliveredDate = new Date(order.updatedAt);
@@ -670,7 +730,11 @@ export class VouchersService implements OnModuleInit {
             } else {
               resolvedStatus = 'PENDING';
             }
-          } else if (order.status === 'CANCELLED' || order.status === 'REFUNDED' || order.status === 'RETURNING') {
+          } else if (
+            order.status === 'CANCELLED' ||
+            order.status === 'REFUNDED' ||
+            order.status === 'RETURNING'
+          ) {
             resolvedStatus = 'LOCKED';
           } else {
             resolvedStatus = 'PENDING';
@@ -733,7 +797,9 @@ export class VouchersService implements OnModuleInit {
   async manualTriggerVerification() {
     if (!this.voucherQueue) {
       this.logger.warn('⚠️  Queue not available - cannot trigger manual verification');
-      throw new BadRequestException('Queue service not available. Redis is required for background jobs.');
+      throw new BadRequestException(
+        'Queue service not available. Redis is required for background jobs.',
+      );
     }
 
     // Add a one-time job to the queue
@@ -762,7 +828,11 @@ export class VouchersService implements OnModuleInit {
     return store?.id || null;
   }
 
-  async findAllAdmin(excludeGamification: boolean = false, user?: any, effectiveStoreId?: string | null) {
+  async findAllAdmin(
+    excludeGamification: boolean = false,
+    user?: any,
+    effectiveStoreId?: string | null,
+  ) {
     let storeFilter: any = {};
 
     if (effectiveStoreId) {
@@ -795,10 +865,10 @@ export class VouchersService implements OnModuleInit {
 
   async create(data: any, user?: any, effectiveStoreId?: string | null) {
     const formattedData = { ...data };
-    
+
     if (formattedData.validFrom === '') formattedData.validFrom = null;
     if (formattedData.validTo === '') formattedData.validTo = null;
-    
+
     if (formattedData.validFrom) formattedData.validFrom = new Date(formattedData.validFrom);
     if (formattedData.validTo) formattedData.validTo = new Date(formattedData.validTo);
 
@@ -832,10 +902,10 @@ export class VouchersService implements OnModuleInit {
     }
 
     const formattedData = { ...data };
-    
+
     if (formattedData.validFrom === '') formattedData.validFrom = null;
     if (formattedData.validTo === '') formattedData.validTo = null;
-    
+
     if (formattedData.validFrom) formattedData.validFrom = new Date(formattedData.validFrom);
     if (formattedData.validTo) formattedData.validTo = new Date(formattedData.validTo);
 
@@ -907,7 +977,10 @@ export class VouchersService implements OnModuleInit {
     let grantedCount = 0;
     // Grant each welcome voucher to the user
     for (const voucher of welcomeVouchers) {
-      if (voucher.totalUsageLimit !== null && voucher._count.userVouchers >= voucher.totalUsageLimit) {
+      if (
+        voucher.totalUsageLimit !== null &&
+        voucher._count.userVouchers >= voucher.totalUsageLimit
+      ) {
         continue; // Skip if limit reached
       }
 
@@ -1010,7 +1083,9 @@ export class VouchersService implements OnModuleInit {
       const tiers = config?.tiers || [];
 
       if (tiers.length === 0) {
-        this.logger.log(`No referral reward config found. Skipping reward for referrer ${referrerId}`);
+        this.logger.log(
+          `No referral reward config found. Skipping reward for referrer ${referrerId}`,
+        );
         return;
       }
 
@@ -1028,7 +1103,9 @@ export class VouchersService implements OnModuleInit {
           where: { id: referrerId },
           data: { spinTurns: { increment: spins } },
         });
-        this.logger.log(`🎰 Granted ${spins} spin turn(s) to referrer ${referrerId} for milestone ${refereeCount}`);
+        this.logger.log(
+          `🎰 Granted ${spins} spin turn(s) to referrer ${referrerId} for milestone ${refereeCount}`,
+        );
       } else if (tier.rewardType === 'VOUCHER' && tier.voucherId) {
         // Grant voucher
         const voucher = await this.prisma.voucher.findUnique({
@@ -1049,7 +1126,9 @@ export class VouchersService implements OnModuleInit {
               isUsed: false,
             },
           });
-          this.logger.log(`🎫 Granted voucher "${voucher.code}" to referrer ${referrerId} for milestone ${refereeCount}`);
+          this.logger.log(
+            `🎫 Granted voucher "${voucher.code}" to referrer ${referrerId} for milestone ${refereeCount}`,
+          );
         }
       }
     } catch (error) {

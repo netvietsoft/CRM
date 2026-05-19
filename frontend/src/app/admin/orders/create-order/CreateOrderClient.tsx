@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
+import { useEffect, useState, useCallback, type SVGProps } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Trash2, X, Monitor, Scan, ShoppingCart, Check, ChevronDown, DownloadCloud, MapPin, Plus, Save } from 'lucide-react';
+import { Search, Trash2, X, ChevronDown, DownloadCloud, MapPin, Plus, Save } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 import Select from '@/components/ui/Select';
 
 interface ProductVariant {
@@ -29,6 +31,12 @@ interface AddressOption {
   name: string;
 }
 
+interface StaffMember {
+  id: string;
+  name?: string | null;
+  phone?: string | null;
+}
+
 interface Customer {
   id: string;
   name: string | null;
@@ -45,6 +53,28 @@ interface OrderItem {
   size: string | null;
   color: string | null;
   product: Product;
+}
+
+interface StaffMembersResponse {
+  staff?: StaffMember[];
+}
+
+interface CustomerSearchResponse {
+  customers?: Customer[];
+}
+
+interface ProductSearchResponse {
+  data?: Product[];
+}
+
+interface CustomerPrefill {
+  shippingName: string;
+  shippingPhone: string;
+  shippingStreet: string;
+  shippingProvince: string;
+  shippingWard: string;
+  wards: AddressOption[];
+  provinceOptions?: AddressOption[];
 }
 
 const REASON_GROUPS: { label: string; options?: string[] }[] = [
@@ -199,7 +229,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
   const [wards, setWards] = useState<AddressOption[]>([]);
 
   // Staff State
-  const [staffList, setStaffList] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -207,14 +237,14 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
   const [activeNoteTab, setActiveNoteTab] = useState<'NOI_BO' | 'DE_IN'>('NOI_BO');
 
   useEffect(() => {
-    apiClientClient.get<{ staff: any[] }>('/admin/staff/members')
+    void apiClientClient.get<StaffMembersResponse>('/admin/staff/members')
       .then(res => {
         const list = res.staff || [];
         setStaffList(list);
 
         // Auto-assign current user as "NV xử lý" if they are STAFF or MODERATOR (not ADMIN)
         if (currentUser && currentUser.role !== 'ADMIN') {
-          const match = list.find((s: any) => s.id === currentUser.id);
+          const match = list.find((staff) => staff.id === currentUser.id);
           if (match) {
             setAssigningSellerId(match.id);
           }
@@ -266,46 +296,75 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
   }, [findAddressOption, provinces]);
 
   useEffect(() => {
-    loadProvinces().then(setProvinces).catch(console.error);
+    void loadProvinces().then(setProvinces).catch(console.error);
   }, [loadProvinces]);
+
+  const buildCustomerPrefill = useCallback(async (customer: Customer): Promise<CustomerPrefill> => {
+    const custProvince = customer.addressProvince || '';
+    const custWard = customer.addressWard || '';
+
+    const prefill: CustomerPrefill = {
+      shippingName: customer.name || '',
+      shippingPhone: customer.phone || '',
+      shippingStreet: customer.addressStreet || '',
+      shippingProvince: '',
+      shippingWard: '',
+      wards: [],
+    };
+
+    if (!custProvince) {
+      return prefill;
+    }
+
+    const provinceOptions = provinces.length ? provinces : await loadProvinces();
+    if (!provinces.length) {
+      prefill.provinceOptions = provinceOptions;
+    }
+
+    const provinceOption = findAddressOption(provinceOptions, custProvince);
+    prefill.shippingProvince = provinceOption?.name || custProvince;
+
+    if (!provinceOption) {
+      prefill.shippingWard = custWard;
+      return prefill;
+    }
+
+    const result = await loadWards(provinceOption.name, provinceOptions);
+    const wardOptions = result?.wards || [];
+    const wardOption = custWard ? findAddressOption(wardOptions, custWard) : null;
+
+    prefill.wards = wardOptions;
+    prefill.shippingWard = wardOption?.name || custWard;
+
+    return prefill;
+  }, [findAddressOption, loadProvinces, loadWards, provinces]);
 
   useEffect(() => {
     if (!selectedCustomer) return;
 
-    setShippingName(selectedCustomer.name || '');
-    setShippingPhone(selectedCustomer.phone || '');
-    setShippingStreet(selectedCustomer.addressStreet || '');
+    let isCancelled = false;
 
-    const fillAddress = async () => {
-      const custProvince = selectedCustomer.addressProvince || '';
-      const custWard = selectedCustomer.addressWard || '';
+    void buildCustomerPrefill(selectedCustomer)
+      .then((prefill) => {
+        if (isCancelled) return;
 
-      if (!custProvince) {
-        setShippingProvince('');
-        setShippingWard('');
-        setWards([]);
-        return;
-      }
+        setShippingName(prefill.shippingName);
+        setShippingPhone(prefill.shippingPhone);
+        setShippingStreet(prefill.shippingStreet);
+        setShippingProvince(prefill.shippingProvince);
+        setShippingWard(prefill.shippingWard);
+        setWards(prefill.wards);
 
-      const provinceOptions = provinces.length ? provinces : await loadProvinces();
-      if (!provinces.length) setProvinces(provinceOptions);
-      const provinceOption = findAddressOption(provinceOptions, custProvince);
-      setShippingProvince(provinceOption?.name || custProvince);
+        if (prefill.provinceOptions) {
+          setProvinces(prefill.provinceOptions);
+        }
+      })
+      .catch(console.error);
 
-      if (provinceOption) {
-        const result = await loadWards(provinceOption.name, provinceOptions);
-        const wardOptions = result?.wards || [];
-        setWards(wardOptions);
-        const wardOption = custWard ? findAddressOption(wardOptions, custWard) : null;
-        setShippingWard(wardOption?.name || custWard);
-      } else {
-        setWards([]);
-        setShippingWard(custWard);
-      }
+    return () => {
+      isCancelled = true;
     };
-
-    fillAddress().catch(console.error);
-  }, [selectedCustomer, provinces, loadProvinces, loadWards, findAddressOption]);
+  }, [buildCustomerPrefill, selectedCustomer]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -316,7 +375,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
       setSearchingCustomers(true);
       try {
-        const data = await apiClientClient.get<any>('/admin/customers', {
+        const data = await apiClientClient.get<CustomerSearchResponse>('/admin/customers', {
           params: {
             search: customerSearch.trim(),
             limit: 8,
@@ -343,7 +402,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
       setSearchingProducts(true);
       try {
-        const data = await apiClientClient.get<any>('/products/admin', {
+        const data = await apiClientClient.get<ProductSearchResponse>('/products/admin', {
           params: {
             search: productSearch.trim(),
             limit: 8,
@@ -498,7 +557,15 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                           className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 border-b border-gray-50 text-left transition-colors last:border-0"
                         >
                           {product.imageUrl ? (
-                            <img src={product.imageUrl} alt="" className="w-10 h-10 rounded object-cover border border-gray-200" />
+                            <Image
+                              loader={passthroughImageLoader}
+                              unoptimized
+                              src={product.imageUrl}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded object-cover border border-gray-200"
+                            />
                           ) : (
                             <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex items-center justify-center"><Plus className="w-4 h-4 text-gray-400" /></div>
                           )}
@@ -537,7 +604,15 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                           <div className="w-8 text-center text-gray-400 font-medium">{index + 1}</div>
                           <div className="flex-1 flex gap-3">
                             {item.product.imageUrl ? (
-                              <img src={item.product.imageUrl} alt="" className="w-12 h-12 rounded object-cover border border-gray-200 bg-gray-50" />
+                              <Image
+                                loader={passthroughImageLoader}
+                                unoptimized
+                                src={item.product.imageUrl}
+                                alt=""
+                                width={48}
+                                height={48}
+                                className="w-12 h-12 rounded object-cover border border-gray-200 bg-gray-50"
+                              />
                             ) : (
                               <div className="w-12 h-12 rounded border border-gray-200 bg-gray-50" />
                             )}
@@ -972,7 +1047,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 }
 
 // Icon for Calendar
-function CalendarIcon(props: any) {
+function CalendarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

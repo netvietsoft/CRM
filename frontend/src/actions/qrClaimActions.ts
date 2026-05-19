@@ -2,12 +2,46 @@
 
 import { apiClient } from '@/lib/apiClient';
 
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+interface SendOtpResponse {
+  success: boolean;
+  message: string;
+}
+
+interface ClaimQrResponse {
+  success: boolean;
+  message: string;
+  userVoucher?: {
+    unlockAt?: string;
+    voucher?: {
+      value?: number;
+    } | null;
+  } | null;
+}
+
 interface ClaimResult {
   success: boolean;
   message: string;
   voucherAmount?: number;
   unlockDate?: string;
   claimCount?: number;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
 }
 
 export async function sendOtpAction(phone: string, orderCode: string): Promise<{ success: boolean; message: string }> {
@@ -22,15 +56,18 @@ export async function sendOtpAction(phone: string, orderCode: string): Promise<{
       return { success: false, message: 'Mã đơn hàng không hợp lệ' };
     }
 
-    const result = await apiClient.post<any>('/vouchers/send-otp', { phone: trimmedPhone, orderCode: trimmedOrderCode });
+    const result = await apiClient.post<SendOtpResponse, { phone: string; orderCode: string }>(
+      '/vouchers/send-otp',
+      { phone: trimmedPhone, orderCode: trimmedOrderCode },
+    );
     return {
       success: true,
       message: result.message || 'Đã gửi mã OTP',
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Không thể gửi OTP lúc này',
+      message: getErrorMessage(error, 'Không thể gửi OTP lúc này'),
     };
   }
 }
@@ -62,11 +99,14 @@ export async function claimQrRewardAction(orderCode: string, phone: string, otp:
       };
     }
 
-    const result = await apiClient.post<any>('/vouchers/claim-qr', {
-      orderCode: trimmedOrderCode,
-      phone: trimmedPhone,
-      otp: trimmedOtp,
-    });
+    const result = await apiClient.post<ClaimQrResponse, { orderCode: string; phone: string; otp: string }>(
+      '/vouchers/claim-qr',
+      {
+        orderCode: trimmedOrderCode,
+        phone: trimmedPhone,
+        otp: trimmedOtp,
+      },
+    );
 
     if (result.success) {
       return {
@@ -81,11 +121,11 @@ export async function claimQrRewardAction(orderCode: string, phone: string, otp:
         message: result.message || 'Không thể nhận quà lúc này',
       };
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('QR Claim Error:', error);
     return {
       success: false,
-      message: error.response?.data?.message || error.message || 'Đã xảy ra lỗi. Vui lòng thử lại sau.',
+      message: getErrorMessage(error, 'Đã xảy ra lỗi. Vui lòng thử lại sau.'),
     };
   }
 }

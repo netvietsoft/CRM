@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { getApiErrorMessage } from '@/lib/apiError';
 
 interface DeleteOrderButtonProps {
   orderId: string;
@@ -24,8 +25,8 @@ export default function DeleteOrderButton({ orderId, orderCode }: DeleteOrderBut
       await apiClientClient.delete(`/orders/${orderId}`);
       router.push('/admin/orders');
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi xóa đơn hàng');
+    } catch (error) {
+      setError(getApiErrorMessage(error, 'Lỗi xóa đơn hàng'));
     } finally {
       setLoading(false);
     }

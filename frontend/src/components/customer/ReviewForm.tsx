@@ -1,9 +1,11 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
-import { Star, X, Upload } from 'lucide-react';
+import { Star, X } from 'lucide-react';
 import { UploadButton } from '@/lib/uploadthing';
 import Select from '@/components/ui/Select';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 interface ReviewFormProps {
   productId: string;
@@ -67,7 +69,7 @@ export default function ReviewForm({
       } else {
         setError(data.error || 'Có lỗi xảy ra');
       }
-    } catch (err) {
+    } catch {
       setError('Không thể kết nối đến server');
     } finally {
       setSubmitting(false);
@@ -167,9 +169,13 @@ export default function ReviewForm({
           <div className="flex flex-wrap gap-3 mb-3">
             {images.map((img, idx) => (
               <div key={idx} className="relative group">
-                <img
+                <Image
+                  loader={passthroughImageLoader}
+                  unoptimized
                   src={img}
                   alt=""
+                  width={96}
+                  height={96}
                   className="w-24 h-24 object-cover rounded-lg border border-gray-200"
                 />
                 <button

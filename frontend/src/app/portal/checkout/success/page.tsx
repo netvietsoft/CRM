@@ -1,4 +1,3 @@
-import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 

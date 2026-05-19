@@ -59,8 +59,70 @@ function OrderDateSortHeader({ field, label }: { field: 'createdAt' | 'updatedAt
 }
 
 interface OrdersTableClientProps {
-  orders: any[];
+  orders: OrdersTableOrder[];
   statusCounts: Record<string, number>;
+}
+
+interface OrderUserSummary {
+  name?: string | null;
+  phone?: string | null;
+}
+
+interface OrderMetadataItem {
+  name?: string | null;
+  quantity?: number | null;
+}
+
+interface OrderMetadata {
+  items?: OrderMetadataItem[] | null;
+}
+
+interface OrderItemSummary {
+  quantity: number;
+  product?: {
+    name?: string | null;
+  } | null;
+}
+
+interface OrdersTableOrder {
+  id: string;
+  orderCode: string;
+  totalAmount?: number | null;
+  status: string;
+  isRead?: boolean;
+  source?: string | null;
+  metadata?: OrderMetadata | null;
+  items?: OrderItemSummary[] | null;
+  user?: OrderUserSummary | null;
+  shippingPhone?: string | null;
+  shippingName?: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}
+
+function getFirstItemDisplay(order: OrdersTableOrder) {
+  const isPancake = order.source === 'PANCAKE';
+  const metadata = order.metadata;
+
+  if (isPancake && Array.isArray(metadata?.items) && metadata.items.length > 0) {
+    if (metadata.items.length > 1) {
+      return 'Nhiều sản phẩm';
+    }
+
+    const item = metadata.items[0];
+    return `${item.name || 'Sản phẩm'} x ${item.quantity || 1}`;
+  }
+
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    if (order.items.length > 1) {
+      return 'Nhiều sản phẩm';
+    }
+
+    const item = order.items[0];
+    return `${item.product?.name || 'Sản phẩm'} x ${item.quantity}`;
+  }
+
+  return 'Chưa có sản phẩm';
 }
 
 export default function OrdersTableClient({ orders, statusCounts }: OrdersTableClientProps) {
@@ -82,7 +144,7 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
     if (allSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(orders.map((o: any) => o.id)));
+      setSelectedIds(new Set(orders.map((order) => order.id)));
     }
   };
 
@@ -99,10 +161,8 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
   };
 
   const selectedOrders = orders
-    .filter((o: any) => selectedIds.has(o.id))
-    .map((o: any) => ({ id: o.id, orderCode: o.orderCode, totalAmount: o.totalAmount || 0 }));
-
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+    .filter((order) => selectedIds.has(order.id))
+    .map((order) => ({ id: order.id, orderCode: order.orderCode, totalAmount: order.totalAmount || 0 }));
 
   const QuickStatusUpdate = ({ orderId, orderCode, currentStatus }: { orderId: string, orderCode: string, currentStatus: string }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -116,7 +176,6 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
       }
 
       setIsUpdating(true);
-      setUpdatingId(orderId);
       try {
         await apiClientClient.patch(`/orders/${orderId}/status`, { status: newStatus });
         const oldLabel = statusMap[currentStatus]?.label || currentStatus;
@@ -133,7 +192,6 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
         alert('Không thể cập nhật trạng thái');
       } finally {
         setIsUpdating(false);
-        setUpdatingId(null);
         setIsOpen(false);
       }
     };
@@ -194,30 +252,10 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
             <div className="text-center py-10 bg-white">
               <div className="text-lg font-bold text-gray-900">Không tìm thấy đơn hàng</div>
             </div>
-          ) : orders.map((order: any) => {
-            const st = statusMap[order.status] || { cls: 'badge-gray', label: order.status };
+          ) : orders.map((order) => {
             const isUnread = !order.isRead;
             const isChecked = selectedIds.has(order.id);
-
-            let firstItemDisplay = 'Chưa có sản phẩm';
-            const isPancake = order.source === 'PANCAKE';
-            const metadata = order.metadata as any;
-            if (isPancake && metadata?.items && Array.isArray(metadata.items) && metadata.items.length > 0) {
-              if (metadata.items.length > 1) {
-                firstItemDisplay = 'Nhiều sản phẩm';
-              } else {
-                const item = metadata.items[0];
-                firstItemDisplay = `${item.name} x ${item.quantity || 1}`;
-              }
-            } else if (order.items && order.items.length > 0) {
-              if (order.items.length > 1) {
-                firstItemDisplay = 'Nhiều sản phẩm';
-              } else {
-                const item = order.items[0];
-                firstItemDisplay = `${item.product?.name || 'Sản phẩm'} x ${item.quantity}`;
-              }
-            }
-
+            const firstItemDisplay = getFirstItemDisplay(order);
             const phone = order.shippingPhone || order.user?.phone || '';
 
             return (
@@ -323,31 +361,10 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                     </div>
                   </td>
                 </tr>
-              ) : orders.map((order: any) => {
-                const st = statusMap[order.status] || { cls: 'badge-gray', label: order.status };
+              ) : orders.map((order) => {
                 const isUnread = !order.isRead;
                 const isChecked = selectedIds.has(order.id);
-
-                let firstItemDisplay = 'Chưa có sản phẩm';
-                const isPancake = order.source === 'PANCAKE';
-
-                const metadata = order.metadata as any;
-                if (isPancake && metadata?.items && Array.isArray(metadata.items) && metadata.items.length > 0) {
-                  if (metadata.items.length > 1) {
-                    firstItemDisplay = 'Nhiều sản phẩm';
-                  } else {
-                    const item = metadata.items[0];
-                    firstItemDisplay = `${item.name} x ${item.quantity || 1}`;
-                  }
-                } else if (order.items && order.items.length > 0) {
-                  if (order.items.length > 1) {
-                    firstItemDisplay = 'Nhiều sản phẩm';
-                  } else {
-                    const item = order.items[0];
-                    firstItemDisplay = `${item.product?.name || 'Sản phẩm'} x ${item.quantity}`;
-                  }
-                }
-
+                const firstItemDisplay = getFirstItemDisplay(order);
                 const phone = order.shippingPhone || order.user?.phone || '';
 
                 return (

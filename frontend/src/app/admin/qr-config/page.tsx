@@ -1,66 +1,115 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 
-function fmtVND(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0);
+interface QRVoucherConfig {
+  values: number[];
+  minOrderValues: number[];
+  displayText: string;
+  lockDurationDays: number;
+  expirationDays: number;
+}
+
+interface LegacyQRVoucherConfig extends Partial<QRVoucherConfig> {
+  value?: number;
+  minOrderValue?: number;
+}
+
+interface QRVoucherConfigResponse {
+  value?: LegacyQRVoucherConfig | null;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+const defaultConfig: QRVoucherConfig = {
+  values: [50000, 40000, 30000, 20000, 10000],
+  minOrderValues: [0, 0, 0, 0, 0],
+  displayText: 'Quét mã QR để nhận ngay voucher trị giá 50K',
+  lockDurationDays: 7,
+  expirationDays: 90,
+};
+
+function normalizeQrVoucherConfig(raw: LegacyQRVoucherConfig | null | undefined): QRVoucherConfig {
+  const values = Array.isArray(raw?.values) && raw.values.length > 0
+    ? raw.values.map(value => Number(value) || 0)
+    : raw?.value !== undefined
+      ? [Number(raw.value) || 0]
+      : defaultConfig.values;
+
+  const minOrderSeed = Array.isArray(raw?.minOrderValues)
+    ? raw.minOrderValues.map(value => Number(value) || 0)
+    : raw?.minOrderValue !== undefined
+      ? values.map(() => Number(raw.minOrderValue) || 0)
+      : [];
+
+  const firstMinOrderValue = minOrderSeed[0] ?? 0;
+  const minOrderValues = values.map((_, index) => minOrderSeed[index] ?? firstMinOrderValue);
+
+  return {
+    values,
+    minOrderValues,
+    displayText: typeof raw?.displayText === 'string' ? raw.displayText : defaultConfig.displayText,
+    lockDurationDays: typeof raw?.lockDurationDays === 'number' ? raw.lockDurationDays : defaultConfig.lockDurationDays,
+    expirationDays: typeof raw?.expirationDays === 'number' ? raw.expirationDays : defaultConfig.expirationDays,
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
 }
 
 export default function QRConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [config, setConfig] = useState({
-    values: [50000, 40000, 30000, 20000, 10000],
-    minOrderValues: [0, 0, 0, 0, 0],
-    displayText: 'Quét mã QR để nhận ngay voucher trị giá 50K',
-    lockDurationDays: 7,
-    expirationDays: 90,
-  });
+  const [config, setConfig] = useState<QRVoucherConfig>(defaultConfig);
 
-  useEffect(() => {
-    loadConfig();
+  const loadConfig = useCallback(() => {
+    return apiClientClient.get<QRVoucherConfigResponse>('/admin/system-config/qr_voucher_default');
   }, []);
 
-  async function loadConfig() {
-    try {
-      const res = await apiClientClient.get<any>('/admin/system-config/qr_voucher_default');
-      if (res?.value) {
-        // Migration: if old config has 'value' instead of 'values', convert it
-        let configData = { ...res.value };
-        if (configData.value !== undefined && !configData.values) {
-          configData.values = [configData.value];
-          delete configData.value;
-        }
-        
-        // Migration: if old config has 'minOrderValue' instead of 'minOrderValues', convert it
-        if (configData.minOrderValue !== undefined && !configData.minOrderValues) {
-          configData.minOrderValues = (configData.values || []).map(() => configData.minOrderValue);
-          delete configData.minOrderValue;
-        }
+  useEffect(() => {
+    let cancelled = false;
 
-        // Ensure arrays match length
-        if (configData.values && (!configData.minOrderValues || configData.minOrderValues.length !== configData.values.length)) {
-          const oldMin = configData.minOrderValues?.[0] || 0;
-          configData.minOrderValues = configData.values.map((_: any, i: number) => configData.minOrderValues?.[i] ?? oldMin);
+    loadConfig()
+      .then((res) => {
+        if (!cancelled && res?.value) {
+          setConfig(normalizeQrVoucherConfig(res.value));
         }
+      })
+      .catch(() => {
+        // Use defaults
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
 
-        setConfig({ ...config, ...configData });
-      }
-    } catch (e) {
-      // Use defaults
-    } finally {
-      setLoading(false);
-    }
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [loadConfig]);
 
   async function handleSave() {
     setSaving(true);
     try {
       await apiClientClient.put('/admin/system-config/qr_voucher_default', { value: config });
       alert('Đã lưu cấu hình thành công!');
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Lỗi lưu cấu hình');
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lỗi lưu cấu hình'));
     } finally {
       setSaving(false);
     }

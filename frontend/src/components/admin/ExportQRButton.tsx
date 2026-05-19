@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { QrCode, Loader2 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, PageBreak } from 'docx';
+import { AlignmentType, BorderStyle, Document, ImageRun, Packer, PageBreak, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import { apiClientClient } from '@/lib/apiClientClient';
 
@@ -11,6 +11,12 @@ interface SelectedOrder {
   id: string;
   orderCode: string;
   totalAmount: number;
+}
+
+interface QrVoucherConfigResponse {
+  value?: {
+    displayText?: string | null;
+  } | null;
 }
 
 function fmtVND(amount: number) {
@@ -23,8 +29,8 @@ export default function ExportQRButton({ selectedOrders }: { selectedOrders: Sel
 
   useEffect(() => {
     // Load display text from system config
-    apiClientClient.get<any>('/admin/system-config/qr_voucher_default')
-      .then((config: any) => {
+    apiClientClient.get<QrVoucherConfigResponse>('/admin/system-config/qr_voucher_default')
+      .then((config) => {
         if (config?.value?.displayText) {
           setDisplayText(config.value.displayText);
         }
@@ -38,7 +44,7 @@ export default function ExportQRButton({ selectedOrders }: { selectedOrders: Sel
 
     try {
       const baseUrl = window.location.origin;
-      const sections = [];
+      const sections: Paragraph[] = [];
 
       for (let i = 0; i < selectedOrders.length; i++) {
         const order = selectedOrders[i];
@@ -131,7 +137,7 @@ export default function ExportQRButton({ selectedOrders }: { selectedOrders: Sel
             alignment: AlignmentType.CENTER,
             spacing: { after: 100 },
             border: {
-              top: { style: 'single' as any, size: 1, color: 'CCCCCC', space: 10 },
+              top: { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC', space: 10 },
             },
             children: [],
           }),

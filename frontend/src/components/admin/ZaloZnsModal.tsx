@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import Select from '@/components/ui/Select';
 
@@ -18,7 +18,35 @@ interface Template {
   body: string;
   zaloTemplateId: string;
   zaloStatus: string;
-  params: any;
+  params: TemplateParam[] | null;
+}
+
+interface TemplateParam {
+  key: string;
+  label?: string | null;
+  required?: boolean;
+}
+
+interface BulkZaloResponse {
+  message?: string;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
 }
 
 export default function ZaloZnsModal({ isOpen, onClose, selectedUserIds, totalCustomersCount, onSuccess }: ZaloZnsModalProps) {
@@ -28,27 +56,49 @@ export default function ZaloZnsModal({ isOpen, onClose, selectedUserIds, totalCu
   const [fetchingTemplates, setFetchingTemplates] = useState(true);
   const [templateData, setTemplateData] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchTemplates();
-      setTemplateData({});
-      setSelectedTemplateId('');
-    }
-  }, [isOpen]);
+  const fetchTemplates = useCallback(() => {
+    return apiClientClient.get<Template[]>('/notifications/zalo/templates');
+  }, []);
 
-  const fetchTemplates = async () => {
-    setFetchingTemplates(true);
-    try {
-      const data = await apiClientClient.get<Template[]>('/notifications/zalo/templates');
-      // Lọc các template đã duyệt (ENABLE)
-      const enableTemplates = data.filter(t => t.zaloStatus === 'ENABLE' || t.zaloStatus === 'PENDING_REVIEW'); // Giữ lại PENDING_REVIEW để dễ test UI (mặc dù API backend sẽ chặn)
-      setTemplates(enableTemplates);
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    } finally {
-      setFetchingTemplates(false);
+  useEffect(() => {
+    if (!isOpen) {
+      return;
     }
-  };
+
+    let cancelled = false;
+
+    Promise.resolve()
+      .then(() => {
+        if (!cancelled) {
+          setFetchingTemplates(true);
+          setTemplateData({});
+          setSelectedTemplateId('');
+        }
+
+        return fetchTemplates();
+      })
+      .then((data) => {
+        if (!cancelled) {
+          const enableTemplates = data.filter(template => template.zaloStatus === 'ENABLE' || template.zaloStatus === 'PENDING_REVIEW');
+          setTemplates(enableTemplates);
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching templates:', error);
+        if (!cancelled) {
+          setTemplates([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setFetchingTemplates(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchTemplates, isOpen]);
 
   const handleTemplateChange = (val: string) => {
     setSelectedTemplateId(val);
@@ -69,7 +119,7 @@ export default function ZaloZnsModal({ isOpen, onClose, selectedUserIds, totalCu
 
     setLoading(true);
     try {
-      const res = await apiClientClient.post<any>('/notifications/zalo/bulk', {
+      const res = await apiClientClient.post<BulkZaloResponse>('/notifications/zalo/bulk', {
         userIds: selectedUserIds,
         templateId: selectedTemplateId,
         templateData: templateData
@@ -77,9 +127,9 @@ export default function ZaloZnsModal({ isOpen, onClose, selectedUserIds, totalCu
       alert(res.message || 'Hệ thống đang xử lý gửi tin nhắn.');
       onSuccess();
       onClose();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending Zalo ZNS:', error);
-      alert(error.response?.data?.message || 'Có lỗi xảy ra khi gửi tin nhắn.');
+      alert(getErrorMessage(error, 'Có lỗi xảy ra khi gửi tin nhắn.'));
     } finally {
       setLoading(false);
     }
@@ -137,7 +187,7 @@ export default function ZaloZnsModal({ isOpen, onClose, selectedUserIds, totalCu
               {selectedTemplate.params && Array.isArray(selectedTemplate.params) && selectedTemplate.params.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
                   <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Thông tin bổ sung</h4>
-                  {selectedTemplate.params.map((param: any) => (
+                  {selectedTemplate.params.map((param) => (
                     <div key={param.key}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">{param.label || param.key}</label>
                       <input

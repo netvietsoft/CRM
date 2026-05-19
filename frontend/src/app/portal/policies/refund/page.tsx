@@ -119,7 +119,7 @@ export default function RefundPolicyPage() {
                       <div className="flex-1 pb-8">
                         <h3 className="font-semibold text-gray-900 mb-2">Gửi yêu cầu đổi trả</h3>
                         <p className="text-gray-700 text-sm mb-2">
-                          Truy cập <strong>"Đơn hàng của tôi"</strong> → Chọn đơn hàng → Nhấn <strong>"Yêu cầu đổi trả"</strong>
+                          Truy cập <strong>&quot;Đơn hàng của tôi&quot;</strong> → Chọn đơn hàng → Nhấn <strong>&quot;Yêu cầu đổi trả&quot;</strong>
                         </p>
                         <p className="text-gray-600 text-sm">
                           Hoặc liên hệ hotline: <strong>0987 654 321</strong>
@@ -308,5 +308,4 @@ export default function RefundPolicyPage() {
     </div>
   );
 }
-
 

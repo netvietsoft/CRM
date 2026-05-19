@@ -1,9 +1,65 @@
-import React from 'react';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import { apiClient } from '@/lib/apiClient';
+import { ApiError, apiClient } from '@/lib/apiClient';
 import Link from 'next/link';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 export const dynamic = 'force-dynamic';
+
+interface StoreProfile {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  addressStreet?: string | null;
+  addressWard?: string | null;
+  addressProvince?: string | null;
+  description?: string | null;
+  createdAt: string | Date;
+  _count?: {
+    products?: number;
+  } | null;
+}
+
+interface StoreCategory {
+  id: string;
+  name: string;
+  _count?: {
+    products?: number;
+  } | null;
+}
+
+interface StoreProductCard {
+  id: string;
+  slug: string;
+  name: string;
+  imageUrl?: string | null;
+  salePrice?: number | null;
+  originalPrice: number;
+}
+
+interface StoreProductsResponse {
+  data: StoreProductCard[];
+  meta: {
+    total?: number;
+  };
+}
+
+interface StoreReview {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string | Date;
+  user?: {
+    name?: string | null;
+    avatarUrl?: string | null;
+  } | null;
+  product: {
+    name: string;
+    slug: string;
+  };
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
@@ -41,17 +97,23 @@ export default async function StoreProfilePage({
   const currentCategory = sParams.categoryId || null;
   const pageParam = parseInt(sParams.page || '1', 10);
 
-  let store: any = null;
-  let productsData: any = { data: [], meta: {} };
-  let categories: any[] = [];
-  let reviews: any[] = [];
+  let store: StoreProfile | null = null;
+  let productsData: StoreProductsResponse = { data: [], meta: {} };
+  let categories: StoreCategory[] = [];
+  let reviews: StoreReview[] = [];
 
   try {
     // 1. Fetch store info
-    store = await apiClient.get(`/stores/public/${slug}`, { cache: 'no-store' });
-  } catch (error: any) {
-    console.error('Error fetching store:', error?.message, 'status:', error?.status || error?.response?.status);
-    if (error?.status === 404 || error?.response?.status === 404) {
+    store = await apiClient.get<StoreProfile>(`/stores/public/${slug}`, { cache: 'no-store' });
+  } catch (error: unknown) {
+    const status = error instanceof ApiError ? error.status : undefined;
+    console.error(
+      'Error fetching store:',
+      error instanceof Error ? error.message : 'Unknown error',
+      'status:',
+      status,
+    );
+    if (status === 404) {
       notFound();
     }
     // store remains null → will show "Cửa hàng không tồn tại"
@@ -61,7 +123,9 @@ export default async function StoreProfilePage({
     try {
       // 2. Fetch store categories (public endpoint with storeId filter)
       // This now returns categories that have products in this store, with correct counts
-      categories = await apiClient.get<any[]>(`/categories?storeId=${store.id}`, { cache: 'no-store' });
+      categories = await apiClient.get<StoreCategory[]>(`/categories?storeId=${store.id}`, {
+        cache: 'no-store',
+      });
 
       // 3. Fetch products based on tab
       if (currentTab === 'products') {
@@ -69,13 +133,20 @@ export default async function StoreProfilePage({
         qs.append('storeSlug', slug);
         qs.append('limit', '1000');
         if (currentCategory) qs.append('categoryId', currentCategory);
-        productsData = await apiClient.get(`/products?${qs.toString()}`, { cache: 'no-store' });
+        productsData = await apiClient.get<StoreProductsResponse>(`/products?${qs.toString()}`, {
+          cache: 'no-store',
+        });
       }
 
       // 4. Fetch store reviews (always fetch for header rating)
-      reviews = await apiClient.get(`/stores/public/${slug}/reviews`, { cache: 'no-store' });
-    } catch (error: any) {
-      console.error('Error fetching store data:', error?.message);
+      reviews = await apiClient.get<StoreReview[]>(`/stores/public/${slug}/reviews`, {
+        cache: 'no-store',
+      });
+    } catch (error: unknown) {
+      console.error(
+        'Error fetching store data:',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
     }
   }
 
@@ -85,7 +156,7 @@ export default async function StoreProfilePage({
     : '5.0';
 
   const pageSize = 24;
-  let paginatedProducts: any[] = [];
+  let paginatedProducts: StoreProductCard[] = [];
   let totalPages = 1;
   let totalProducts = 0;
 
@@ -120,7 +191,17 @@ export default async function StoreProfilePage({
           <div className="flex flex-col sm:flex-row items-center sm:items-end -mt-16 sm:-mt-12 gap-6 mb-6">
             <div className="w-32 h-32 rounded-2xl bg-white border-4 border-white shadow-md overflow-hidden shrink-0 flex items-center justify-center">
               {store.logoUrl ? (
-                <img src={store.logoUrl} alt={store.name} className="w-full h-full object-cover" />
+                <div className="relative w-full h-full">
+                  <Image
+                    loader={passthroughImageLoader}
+                    unoptimized
+                    src={store.logoUrl}
+                    alt={store.name}
+                    fill
+                    sizes="128px"
+                    className="object-cover"
+                  />
+                </div>
               ) : (
                 <span className="text-5xl">🏪</span>
               )}
@@ -205,7 +286,7 @@ export default async function StoreProfilePage({
               >
                 Tất cả
               </Link>
-              {categories.map((c: any) => (
+              {categories.map((c) => (
                 <Link
                   key={c.id}
                   href={`/portal/stores/${slug}?tab=products&categoryId=${c.id}`}
@@ -216,9 +297,9 @@ export default async function StoreProfilePage({
                     }`}
                 >
                   <span>{c.name}</span>
-                  {c._count?.products > 0 && (
+                  {(c._count?.products ?? 0) > 0 && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full ${currentCategory === c.id ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                      {c._count.products}
+                      {c._count?.products ?? 0}
                     </span>
                   )}
                 </Link>
@@ -231,7 +312,7 @@ export default async function StoreProfilePage({
           <div className="flex-1">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800">
-                {currentCategory ? categories.find(c => c.id === currentCategory)?.name : 'Tất cả sản phẩm'}
+                {currentCategory ? categories.find((category) => category.id === currentCategory)?.name : 'Tất cả sản phẩm'}
               </h2>
               <span className="text-gray-500 text-sm">{productsData.meta.total || 0} sản phẩm</span>
             </div>
@@ -239,7 +320,7 @@ export default async function StoreProfilePage({
             {productsData.data && productsData.data.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {paginatedProducts.map((product: any) => (
+                  {paginatedProducts.map((product) => (
                     <Link
                       key={product.id}
                       href={`/portal/products/${product.slug}`}
@@ -247,10 +328,14 @@ export default async function StoreProfilePage({
                     >
                       <div className="aspect-square bg-gray-50 relative overflow-hidden">
                         {product.imageUrl ? (
-                          <img
+                          <Image
+                            loader={passthroughImageLoader}
+                            unoptimized
                             src={product.imageUrl}
                             alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            fill
+                            sizes="(max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -327,13 +412,23 @@ export default async function StoreProfilePage({
           <h2 className="text-xl font-bold text-gray-800 mb-6">Đánh giá từ khách hàng</h2>
           {reviews.length > 0 ? (
             <div className="space-y-6">
-              {reviews.map((r: any) => (
+              {reviews.map((r) => (
                 <div key={r.id} className="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-indigo-700 font-bold overflow-hidden">
                         {r.user?.avatarUrl ? (
-                          <img src={r.user.avatarUrl} alt={r.user.name} className="w-full h-full object-cover" />
+                          <div className="relative w-full h-full">
+                            <Image
+                              loader={passthroughImageLoader}
+                              unoptimized
+                              src={r.user.avatarUrl}
+                              alt={r.user?.name ?? 'Khách hàng'}
+                              fill
+                              sizes="40px"
+                              className="object-cover"
+                            />
+                          </div>
                         ) : (
                           r.user?.name?.charAt(0) || 'U'
                         )}

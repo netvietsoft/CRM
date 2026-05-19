@@ -9,6 +9,33 @@ interface TrackingModalProps {
   onClose: () => void;
 }
 
+interface CourierUpdate {
+  status?: string | null;
+  key?: string | null;
+  note?: string | null;
+  address?: string | null;
+  location?: string | null;
+  update_at?: string | Date | null;
+  update_time?: string | Date | null;
+  time?: string | Date | null;
+}
+
+interface TrackingDetails {
+  trackingCode?: string | null;
+  deliveryName?: string | null;
+  deliveryPhone?: string | null;
+  totalFee?: number | null;
+  courierUpdates?: CourierUpdate[] | null;
+}
+
+interface TrackingOrderResponse {
+  orderCode: string;
+  status: string;
+  createdAt: string;
+  totalAmount: number;
+  tracking?: TrackingDetails | null;
+}
+
 const statusMap: Record<string, { label: string; cls: string; step: number }> = {
   PENDING: { label: 'Chờ xác nhận', cls: 'bg-orange-100 text-orange-700', step: 0 },
   CONFIRMED: { label: 'Đã xác nhận', cls: 'bg-cyan-100 text-cyan-700', step: 1 },
@@ -47,7 +74,7 @@ function fmtDate(d: string | Date) {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
     }).format(date);
-  } catch (e) {
+  } catch {
     return String(d);
   }
 }
@@ -57,7 +84,7 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [trackingData, setTrackingData] = useState<any>(null);
+  const [trackingData, setTrackingData] = useState<TrackingOrderResponse | null>(null);
 
   if (!isOpen) return null;
 
@@ -71,15 +98,15 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
     setIsLoading(true);
     
     try {
-      const response = await apiClientClient.get(`/orders/public/track`, {
+      const response = await apiClientClient.get<TrackingOrderResponse>(`/orders/public/track`, {
         params: {
           code: trackingCode.trim(),
           phone: phoneNumber.trim()
         }
       });
       setTrackingData(response);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Không tìm thấy thông tin đơn hàng');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Không tìm thấy thông tin đơn hàng');
       setTrackingData(null);
     } finally {
       setIsLoading(false);
@@ -101,6 +128,8 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
   };
 
   const st = trackingData ? (statusMap[trackingData.status] || { label: trackingData.status, cls: 'bg-gray-100 text-gray-700', step: 0 }) : null;
+  const tracking = trackingData?.tracking ?? null;
+  const courierUpdates = tracking?.courierUpdates ?? [];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -243,42 +272,45 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
               )}
 
               {/* Shipping Details */}
-              {trackingData.tracking && trackingData.tracking.trackingCode && (
+              {tracking && tracking.trackingCode && (
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                   <h4 className="font-semibold text-gray-800 mb-3 text-sm">Chi tiết vận chuyển</h4>
                   
                   <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
                     <div>
                       <p className="text-xs text-gray-500">Mã vận đơn</p>
-                      <p className="font-mono font-bold text-gray-800">{trackingData.tracking.trackingCode}</p>
+                      <p className="font-mono font-bold text-gray-800">{tracking.trackingCode}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Phí giao hàng</p>
-                      <p className="font-medium text-gray-800">{fmt(trackingData.tracking.totalFee)}</p>
+                      <p className="font-medium text-gray-800">{fmt(tracking.totalFee ?? 0)}</p>
                     </div>
-                    {trackingData.tracking.deliveryName && (
+                    {tracking.deliveryName && (
                       <div>
                         <p className="text-xs text-gray-500">Shipper</p>
-                        <p className="font-medium text-gray-800">{trackingData.tracking.deliveryName}</p>
+                        <p className="font-medium text-gray-800">{tracking.deliveryName}</p>
                       </div>
                     )}
-                    {trackingData.tracking.deliveryPhone && (
+                    {tracking.deliveryPhone && (
                       <div>
                         <p className="text-xs text-gray-500">SĐT Shipper</p>
-                        <p className="font-medium text-gray-800">{trackingData.tracking.deliveryPhone}</p>
+                        <p className="font-medium text-gray-800">{tracking.deliveryPhone}</p>
                       </div>
                     )}
                   </div>
 
                   {/* Courier Updates Timeline */}
-                  {trackingData.tracking.courierUpdates?.length > 0 && (
+                  {courierUpdates.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <h5 className="font-semibold text-gray-700 text-xs mb-4 uppercase tracking-wider">Lịch sử vận chuyển</h5>
                       <div className="relative pl-6 max-h-64 overflow-y-auto pr-2">
                         {/* Vertical line */}
                         <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-200" />
                         <div className="space-y-4">
-                          {trackingData.tracking.courierUpdates.map((update: any, idx: number) => (
+                          {courierUpdates.map((update, idx: number) => {
+                            const updatedAt = update.update_at ?? update.update_time ?? update.time ?? null;
+
+                            return (
                             <div key={idx} className="relative">
                               {/* Dot */}
                               <div className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center z-10 ${
@@ -304,12 +336,13 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
                                 {update.location && (
                                   <p className="text-xs text-black mt-0.5">Vị trí: {update.location}</p>
                                 )}
-                                {(update.update_at || update.update_time || update.time) && (
-                                  <p className="text-xs text-black mt-1"><span className='font-semibold text-xs text-black'>Cập nhật gần nhất:</span> {fmtDate(update.update_at || update.update_time || update.time)}</p>
+                                {updatedAt && (
+                                  <p className="text-xs text-black mt-1"><span className='font-semibold text-xs text-black'>Cập nhật gần nhất:</span> {fmtDate(updatedAt)}</p>
                                 )}
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>

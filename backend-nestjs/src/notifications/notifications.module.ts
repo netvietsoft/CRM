@@ -13,7 +13,7 @@ const logger = new Logger('NotificationsModule');
 function getQueueImports(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
-  
+
   if (!redisHost && !redisUrl) {
     logger.warn('⚠️  Redis not configured - Zalo ZNS queue disabled');
     return [];
@@ -33,24 +33,18 @@ function getQueueImports(): any[] {
 function getProviders(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
-  
-  const providers: any[] = [
-    NotificationsService,
-    ZaloTokenService,
-    ZbsTemplateService,
-  ];
-  
+
+  const providers: any[] = [NotificationsService, ZaloTokenService, ZbsTemplateService];
+
   if (redisHost || redisUrl) {
     providers.push(ZaloZnsProcessor);
   }
-  
+
   return providers;
 }
 
 @Module({
-  imports: [
-    ...getQueueImports(),
-  ],
+  imports: [...getQueueImports()],
   controllers: [NotificationsController],
   providers: getProviders(),
   exports: [NotificationsService, ZaloTokenService],

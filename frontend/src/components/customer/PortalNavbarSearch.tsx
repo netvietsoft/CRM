@@ -1,14 +1,25 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { passthroughImageLoader } from '@/lib/imageLoader';
+
+interface SearchResultProduct {
+  id: string;
+  slug: string;
+  imageUrl: string | null;
+  name: string;
+  salePrice: number | null;
+  originalPrice: number;
+}
 
 export default function PortalNavbarSearch() {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchResultProduct[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -32,8 +43,8 @@ export default function PortalNavbarSearch() {
       setIsSearching(true);
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/products/search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        setResults(Array.isArray(data) ? data : []);
+        const data: unknown = await res.json();
+        setResults(Array.isArray(data) ? data as SearchResultProduct[] : []);
       } catch (error) {
         console.error('Error searching products:', error);
       } finally {
@@ -86,7 +97,15 @@ export default function PortalNavbarSearch() {
                 >
                   <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-100 overflow-hidden">
                     {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                      <Image
+                        loader={passthroughImageLoader}
+                        unoptimized
+                        src={product.imageUrl}
+                        alt={product.name}
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center text-gray-400">
                         <Search className="h-4 w-4" />

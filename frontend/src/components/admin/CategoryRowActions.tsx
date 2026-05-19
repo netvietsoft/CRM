@@ -21,6 +21,24 @@ interface CategoryRowActionsProps {
   allCategories: { id: string; name: string; parentId?: string | null }[];
 }
 
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function CategoryRowActions({ category, allCategories }: CategoryRowActionsProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -61,8 +79,8 @@ export default function CategoryRowActions({ category, allCategories }: Category
 
       setShowEditModal(false);
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi cập nhật danh mục');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Lỗi cập nhật danh mục'));
     } finally {
       setLoading(false);
     }
@@ -76,8 +94,8 @@ export default function CategoryRowActions({ category, allCategories }: Category
       await apiClientClient.delete(`/categories/${category.id}`);
       setShowDeleteModal(false);
       router.refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Lỗi xóa danh mục');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Lỗi xóa danh mục'));
     } finally {
       setLoading(false);
     }

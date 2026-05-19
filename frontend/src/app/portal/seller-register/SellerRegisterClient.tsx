@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Select from '@/components/ui/Select';
 
@@ -10,8 +9,23 @@ interface AddressOption {
   name: string;
 }
 
+interface StoreRegistrationErrorResponse {
+  message?: string;
+  error?: string;
+}
+
+function generateSlug(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd').replace(/Đ/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+}
+
 export default function SellerRegisterClient() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -34,19 +48,6 @@ export default function SellerRegisterClient() {
   const [bankName, setBankName] = useState('');
   const [bankAccountNo, setBankAccountNo] = useState('');
   const [bankOwnerName, setBankOwnerName] = useState('');
-
-  // Auto-generate slug from name
-  useEffect(() => {
-    const generated = name
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd').replace(/Đ/g, 'd')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    setSlug(generated);
-  }, [name]);
 
   // Load provinces
   useEffect(() => {
@@ -90,14 +91,14 @@ export default function SellerRegisterClient() {
         }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data: StoreRegistrationErrorResponse = await res.json().catch(() => ({}));
       if (!res.ok) {
         alert(data.message || data.error || 'Đăng ký thất bại. Vui lòng thử lại.');
       } else {
         setSuccess(true);
       }
-    } catch (error: any) {
-      alert(error.response?.data?.message || error.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Đăng ký thất bại. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -163,7 +164,11 @@ export default function SellerRegisterClient() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tên cửa hàng *</label>
               <input
                 type="text" required value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => {
+                  const nextName = e.target.value;
+                  setName(nextName);
+                  setSlug(generateSlug(nextName));
+                }}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
                 placeholder="VD: Shop Thời Trang Hà Nội"
               />

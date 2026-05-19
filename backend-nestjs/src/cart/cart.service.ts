@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
@@ -57,16 +57,12 @@ export class CartService {
         let variant = null;
         if (item.size && item.color) {
           variant = item.product.variants.find(
-            (v: any) => v.size?.name === item.size && v.color?.name === item.color
+            (v: any) => v.size?.name === item.size && v.color?.name === item.color,
           );
         } else if (item.size) {
-          variant = item.product.variants.find(
-            (v: any) => v.size?.name === item.size
-          );
+          variant = item.product.variants.find((v: any) => v.size?.name === item.size);
         } else if (item.color) {
-          variant = item.product.variants.find(
-            (v: any) => v.color?.name === item.color
-          );
+          variant = item.product.variants.find((v: any) => v.color?.name === item.color);
         }
         if (variant && variant.price) {
           price = variant.price;

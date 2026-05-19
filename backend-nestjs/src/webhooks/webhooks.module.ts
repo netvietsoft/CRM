@@ -16,7 +16,7 @@ const logger = new Logger('WebhooksModule');
 function getQueueImports(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
-  
+
   // Skip queue registration if Redis is not configured
   if (!redisHost && !redisUrl) {
     logger.warn('⚠️  Redis not configured - Webhook queue disabled');

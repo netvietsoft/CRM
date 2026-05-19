@@ -8,11 +8,11 @@ import { FilterProductDto } from './dto/filter-product.dto';
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: string, role: string, effectiveStoreId: string | null, createProductDto: CreateProductDto) {
+  async create(role: string, effectiveStoreId: string | null, createProductDto: CreateProductDto) {
     const { categoryIds, variants, storeId: providedStoreId, ...productData } = createProductDto;
 
     let storeId: string | undefined;
-    
+
     if (role !== 'ADMIN') {
       // Non-admin roles (MODERATOR, STAFF) MUST use their effectiveStoreId
       if (!effectiveStoreId) {
@@ -42,7 +42,7 @@ export class ProductsService {
           },
           orderBy: { createdAt: 'asc' },
         });
-        
+
         if (defaultStore) {
           storeId = defaultStore.id;
         }
@@ -83,8 +83,6 @@ export class ProductsService {
   }
 
   async findAdminProducts(params: {
-    userId: string;
-    role: string;
     effectiveStoreId: string | null;
     page?: number;
     limit?: number;
@@ -92,7 +90,7 @@ export class ProductsService {
     categoryId?: string;
     isActive?: boolean;
   }) {
-    const { userId, role, effectiveStoreId } = params;
+    const { effectiveStoreId } = params;
     const page = params.page || 1;
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
@@ -284,9 +282,10 @@ export class ProductsService {
     }
 
     // Calculate average rating
-    const avgRating = product.reviews.length > 0
-      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
-      : 0;
+    const avgRating =
+      product.reviews.length > 0
+        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+        : 0;
 
     return {
       ...product,
@@ -341,8 +340,7 @@ export class ProductsService {
     // Calculate average rating
     const avgRating =
       product.reviews.length > 0
-        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
-          product.reviews.length
+        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
         : 0;
 
     return {
@@ -371,10 +369,7 @@ export class ProductsService {
         categories: {
           some: { id: { in: categoryIds } },
         },
-        OR: [
-          { storeId: null },
-          { store: { isActive: true, isBanned: false } },
-        ],
+        OR: [{ storeId: null }, { store: { isActive: true, isBanned: false } }],
       },
       take: 10,
       include: {
@@ -388,15 +383,12 @@ export class ProductsService {
       return relatedByCategory;
     }
 
-    const excludeIds = [productId, ...relatedByCategory.map(p => p.id)];
+    const excludeIds = [productId, ...relatedByCategory.map((p) => p.id)];
     const additionalProducts = await this.prisma.product.findMany({
       where: {
         isActive: true,
         id: { notIn: excludeIds },
-        OR: [
-          { storeId: null },
-          { store: { isActive: true, isBanned: false } },
-        ],
+        OR: [{ storeId: null }, { store: { isActive: true, isBanned: false } }],
       },
       take: 10 - relatedByCategory.length,
       include: {
@@ -540,13 +532,16 @@ export class ProductsService {
   }
 
   private generateSlug(name: string): string {
-    return name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[đĐ]/g, 'd')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      + '-' + Date.now().toString(36);
+    return (
+      name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') +
+      '-' +
+      Date.now().toString(36)
+    );
   }
 }

@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Save } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 interface OrderSaveContextType {
   hasChanges: boolean;
@@ -19,7 +18,6 @@ export function useOrderSave() {
 }
 
 export function OrderSaveProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [hasChanges, setHasChanges] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

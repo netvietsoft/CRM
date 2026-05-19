@@ -18,7 +18,7 @@ export class ZaloZnsProcessor extends WorkerHost {
 
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}...`);
-    
+
     const { notificationId, phone, templateId, templateData } = job.data;
 
     try {
@@ -67,39 +67,38 @@ export class ZaloZnsProcessor extends WorkerHost {
         // Success
         await this.prisma.notification.update({
           where: { id: notificationId },
-          data: { 
-            status: 'DELIVERED', 
+          data: {
+            status: 'DELIVERED',
             sentAt: new Date(),
             metadata: data as any,
           },
         });
-        
+
         this.logger.log(`Job ${job.id}: Sent ZNS successfully to ${formattedPhone}`);
         return { success: true, messageId: data.data.message_id };
       } else {
         // Zalo API Error (e.g., rate limit, invalid template data)
         const errorMsg = `Zalo API Error ${data.error}: ${data.message}`;
         this.logger.warn(`Job ${job.id} failed: ${errorMsg}`);
-        
+
         await this.prisma.notification.update({
           where: { id: notificationId },
-          data: { 
+          data: {
             status: 'FAILED',
             error: errorMsg,
           },
         });
-        
+
         // Throwing error will cause BullMQ to retry the job based on config
         throw new Error(errorMsg);
       }
-
     } catch (error: any) {
       const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
       this.logger.error(`Job ${job.id} encountered error: ${errorMsg}`);
 
       await this.prisma.notification.update({
         where: { id: notificationId },
-        data: { 
+        data: {
           status: 'FAILED',
           error: errorMsg,
         },

@@ -13,21 +13,45 @@ interface Props {
   bannedReason: string | null;
 }
 
+interface StoreStatusUpdate {
+  isActive?: boolean;
+  isBanned?: boolean;
+  bannedReason?: string | null;
+}
+
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
 export default function StoreStatusManager({ storeId, storeName, isActive, isBanned, bannedReason }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
   const [reason, setReason] = useState(bannedReason || '');
 
-  const updateStore = async (data: Record<string, any>) => {
+  const updateStore = async (data: StoreStatusUpdate) => {
     setLoading(true);
     try {
       await apiClientClient.patch(`/stores/admin/${storeId}/status`, data);
       router.refresh();
       setShowBanModal(false);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Lỗi cập nhật');
+      alert(getErrorMessage(error, 'Lỗi cập nhật'));
     } finally {
       setLoading(false);
     }
@@ -57,6 +81,10 @@ export default function StoreStatusManager({ storeId, storeName, isActive, isBan
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Quản lý trạng thái</h2>
+      <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium ${statusColor}`}>
+        <span>{statusIcon}</span>
+        <span>{statusLabel}</span>
+      </div>
       {/* Action Dropdown */}
       <div className="relative group">
         <Select
@@ -79,7 +107,7 @@ export default function StoreStatusManager({ storeId, storeName, isActive, isBan
       {isBanned && bannedReason && (
         <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100">
           <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">Lý do cấm:</p>
-          <p className="text-sm text-red-700 leading-relaxed italic">"{bannedReason}"</p>
+          <p className="text-sm text-red-700 leading-relaxed italic">&quot;{bannedReason}&quot;</p>
         </div>
       )}
 

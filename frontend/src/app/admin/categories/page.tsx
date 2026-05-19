@@ -4,12 +4,27 @@ import CategoryActions from '@/components/admin/CategoryActions';
 import CategoryTree from '@/components/admin/CategoryTree';
 import { apiClient } from '@/lib/apiClient';
 
+interface CategoryRecord {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  parentId: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  parent?: { name: string } | null;
+  _count: {
+    products: number;
+    children: number;
+  };
+}
+
 export default async function CategoriesPage() {
-  const categories = await apiClient.get<any[]>('/categories?admin=true');
+  const categories = await apiClient.get<CategoryRecord[]>('/categories?admin=true');
 
   // Organize categories by hierarchy
-  const rootCategories = categories.filter((c: any) => !c.parentId);
-  const childCategories = categories.filter((c: any) => c.parentId);
+  const rootCategories = categories.filter(category => !category.parentId);
+  const childCategories = categories.filter(category => Boolean(category.parentId));
 
   return (
     <>
@@ -20,7 +35,7 @@ export default async function CategoriesPage() {
             Quản lý danh mục và phân loại sản phẩm
           </p>
         </div>
-        <CategoryActions categories={categories.map((c: any) => ({ id: c.id, name: c.name, parentId: c.parentId }))} />
+        <CategoryActions categories={categories.map(category => ({ id: category.id, name: category.name, parentId: category.parentId }))} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

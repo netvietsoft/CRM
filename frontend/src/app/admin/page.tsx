@@ -2,23 +2,50 @@ import Link from 'next/link';
 export const dynamic = 'force-dynamic';
 import { apiClient } from '@/lib/apiClient';
 
+interface DashboardOrderUser {
+  name: string | null;
+  phone: string | null;
+}
+
+interface DashboardRecentOrder {
+  id: string;
+  orderCode: string;
+  status: string;
+  totalAmount: number;
+  shippingName: string | null;
+  user?: DashboardOrderUser | null;
+}
+
+interface DashboardTopCustomer {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  rank: string | null;
+  totalSpent: number;
+  _count?: {
+    orders: number;
+  };
+}
+
+interface DashboardStats {
+  totalCustomers: number;
+  newCustomersThisMonth: number;
+  totalOrders: number;
+  completedOrders: number;
+  totalRevenue: number;
+  activeVouchers: number;
+  pendingCommissions: number;
+  recentOrders: DashboardRecentOrder[];
+  topCustomers: DashboardTopCustomer[];
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-function getRankBadgeClass(rank: string) {
-  const map: Record<string, string> = {
-    MEMBER: 'badge-member',
-    SILVER: 'badge-silver',
-    GOLD: 'badge-gold',
-    DIAMOND: 'badge-diamond',
-    PLATINUM: 'badge-platinum',
-  };
-  return map[rank] || 'badge-member';
 }
 
 function getStatusBadge(status: string) {
@@ -33,7 +60,7 @@ function getStatusBadge(status: string) {
 }
 
 export default async function AdminDashboard() {
-  let stats: any = {
+  let stats: DashboardStats = {
     totalCustomers: 0,
     newCustomersThisMonth: 0,
     totalOrders: 0,
@@ -46,7 +73,7 @@ export default async function AdminDashboard() {
   };
 
   try {
-    stats = await apiClient.get<any>('/admin/dashboard');
+    stats = await apiClient.get<DashboardStats>('/admin/dashboard');
   } catch (error) {
     console.error('Error fetching admin dashboard stats:', error);
   }
@@ -124,7 +151,7 @@ export default async function AdminDashboard() {
             {!stats.recentOrders || stats.recentOrders.length === 0 ? (
               <div className="p-6 text-center text-gray-500">Chưa có đơn hàng nào</div>
             ) : (
-              stats.recentOrders.map((order: any) => {
+              stats.recentOrders.map(order => {
                 const statusInfo = getStatusBadge(order.status);
                 const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                 return (
@@ -168,7 +195,7 @@ export default async function AdminDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  stats.recentOrders.map((order: any) => {
+                  stats.recentOrders.map(order => {
                     const statusInfo = getStatusBadge(order.status);
                     const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                     const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
@@ -219,7 +246,7 @@ export default async function AdminDashboard() {
             {!stats.topCustomers || stats.topCustomers.length === 0 ? (
               <div className="p-6 text-center text-gray-500">Chưa có khách hàng nào</div>
             ) : (
-              stats.topCustomers.map((customer: any) => {
+              stats.topCustomers.map(customer => {
                 const displayName = customer.name || customer.phone || 'Khách lạ';
                 const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                 return (
@@ -278,9 +305,8 @@ export default async function AdminDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  stats.topCustomers.map((customer: any) => {
+                  stats.topCustomers.map(customer => {
                     const displayName = customer.name || customer.phone || 'Khách lạ';
-                    const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                     return (
                       <tr key={customer.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">

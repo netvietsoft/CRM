@@ -6,6 +6,19 @@ export interface ApiOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
+function getErrorMessage(data: unknown, status: number) {
+  if (typeof data === 'object' && data !== null) {
+    if ('message' in data && typeof (data as { message?: unknown }).message === 'string') {
+      return (data as { message: string }).message;
+    }
+    if ('error' in data && typeof (data as { error?: unknown }).error === 'string') {
+      return (data as { error: string }).error;
+    }
+  }
+
+  return `API Error (${status})`;
+}
+
 let refreshPromise: Promise<boolean> | null = null;
 
 function buildUrl(endpoint: string, params?: ApiOptions['params']) {
@@ -27,7 +40,7 @@ function buildUrl(endpoint: string, params?: ApiOptions['params']) {
   return url;
 }
 
-async function parseResponseBody(response: Response) {
+async function parseResponseBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') || '';
 
   if (contentType.includes('application/json')) {
@@ -83,9 +96,7 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    throw new Error(
-      data?.message || data?.error || `API Error (${response.status})`,
-    );
+    throw new Error(getErrorMessage(data, response.status));
   }
 
   return data as T;
@@ -100,7 +111,7 @@ export const apiClientClient = {
     return request<T>(endpoint, { ...options, method: 'GET' });
   },
 
-  post<T>(endpoint: string, body: any, options: ApiOptions = {}) {
+  post<T, TBody = unknown>(endpoint: string, body: TBody, options: ApiOptions = {}) {
     return request<T>(endpoint, {
       ...options,
       method: 'POST',
@@ -108,7 +119,7 @@ export const apiClientClient = {
     });
   },
 
-  patch<T>(endpoint: string, body: any, options: ApiOptions = {}) {
+  patch<T, TBody = unknown>(endpoint: string, body: TBody, options: ApiOptions = {}) {
     return request<T>(endpoint, {
       ...options,
       method: 'PATCH',
@@ -116,7 +127,7 @@ export const apiClientClient = {
     });
   },
 
-  put<T>(endpoint: string, body: any, options: ApiOptions = {}) {
+  put<T, TBody = unknown>(endpoint: string, body: TBody, options: ApiOptions = {}) {
     return request<T>(endpoint, {
       ...options,
       method: 'PUT',

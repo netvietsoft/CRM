@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import VoucherActions from '@/components/admin/VoucherActions';
-import VoucherTableClient from '@/components/admin/VoucherTableClient';
+import VoucherTableClient, { type VoucherTableRow } from '@/components/admin/VoucherTableClient';
 import { apiClient } from '@/lib/apiClient';
 
 function getCampaignBadge(cat: string) {
@@ -17,10 +17,10 @@ function getCampaignBadge(cat: string) {
 }
 
 export default async function VouchersPage() {
-  let vouchers: any[] = [];
+  let vouchers: VoucherTableRow[] = [];
   try {
-    vouchers = await apiClient.get<any[]>('/vouchers/admin', {
-      params: { excludeGamification: 'true' }
+    vouchers = await apiClient.get<VoucherTableRow[]>('/vouchers/admin', {
+      params: { excludeGamification: 'true' },
     });
   } catch (error) {
     console.error('Error fetching admin vouchers:', error);

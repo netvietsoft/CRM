@@ -1,10 +1,12 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingCart, ChevronDown, ChevronUp, Star } from 'lucide-react';
 import OrderReviewForm from '@/components/customer/OrderReviewForm';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 type OrderItem = {
   id: string;
@@ -24,7 +26,26 @@ type Order = {
   createdAt: Date;
   items: OrderItem[];
   source?: string | null;
-  metadata?: any;
+  metadata?: {
+    items?: PancakeOrderItem[] | null;
+  } | null;
+};
+
+type PancakeOrderItem = {
+  name: string;
+  image: string | null;
+  quantity: number;
+  price: number;
+};
+
+type DisplayOrderItem = {
+  id: string;
+  product: { name: string; imageUrl: string | null } | null;
+  quantity: number;
+  price: number;
+  isGift: boolean;
+  size: string | null;
+  color: string | null;
 };
 
 export default function OrderList({ orders }: { orders: Order[] }) {
@@ -71,7 +92,7 @@ export default function OrderList({ orders }: { orders: Order[] }) {
       } else {
         alert(data.error || 'Sản phẩm này đã hết hàng!');
       }
-    } catch (error) {
+    } catch {
       alert('Có lỗi xảy ra khi kiểm tra tồn kho');
     } finally {
       setReordering(null);
@@ -143,14 +164,14 @@ export default function OrderList({ orders }: { orders: Order[] }) {
           {orders.map(order => {
             const isPancake = order.source === 'PANCAKE';
             const displayItems = isPancake && order.metadata?.items
-              ? (order.metadata.items as any[]).map((it, idx) => ({
-                id: `pck-${order.id}-${idx}`,
-                product: { name: it.name, imageUrl: it.image },
-                quantity: it.quantity,
-                price: it.price,
+              ? order.metadata.items.map((item, index): DisplayOrderItem => ({
+                id: `pck-${order.id}-${index}`,
+                product: { name: item.name, imageUrl: item.image },
+                quantity: item.quantity,
+                price: item.price,
                 isGift: false,
                 size: null,
-                color: null
+                color: null,
               }))
               : (order.items || []);
 
@@ -220,7 +241,15 @@ export default function OrderList({ orders }: { orders: Order[] }) {
                         <div key={`mob-item-${item.id}`} className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg">
                           <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0 bg-white border border-gray-100">
                             {hasValidImage ? (
-                              <img src={productImage} alt={productName} className="w-full h-full object-cover" />
+                              <Image
+                                loader={passthroughImageLoader}
+                                unoptimized
+                                src={productImage || ''}
+                                alt={productName}
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-xs">📦</div>
                             )}
@@ -265,14 +294,14 @@ export default function OrderList({ orders }: { orders: Order[] }) {
                 // For Pancake orders, items are in metadata
                 const isPancake = order.source === 'PANCAKE';
                 const displayItems = isPancake && order.metadata?.items
-                  ? (order.metadata.items as any[]).map((it, idx) => ({
-                    id: `pck-${order.id}-${idx}`,
-                    product: { name: it.name, imageUrl: it.image },
-                    quantity: it.quantity,
-                    price: it.price,
+                  ? order.metadata.items.map((item, index): DisplayOrderItem => ({
+                    id: `pck-${order.id}-${index}`,
+                    product: { name: item.name, imageUrl: item.image },
+                    quantity: item.quantity,
+                    price: item.price,
                     isGift: false,
                     size: null,
-                    color: null
+                    color: null,
                   }))
                   : (order.items || []); // Fix: Đảm bảo luôn có array
 
@@ -358,9 +387,13 @@ export default function OrderList({ orders }: { orders: Order[] }) {
                                     <div className="flex items-center gap-4">
                                       <div className="w-10 h-10 rounded bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center overflow-hidden border border-gray-200">
                                         {hasValidImage ? (
-                                          <img
-                                            src={productImage}
+                                          <Image
+                                            loader={passthroughImageLoader}
+                                            unoptimized
+                                            src={productImage || ''}
                                             alt={productName}
+                                            width={40}
+                                            height={40}
                                             className="w-full h-full object-cover"
                                           />
                                         ) : (

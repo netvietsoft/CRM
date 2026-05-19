@@ -3,6 +3,21 @@ import { apiClient } from './apiClient';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
+export interface SessionUser {
+  id: string;
+  role: string;
+  name?: string;
+  referralCode?: string | null;
+  totalSpent?: number | null;
+  commissionBalance?: number | null;
+  avatarUrl?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  store?: {
+    id: string;
+  } | null;
+}
+
 export function verifyToken(token: string): { userId: string; role: string } | null {
   try {
     return jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
@@ -11,11 +26,11 @@ export function verifyToken(token: string): { userId: string; role: string } | n
   }
 }
 
-export async function getSession() {
+export async function getSession(): Promise<SessionUser | null> {
   try {
-    const user = await apiClient.get<any>('/users/me');
+    const user = await apiClient.get<SessionUser>('/users/me');
     return user;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

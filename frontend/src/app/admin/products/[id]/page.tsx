@@ -1,10 +1,10 @@
 import React from 'react';
 import { getSession } from '@/lib/auth';
 import { apiClient } from '@/lib/apiClient';
-import EditProductClient from './EditProductClient';
+import EditProductClient, { type ProductCategory, type ProductFormProduct } from './EditProductClient';
 import { notFound } from 'next/navigation';
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
 
   if (!session || (session.role !== 'ADMIN' && session.role !== 'STAFF' && session.role !== 'MODERATOR')) {
@@ -13,14 +13,14 @@ export default async function EditProductPage({ params }: { params: { id: string
 
   const { id } = await params;
 
-  let product;
+  let product: ProductFormProduct;
   try {
-    product = await apiClient.get<any>(`/products/${id}`);
+    product = await apiClient.get<ProductFormProduct>(`/products/${id}`);
   } catch {
     notFound();
   }
 
-  const categoriesRes = await apiClient.get<any[]>('/categories');
+  const categoriesRes = await apiClient.get<ProductCategory[]>('/categories');
   const categories = categoriesRes || [];
 
   return <EditProductClient product={product} categories={categories} />;

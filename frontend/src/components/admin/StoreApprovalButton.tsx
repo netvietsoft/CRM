@@ -9,6 +9,19 @@ interface Props {
   storeName: string;
 }
 
+interface StoreAdminActionResponse {
+  success?: boolean;
+  message?: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export default function StoreApprovalButton({ storeId, storeName }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -17,11 +30,14 @@ export default function StoreApprovalButton({ storeId, storeName }: Props) {
     if (!confirm(`Bạn có chắc muốn phê duyệt cửa hàng "${storeName}"?`)) return;
     setLoading(true);
     try {
-      await apiClientClient.post<any>(`/stores/admin/${storeId}/approve`, {});
+      await apiClientClient.post<StoreAdminActionResponse, Record<string, never>>(
+        `/stores/admin/${storeId}/approve`,
+        {},
+      );
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Có lỗi xảy ra');
+      alert(getErrorMessage(error, 'Có lỗi xảy ra'));
     } finally {
       setLoading(false);
     }
@@ -31,11 +47,11 @@ export default function StoreApprovalButton({ storeId, storeName }: Props) {
     if (!confirm(`Bạn có chắc muốn TỪ CHỐI và xóa đăng ký của "${storeName}"? Người dùng sẽ quay về vai trò Khách hàng.`)) return;
     setLoading(true);
     try {
-      await apiClientClient.delete<any>(`/stores/admin/${storeId}`);
+      await apiClientClient.delete<StoreAdminActionResponse>(`/stores/admin/${storeId}`);
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || 'Có lỗi xảy ra');
+      alert(getErrorMessage(error, 'Có lỗi xảy ra'));
     } finally {
       setLoading(false);
     }

@@ -11,7 +11,7 @@ interface AddressOption {
   name: string;
 }
 
-interface StoreData {
+export interface StoreProfileData {
   id: string;
   name: string;
   slug: string;
@@ -28,7 +28,25 @@ interface StoreData {
   bankOwnerName: string;
 }
 
-export default function StoreProfileForm({ initialData }: { initialData: StoreData }) {
+interface ApiErrorLike {
+  message?: string;
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null) {
+    const apiError = error as ApiErrorLike;
+    return apiError.response?.data?.message || apiError.message || fallback;
+  }
+
+  return fallback;
+}
+
+export default function StoreProfileForm({ initialData }: { initialData: StoreProfileData }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -105,8 +123,8 @@ export default function StoreProfileForm({ initialData }: { initialData: StoreDa
       setSuccess(true);
       router.refresh();
       setTimeout(() => setSuccess(false), 3000);
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin.');
+    } catch (error) {
+      alert(getErrorMessage(error, 'Có lỗi xảy ra khi cập nhật thông tin.'));
     } finally {
       setTimeout(() => setLoading(false), 500);
     }
@@ -137,8 +155,11 @@ export default function StoreProfileForm({ initialData }: { initialData: StoreDa
 
       setPasswordMsg({ type: 'success', text: 'Đổi mật khẩu thành công!' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (error: any) {
-      setPasswordMsg({ type: 'error', text: error.response?.data?.message || 'Mật khẩu hiện tại không đúng' });
+    } catch (error) {
+      setPasswordMsg({
+        type: 'error',
+        text: getErrorMessage(error, 'Mật khẩu hiện tại không đúng'),
+      });
     } finally {
       setPasswordLoading(false);
     }

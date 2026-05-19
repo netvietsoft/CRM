@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useOrderSave } from '@/components/admin/OrderSaveProvider';
 import { apiClientClient } from '@/lib/apiClientClient';
 
@@ -37,36 +37,79 @@ function NumberInput({ value, onChange, placeholder = '0' }: { value: number; on
   );
 }
 
+interface OrderPaymentSummary {
+  id: string;
+  shippingFee?: number | null;
+  discountAmount?: number | null;
+  subtotal?: number | null;
+}
+
+interface PaymentBreakdown {
+  point?: number | null;
+}
+
+interface PaymentMetadata {
+  transferMoney?: number | null;
+  cash?: number | null;
+  chargedByMomo?: number | null;
+  chargedByVnpay?: number | null;
+  chargedByCard?: number | null;
+  chargedByQrpay?: number | null;
+  chargedByFundiin?: number | null;
+  chargedByKredivo?: number | null;
+  prepaidByPoint?: PaymentBreakdown | null;
+}
+
+interface FinancialMetadata {
+  surcharge?: number | null;
+}
+
+interface MetadataItem {
+  weight?: number | null;
+  quantity?: number | null;
+}
+
+interface OrderMetadata {
+  payment?: PaymentMetadata | null;
+  financial?: FinancialMetadata | null;
+  items?: MetadataItem[] | null;
+}
+
+interface UpdateOrderPaymentResponse {
+  success?: boolean;
+}
+
 interface OrderPaymentClientProps {
-  order: any;
-  metadata: any;
+  order: OrderPaymentSummary;
+  metadata: OrderMetadata;
   isPancake: boolean;
 }
 
 export default function OrderPaymentClient({ order, metadata, isPancake }: OrderPaymentClientProps) {
   const { setHasChanges, registerSaveAction } = useOrderSave();
-  
-  const payment = metadata?.payment || {};
-  const financial = metadata?.financial || {};
 
-  const [shippingFee, setShippingFee] = useState(order.shippingFee || 0);
-  const [discountAmount, setDiscountAmount] = useState(order.discountAmount || 0);
-  const [transferMoney, setTransferMoney] = useState(isPancake ? (payment.transferMoney || 0) : 0);
-  const [surcharge, setSurcharge] = useState(isPancake ? (financial.surcharge || 0) : 0);
-  const [points, setPoints] = useState(payment.prepaidByPoint?.point || 0);
+  const payment = metadata?.payment ?? {};
+  const financial = metadata?.financial ?? {};
+  const metadataItems = metadata?.items ?? [];
 
-  const subtotal = order.subtotal || 0;
+  const [shippingFee, setShippingFee] = useState(order.shippingFee ?? 0);
+  const [discountAmount, setDiscountAmount] = useState(order.discountAmount ?? 0);
+  const [transferMoney, setTransferMoney] = useState(isPancake ? (payment.transferMoney ?? 0) : 0);
+  const [surcharge, setSurcharge] = useState(isPancake ? (financial.surcharge ?? 0) : 0);
+  const [points, setPoints] = useState(payment.prepaidByPoint?.point ?? 0);
+
+  const subtotal = order.subtotal ?? 0;
   const sauGiamGia = Math.max(0, subtotal - discountAmount);
   const tienCanThu = sauGiamGia + shippingFee + surcharge;
 
   // Other non-editable payment methods
-  const cash = payment.cash || 0;
-  const momo = payment.chargedByMomo || 0;
-  const vnpay = payment.chargedByVnpay || 0;
-  const card = payment.chargedByCard || 0;
-  const qrpay = payment.chargedByQrpay || 0;
-  const fundiin = payment.chargedByFundiin || 0;
-  const kredivo = payment.chargedByKredivo || 0;
+  const cash = payment.cash ?? 0;
+  const momo = payment.chargedByMomo ?? 0;
+  const vnpay = payment.chargedByVnpay ?? 0;
+  const card = payment.chargedByCard ?? 0;
+  const qrpay = payment.chargedByQrpay ?? 0;
+  const fundiin = payment.chargedByFundiin ?? 0;
+  const kredivo = payment.chargedByKredivo ?? 0;
 
   // Total paid = transfer + others
   // Note: we don't include COD here because COD is money to be collected, not already paid.
@@ -75,9 +118,9 @@ export default function OrderPaymentClient({ order, metadata, isPancake }: Order
   const conThieu = Math.max(0, tienCanThu - daThanhToan);
 
   // Register save action
-  React.useEffect(() => {
+  useEffect(() => {
     registerSaveAction('payment', async () => {
-      await apiClientClient.patch(`/orders/${order.id}/admin-update`, {
+      await apiClientClient.patch<UpdateOrderPaymentResponse>(`/orders/${order.id}/admin-update`, {
         shippingFee,
         discountAmount,
         surcharge,
@@ -85,7 +128,7 @@ export default function OrderPaymentClient({ order, metadata, isPancake }: Order
         points,
       });
     });
-  }, [shippingFee, discountAmount, surcharge, transferMoney, points, order.id]);
+  }, [shippingFee, discountAmount, surcharge, transferMoney, points, order.id, registerSaveAction]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
@@ -121,10 +164,9 @@ export default function OrderPaymentClient({ order, metadata, isPancake }: Order
           <p className="text-sm font-semibold text-gray-800">
             Tổng khối lượng đơn hàng:{' '}
             {(() => {
-              const items = metadata?.items || [];
-              const totalWeight = items.reduce(
-                (sum: number, item: any) => sum + (item.weight || 0) * (item.quantity || 1),
-                0
+              const totalWeight = metadataItems.reduce(
+                (sum: number, item) => sum + (item.weight ?? 0) * (item.quantity ?? 1),
+                0,
               );
               return totalWeight > 0 ? `${new Intl.NumberFormat('vi-VN').format(totalWeight)} (g)` : '—';
             })()}

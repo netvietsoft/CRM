@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { Pencil, Trash2 } from 'lucide-react';
 import Select from '@/components/ui/Select';
@@ -14,55 +14,115 @@ function fmtVND(amount: number) {
   return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
 }
 
+type VoucherType = 'FIXED_AMOUNT' | 'PERCENT' | 'FREESHIP' | 'STACK';
+
+interface StackTier {
+  conditionType: string;
+  minProducts: number;
+  minAmount: number;
+  discount: number;
+  type: VoucherType;
+  maxDiscount: number;
+}
+
+interface OrderVoucher {
+  id: string;
+  name: string;
+  code: string;
+  type: VoucherType;
+  value: number;
+  maxDiscount?: number | null;
+  minOrderValue?: number | null;
+  durationDays?: number | null;
+  perCustomerLimit?: number | null;
+  stackTiers?: StackTier[] | null;
+}
+
+interface OrderVoucherLookupResponse {
+  exists: boolean;
+  voucher: OrderVoucher | null;
+}
+
+interface CreateOrderVoucherResponse {
+  message?: string;
+  voucher: OrderVoucher;
+}
+
+interface VoucherMutationPayload {
+  orderId?: string;
+  name?: string;
+  type?: VoucherType;
+  value?: number;
+  minOrderValue?: number;
+  maxDiscount?: number | null;
+  durationDays?: number | null;
+  perCustomerLimit?: number | null;
+  stackTiers?: StackTier[];
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message.trim() ? error.message : fallback;
+}
+
 export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [existingVoucher, setExistingVoucher] = useState<any>(null);
+  const [existingVoucher, setExistingVoucher] = useState<OrderVoucher | null>(null);
   
   const [showForm, setShowForm] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Form states
   const [customName, setCustomName] = useState('');
-  const [customType, setCustomType] = useState('FIXED_AMOUNT');
+  const [customType, setCustomType] = useState<VoucherType>('FIXED_AMOUNT');
   const [customValue, setCustomValue] = useState('');
   const [customMinOrder, setCustomMinOrder] = useState('');
   const [customMaxDiscount, setCustomMaxDiscount] = useState('');
   const [customDurationDays, setCustomDurationDays] = useState('');
   const [customUsageLimit, setCustomUsageLimit] = useState('');
 
-  const defaultStackTiers = [
+  const defaultStackTiers: StackTier[] = [
     { conditionType: 'products', minProducts: 1, minAmount: 0, discount: 200000, type: 'FIXED_AMOUNT', maxDiscount: 0 },
     { conditionType: 'products', minProducts: 2, minAmount: 0, discount: 300000, type: 'FIXED_AMOUNT', maxDiscount: 0 },
     { conditionType: 'products', minProducts: 3, minAmount: 0, discount: 500000, type: 'FIXED_AMOUNT', maxDiscount: 0 },
   ];
   const [stackTiers, setStackTiers] = useState(defaultStackTiers);
 
-  useEffect(() => {
-    checkExisting();
-  }, [orderCode]);
+  const loadExistingVoucher = useCallback(
+    () => apiClientClient.get<OrderVoucherLookupResponse>(`/vouchers/order-voucher/${orderCode}`),
+    [orderCode],
+  );
 
-  async function checkExisting() {
-    try {
-      const res = await apiClientClient.get<any>(`/vouchers/order-voucher/${orderCode}`);
-      if (res.exists) {
-        setExistingVoucher(res.voucher);
-      } else {
-        setExistingVoucher(null);
-      }
-    } catch (e) {
-      // ignore
-    } finally {
-      setChecking(false);
-    }
-  }
+  useEffect(() => {
+    let isCancelled = false;
+
+    void loadExistingVoucher()
+      .then((res) => {
+        if (isCancelled) return;
+        setExistingVoucher(res.exists ? res.voucher : null);
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setExistingVoucher(null);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setChecking(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [loadExistingVoucher]);
 
   async function handleCreateOrUpdate() {
     setLoading(true);
     try {
       if (isEditMode && existingVoucher) {
         // PATCH existing
-        const body: any = {};
+        const body: VoucherMutationPayload = {};
         if (customName) body.name = customName;
         body.type = customType;
         body.value = customType === 'STACK' ? 0 : (customValue ? Number(customValue) : 0);
@@ -72,12 +132,15 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
         body.perCustomerLimit = customUsageLimit ? Number(customUsageLimit) : null;
         if (customType === 'STACK') body.stackTiers = stackTiers;
 
-        const res = await apiClientClient.patch<any>(`/vouchers/${existingVoucher.id}`, body);
+        const res = await apiClientClient.patch<OrderVoucher, VoucherMutationPayload>(
+          `/vouchers/${existingVoucher.id}`,
+          body,
+        );
         alert('Cập nhật voucher thành công!');
         setExistingVoucher(res);
       } else {
         // POST new
-        const body: any = { orderId };
+        const body: VoucherMutationPayload = { orderId };
         if (customName) body.name = customName;
         body.type = customType;
         body.value = customType === 'STACK' ? 0 : (customValue ? Number(customValue) : undefined);
@@ -86,20 +149,24 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
         if (customDurationDays) body.durationDays = Number(customDurationDays);
         if (customUsageLimit) body.perCustomerLimit = Number(customUsageLimit);
         if (customType === 'STACK') body.stackTiers = stackTiers;
-        const res = await apiClientClient.post<any>('/vouchers/create-order-voucher', body);
+        const res = await apiClientClient.post<CreateOrderVoucherResponse, VoucherMutationPayload>(
+          '/vouchers/create-order-voucher',
+          body,
+        );
         alert(res.message || 'Tạo voucher thành công!');
         setExistingVoucher(res.voucher);
       }
       setShowForm(false);
       setIsEditMode(false);
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Lỗi xử lý voucher');
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Lỗi xử lý voucher'));
     } finally {
       setLoading(false);
     }
   }
 
   async function handleDelete() {
+    if (!existingVoucher) return;
     if (!confirm('Bạn chắc chắn muốn xoá voucher này? Khách hàng sẽ không thể nhận được nữa.')) return;
     setLoading(true);
     try {
@@ -107,14 +174,15 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
       alert('Đã xoá voucher thành công.');
       setExistingVoucher(null);
       setShowForm(false);
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Lỗi xoá voucher');
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Lỗi xoá voucher'));
     } finally {
       setLoading(false);
     }
   }
 
   function handleEditClick() {
+    if (!existingVoucher) return;
     setIsEditMode(true);
     setCustomName(existingVoucher.name || '');
     setCustomType(existingVoucher.type || 'FIXED_AMOUNT');
@@ -148,6 +216,8 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
   }
 
   if (existingVoucher && !showForm) {
+    const voucher = existingVoucher;
+
     return (
       <div className="bg-white rounded-xl shadow-sm p-6 relative">
         <h2 className="text-xl font-bold text-gray-800 mb-4">🎟️ Voucher QR đơn hàng</h2>
@@ -169,40 +239,40 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Tên Voucher:</span>
-              <span className="font-semibold text-gray-800">{existingVoucher.name}</span>
+              <span className="font-semibold text-gray-800">{voucher.name}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Mã voucher:</span>
-              <span className="font-mono font-bold text-gray-800">{existingVoucher.code}</span>
+              <span className="font-mono font-bold text-gray-800">{voucher.code}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Giá trị:</span>
               <span className="font-bold text-green-700">
-                {existingVoucher.type === 'PERCENT' ? `${existingVoucher.value}%` : existingVoucher.type === 'FREESHIP' ? 'Freeship' : fmtVND(existingVoucher.value)}
+                {voucher.type === 'PERCENT' ? `${voucher.value}%` : voucher.type === 'FREESHIP' ? 'Freeship' : fmtVND(voucher.value)}
               </span>
             </div>
-            {existingVoucher.type === 'PERCENT' && existingVoucher.maxDiscount > 0 && (
+            {voucher.type === 'PERCENT' && (voucher.maxDiscount ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Giảm tối đa:</span>
-                <span className="text-gray-700">{fmtVND(existingVoucher.maxDiscount)}</span>
+                <span className="text-gray-700">{fmtVND(voucher.maxDiscount ?? 0)}</span>
               </div>
             )}
-            {existingVoucher.minOrderValue > 0 && (
+            {(voucher.minOrderValue ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Đơn tối thiểu:</span>
-                <span className="text-gray-700">{fmtVND(existingVoucher.minOrderValue)}</span>
+                <span className="text-gray-700">{fmtVND(voucher.minOrderValue ?? 0)}</span>
               </div>
             )}
-            {existingVoucher.durationDays > 0 && (
+            {(voucher.durationDays ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Hạn dùng:</span>
-                <span className="text-gray-700">{existingVoucher.durationDays} ngày</span>
+                <span className="text-gray-700">{voucher.durationDays ?? 0} ngày</span>
               </div>
             )}
-            {existingVoucher.perCustomerLimit > 0 && (
+            {(voucher.perCustomerLimit ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Giới hạn dùng/user:</span>
-                <span className="text-gray-700">{existingVoucher.perCustomerLimit} lần</span>
+                <span className="text-gray-700">{voucher.perCustomerLimit ?? 0} lần</span>
               </div>
             )}
           </div>
@@ -241,7 +311,7 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
                   <Select
                     value={customType}
                     onChange={(val) => {
-                      setCustomType(val);
+                      setCustomType(val as VoucherType);
                       if (val === 'STACK') setStackTiers([...defaultStackTiers]);
                     }}
                     className="w-full bg-white"
@@ -338,7 +408,7 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
                           value={tier.type}
                           onChange={(val) => {
                             const updated = [...stackTiers];
-                            updated[idx] = { ...updated[idx], type: val };
+                            updated[idx] = { ...updated[idx], type: val as VoucherType };
                             setStackTiers(updated);
                           }}
                           options={[

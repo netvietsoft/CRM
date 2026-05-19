@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { clearSavedReferralCode, getReferralCodeFromSearchParams, getSavedReferralCode, persistReferralCode } from '@/lib/referral-client';
 
 function LoginForm() {
@@ -9,7 +9,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [formData, setFormData] = useState({
@@ -19,27 +18,36 @@ function LoginForm() {
   });
 
   useEffect(() => {
-    // Prefer explicit ref on login URL, then fallback to ref nested in returnTo.
-    const refCode = getReferralCodeFromSearchParams(searchParams);
-    if (refCode) {
-      persistReferralCode(refCode);
-      setFormData(prev => ({ ...prev, referralCode: refCode }));
-    } else {
-      const savedRef = getSavedReferralCode();
-      setFormData(prev => ({ ...prev, referralCode: savedRef }));
-    }
+    let cancelled = false;
 
-    const errorParam = searchParams.get('error');
-    if (errorParam) {
-      const errorMessages: Record<string, string> = {
-        no_code: 'Không nhận được mã xác thực từ Google',
-        token_exchange_failed: 'Không thể xác thực với Google',
-        user_info_failed: 'Không thể lấy thông tin người dùng từ Google',
-        auth_failed: 'Đăng nhập Google thất bại',
-        account_disabled: 'Tài khoản đã bị vô hiệu hóa',
-      };
-      setError(errorMessages[errorParam] || 'Đã xảy ra lỗi khi đăng nhập');
-    }
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+
+      const refCode = getReferralCodeFromSearchParams(searchParams);
+      if (refCode) {
+        persistReferralCode(refCode);
+        setFormData(prev => ({ ...prev, referralCode: refCode }));
+      } else {
+        const savedRef = getSavedReferralCode();
+        setFormData(prev => ({ ...prev, referralCode: savedRef }));
+      }
+
+      const errorParam = searchParams.get('error');
+      if (errorParam) {
+        const errorMessages: Record<string, string> = {
+          no_code: 'Không nhận được mã xác thực từ Google',
+          token_exchange_failed: 'Không thể xác thực với Google',
+          user_info_failed: 'Không thể lấy thông tin người dùng từ Google',
+          auth_failed: 'Đăng nhập Google thất bại',
+          account_disabled: 'Tài khoản đã bị vô hiệu hóa',
+        };
+        setError(errorMessages[errorParam] || 'Đã xảy ra lỗi khi đăng nhập');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
