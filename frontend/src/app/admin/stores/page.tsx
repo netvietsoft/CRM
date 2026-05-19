@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 export const dynamic = 'force-dynamic';
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import Link from 'next/link';
 import StoreActions from '@/components/admin/StoreActions';
 import StoreApprovalButton from '@/components/admin/StoreApprovalButton';

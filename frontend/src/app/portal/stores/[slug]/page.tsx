@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { notFound } from 'next/navigation';
 import { ApiError, apiClient } from '@/lib/apiClient';
 import Link from 'next/link';

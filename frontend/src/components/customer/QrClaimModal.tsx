@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useState, useEffect, useTransition, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { claimQrRewardAction } from '@/actions/qrClaimActions';

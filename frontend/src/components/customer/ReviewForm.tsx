@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useState } from 'react';
 import { Star, X } from 'lucide-react';
 import { UploadButton } from '@/lib/uploadthing';

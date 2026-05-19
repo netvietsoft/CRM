@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useUploadThing } from '@/lib/uploadthing';
 import { useState } from 'react';
 import { passthroughImageLoader } from '@/lib/imageLoader';

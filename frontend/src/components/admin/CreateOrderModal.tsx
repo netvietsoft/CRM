@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useEffect, useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';

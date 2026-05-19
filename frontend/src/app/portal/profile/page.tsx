@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { getSession } from '@/lib/auth';
 import ProfileForm from './ProfileForm';
 import { apiClient } from '@/lib/apiClient';

@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Heart, ShoppingCart, Eye, Star, Share2, ChevronLeft, ChevronRight, Filter, X, Minus, Plus, Check } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';

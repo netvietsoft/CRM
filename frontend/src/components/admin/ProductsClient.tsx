@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import React, { useState } from 'react';
 import ProductActions from '@/components/admin/ProductActions';
 import ProductRowActions from '@/components/admin/ProductRowActions';

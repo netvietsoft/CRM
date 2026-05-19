@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useState, useEffect, useCallback } from 'react';
 import { Star, User, Check } from 'lucide-react';
 import { passthroughImageLoader } from '@/lib/imageLoader';

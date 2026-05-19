@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { useEffect, useState, useCallback, type SVGProps } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Trash2, X, ChevronDown, DownloadCloud, MapPin, Plus, Save } from 'lucide-react';

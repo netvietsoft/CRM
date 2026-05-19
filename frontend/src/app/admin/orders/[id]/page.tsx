@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import Link from 'next/link';
 import OrderReadStatusManager from '@/components/admin/OrderReadStatusManager';
 import DeleteOrderButton from '@/components/admin/DeleteOrderButton';

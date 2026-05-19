@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-import Image from 'next/image';
+import Image from '@/components/ui/AppImage';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import StoreStatusManager from '@/components/admin/StoreStatusManager';
