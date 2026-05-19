@@ -88,6 +88,7 @@ interface PartnerMetadata {
   trackingCode?: string | null;
   deliveryName?: string | null;
   deliveryPhone?: string | null;
+  totalFee?: number | null;
   courierUpdates?: CourierUpdate[] | null;
   partnerId?: string | null;
 }
@@ -123,6 +124,8 @@ export interface PortalOrderDetail {
   items?: OrderItemSummary[] | null;
   subtotal: number;
   discountAmount?: number;
+  voucherDiscountAmount?: number;
+  shippingFee?: number | null;
   totalAmount: number;
   shippingName?: string | null;
   shippingPhone?: string | null;
@@ -189,6 +192,13 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
   const canCancel = ['PENDING', 'CONFIRMED'].includes(order.status);
   const canConfirmReceived = ['DELIVERED', 'PAYMENT_COLLECTED'].includes(order.status);
   const canReview = order.status === 'COMPLETED' && !order.hasReview;
+  const voucherDiscountAmount = Number(order.voucherDiscountAmount) || 0;
+  const totalDiscountAmount = Number(order.discountAmount) || 0;
+  const otherDiscountAmount = Math.max(0, totalDiscountAmount - voucherDiscountAmount);
+  const shippingFee =
+    (Number(order.shippingFee) || 0) > 0
+      ? Number(order.shippingFee) || 0
+      : Number(partner.totalFee) || 0;
 
   const hasLinkedItems = Array.isArray(order.items) && order.items.length > 0 && order.items.some((item) => item.product);
 
@@ -364,7 +374,10 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="rounded-xl bg-white p-6 border border-gray-200">
-            <h2 className="mb-2 text-lg font-bold flex items-center gap-2 text-gray-800">Đơn hàng<p className='text-xm text-gray-700'>({displayItems.length})</p></h2>
+            <div className="mb-2 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-gray-800">Đơn hàng</h2>
+              <span className="text-sm text-gray-700">({displayItems.length})</span>
+            </div>
             <div className="space-y-1">
               {displayItems.map((item, idx) => (
                 <div key={item.id || idx} className="flex gap-4 rounded-lg p-3">
@@ -421,12 +434,22 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
                 <span>Tiền hàng:</span>
                 <span className="">{fmt(order.subtotal)}</span>
               </div>
-              {(order.discountAmount ?? 0) > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Giảm giá voucher:</span>
+                <span className="font-semibold">
+                  {voucherDiscountAmount > 0 ? `-${fmt(voucherDiscountAmount)}` : fmt(0)}
+                </span>
+              </div>
+              {otherDiscountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Giảm giá:</span>
-                  <span className="font-semibold">-{fmt(order.discountAmount ?? 0)}</span>
+                  <span>Giảm trừ khác:</span>
+                  <span className="font-semibold">-{fmt(otherDiscountAmount)}</span>
                 </div>
               )}
+              <div className="flex justify-between text-gray-700">
+                <span>Phí ship:</span>
+                <span>{fmt(shippingFee)}</span>
+              </div>
               {isPancake && (payment.totalPaid ?? 0) > 0 && (
                 <div className="mt-1">
                   {(payment.transferMoney ?? 0) > 0 && (

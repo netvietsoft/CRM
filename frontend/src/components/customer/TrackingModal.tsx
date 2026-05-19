@@ -1,8 +1,10 @@
 'use client';
 
+import Image from '@/components/ui/AppImage';
 import { useState } from 'react';
 import { X, Package, Search, Phone, ArrowLeft } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { passthroughImageLoader } from '@/lib/imageLoader';
 
 interface TrackingModalProps {
   isOpen: boolean;
@@ -28,11 +30,26 @@ interface TrackingDetails {
   courierUpdates?: CourierUpdate[] | null;
 }
 
+interface TrackingOrderItem {
+  name: string;
+  image?: string | null;
+  quantity: number;
+  price?: number | null;
+  size?: string | null;
+  color?: string | null;
+  isGift?: boolean;
+}
+
 interface TrackingOrderResponse {
   orderCode: string;
   status: string;
   createdAt: string;
+  subtotal: number;
+  discountAmount?: number;
+  voucherDiscountAmount?: number;
+  shippingFee?: number;
   totalAmount: number;
+  items: TrackingOrderItem[];
   tracking?: TrackingDetails | null;
 }
 
@@ -130,6 +147,14 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
   const st = trackingData ? (statusMap[trackingData.status] || { label: trackingData.status, cls: 'bg-gray-100 text-gray-700', step: 0 }) : null;
   const tracking = trackingData?.tracking ?? null;
   const courierUpdates = tracking?.courierUpdates ?? [];
+  const voucherDiscountAmount = Number(trackingData?.voucherDiscountAmount) || 0;
+  const totalDiscountAmount = Number(trackingData?.discountAmount) || 0;
+  const otherDiscountAmount = Math.max(0, totalDiscountAmount - voucherDiscountAmount);
+  const shippingFee =
+    (Number(trackingData?.shippingFee) || 0) > 0
+      ? Number(trackingData?.shippingFee) || 0
+      : Number(tracking?.totalFee) || 0;
+  const items = trackingData?.items ?? [];
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -271,6 +296,47 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
                 </div>
               )}
 
+              {items.length > 0 && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <h4 className="mb-3 text-sm font-semibold text-gray-800">Sản phẩm ({items.length})</h4>
+                  <div className="space-y-3">
+                    {items.map((item, idx) => (
+                      <div key={`${item.name}-${idx}`} className="flex gap-3 rounded-lg bg-white p-3">
+                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
+                          {item.image ? (
+                            <Image
+                              loader={passthroughImageLoader}
+                              unoptimized
+                              src={item.image}
+                              alt={item.name}
+                              width={48}
+                              height={48}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-lg text-gray-400">📦</div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-gray-800">{item.name}</p>
+                          <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-gray-500">
+                            <span>SL: {item.quantity}</span>
+                            {item.size && <span>Size: {item.size}</span>}
+                            {item.color && <span>Màu: {item.color}</span>}
+                            {item.price ? <span>Giá: {fmt(item.price)}</span> : null}
+                          </div>
+                          {item.isGift && (
+                            <span className="mt-2 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                              Quà tặng
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Shipping Details */}
               {tracking && tracking.trackingCode && (
                 <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -280,10 +346,6 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
                     <div>
                       <p className="text-xs text-gray-500">Mã vận đơn</p>
                       <p className="font-mono font-bold text-gray-800">{tracking.trackingCode}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Phí giao hàng</p>
-                      <p className="font-medium text-gray-800">{fmt(tracking.totalFee ?? 0)}</p>
                     </div>
                     {tracking.deliveryName && (
                       <div>
@@ -350,10 +412,35 @@ export default function TrackingModal({ isOpen, onClose }: TrackingModalProps) {
                 </div>
               )}
 
-              {/* Order Info Summary */}
-              <div className="text-sm bg-blue-50 text-blue-800 p-3 rounded-lg flex justify-between items-center">
-                <span>Tổng thanh toán:</span>
-                <span className="font-bold text-base">{fmt(trackingData.totalAmount)}</span>
+              {/* Payment Summary */}
+              <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
+                <h4 className="mb-3 font-semibold text-blue-950">Thông tin thanh toán</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span>Tiền hàng:</span>
+                    <span>{fmt(trackingData.subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-green-700">
+                    <span>Giảm giá voucher:</span>
+                    <span className="font-semibold">
+                      {voucherDiscountAmount > 0 ? `-${fmt(voucherDiscountAmount)}` : fmt(0)}
+                    </span>
+                  </div>
+                  {otherDiscountAmount > 0 && (
+                    <div className="flex items-center justify-between text-green-700">
+                      <span>Giảm trừ khác:</span>
+                      <span className="font-semibold">-{fmt(otherDiscountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span>Phí ship:</span>
+                    <span>{fmt(shippingFee)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-blue-100 pt-2 text-base font-bold">
+                    <span>Tổng thanh toán:</span>
+                    <span>{fmt(trackingData.totalAmount)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}

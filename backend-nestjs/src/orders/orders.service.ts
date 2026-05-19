@@ -35,6 +35,30 @@ export class OrdersService {
     return `${prefix}${timestamp}${random}`;
   }
 
+  private getVoucherDiscountAmount(order: {
+    appliedVouchers?: Array<{ discountApplied?: number | null }> | null;
+  }): number {
+    return (order.appliedVouchers || []).reduce(
+      (sum, appliedVoucher) => sum + (Number(appliedVoucher.discountApplied) || 0),
+      0,
+    );
+  }
+
+  private getDisplayShippingFee(order: {
+    shippingFee?: number | null;
+    metadata?: unknown;
+  }): number {
+    const orderShippingFee = Number(order.shippingFee) || 0;
+    if (orderShippingFee > 0) return orderShippingFee;
+
+    const metadata =
+      order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+        ? (order.metadata as Record<string, any>)
+        : {};
+
+    return Number(metadata.partner?.totalFee) || 0;
+  }
+
   private isVietqrExpiredByMetadata(order: { metadata: any }, now = new Date()): boolean {
     const expiresAt = order.metadata?.vietqr?.expiresAt;
     if (!expiresAt) return false;
@@ -1169,6 +1193,7 @@ export class OrdersService {
       hasReview: reviewCount > 0,
       reviewCount,
       reviewRewardGranted: Boolean(metadata.reviewRewardGranted),
+      voucherDiscountAmount: this.getVoucherDiscountAmount(order),
     };
 
     // Permission check
@@ -1655,6 +1680,11 @@ export class OrdersService {
         ],
       },
       include: {
+        appliedVouchers: {
+          select: {
+            discountApplied: true,
+          },
+        },
         items: {
           include: {
             product: {
@@ -1695,11 +1725,17 @@ export class OrdersService {
     // Return safe data only (exclude user details, exact address, etc. if not needed,
     // but we can return basic tracking info)
     const m = (matchedOrder.metadata as any) || {};
+    const voucherDiscountAmount = this.getVoucherDiscountAmount(matchedOrder);
+
     return {
       id: matchedOrder.id,
       orderCode: matchedOrder.orderCode,
       status: matchedOrder.status,
       createdAt: matchedOrder.createdAt,
+      subtotal: matchedOrder.subtotal,
+      discountAmount: matchedOrder.discountAmount,
+      voucherDiscountAmount,
+      shippingFee: this.getDisplayShippingFee(matchedOrder),
       totalAmount: matchedOrder.totalAmount,
       shippingName: matchedOrder.shippingName || m.shippingAddress?.fullName,
       paymentMethod:
