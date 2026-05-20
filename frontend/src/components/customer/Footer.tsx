@@ -4,6 +4,7 @@ const supportLinks = [
   { href: '/portal/support/about', label: 'Thông tin cơ bản' },
   { href: '/portal/support/contact', label: 'Liên hệ hỗ trợ' },
   { href: '/portal/support/order-guide', label: 'Hướng dẫn đặt hàng' },
+  { href: '/portal/how-to/vouchers', label: 'Cách dùng voucher' },
   { href: '/portal/orders', label: 'Theo dõi đơn hàng' },
   { href: '/portal/seller-register', label: 'Đăng ký bán hàng' },
 ];
