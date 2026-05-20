@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom';
 export interface SelectOption {
   value: string | number;
   label: string;
+  triggerClassName?: string;
+  optionClassName?: string;
 }
 
 interface SelectProps {
@@ -13,6 +15,7 @@ interface SelectProps {
   onChange: (value: string) => void;
   options: SelectOption[];
   className?: string;
+  triggerClassName?: string;
   placeholder?: string;
   disabled?: boolean;
   size?: 'xs' | 'sm' | 'md';
@@ -23,6 +26,7 @@ export default function Select({
   onChange, 
   options, 
   className = 'w-full', 
+  triggerClassName = '',
   placeholder = 'Chọn', 
   disabled = false,
   size = 'sm'
@@ -63,7 +67,11 @@ export default function Select({
     };
   }, [isOpen]);
 
-  const selectedLabel = options.find(o => String(o.value) === String(value))?.label || placeholder;
+  const selectedOption = options.find((option) => String(option.value) === String(value));
+  const selectedLabel = selectedOption?.label || placeholder;
+  const resolvedTriggerClassName = [selectedOption?.triggerClassName, triggerClassName]
+    .filter(Boolean)
+    .join(' ');
   const menuPosition = menuRect ? (() => {
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - menuRect.bottom - 8;
@@ -91,10 +99,11 @@ export default function Select({
     md: 'px-4 py-2.5 text-base'
   };
 
-  const hasBg = className.includes('bg-');
-  const hasBorder = className.includes('border-');
-  const hasTextColor = className.includes('text-');
-  const hasRounded = className.includes('rounded-');
+  const styleHints = `${className} ${resolvedTriggerClassName}`;
+  const hasBg = styleHints.includes('bg-');
+  const hasBorder = styleHints.includes('border-');
+  const hasTextColor = styleHints.includes('text-');
+  const hasRounded = styleHints.includes('rounded-');
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -108,6 +117,7 @@ export default function Select({
           ${!hasBg ? 'bg-white hover:bg-gray-50' : ''}
           ${!hasTextColor ? 'text-gray-700' : ''}
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+          ${resolvedTriggerClassName}
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span className="truncate">{selectedLabel}</span>
@@ -122,23 +132,30 @@ export default function Select({
           className="fixed z-[1000] bg-white border border-gray-200 rounded-lg shadow-xl py-1 p-1 overflow-y-auto overscroll-contain"
           style={menuPosition}
         >
-          {options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => {
-                onChange(String(option.value));
-                setIsOpen(false);
-              }}
-              className={`w-full text-left rounded-md transition-colors ${optionSizeClasses[size]} ${
-                String(value) === String(option.value)
-                  ? 'bg-blue-50 text-blue-700 font-medium'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+          {options.map((option) => {
+            const isSelected = String(value) === String(option.value);
+            const optionToneClassName = option.optionClassName || '';
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(String(option.value));
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left rounded-md transition-colors ${optionSizeClasses[size]} ${
+                  optionToneClassName
+                    ? `${optionToneClassName} ${isSelected ? 'font-semibold' : 'hover:opacity-90'}`
+                    : isSelected
+                      ? 'bg-blue-50 text-blue-700 font-medium'
+                      : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>,
         document.body,
       )}

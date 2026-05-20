@@ -1,262 +1,42 @@
 'use client';
 
 import Image from '@/components/ui/AppImage';
-import { useEffect, useState, useCallback, type SVGProps } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Trash2, X, ChevronDown, DownloadCloud, MapPin, Plus, Save } from 'lucide-react';
+import { Search, Trash2, X, DownloadCloud, Plus, Save } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
-import Select from '@/components/ui/Select';
-
-interface ProductVariant {
-  id: string;
-  price: number | null;
-  stock: number;
-  size?: { name: string } | null;
-  color?: { name: string } | null;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  imageUrl: string | null;
-  originalPrice: number;
-  salePrice: number | null;
-  stockQuantity: number;
-  variants: ProductVariant[];
-}
-
-interface AddressOption {
-  code: string;
-  name: string;
-}
-
-interface StaffMember {
-  id: string;
-  name?: string | null;
-  phone?: string | null;
-}
-
-interface Customer {
-  id: string;
-  name: string | null;
-  phone: string | null;
-  email: string | null;
-  gender?: string | null;
-  dob?: string | null;
-  addressStreet?: string | null;
-  addressWard?: string | null;
-  addressProvince?: string | null;
-}
-
-interface OrderItem {
-  productId: string;
-  quantity: number;
-  size: string | null;
-  color: string | null;
-  product: Product;
-  unitPrice: number;
-  isCustomPrice: boolean;
-}
-
-interface StaffMembersResponse {
-  staff?: StaffMember[];
-}
-
-interface CustomerSearchResponse {
-  customers?: Customer[];
-}
-
-interface ProductSearchResponse {
-  data?: Product[];
-}
-
-interface CustomerPrefill {
-  shippingName: string;
-  shippingPhone: string;
-  shippingStreet: string;
-  shippingProvince: string;
-  shippingWard: string;
-  wards: AddressOption[];
-  provinceOptions?: AddressOption[];
-}
-
-const REASON_GROUPS: { label: string; options?: string[] }[] = [
-  {
-    label: 'Do người nhận',
-    options: [
-      'Không liên lạc được / Thuê bao / Người nhận thuê bao',
-      'Sai sản phẩm / Sai COD / Giao chậm / Đơn ảo / Đổi ý / Hàng lỗi',
-      'Sai địa chỉ/Đổi địa chỉ/Sai SĐT',
-      'Hẹn ngày giao/Hẹn Thời gian giao/Hẹn sau/Hẹn lại ngày'
-    ]
-  },
-  {
-    label: 'Do ĐVVC',
-    options: [
-      'Giao chậm',
-      'Mất hàng',
-      'Hư hỏng'
-    ]
-  },
-  { label: 'Shop yêu cầu hoàn' },
-  { label: 'Lý do khác' },
-  { label: 'Do khách hàng' },
-  { label: 'Do nhân viên' },
-  { label: 'Do sản phẩm lỗi' },
-  { label: 'Do đơn vị VC' },
-  { label: 'Do đổi hàng' }
-];
-
-const ALL_STATUSES = [
-  { value: 'PENDING', label: 'Chờ xác nhận' },
-  { value: 'WAITING_FOR_GOODS', label: 'Chờ hàng' },
-  { value: 'CONFIRMED', label: 'Đã xác nhận' },
-  { value: 'PACKAGING', label: 'Đang đóng hàng' },
-  { value: 'WAITING_FOR_SHIPPING', label: 'Chờ vận chuyển' },
-  { value: 'SHIPPED', label: 'Đã gửi hàng' },
-  { value: 'DELIVERED', label: 'Đã nhận' },
-  { value: 'PAYMENT_COLLECTED', label: 'Đã thu tiền' },
-  { value: 'RETURNING', label: 'Đang hoàn' },
-  { value: 'EXCHANGING', label: 'Đang đổi' },
-  { value: 'COMPLETED', label: 'Hoàn thành' },
-  { value: 'CANCELLED', label: 'Đã hủy' },
-  { value: 'REFUNDED', label: 'Hoàn trả' }
-];
-
-function fmtDate(d: string | Date) {
-  return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d));
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount).replace('₫', 'đ');
-}
-
-function formatNumberValue(value: number) {
-  return value ? new Intl.NumberFormat('vi-VN').format(value) : '';
-}
-
-function formatDateInputValue(value?: string | null) {
-  if (!value) {
-    return '';
-  }
-
-  const matchedDate = value.match(/^\d{4}-\d{2}-\d{2}/);
-  if (matchedDate) {
-    return matchedDate[0];
-  }
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return '';
-  }
-
-  return parsedDate.toISOString().slice(0, 10);
-}
-
-function NumberInput({
-  value,
-  onChange,
-  placeholder = '0',
-  className = '',
-}: {
-  value: number;
-  onChange: (val: number) => void;
-  placeholder?: string;
-  className?: string;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const displayValue = draft ?? formatNumberValue(value);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9]/g, '');
-    if (!raw) {
-      setDraft('');
-      onChange(0);
-      return;
-    }
-    const num = parseInt(raw, 10);
-    setDraft(new Intl.NumberFormat('vi-VN').format(num));
-    onChange(num);
-  };
-
-  return (
-    <input
-      type="text"
-      value={displayValue}
-      onChange={handleChange}
-      onBlur={() => setDraft(null)}
-      placeholder={placeholder}
-      className={`w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-right font-mono text-sm text-black focus:ring-1 focus:ring-blue-500 outline-none focus:bg-white transition-colors ${className}`.trim()}
-    />
-  );
-}
-
-function getAvailableSizes(product: Product) {
-  return Array.from(
-    new Set(product.variants.map((variant) => variant.size?.name).filter(Boolean)),
-  ) as string[];
-}
-
-function getAvailableColors(product: Product) {
-  return Array.from(
-    new Set(product.variants.map((variant) => variant.color?.name).filter(Boolean)),
-  ) as string[];
-}
-
-function getCatalogUnitPrice(product: Product, size: string | null, color: string | null) {
-  const match = product.variants.find((variant) => {
-    const sameSize = (variant.size?.name || null) === size;
-    const sameColor = (variant.color?.name || null) === color;
-    return sameSize && sameColor;
-  });
-
-  if (match?.price !== null && match?.price !== undefined) {
-    return match.price;
-  }
-
-  return product.salePrice ?? product.originalPrice;
-}
-
-function getUnitPrice(item: OrderItem) {
-  if (item.isCustomPrice) {
-    return item.unitPrice;
-  }
-
-  return getCatalogUnitPrice(item.product, item.size, item.color);
-}
-
-function buildOrderItem(product: Product): OrderItem {
-  return {
-    productId: product.id,
-    quantity: 1,
-    size: null,
-    color: null,
-    product,
-    unitPrice: getCatalogUnitPrice(product, null, null),
-    isCustomPrice: false,
-  };
-}
-
-function syncOrderItemPricing(item: OrderItem, next: Partial<Pick<OrderItem, 'quantity' | 'size' | 'color'>>): OrderItem {
-  const updatedItem = { ...item, ...next };
-
-  if (updatedItem.isCustomPrice) {
-    return updatedItem;
-  }
-
-  return {
-    ...updatedItem,
-    unitPrice: getCatalogUnitPrice(updatedItem.product, updatedItem.size, updatedItem.color),
-  };
-}
+import CreateOrderSidebar from './CreateOrderSidebar';
+import { CREATE_ORDER_CUSTOMER_DRAFT_KEY } from './createOrder.constants';
+import {
+  buildOrderItem,
+  formatCurrency,
+  formatDateInputValue,
+  getAvailableColors,
+  getAvailableSizes,
+  getCatalogUnitPrice,
+  getUnitPrice,
+  NumberInput,
+  syncOrderItemPricing,
+} from './createOrder.helpers';
+import type {
+  AddressOption,
+  Customer,
+  CustomerPrefill,
+  CustomerSearchResponse,
+  CreateOrderCustomerDraft,
+  OrderItem,
+  Product,
+  ProductSearchResponse,
+  StaffMember,
+  StaffMembersResponse,
+} from './createOrder.types';
 
 export default function CreateOrderClient({ currentUser }: { currentUser: { id: string; role: string; name?: string } }) {
   const router = useRouter();
+  const hasHydratedCustomerDraftRef = useRef(false);
+  const skipSelectedCustomerPrefillRef = useRef(false);
+  const pendingWardRestoreRef = useRef<{ province: string; ward: string } | null>(null);
 
   const [customerSearch, setCustomerSearch] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -371,6 +151,81 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
     void loadProvinces().then(setProvinces).catch(console.error);
   }, [loadProvinces]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    try {
+      const rawDraft = window.localStorage.getItem(CREATE_ORDER_CUSTOMER_DRAFT_KEY);
+      if (!rawDraft) {
+        return;
+      }
+
+      const draft = JSON.parse(rawDraft) as CreateOrderCustomerDraft;
+      queueMicrotask(() => {
+        if (isCancelled) {
+          return;
+        }
+
+        if (draft.selectedCustomer) {
+          skipSelectedCustomerPrefillRef.current = true;
+          setSelectedCustomer(draft.selectedCustomer);
+        }
+
+        setShippingName(draft.shippingName || '');
+        setShippingPhone(draft.shippingPhone || '');
+        setShippingStreet(draft.shippingStreet || '');
+        setShippingWard(draft.shippingWard || '');
+        setShippingProvince(draft.shippingProvince || '');
+        setCustomerEmail(draft.customerEmail || '');
+        setCustomerDob(draft.customerDob || '');
+        setGender(draft.gender || '');
+
+        if (draft.shippingProvince) {
+          pendingWardRestoreRef.current = {
+            province: draft.shippingProvince,
+            ward: draft.shippingWard || '',
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Failed to restore create-order customer draft', error);
+      window.localStorage.removeItem(CREATE_ORDER_CUSTOMER_DRAFT_KEY);
+    } finally {
+      hasHydratedCustomerDraftRef.current = true;
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pendingWardRestoreRef.current || provinces.length === 0) {
+      return;
+    }
+
+    let isCancelled = false;
+    const { province, ward } = pendingWardRestoreRef.current;
+
+    void loadWards(province, provinces)
+      .then((result) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setWards(result?.wards || []);
+        if (ward) {
+          setShippingWard(ward);
+        }
+        pendingWardRestoreRef.current = null;
+      })
+      .catch(console.error);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [loadWards, provinces]);
+
   const buildCustomerPrefill = useCallback(async (customer: Customer): Promise<CustomerPrefill> => {
     const custProvince = customer.addressProvince || '';
     const custWard = customer.addressWard || '';
@@ -413,6 +268,11 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
   useEffect(() => {
     if (!selectedCustomer) return;
+
+    if (skipSelectedCustomerPrefillRef.current) {
+      skipSelectedCustomerPrefillRef.current = false;
+      return;
+    }
 
     let isCancelled = false;
 
@@ -606,6 +466,53 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
     setActiveCustomerField(null);
   };
 
+  useEffect(() => {
+    if (!hasHydratedCustomerDraftRef.current) {
+      return;
+    }
+
+    const hasCustomerDraft = Boolean(
+      selectedCustomer ||
+        shippingName ||
+        shippingPhone ||
+        shippingStreet ||
+        shippingWard ||
+        shippingProvince ||
+        customerEmail ||
+        customerDob ||
+        gender,
+    );
+
+    if (!hasCustomerDraft) {
+      window.localStorage.removeItem(CREATE_ORDER_CUSTOMER_DRAFT_KEY);
+      return;
+    }
+
+    const draft: CreateOrderCustomerDraft = {
+      selectedCustomer,
+      shippingName,
+      shippingPhone,
+      shippingStreet,
+      shippingWard,
+      shippingProvince,
+      customerEmail,
+      customerDob,
+      gender,
+    };
+
+    window.localStorage.setItem(CREATE_ORDER_CUSTOMER_DRAFT_KEY, JSON.stringify(draft));
+  }, [
+    customerDob,
+    customerEmail,
+    gender,
+    selectedCustomer,
+    shippingName,
+    shippingPhone,
+    shippingProvince,
+    shippingStreet,
+    shippingWard,
+  ]);
+
   const subtotal = orderItems.reduce(
     (sum: number, item) => sum + getUnitPrice(item) * item.quantity,
     0,
@@ -663,6 +570,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
         discountAmount,
       });
 
+      window.localStorage.removeItem(CREATE_ORDER_CUSTOMER_DRAFT_KEY);
       router.push('/admin/orders');
       router.refresh();
     } catch (err) {
@@ -903,352 +811,73 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
           </div>
 
-          <div className="w-full lg:w-[420px] xl:w-[500px] 2xl:w-[580px] flex flex-col gap-4">
-            <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
-              <div className="flex justify-between items-center text-gray-700">
-                <span className="font-medium text-xs">Tạo lúc</span>
-                <span className="font-bold text-gray-900 text-xs">{fmtDate(new Date())}</span>
-              </div>
-              <div className="flex items-center text-gray-700 gap-4">
-                <span className="font-medium text-xs whitespace-nowrap w-20">Trạng thái</span>
-                <div className="flex-1 w-full">
-                  <Select
-                    value={status}
-                    onChange={setStatus}
-                    options={ALL_STATUSES}
-                    className="bg-gray-50 border-gray-200 py-1.5"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center text-gray-700 gap-4">
-                <span className="font-medium text-xs whitespace-nowrap w-20">NV xử lý</span>
-                <div className="flex-1 w-full">
-                  <Select
-                    value={assigningSellerId}
-                    onChange={setAssigningSellerId}
-                    options={staffOptions}
-                    className="bg-gray-50 border-gray-200 py-1.5"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center text-gray-700 gap-4">
-                <span className="font-medium text-xs whitespace-nowrap w-20">NV chăm sóc</span>
-                <div className="flex-1 w-full">
-                  <Select
-                    value={assigningCareId}
-                    onChange={setAssigningCareId}
-                    options={staffOptions}
-                    className="bg-gray-50 border-gray-200 py-1.5"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center text-gray-700 gap-4">
-                <span className="font-medium text-xs whitespace-nowrap w-20">Trễ giao</span>
-                <div className="flex-1 w-full">
-                  <Select
-                    value={delayValue}
-                    onChange={setDelayValue}
-                    options={[{ value: '', label: 'Chọn' }, { value: 'Chưa xử lý', label: 'Chưa xử lý' }, { value: 'Đang xử lý', label: 'Đang xử lý' }, { value: 'Đã xử lý', label: 'Đã xử lý' }]}
-                    className="bg-gray-50 border-gray-200 py-1.5"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center text-gray-700 gap-4">
-                <span className="font-medium text-xs whitespace-nowrap w-20">Lý do hoàn</span>
-                <div className="flex-1 w-full relative">
-                  <button
-                    onClick={() => setIsReasonOpen(!isReasonOpen)}
-                    className="w-full flex items-center justify-between bg-gray-50 border border-gray-200 hover:bg-white transition-all rounded px-3 py-1.5 text-xs text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    <span className="truncate">{reasonValue || 'Chọn lý do'}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isReasonOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isReasonOpen && (
-                    <div className="absolute right-0 bottom-full mb-1 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-[60] py-1">
-                      <div 
-                        className="px-4 py-2 text-xs text-red-600 hover:bg-red-50 cursor-pointer transition-colors border-b border-gray-100 font-medium"
-                        onClick={() => {
-                          setReasonValue('');
-                          setIsReasonOpen(false);
-                        }}
-                      >
-                        Bỏ chọn lý do
-                      </div>
-                      {REASON_GROUPS.map((group) => (
-                        <div
-                          key={group.label}
-                          className="relative"
-                          onMouseEnter={() => setHoveredReasonGroup(group.label)}
-                          onMouseLeave={() => setHoveredReasonGroup(null)}
-                          onClick={() => {
-                            if (!group.options) {
-                              setReasonValue(group.label);
-                              setIsReasonOpen(false);
-                            }
-                          }}
-                        >
-                          <div className={`flex items-center justify-between px-4 py-2 text-xs cursor-pointer transition-colors ${hoveredReasonGroup === group.label ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-                            <span>{group.label}</span>
-                            {group.options && <X className="w-3 h-3 opacity-30 rotate-45" />}
-                          </div>
-
-                          {group.options && hoveredReasonGroup === group.label && (
-                            <div className="absolute right-full top-0 w-64 bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-[70] mr-1">
-                              {group.options.map((opt) => (
-                                <div
-                                  key={opt}
-                                  className="px-4 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setReasonValue(opt);
-                                    setIsReasonOpen(false);
-                                    setHoveredReasonGroup(null);
-                                  }}
-                                >
-                                  {opt}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-sm">Khách hàng</h3>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setShowCustomerSearch(!showCustomerSearch)}
-                    className={`px-3 py-1.5 border rounded-md font-medium flex items-center gap-1 transition-colors text-xs ${
-                      showCustomerSearch 
-                        ? 'bg-blue-50 border-blue-300 text-blue-600' 
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Search className="w-3.5 h-3.5" /> Chọn KH
-                  </button>
-                  <div className="w-28">
-                    <Select
-                      value={gender}
-                      onChange={setGender}
-                      options={[{value: '', label: 'Giới tính'}, {value: 'MALE', label: 'Nam'}, {value: 'FEMALE', label: 'Nữ'}, {value: 'OTHER', label: 'Khác'}]}
-                      className="bg-gray-50 border-gray-200 py-1 text-xs"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {showCustomerSearch && (
-                <div className="relative">
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      value={customerSearch}
-                      onChange={e => setCustomerSearch(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-md py-2 pl-9 pr-3 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                      placeholder="Tìm theo tên, SĐT, email..."
-                      autoFocus
-                    />
-                  </div>
-                  {selectedCustomer && (
-                    <div className="mt-2 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
-                      <div className="flex-1">
-                        <p className="font-bold text-blue-800 text-sm">{selectedCustomer.name || 'Khách vãng lai'}</p>
-                        <p className="text-xs text-blue-600">{selectedCustomer.phone} {selectedCustomer.email ? `• ${selectedCustomer.email}` : ''}</p>
-                      </div>
-                      <button onClick={clearSelectedCustomer} className="text-blue-400 hover:text-red-500 transition-colors">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  {customers.length > 0 && customerSearch && !selectedCustomer && (
-                    <div className="mt-1 bg-white border border-gray-200 shadow-xl rounded-lg z-50 overflow-hidden max-h-48 overflow-y-auto">
-                      {searchingCustomers && <div className="p-3 text-center text-gray-500 text-xs">Đang tìm...</div>}
-                      {customers.map(c => (
-                        <button
-                          key={c.id}
-                          onClick={() => applySelectedCustomer(c)}
-                          className="w-full text-left p-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
-                        >
-                          <p className="font-bold text-gray-900 text-sm">{c.name || 'Khách vãng lai'}</p>
-                          <p className="text-xs text-gray-500">{c.phone} {c.email ? `• ${c.email}` : ''}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-3 relative">
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    value={shippingName}
-                    onChange={e => handleCustomerIdentityChange('name', e.target.value)}
-                    onFocus={() => {
-                      setActiveCustomerField('name');
-                      setInlineCustomerQuery(shippingName);
-                    }}
-                    onBlur={() => setTimeout(() => setActiveCustomerField(null), 150)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                    placeholder="Tên khách hàng"
-                  />
-                  <input
-                    value={shippingPhone}
-                    onChange={e => handleCustomerIdentityChange('phone', e.target.value)}
-                    onFocus={() => {
-                      setActiveCustomerField('phone');
-                      setInlineCustomerQuery(shippingPhone);
-                    }}
-                    onBlur={() => setTimeout(() => setActiveCustomerField(null), 150)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                    placeholder="SĐT"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    value={customerEmail}
-                    onChange={e => handleCustomerIdentityChange('email', e.target.value)}
-                    onFocus={() => {
-                      setActiveCustomerField('email');
-                      setInlineCustomerQuery(customerEmail);
-                    }}
-                    onBlur={() => setTimeout(() => setActiveCustomerField(null), 150)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                    placeholder="Địa chỉ email"
-                  />
-                  <div className="relative">
-                    <input
-                      type="date"
-                      value={customerDob}
-                      onChange={e => setCustomerDob(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-md pl-3 pr-8 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                    />
-                    <CalendarIcon className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-                {activeCustomerField && inlineCustomerQuery.trim().length >= 2 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 shadow-xl rounded-lg z-50 overflow-hidden max-h-60 overflow-y-auto">
-                    {searchingInlineCustomers && (
-                      <div className="p-3 text-center text-gray-500 text-xs">Đang tìm...</div>
-                    )}
-                    {!searchingInlineCustomers && inlineCustomerResults.length === 0 && (
-                      <div className="p-3 text-center text-gray-500 text-xs">Không tìm thấy khách hàng phù hợp</div>
-                    )}
-                    {!searchingInlineCustomers && inlineCustomerResults.map((customer) => (
-                      <button
-                        key={customer.id}
-                        type="button"
-                        onMouseDown={() => applySelectedCustomer(customer)}
-                        className="w-full text-left p-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
-                      >
-                        <p className="font-bold text-gray-900 text-sm">{customer.name || 'Khách vãng lai'}</p>
-                        <p className="text-xs text-gray-500">
-                          {[customer.phone, customer.email].filter(Boolean).join(' • ')}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2"><MapPin className="w-4 h-4 text-blue-600" /> Nhận hàng</h3>
-              </div>
-              <div className="space-y-4 mt-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Tỉnh/Thành phố *</label>
-                    <Select
-                      value={shippingProvince}
-                      onChange={async (val) => {
-                        setShippingProvince(val);
-                        setShippingWard('');
-                        setWards([]);
-                        try {
-                          const result = await loadWards(val);
-                          if (result) setWards(result.wards);
-                        } catch { }
-                      }}
-                      options={[{ value: '', label: 'Chọn Tỉnh/Thành phố' }, ...provinces.map(p => ({ value: p.name, label: p.name }))]}
-                      className="bg-gray-50 border-gray-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1.5">Phường/Xã *</label>
-                    <Select
-                      value={shippingWard}
-                      onChange={setShippingWard}
-                      disabled={!shippingProvince}
-                      options={[{ value: '', label: 'Chọn Phường/Xã' }, ...wards.map(w => ({ value: w.name, label: w.name }))]}
-                      className="bg-gray-50 border-gray-200"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Số nhà, Tên đường *</label>
-                  <input
-                    value={shippingStreet}
-                    onChange={e => setShippingStreet(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2.5 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                    placeholder="Số nhà, đường phố..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-gray-800 text-sm">Vận chuyển</h3>
-                <div className="w-32">
-                  <Select
-                    value={carrier}
-                    onChange={setCarrier}
-                    options={[{ value: '', label: 'Đơn vị VC' }, { value: 'VTP', label: 'ViettelPost (VTP)' }, { value: 'GHTK', label: 'Giao hàng tiết kiệm' }, { value: 'GHN', label: 'Giao hàng nhanh' }]}
-                    className="bg-gray-50 border-gray-200 py-1.5 text-xs"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 items-center">
-                <input
-                  value={trackingCode}
-                  onChange={e => setTrackingCode(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
-                  placeholder="Mã vận đơn"
-                />
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-gray-700 whitespace-nowrap">Phí</span>
-                  <div className="flex-1">
-                    <NumberInput value={shippingFee} onChange={setShippingFee} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+          <CreateOrderSidebar
+            status={status}
+            onStatusChange={setStatus}
+            assigningSellerId={assigningSellerId}
+            onAssigningSellerChange={setAssigningSellerId}
+            assigningCareId={assigningCareId}
+            onAssigningCareChange={setAssigningCareId}
+            staffOptions={staffOptions}
+            delayValue={delayValue}
+            onDelayChange={setDelayValue}
+            reasonValue={reasonValue}
+            isReasonOpen={isReasonOpen}
+            onReasonOpenChange={setIsReasonOpen}
+            hoveredReasonGroup={hoveredReasonGroup}
+            onHoveredReasonGroupChange={setHoveredReasonGroup}
+            onReasonValueChange={setReasonValue}
+            showCustomerSearch={showCustomerSearch}
+            onShowCustomerSearchChange={setShowCustomerSearch}
+            gender={gender}
+            onGenderChange={setGender}
+            customerSearch={customerSearch}
+            onCustomerSearchChange={setCustomerSearch}
+            selectedCustomer={selectedCustomer}
+            onClearSelectedCustomer={clearSelectedCustomer}
+            customers={customers}
+            searchingCustomers={searchingCustomers}
+            onSelectCustomer={applySelectedCustomer}
+            shippingName={shippingName}
+            shippingPhone={shippingPhone}
+            customerEmail={customerEmail}
+            customerDob={customerDob}
+            onCustomerDobChange={setCustomerDob}
+            onCustomerIdentityChange={handleCustomerIdentityChange}
+            activeCustomerField={activeCustomerField}
+            onActiveCustomerFieldChange={setActiveCustomerField}
+            inlineCustomerQuery={inlineCustomerQuery}
+            onInlineCustomerQueryChange={setInlineCustomerQuery}
+            searchingInlineCustomers={searchingInlineCustomers}
+            inlineCustomerResults={inlineCustomerResults}
+            shippingProvince={shippingProvince}
+            onSelectShippingProvince={async (value) => {
+              setShippingProvince(value);
+              setShippingWard('');
+              setWards([]);
+              try {
+                const result = await loadWards(value);
+                if (result) {
+                  setWards(result.wards);
+                }
+              } catch {}
+            }}
+            shippingWard={shippingWard}
+            onShippingWardChange={setShippingWard}
+            provinces={provinces}
+            wards={wards}
+            shippingStreet={shippingStreet}
+            onShippingStreetChange={setShippingStreet}
+            carrier={carrier}
+            onCarrierChange={setCarrier}
+            trackingCode={trackingCode}
+            onTrackingCodeChange={setTrackingCode}
+            shippingFee={shippingFee}
+            onShippingFeeChange={setShippingFee}
+          />
         </div>
       </div>
 
     </div>
-  );
-}
-
-function CalendarIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-      <line x1="16" y1="2" x2="16" y2="6"></line>
-      <line x1="8" y1="2" x2="8" y2="6"></line>
-      <line x1="3" y1="10" x2="21" y2="10"></line>
-    </svg>
   );
 }
