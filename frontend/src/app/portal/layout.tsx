@@ -7,6 +7,7 @@ import Footer from '@/components/customer/Footer';
 import QrClaimModal from '@/components/customer/QrClaimModal';
 import PortalContent from '@/components/customer/PortalContent';
 import { apiClient } from '@/lib/apiClient';
+import { getMembershipStatus } from '@/lib/membership';
 
 interface PortalSessionUser {
   role?: string | null;
@@ -34,7 +35,6 @@ export default async function PortalLayout({ children }: { children: React.React
   const session = await getSession() as PortalSessionUser | null;
 
   if (!session) {
-    // Preserve the current URL (with query params like campaign=qr_claim) as returnTo
     const headersList = await headers();
     const fullUrl = headersList.get('x-invoke-path') || headersList.get('x-url') || '';
     const queryString = headersList.get('x-invoke-query') || '';
@@ -67,7 +67,6 @@ export default async function PortalLayout({ children }: { children: React.React
     console.error('Error fetching portal layout meta:', error);
   }
 
-  // Redirect to onboarding if not completed (only for first-time users)
   if (!meta.onboardingComplete) {
     const headersList = await headers();
     const fullUrl = headersList.get('x-invoke-path') || headersList.get('x-url') || '/portal';
@@ -83,26 +82,7 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`);
   }
 
-  const rankProgress: Record<string, { next: string | 'MAX', target: number }> = {
-    MEMBER: { next: 'SILVER', target: 2000000 },
-    SILVER: { next: 'GOLD', target: 5000000 },
-    GOLD: { next: 'DIAMOND', target: 7000000 },
-    DIAMOND: { next: 'PLATINUM', target: 10000000 },
-    PLATINUM: { next: 'MAX', target: 0 },
-  };
-
-  const spentInLast30Days = meta.spentInLast30Days || 0;
-  let effectiveRank = meta.rank || 'MEMBER';
-  let progress = rankProgress[effectiveRank];
-  
-  while (progress && progress.target > 0 && spentInLast30Days >= progress.target) {
-    if (progress.next !== 'MAX') {
-      effectiveRank = progress.next;
-      progress = rankProgress[effectiveRank];
-    } else {
-      break;
-    }
-  }
+  const { effectiveRank } = getMembershipStatus(meta.rank, meta.spentInLast30Days || 0);
 
   const navbarUser = {
     name: session.name || 'Người dùng',

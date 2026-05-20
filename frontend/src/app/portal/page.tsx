@@ -3,12 +3,11 @@ import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import TrackingButton from '@/components/customer/TrackingButton';
 import { apiClient } from '@/lib/apiClient';
+import { getMembershipStatus, membershipBadgeClassMap, MembershipRank } from '@/lib/membership';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 }
-
-type Rank = 'MEMBER' | 'SILVER' | 'GOLD' | 'DIAMOND' | 'PLATINUM';
 
 interface RecentOrder {
   id: string;
@@ -20,7 +19,7 @@ interface RecentOrder {
 
 interface DashboardUser {
   totalSpent: number;
-  rank: Rank;
+  rank: MembershipRank;
   commissionBalance: number;
   points: number;
   referralCode: string;
@@ -35,14 +34,6 @@ interface PortalDashboardData {
   recentOrders: RecentOrder[];
   spentInLast30Days: number;
 }
-
-const rankProgress: Record<string, { next: string; target: number }> = {
-  MEMBER: { next: 'SILVER', target: 2000000 },
-  SILVER: { next: 'GOLD', target: 5000000 },
-  GOLD: { next: 'DIAMOND', target: 10000000 },
-  DIAMOND: { next: 'PLATINUM', target: 20000000 },
-  PLATINUM: { next: 'MAX', target: 0 },
-};
 
 export default async function PortalDashboard() {
   const session = await getSession();
@@ -62,22 +53,7 @@ export default async function PortalDashboard() {
   }
 
   const { user, voucherCount, orderCount, refereeCount, recentOrders, spentInLast30Days } = dashboardData;
-
-  // Calculate effective UI rank based on current spending
-  let effectiveRank: string = user.rank;
-  let progress = rankProgress[effectiveRank];
-
-  // Virtually upgrade if spending meets the next rank's target
-  while (progress && progress.target > 0 && spentInLast30Days >= progress.target) {
-    if (progress.next !== 'MAX') {
-      effectiveRank = progress.next;
-      progress = rankProgress[effectiveRank];
-    } else {
-      break;
-    }
-  }
-
-  const pct = progress.target > 0 ? Math.min(100, (spentInLast30Days / progress.target) * 100) : 100;
+  const { effectiveRank, progress, percentage } = getMembershipStatus(user.rank, spentInLast30Days);
 
   return (
     <>
@@ -116,16 +92,10 @@ export default async function PortalDashboard() {
         </div>
       </div>
 
-      {/* Rank Progress */}
       <div className="bg-white p-6 rounded-xl shadow-sm mt-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold">Tiến trình hạng thành viên</h3>
-          <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${effectiveRank === 'MEMBER' ? 'bg-gray-50 text-gray-700 border-gray-200' :
-            effectiveRank === 'SILVER' ? 'bg-gray-100 text-gray-800 border-gray-300' :
-              effectiveRank === 'GOLD' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                effectiveRank === 'DIAMOND' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                  'bg-purple-50 text-purple-700 border-purple-200'
-            }`}>
+          <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${membershipBadgeClassMap[effectiveRank]}`}>
             {effectiveRank}
           </span>
         </div>
@@ -137,7 +107,7 @@ export default async function PortalDashboard() {
           <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
             <div
               className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-1000"
-              style={{ width: `${pct}%` }}
+              style={{ width: `${percentage}%` }}
             />
           </div>
         </div>
@@ -152,7 +122,6 @@ export default async function PortalDashboard() {
         )}
       </div>
 
-      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         <Link href="/portal/spin" className="bg-white p-6 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
           <div className="font-bold text-gray-800">Vòng quay may mắn</div>
@@ -168,14 +137,12 @@ export default async function PortalDashboard() {
         </Link>
       </div>
 
-      {/* Recent Orders */}
       {recentOrders.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm mt-6 overflow-hidden">
           <div className="flex justify-between items-center p-6 border-b border-gray-100">
             <span className="text-lg font-bold text-gray-800">Đơn hàng gần đây</span>
             <Link href="/portal/orders" className="text-sm text-blue-500 hover:text-blue-600 font-medium">Xem tất cả →</Link>
           </div>
-          {/* Mobile View */}
           <div className="md:hidden flex flex-col divide-y divide-gray-100">
             {recentOrders.map((o) => (
               <div key={o.id} className="p-4 flex flex-col gap-2">
@@ -196,7 +163,6 @@ export default async function PortalDashboard() {
             ))}
           </div>
 
-          {/* Desktop View */}
           <div className="hidden md:block overflow-x-auto mb-6">
             <table className="w-full">
               <thead className="bg-gray-50">

@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import ProfileForm from './ProfileForm';
 import { apiClient } from '@/lib/apiClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { getMembershipStatus, membershipBadgeClassMap } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,25 +77,7 @@ export default async function ProfilePage() {
 
   const { user, spentInLast30Days, refereeCount } = dashboardData;
   const detailedUser = profileData;
-
-  const rankProgress: Record<string, { next: string; target: number }> = {
-    MEMBER: { next: 'SILVER', target: 2000000 },
-    SILVER: { next: 'GOLD', target: 5000000 },
-    GOLD: { next: 'DIAMOND', target: 10000000 },
-    DIAMOND: { next: 'PLATINUM', target: 20000000 },
-    PLATINUM: { next: 'MAX', target: 0 },
-  };
-
-  let effectiveRank: string = user.rank;
-  let progress = rankProgress[effectiveRank];
-  while (progress && progress.target > 0 && spentInLast30Days >= progress.target) {
-    if (progress.next !== 'MAX') {
-      effectiveRank = progress.next;
-      progress = rankProgress[effectiveRank];
-    } else {
-      break;
-    }
-  }
+  const { effectiveRank } = getMembershipStatus(user.rank, spentInLast30Days);
 
   return (
     <>
@@ -105,7 +88,6 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      {/* Profile overview cards */}
       <div className="bg-white rounded-xl shadow-sm p-8 mb-6">
         <div className="flex items-center gap-6">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg">
@@ -126,13 +108,7 @@ export default async function ProfilePage() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800">{detailedUser.name}</h2>
             <div className="flex items-center gap-3 mt-2">
-              <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${
-                effectiveRank === 'MEMBER' ? 'bg-gray-50 text-gray-700 border-gray-200' :
-                effectiveRank === 'SILVER' ? 'bg-gray-100 text-gray-800 border-gray-300' :
-                effectiveRank === 'GOLD' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                effectiveRank === 'DIAMOND' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                'bg-purple-50 text-purple-700 border-purple-200'
-              }`}>
+              <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${membershipBadgeClassMap[effectiveRank]}`}>
                 {effectiveRank}
               </span>
               <span className="text-sm text-gray-600">
@@ -143,7 +119,6 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Tổng chi tiêu</div>
@@ -171,7 +146,6 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      {/* Referral code banner */}
       <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-6 mt-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <span className="text-2xl">🎁</span>
@@ -185,7 +159,6 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      {/* Edit form */}
       <div className="mt-8">
         <ProfileForm user={{
           name: detailedUser.name || '',

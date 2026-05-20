@@ -6,6 +6,7 @@ const supportLinks = [
   { href: '/portal/support/order-guide', label: 'Hướng dẫn đặt hàng' },
   { href: '/portal/how-to/vouchers', label: 'Cách dùng voucher' },
   { href: '/portal/how-to/referral', label: 'Cơ chế Affiliate' },
+  { href: '/portal/how-to/membership', label: 'Phân hạng VIP' },
   { href: '/portal/orders', label: 'Theo dõi đơn hàng' },
   { href: '/portal/seller-register', label: 'Đăng ký bán hàng' },
 ];
