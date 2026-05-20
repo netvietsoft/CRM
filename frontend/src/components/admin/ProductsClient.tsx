@@ -4,7 +4,7 @@ import Image from '@/components/ui/AppImage';
 import React, { useEffect, useState } from 'react';
 import ProductActions from '@/components/admin/ProductActions';
 import ProductRowActions from '@/components/admin/ProductRowActions';
-import { ChevronLeft, ChevronRight, SearchIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, SearchIcon } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { useRouter } from 'next/navigation';
@@ -43,6 +43,9 @@ type Props = {
 
 const ITEMS_PER_PAGE = 12;
 
+type SortKey = 'name' | 'category' | 'price' | 'stock' | 'sold' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
@@ -51,10 +54,21 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+function getCategoryLabel(product: Product) {
+  if (product.categories.length === 0) return '';
+  return product.categories.map(category => category.name).join(' • ');
+}
+
+function getProductDisplayPrice(product: Product) {
+  return product.salePrice ?? product.originalPrice;
+}
+
 export default function ProductsClient({ products }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [navigatingProductId, setNavigatingProductId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const debouncedSearch = useDebounce(searchTerm, 400);
   const router = useRouter();
   const filteredProducts = products.filter(product => {
@@ -70,10 +84,52 @@ export default function ProductsClient({ products }: Props) {
   const activeProducts = filteredProducts.filter(p => p.isActive);
   const totalStock = filteredProducts.reduce((sum, p) => sum + p.stockQuantity, 0);
   const lowStock = filteredProducts.filter(p => p.stockQuantity < 10 && p.isActive);
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const sortedProducts = [...filteredProducts].sort((left, right) => {
+    if (!sortKey) return 0;
+
+    if (sortKey === 'name') {
+      const leftValue = left.name.toLowerCase();
+      const rightValue = right.name.toLowerCase();
+      return sortDirection === 'asc'
+        ? leftValue.localeCompare(rightValue, 'vi')
+        : rightValue.localeCompare(leftValue, 'vi');
+    }
+
+    if (sortKey === 'category') {
+      const leftValue = getCategoryLabel(left).toLowerCase();
+      const rightValue = getCategoryLabel(right).toLowerCase();
+      return sortDirection === 'asc'
+        ? leftValue.localeCompare(rightValue, 'vi')
+        : rightValue.localeCompare(leftValue, 'vi');
+    }
+
+    if (sortKey === 'price') {
+      const leftValue = getProductDisplayPrice(left);
+      const rightValue = getProductDisplayPrice(right);
+      return sortDirection === 'asc' ? leftValue - rightValue : rightValue - leftValue;
+    }
+
+    if (sortKey === 'stock') {
+      return sortDirection === 'asc'
+        ? left.stockQuantity - right.stockQuantity
+        : right.stockQuantity - left.stockQuantity;
+    }
+
+    if (sortKey === 'sold') {
+      return sortDirection === 'asc'
+        ? left._count.orderItems - right._count.orderItems
+        : right._count.orderItems - left._count.orderItems;
+    }
+
+    const leftValue = left.isActive ? 1 : 0;
+    const rightValue = right.isActive ? 1 : 0;
+    return sortDirection === 'asc' ? leftValue - rightValue : rightValue - leftValue;
+  });
+
+  const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentProducts = filteredProducts.slice(startIndex, endIndex);
+  const currentProducts = sortedProducts.slice(startIndex, endIndex);
 
   useEffect(() => {
     currentProducts.forEach((product) => {
@@ -94,6 +150,22 @@ export default function ProductsClient({ products }: Props) {
     window.requestAnimationFrame(() => {
       router.push(`/admin/products/${product.id}`);
     });
+  };
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(current => current === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const renderSortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3.5 w-3.5 text-gray-400" />;
+    if (sortDirection === 'asc') return <ArrowUp className="h-3.5 w-3.5 text-indigo-600" />;
+    return <ArrowDown className="h-3.5 w-3.5 text-indigo-600" />;
   };
 
   const renderPageNumbers = () => {
@@ -191,17 +263,47 @@ export default function ProductsClient({ products }: Props) {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sản phẩm</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Danh mục</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Giá bán</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tồn kho</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Đã bán</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  <button type="button" onClick={() => handleSort('name')} className="flex items-center gap-1.5 transition-colors hover:text-indigo-600">
+                    <span>Sản phẩm</span>
+                    {renderSortIcon('name')}
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  <button type="button" onClick={() => handleSort('category')} className="flex items-center gap-1.5 transition-colors hover:text-indigo-600">
+                    <span>Danh mục</span>
+                    {renderSortIcon('category')}
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  <button type="button" onClick={() => handleSort('price')} className="flex items-center gap-1.5 transition-colors hover:text-indigo-600">
+                    <span>Giá bán</span>
+                    {renderSortIcon('price')}
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  <button type="button" onClick={() => handleSort('stock')} className="flex items-center gap-1.5 transition-colors hover:text-indigo-600">
+                    <span>Tồn kho</span>
+                    {renderSortIcon('stock')}
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  <button type="button" onClick={() => handleSort('sold')} className="flex items-center gap-1.5 transition-colors hover:text-indigo-600">
+                    <span>Đã bán</span>
+                    {renderSortIcon('sold')}
+                  </button>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600">
+                  <button type="button" onClick={() => handleSort('status')} className="flex items-center gap-1.5 transition-colors hover:text-indigo-600">
+                    <span>Trạng thái</span>
+                    {renderSortIcon('status')}
+                  </button>
+                </th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.length === 0 ? (
+              {sortedProducts.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
                     <div className="text-center py-12">
@@ -263,7 +365,7 @@ export default function ProductsClient({ products }: Props) {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-gray-800">
-                        {formatCurrency(product.salePrice || product.originalPrice)}
+                        {formatCurrency(getProductDisplayPrice(product))}
                       </span>
                     </td>
                     <td className="px-6 py-4">
