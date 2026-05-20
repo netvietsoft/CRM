@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function PrivacyPolicyAliasPage() {
-  redirect('/portal/policies/privacy');
-}
+export { metadata } from '../../portal/policies/privacy/page';
+export { default } from '../../portal/policies/privacy/page';

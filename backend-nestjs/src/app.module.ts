@@ -26,15 +26,14 @@ import { SizesModule } from './sizes/sizes.module';
 import { CommissionConfigModule } from './commission-config/commission-config.module';
 import { AdminModule } from './admin/admin.module';
 import { AdminNotificationsModule } from './modules/admin-notifications/admin-notifications.module';
+import { SupportModule } from './support/support.module';
 
 const logger = new Logger('AppModule');
 
-// Helper function to conditionally load BullMQ modules
 function getQueueModules(): any[] {
   const redisHost = process.env.REDIS_HOST;
   const redisUrl = process.env.REDIS_URL;
 
-  // Skip BullMQ if Redis is not configured
   if (!redisHost && !redisUrl) {
     logger.warn(
       '⚠️  Redis not configured - BullMQ queues disabled. Voucher verification and background jobs will not work.',
@@ -46,7 +45,6 @@ function getQueueModules(): any[] {
   logger.log('✅ Redis configured - BullMQ queues enabled');
 
   return [
-    // BullMQ Configuration with Redis
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -71,7 +69,7 @@ function getQueueModules(): any[] {
       isGlobal: true,
     }),
     ScheduleModule.forRoot(),
-    ...getQueueModules(), // Conditionally load BullMQ
+    ...getQueueModules(),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -94,6 +92,7 @@ function getQueueModules(): any[] {
     CommissionConfigModule,
     AdminModule,
     AdminNotificationsModule,
+    SupportModule,
   ],
 })
 export class AppModule {}

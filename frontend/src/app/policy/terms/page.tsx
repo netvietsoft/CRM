@@ -1,5 +1,2 @@
-import { redirect } from 'next/navigation';
-
-export default function TermsPolicyAliasPage() {
-  redirect('/portal/policies/terms');
-}
+export { metadata } from '../../portal/policies/terms/page';
+export { default } from '../../portal/policies/terms/page';

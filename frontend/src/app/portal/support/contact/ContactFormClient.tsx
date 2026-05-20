@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Select from '@/components/ui/Select';
 import { Send } from 'lucide-react';
+import { apiClientClient } from '@/lib/apiClientClient';
 
 export default function ContactFormClient() {
   const [formData, setFormData] = useState({
@@ -14,31 +15,53 @@ export default function ContactFormClient() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (!formData.subject) {
+      setError('Vui lòng chọn chủ đề cần hỗ trợ');
+      return;
+    }
+
     setIsSubmitting(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+
+    try {
+      await apiClientClient.post('/support/contact', {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        subject: formData.subject,
+        message: formData.message.trim(),
+      });
       setIsSubmitting(false);
       setSubmitted(true);
+      setError('');
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
-      
       setTimeout(() => setSubmitted(false), 5000);
-    }, 1500);
+    } catch (submitError) {
+      setIsSubmitting(false);
+      setError(submitError instanceof Error ? submitError.message : 'Không thể gửi yêu cầu hỗ trợ lúc này');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (error) setError('');
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubjectChange = (value: string) => {
+    if (error) setError('');
     setFormData(prev => ({ ...prev, subject: value }));
   };
 
   const subjectOptions = [
+    { value: 'payment', label: 'Vấn đề thanh toán' },
+    { value: 'voucher', label: 'Vấn đề voucher' },
+    { value: 'login', label: 'Vấn đề đăng nhập' },
     { value: 'order', label: 'Vấn đề về đơn hàng' },
     { value: 'product', label: 'Tư vấn sản phẩm' },
     { value: 'warranty', label: 'Bảo hành & Đổi trả' },
@@ -48,6 +71,18 @@ export default function ContactFormClient() {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+      {error && (
+        <div className="mb-8 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+            !
+          </div>
+          <div>
+            <h4 className="font-semibold">Không thể gửi yêu cầu</h4>
+            <p className="text-sm opacity-90">{error}</p>
+          </div>
+        </div>
+      )}
+
       {submitted && (
         <div className="mb-8 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl flex items-center gap-3">
           <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
