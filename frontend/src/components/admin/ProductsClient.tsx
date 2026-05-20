@@ -1,12 +1,13 @@
 'use client';
 
 import Image from '@/components/ui/AppImage';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ProductActions from '@/components/admin/ProductActions';
 import ProductRowActions from '@/components/admin/ProductRowActions';
 import { ChevronLeft, ChevronRight, SearchIcon } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { useRouter } from 'next/navigation';
 
 type Product = {
   id: string;
@@ -53,9 +54,9 @@ function formatCurrency(amount: number) {
 export default function ProductsClient({ products }: Props) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [navigatingProductId, setNavigatingProductId] = useState<string | null>(null);
   const debouncedSearch = useDebounce(searchTerm, 400);
-
-  // Filter products based on search
+  const router = useRouter();
   const filteredProducts = products.filter(product => {
     if (!debouncedSearch) return true;
     const searchLower = debouncedSearch.toLowerCase();
@@ -69,18 +70,30 @@ export default function ProductsClient({ products }: Props) {
   const activeProducts = filteredProducts.filter(p => p.isActive);
   const totalStock = filteredProducts.reduce((sum, p) => sum + p.stockQuantity, 0);
   const lowStock = filteredProducts.filter(p => p.stockQuantity < 10 && p.isActive);
-
-  // Pagination
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentProducts = filteredProducts.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    currentProducts.forEach((product) => {
+      router.prefetch(`/admin/products/${product.id}`);
+    });
+  }, [currentProducts, router]);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  const handleOpenProduct = (product: Product) => {
+    if (navigatingProductId) return;
+    setNavigatingProductId(product.id);
+    window.requestAnimationFrame(() => {
+      router.push(`/admin/products/${product.id}`);
+    });
   };
 
   const renderPageNumbers = () => {
@@ -106,6 +119,12 @@ export default function ProductsClient({ products }: Props) {
 
   return (
     <>
+      {navigatingProductId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/65 backdrop-blur-sm">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-indigo-200 border-t-indigo-600" />
+        </div>
+      )}
+
       <div className="mb-8 flex items-center justify-right">
         <ProductActions />
       </div>
@@ -129,7 +148,6 @@ export default function ProductsClient({ products }: Props) {
         </div>
       </div>
 
-      {/* Search Input */}
       <div className="mb-6">
         <div className="relative">
           <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xl" />
@@ -157,7 +175,6 @@ export default function ProductsClient({ products }: Props) {
         </div>
       </div>
 
-      {/* Products Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
           <span className="text-lg font-bold text-gray-800">
@@ -200,7 +217,11 @@ export default function ProductsClient({ products }: Props) {
                 </tr>
               ) : (
                 currentProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
+                  <tr
+                    key={product.id}
+                    className={`cursor-pointer transition-colors ${navigatingProductId === product.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
+                    onClick={() => handleOpenProduct(product)}
+                  >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {product.imageUrl ? (
@@ -282,7 +303,6 @@ export default function ProductsClient({ products }: Props) {
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-4 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-gray-600 text-center w-full md:w-auto">

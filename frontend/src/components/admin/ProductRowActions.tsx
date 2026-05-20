@@ -63,12 +63,16 @@ export default function ProductRowActions({ product }: ProductRowActionsProps) {
       <div className="flex items-center gap-2">
         <Link
           href={`/admin/products/${product.id}`}
+          onClick={(e) => e.stopPropagation()}
           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
         >
           Sửa
         </Link>
         <button
-          onClick={() => setShowDeleteModal(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteModal(true);
+          }}
           className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
           title="Xóa"
         >
