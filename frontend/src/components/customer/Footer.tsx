@@ -1,137 +1,126 @@
 import Link from 'next/link';
 
+const supportLinks = [
+  { href: '/portal/support/about', label: 'Thông tin cơ bản' },
+  { href: '/portal/support/contact', label: 'Liên hệ hỗ trợ' },
+  { href: '/portal/support/order-guide', label: 'Hướng dẫn đặt hàng' },
+  { href: '/portal/orders', label: 'Theo dõi đơn hàng' },
+  { href: '/portal/seller-register', label: 'Đăng ký bán hàng' },
+];
+
+const policyLinks = [
+  { href: '/portal/policies/points', label: 'Chính sách tích điểm - Tiêu điểm' },
+  { href: '/portal/policies/refund', label: 'Chính sách hoàn tiền' },
+  { href: '/portal/policies/shipping', label: 'Chính sách giao hàng' },
+  { href: '/portal/policies/privacy', label: 'Chính sách bảo mật' },
+];
+
+const socialLinks = [
+  { href: '#', label: 'Facebook', className: 'hover:text-indigo-600' },
+  { href: '#', label: 'Instagram', className: 'hover:text-pink-600' },
+  { href: '#', label: 'Twitter', className: 'hover:text-blue-500' },
+];
+
+const contactItems = [
+  {
+    title: 'Địa chỉ:',
+    value: '72 Trần Đăng Ninh, Cầu Giấy, Hà Nội',
+    className: 'text-sm text-gray-600 leading-relaxed',
+  },
+  {
+    title: 'Điện thoại:',
+    value: '0987 654 321',
+    className: 'text-sm text-gray-600',
+  },
+  {
+    title: 'Email:',
+    value: 'support@customercrm.vn',
+    className: 'text-sm text-gray-600',
+  },
+];
+
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-200 pt-16 pb-8 mt-12 w-full">
-      {/* Container: 80% width matching the portal layout */}
-      <div className="w-[80%] mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-          {/* Column 1: Info/Brand */}
+    <footer className="mt-12 w-full border-t border-gray-200 bg-white pt-16 pb-8">
+      <div className="mx-auto w-[80%]">
+        <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-4 h-8 flex items-center">
+            <h3 className="mb-4 flex h-8 items-center bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-xl font-bold text-transparent">
               Customer CRM
             </h3>
-            <p className="text-gray-600 text-sm leading-relaxed mb-6">
+            <p className="mb-6 text-sm leading-relaxed text-gray-600">
               Hệ thống mua sắm và quản lý khách hàng cao cấp, đem lại trải nghiệm dịch vụ tuyệt vời và chuyên nghiệp.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-sm font-semibold text-gray-500 hover:text-indigo-600 transition-colors">
-                Facebook
-              </a>
-              <a href="#" className="text-sm font-semibold text-gray-500 hover:text-pink-600 transition-colors">
-                Instagram
-              </a>
-              <a href="#" className="text-sm font-semibold text-gray-500 hover:text-blue-500 transition-colors">
-                Twitter
-              </a>
+              {socialLinks.map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className={`text-sm font-semibold text-gray-500 transition-colors ${item.className}`}
+                >
+                  {item.label}
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Column 2: Hỗ trợ khách hàng */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 h-8 flex items-center">
+            <h3 className="mb-4 flex h-8 items-center text-sm font-bold uppercase tracking-wider text-gray-900">
               Hỗ trợ khách hàng
             </h3>
             <ul className="space-y-3">
-              <li>
-                <Link href="/portal/support/about" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Thông tin cơ bản
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/support/contact" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Liên hệ hỗ trợ
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/support/order-guide" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Hướng dẫn đặt hàng
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/orders" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Theo dõi đơn hàng
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/seller-register" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Đăng ký bán hàng
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
+              {supportLinks.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="group relative inline-block text-sm text-gray-600 transition-colors hover:text-indigo-600">
+                    {item.label}
+                    <span className="absolute -bottom-0.5 left-0 h-[1.5px] w-0 bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 3: Chính sách */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 h-8 flex items-center">
+            <h3 className="mb-4 flex h-8 items-center text-sm font-bold uppercase tracking-wider text-gray-900">
               Chính sách
             </h3>
             <ul className="space-y-3">
-              <li>
-                <Link href="/portal/policies/points" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Chính sách tích điểm - Tiêu điểm
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/policies/refund" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Chính sách hoàn tiền
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/policies/shipping" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Chính sách giao hàng
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/portal/policies/privacy" className="text-sm text-gray-600 hover:text-indigo-600 transition-colors relative inline-block group">
-                  Chính sách bảo mật
-                  <span className="absolute -bottom-0.5 left-0 w-0 h-[1.5px] bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
-                </Link>
-              </li>
+              {policyLinks.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="group relative inline-block text-sm text-gray-600 transition-colors hover:text-indigo-600">
+                    {item.label}
+                    <span className="absolute -bottom-0.5 left-0 h-[1.5px] w-0 bg-indigo-600 transition-all duration-300 group-hover:w-full"></span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 4: Contact */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 h-8 flex items-center">
+            <h3 className="mb-4 flex h-8 items-center text-sm font-bold uppercase tracking-wider text-gray-900">
               Liên hệ
             </h3>
             <ul className="space-y-4">
-              <li className="text-sm text-gray-600 leading-relaxed">
-                <span className="font-semibold text-gray-900 block mb-0.5">Địa chỉ:</span>
-                72 Trần Đăng Ninh, Cầu Giấy, Hà Nội
-              </li>
-              <li className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900 block mb-0.5">Điện thoại:</span>
-                0987 654 321
-              </li>
-              <li className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900 block mb-0.5">Email:</span>
-                support@customercrm.vn
-              </li>
+              {contactItems.map((item) => (
+                <li key={item.title} className={item.className}>
+                  <span className="mb-0.5 block font-semibold text-gray-900">{item.title}</span>
+                  {item.value}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-gray-500 font-medium">
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-100 pt-8 md:flex-row">
+          <p className="text-xs font-medium text-gray-500">
             &copy; {new Date().getFullYear()} Customer CRM. All rights reserved.
           </p>
-          <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-4">
             <span className="text-xs font-semibold text-gray-400">Secure Payments</span>
             <div className="flex gap-2 opacity-60">
-              <div className="w-10 h-6 bg-gray-200 rounded"></div>
-              <div className="w-10 h-6 bg-gray-200 rounded"></div>
-              <div className="w-10 h-6 bg-gray-200 rounded"></div>
+              <div className="h-6 w-10 rounded bg-gray-200"></div>
+              <div className="h-6 w-10 rounded bg-gray-200"></div>
+              <div className="h-6 w-10 rounded bg-gray-200"></div>
             </div>
           </div>
         </div>
