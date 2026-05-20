@@ -230,9 +230,7 @@ export default function ProductForm({
       imageUrl: form.imageUrl ? form.imageUrl : null,
       originalPrice: parseFloat(form.originalPrice),
       salePrice: form.salePrice ? parseFloat(form.salePrice) : undefined,
-      stockQuantity: form.variants.length > 0
-        ? form.variants.reduce((acc: number, v) => acc + (parseInt(v.stock) || 0), 0)
-        : (parseInt(form.stockQuantity) || 0),
+      stockQuantity: parseInt(form.stockQuantity) || 0,
       weight: parseInt(form.weight) || 500,
       isComboSet: form.isComboSet,
       isGiftItem: form.isGiftItem,
@@ -436,13 +434,11 @@ export default function ProductForm({
                   <input
                     id="prod-stock"
                     type="number"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500 transition-all"
-                    value={form.variants.length > 0 ? form.variants.reduce((a, v) => a + (parseInt(v.stock) || 0), 0) : form.stockQuantity}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    value={form.stockQuantity}
                     onChange={e => update('stockQuantity', e.target.value)}
                     placeholder="100"
-                    disabled={form.variants.length > 0}
                   />
-                  {form.variants.length > 0 && <p className="text-xs text-gray-500 mt-1">Tự động tính từ các biến thể</p>}
                 </div>
               </div>
 
