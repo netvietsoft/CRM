@@ -23,7 +23,6 @@ async function bootstrap(): Promise<void> {
         ],
   );
 
-  // Enable CORS
   app.enableCors({
     origin: (origin, callback) => {
       const isLocalDevOrigin =
@@ -41,10 +40,8 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  // Cookie parser
   app.use(cookieParser());
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -53,10 +50,8 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // API prefix
   app.setGlobalPrefix('api');
 
-  // Swagger documentation
   const config = new DocumentBuilder()
     .setTitle('CRM API')
     .setDescription('CRM Backend API Documentation')

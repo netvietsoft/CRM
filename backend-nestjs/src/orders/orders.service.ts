@@ -208,6 +208,216 @@ export class OrdersService {
     });
   }
 
+  private normalizeCustomerGender(value?: string | null): 'MALE' | 'FEMALE' | 'OTHER' | null {
+    if (value === 'MALE' || value === 'FEMALE' || value === 'OTHER') {
+      return value;
+    }
+
+    return null;
+  }
+
+  private buildCustomerAddress(
+    street?: string | null,
+    ward?: string | null,
+    province?: string | null,
+  ): string | null {
+    const value = [street, ward, province].filter(Boolean).join(', ').trim();
+    return value || null;
+  }
+
+  private async generateUniqueReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    while (true) {
+      let code = '';
+      for (let i = 0; i < 8; i += 1) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      const existing = await this.prisma.user.findUnique({
+        where: { referralCode: code },
+      });
+
+      if (!existing) {
+        return code;
+      }
+    }
+  }
+
+  private async resolveAdminOrderCustomer(input: {
+    userId?: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    gender?: string;
+    dob?: string;
+    addressStreet?: string;
+    addressWard?: string;
+    addressProvince?: string;
+  }) {
+    const name = input.name?.trim() || null;
+    const phone = input.phone?.trim() || null;
+    const email = input.email?.trim().toLowerCase() || null;
+    const gender = this.normalizeCustomerGender(input.gender);
+    const dob = input.dob?.trim() || null;
+    const addressStreet = input.addressStreet?.trim() || null;
+    const addressWard = input.addressWard?.trim() || null;
+    const addressProvince = input.addressProvince?.trim() || null;
+    const customerSelect = {
+      id: true,
+      role: true,
+      name: true,
+      phone: true,
+      email: true,
+      gender: true,
+      dob: true,
+      addressStreet: true,
+      addressWard: true,
+      addressProvince: true,
+    } as const;
+
+    const existingUser = input.userId
+      ? await this.prisma.user.findUnique({
+          where: { id: input.userId },
+          select: customerSelect,
+        })
+      : null;
+
+    if (input.userId && (!existingUser || existingUser.role !== 'CUSTOMER')) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    const identityFilters = [phone ? { phone } : null, email ? { email } : null].filter(
+      Boolean,
+    ) as Array<{ phone: string } | { email: string }>;
+
+    const identityMatches = identityFilters.length
+      ? await this.prisma.user.findMany({
+          where: {
+            OR: identityFilters,
+            ...(existingUser ? { id: { not: existingUser.id } } : {}),
+          },
+          select: {
+            id: true,
+            role: true,
+            phone: true,
+            email: true,
+          },
+        })
+      : [];
+
+    const phoneConflict = phone ? identityMatches.find((user) => user.phone === phone) : null;
+    const emailConflict = email ? identityMatches.find((user) => user.email === email) : null;
+
+    if (phoneConflict && phoneConflict.role !== 'CUSTOMER') {
+      throw new BadRequestException('Số điện thoại đã được sử dụng bởi tài khoản khác');
+    }
+
+    if (emailConflict && emailConflict.role !== 'CUSTOMER') {
+      throw new BadRequestException('Email đã được sử dụng bởi tài khoản khác');
+    }
+
+    if (existingUser) {
+      if (phoneConflict) {
+        throw new BadRequestException('Số điện thoại đã được sử dụng bởi khách hàng khác');
+      }
+
+      if (emailConflict) {
+        throw new BadRequestException('Email đã được sử dụng bởi khách hàng khác');
+      }
+
+      const nextAddressStreet = addressStreet || existingUser.addressStreet || null;
+      const nextAddressWard = addressWard || existingUser.addressWard || null;
+      const nextAddressProvince = addressProvince || existingUser.addressProvince || null;
+
+      return this.prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          name: name || existingUser.name || null,
+          phone: phone || existingUser.phone || null,
+          email: email || existingUser.email || null,
+          gender: gender || existingUser.gender || null,
+          dob: dob ? new Date(dob) : existingUser.dob || null,
+          address: this.buildCustomerAddress(
+            nextAddressStreet,
+            nextAddressWard,
+            nextAddressProvince,
+          ),
+          addressStreet: nextAddressStreet,
+          addressWard: nextAddressWard,
+          addressProvince: nextAddressProvince,
+        },
+        select: customerSelect,
+      });
+    }
+
+    if (phoneConflict && emailConflict && phoneConflict.id !== emailConflict.id) {
+      throw new BadRequestException(
+        'Số điện thoại và email đang thuộc về hai khách hàng khác nhau',
+      );
+    }
+
+    const matchedCustomerId = phoneConflict?.id || emailConflict?.id;
+
+    if (matchedCustomerId) {
+      const matchedCustomer = await this.prisma.user.findUnique({
+        where: { id: matchedCustomerId },
+        select: customerSelect,
+      });
+
+      if (!matchedCustomer || matchedCustomer.role !== 'CUSTOMER') {
+        throw new NotFoundException('Customer not found');
+      }
+
+      const nextAddressStreet = addressStreet || matchedCustomer.addressStreet || null;
+      const nextAddressWard = addressWard || matchedCustomer.addressWard || null;
+      const nextAddressProvince = addressProvince || matchedCustomer.addressProvince || null;
+
+      return this.prisma.user.update({
+        where: { id: matchedCustomer.id },
+        data: {
+          name: name || matchedCustomer.name || null,
+          phone: phone || matchedCustomer.phone || null,
+          email: email || matchedCustomer.email || null,
+          gender: gender || matchedCustomer.gender || null,
+          dob: dob ? new Date(dob) : matchedCustomer.dob || null,
+          address: this.buildCustomerAddress(
+            nextAddressStreet,
+            nextAddressWard,
+            nextAddressProvince,
+          ),
+          addressStreet: nextAddressStreet,
+          addressWard: nextAddressWard,
+          addressProvince: nextAddressProvince,
+          onboardingComplete: true,
+        },
+        select: customerSelect,
+      });
+    }
+
+    if (!name || !phone) {
+      return null;
+    }
+
+    return this.prisma.user.create({
+      data: {
+        role: 'CUSTOMER',
+        name,
+        phone,
+        email,
+        gender,
+        dob: dob ? new Date(dob) : null,
+        address: this.buildCustomerAddress(addressStreet, addressWard, addressProvince),
+        addressStreet,
+        addressWard,
+        addressProvince,
+        onboardingComplete: true,
+        referralCode: await this.generateUniqueReferralCode(),
+      },
+      select: customerSelect,
+    });
+  }
+
   async create(userId: string, createOrderDto: CreateOrderDto) {
     const {
       items,
@@ -230,13 +440,11 @@ export class OrdersService {
       throw new BadRequestException('Cart is empty');
     }
 
-    // Get user info
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Process items and calculate totals
     let subtotal = 0;
     let orderStoreId: string | null | undefined;
     const orderItemsToCreate = [];
@@ -258,11 +466,8 @@ export class OrdersService {
         throw new BadRequestException('Cannot mix products from different stores in one order');
       }
 
-      // Stock check removed - admin handles actual inventory
+      let itemPrice = product.salePrice ?? product.originalPrice;
 
-      let itemPrice = product.salePrice || product.originalPrice;
-
-      // Handle variants with flexible matching
       if (item.size || item.color) {
         let matchingVariant = null;
         if (item.size && item.color) {
@@ -280,7 +485,6 @@ export class OrdersService {
             itemPrice = matchingVariant.price;
           }
 
-          // Decrement variant stock
           await this.prisma.productVariant.update({
             where: { id: matchingVariant.id },
             data: { stock: { decrement: item.quantity } },
@@ -288,7 +492,6 @@ export class OrdersService {
         }
       }
 
-      // Decrement main product stock
       await this.prisma.product.update({
         where: { id: product.id },
         data: { stockQuantity: { decrement: item.quantity } },
@@ -304,15 +507,12 @@ export class OrdersService {
       });
     }
 
-    // Handle discounts
     let discountAmount = 0;
     const appliedUserVoucherIds: string[] = [];
 
-    // Resolve voucher IDs from either voucherIds array or legacy voucherId
     const resolvedVoucherIds =
       voucherIds && voucherIds.length > 0 ? voucherIds : voucherId ? [voucherId] : [];
 
-    // Apply Vouchers
     for (const currentVoucherId of resolvedVoucherIds) {
       const now = new Date();
       const targetVoucher = await this.prisma.voucher.findUnique({
@@ -395,7 +595,6 @@ export class OrdersService {
           let voucherDiscount = 0;
 
           if (targetVoucher.type === 'STACK') {
-            // STACK voucher: discount depends on condition type per tier
             const distinctProductCount = new Set(items.map((i) => i.productId)).size;
             const tiers = (targetVoucher as any).stackTiers as Array<{
               minProducts?: number;
@@ -407,7 +606,6 @@ export class OrdersService {
             }> | null;
 
             if (tiers && Array.isArray(tiers) && tiers.length > 0) {
-              // Sort tiers descending by threshold and find the best match
               const sortedTiers = [...tiers].sort((a, b) => {
                 const aVal = a.conditionType === 'amount' ? a.minAmount || 0 : a.minProducts || 0;
                 const bVal = b.conditionType === 'amount' ? b.minAmount || 0 : b.minProducts || 0;
@@ -424,7 +622,6 @@ export class OrdersService {
               if (matchedTier) {
                 if (matchedTier.type === 'PERCENT') {
                   voucherDiscount = subtotal * (matchedTier.discount / 100);
-                  // Apply per-tier maxDiscount if set
                   if (matchedTier.maxDiscount && voucherDiscount > matchedTier.maxDiscount) {
                     voucherDiscount = matchedTier.maxDiscount;
                   }
@@ -443,7 +640,6 @@ export class OrdersService {
             voucherDiscount = targetVoucher.maxDiscount;
           }
 
-          // Never discount more than subtotal
           if (voucherDiscount > subtotal) {
             voucherDiscount = subtotal;
           }
@@ -490,7 +686,6 @@ export class OrdersService {
       }
     }
 
-    // Apply Commission Points
     let commissionDiscount = 0;
     if (useCommissionPoints && user.commissionBalance > 0) {
       const maxApplicable = Math.min(
@@ -519,7 +714,6 @@ export class OrdersService {
       paymentMethod === 'VIETQR' ? new Date(Date.now() + 30 * 60 * 1000) : null;
     const vietqrTransactionCode = paymentMethod === 'VIETQR' ? `ORDER:${orderCode}` : null;
 
-    // Create Order
     const order = await this.prisma.order.create({
       data: {
         userId: user.id,
@@ -568,7 +762,6 @@ export class OrdersService {
       },
     });
 
-    // Clean up cart items
     if (cartItemIds && Array.isArray(cartItemIds) && cartItemIds.length > 0) {
       await this.prisma.cartItem.deleteMany({
         where: { id: { in: cartItemIds } },
@@ -617,6 +810,9 @@ export class OrdersService {
       items,
       shippingName,
       shippingPhone,
+      customerEmail,
+      customerGender,
+      customerDob,
       shippingStreet,
       shippingWard,
       shippingProvince,
@@ -633,44 +829,24 @@ export class OrdersService {
       throw new BadRequestException('Order must contain at least one item');
     }
 
-    // Validate shipping info is provided when no user is selected (guest order)
     if (!userId && (!shippingName || !shippingPhone)) {
       throw new BadRequestException('Shipping name and phone are required for guest orders');
     }
 
-    // If userId is provided, validate and fetch user info
-    let user: {
-      id: string;
-      role: string;
-      name: string | null;
-      phone: string | null;
-      addressStreet: string | null;
-      addressWard: string | null;
-      addressProvince: string | null;
-    } | null = null;
-
-    if (userId) {
-      user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          role: true,
-          name: true,
-          phone: true,
-          addressStreet: true,
-          addressWard: true,
-          addressProvince: true,
-        },
-      });
-
-      if (!user || user.role !== 'CUSTOMER') {
-        throw new NotFoundException('Customer not found');
-      }
-    }
+    const user = await this.resolveAdminOrderCustomer({
+      userId,
+      name: shippingName,
+      phone: shippingPhone,
+      email: customerEmail,
+      gender: customerGender,
+      dob: customerDob,
+      addressStreet: shippingStreet,
+      addressWard: shippingWard,
+      addressProvince: shippingProvince,
+    });
 
     let orderStoreId: string | null | undefined = effectiveStoreId || undefined;
 
-    // Mutation Anti-Spoofing: If not admin, force storeId to the scoped store
     if (actorRole !== 'ADMIN' && effectiveStoreId) {
       orderStoreId = effectiveStoreId;
     }
@@ -705,9 +881,7 @@ export class OrdersService {
         throw new BadRequestException('Cannot mix products from different stores in one order');
       }
 
-      // Admin stock check removed to allow ordering out of stock items
-
-      let itemPrice = product.salePrice || product.originalPrice;
+      let itemPrice = product.salePrice ?? product.originalPrice;
 
       if (item.size || item.color) {
         const matchingVariant = product.variants.find(
@@ -730,6 +904,10 @@ export class OrdersService {
           where: { id: matchingVariant.id },
           data: { stock: { decrement: item.quantity } },
         });
+      }
+
+      if (item.unitPrice !== undefined && item.unitPrice !== null) {
+        itemPrice = item.unitPrice;
       }
 
       await this.prisma.product.update({
@@ -756,7 +934,7 @@ export class OrdersService {
 
     const order = await this.prisma.order.create({
       data: {
-        userId: user?.id || null, // null for guest orders
+        userId: user?.id || null,
         orderCode: this.generateOrderCode(),
         status: (status || 'PENDING') as any,
         shippingName: shippingName || user?.name || null,
@@ -779,7 +957,7 @@ export class OrdersService {
         metadata: {
           createdBy: actorId,
           createdByRole: actorRole,
-          isGuestOrder: !userId,
+          isGuestOrder: !user?.id,
           ...(clientMetadata || {}),
         },
         items: {
@@ -801,7 +979,6 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
 
-    // Permission check
     if (role !== 'ADMIN' && effectiveStoreId && order.storeId !== effectiveStoreId) {
       throw new BadRequestException('You can only update notes for your own store orders');
     }
@@ -840,7 +1017,6 @@ export class OrdersService {
       updateData.assigningCareId = body.assigningCareId || null;
     }
 
-    // Also update metadata for backward compat
     const existingMeta =
       order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
         ? (order.metadata as Record<string, any>)
@@ -888,11 +1064,9 @@ export class OrdersService {
 
     const updateData: any = {};
 
-    // Core fields
     if (body.shippingFee !== undefined) updateData.shippingFee = body.shippingFee;
     if (body.discountAmount !== undefined) updateData.discountAmount = body.discountAmount;
 
-    // Recalculate totalAmount if needed
     if (
       body.shippingFee !== undefined ||
       body.discountAmount !== undefined ||
@@ -915,7 +1089,6 @@ export class OrdersService {
       );
     }
 
-    // Metadata update
     const existingMeta =
       order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
         ? (order.metadata as Record<string, any>)
@@ -925,7 +1098,6 @@ export class OrdersService {
     if (body.delayValue !== undefined) existingMeta.delayValue = body.delayValue;
     if (body.tags !== undefined) existingMeta.tags = body.tags;
 
-    // Financial/Payment metadata
     if (body.surcharge !== undefined) {
       if (!existingMeta.financial) existingMeta.financial = {};
       existingMeta.financial.surcharge = body.surcharge;
@@ -974,7 +1146,7 @@ export class OrdersService {
     const dateValue = params.dateValue;
 
     const where: any = {};
-    const baseWhere: any = {}; // For status counts
+    const baseWhere: any = {};
 
     if (effectiveStoreId) {
       where.storeId = effectiveStoreId;
@@ -1196,7 +1368,6 @@ export class OrdersService {
       voucherDiscountAmount: this.getVoucherDiscountAmount(order),
     };
 
-    // Permission check
     if (role === 'ADMIN') {
       return enrichedOrder;
     }
@@ -1224,10 +1395,8 @@ export class OrdersService {
   ) {
     const { status, paymentStatus } = updateDto;
 
-    // Get current order and check permissions
     const currentOrder = await this.findOne(id, userId || '', role || '', effectiveStoreId);
 
-    // Update order
     const updateData: any = { updatedAt: new Date() };
     if (status) updateData.status = status;
     if (paymentStatus) {
@@ -1246,7 +1415,6 @@ export class OrdersService {
       data: updateData,
     });
 
-    // Send notification if status changed manually by admin/staff
     if (
       status &&
       status !== currentOrder.status &&
@@ -1288,13 +1456,11 @@ export class OrdersService {
       });
     }
 
-    // Handle creditable status (COMPLETED, DELIVERED)
     const isCreditable = status === 'COMPLETED' || status === 'DELIVERED';
     const wasCreditable =
       currentOrder.status === 'COMPLETED' || currentOrder.status === 'DELIVERED';
 
     if (isCreditable && !wasCreditable) {
-      // Update soldCount
       for (const item of currentOrder.items) {
         if (!item.isGift) {
           await this.prisma.product.update({
@@ -1304,7 +1470,6 @@ export class OrdersService {
         }
       }
 
-      // Update totalSpent and rank
       if (currentOrder.userId) {
         await this.prisma.user.update({
           where: { id: currentOrder.userId },
@@ -1313,7 +1478,6 @@ export class OrdersService {
         await this.usersService.updateUserRank(currentOrder.userId);
       }
 
-      // Calculate commissions
       if (currentOrder.user && currentOrder.user.referrerId) {
         const existingCommissions = await this.prisma.commissionLedger.findFirst({
           where: {
@@ -1328,10 +1492,8 @@ export class OrdersService {
       }
     }
 
-    // Handle CANCELLED, REFUNDED, or RETURNED from creditable status
     const isCancelled = status === 'CANCELLED' || status === 'REFUNDED' || status === 'RETURNED';
     if (isCancelled && wasCreditable) {
-      // Decrease soldCount
       for (const item of currentOrder.items) {
         if (!item.isGift) {
           await this.prisma.product.update({
@@ -1341,7 +1503,6 @@ export class OrdersService {
         }
       }
 
-      // Decrease totalSpent and update rank
       if (currentOrder.userId) {
         await this.prisma.user.update({
           where: { id: currentOrder.userId },
@@ -1350,7 +1511,6 @@ export class OrdersService {
         await this.usersService.updateUserRank(currentOrder.userId);
       }
 
-      // Cancel commissions
       await this.commissionsService.cancelCommissions(currentOrder.id);
     }
 
@@ -1389,7 +1549,6 @@ export class OrdersService {
       await this.findOne(id, userId, role, effectiveStoreId);
     }
 
-    // Use raw query to avoid Prisma auto-updating updatedAt
     await this.prisma.$executeRaw`UPDATE orders SET is_read = true WHERE id = ${id}`;
 
     return { success: true };
@@ -1447,7 +1606,6 @@ export class OrdersService {
     let senderAddress =
       process.env.VIETTELPOST_SENDER_ADDRESS || 'Trần Duy Hưng, Trung Hoà, Cầu Giấy, Hà Nội';
 
-    // Get store address if provided
     if (storeId) {
       const store = await this.prisma.store.findUnique({
         where: { id: storeId },
@@ -1585,7 +1743,6 @@ export class OrdersService {
       );
     }
 
-    // Restore stock
     for (const item of order.items) {
       await this.prisma.product.update({
         where: { id: item.productId },
@@ -1640,7 +1797,6 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy đơn hàng với mã này');
     }
 
-    // Return basic summary safe for public viewing (no user details)
     return {
       id: order.id,
       orderCode: order.orderCode,
@@ -1664,14 +1820,11 @@ export class OrdersService {
     const cleanCode = code.trim().toUpperCase();
     const cleanPhone = phone.trim();
 
-    // Find orders that match the orderCode or trackingCode
-    // We fetch all potential matches because metadata JSON filtering can be tricky/inconsistent across SQL dialects
     const potentialOrders = await this.prisma.order.findMany({
       where: {
         OR: [
           { orderCode: cleanCode },
           {
-            // JSON path query for trackingCode - using string path for MySQL compatibility
             metadata: {
               path: '$.partner.trackingCode',
               equals: cleanCode,
@@ -1699,14 +1852,11 @@ export class OrdersService {
       throw new NotFoundException('Không tìm thấy đơn hàng với mã này');
     }
 
-    // Now filter by phone
     const matchedOrder = potentialOrders.find((order) => {
-      // Check standard shippingPhone
       if (order.shippingPhone && order.shippingPhone.includes(cleanPhone)) {
         return true;
       }
 
-      // Check Pancake shippingAddress phone
       const metadata = order.metadata as any;
       if (
         metadata?.shippingAddress?.phoneNumber &&
@@ -1722,8 +1872,6 @@ export class OrdersService {
       throw new BadRequestException('Số điện thoại không đúng với đơn hàng này');
     }
 
-    // Return safe data only (exclude user details, exact address, etc. if not needed,
-    // but we can return basic tracking info)
     const m = (matchedOrder.metadata as any) || {};
     const voucherDiscountAmount = this.getVoucherDiscountAmount(matchedOrder);
 
@@ -1772,10 +1920,7 @@ export class OrdersService {
     await this.findOne(id, userId, role, effectiveStoreId);
 
     await this.prisma.$transaction(async (tx) => {
-      // Delete commission ledger entries
       await tx.commissionLedger.deleteMany({ where: { orderId: id } });
-      // OrderItem and OrderVoucher cascade automatically via schema
-      // Delete the order
       await tx.order.delete({ where: { id } });
     });
 

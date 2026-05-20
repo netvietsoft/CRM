@@ -19,3 +19,7 @@ pnpm-debug.log*
 
 # OS / editor noise
 .DS_Store
+
+# Local Codex skills for this repo
+/frontend/.codex/skills/
+/backend-nestjs/.codex/skills/

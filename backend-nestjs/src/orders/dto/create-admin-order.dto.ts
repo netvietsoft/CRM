@@ -1,5 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsEmail,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class AdminOrderItemDto {
@@ -22,6 +32,13 @@ class AdminOrderItemDto {
   @IsOptional()
   @IsString()
   color?: string;
+
+  @ApiPropertyOptional({ description: 'Manual unit price override for admin-created orders' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  unitPrice?: number;
 }
 
 export class CreateAdminOrderDto {
@@ -45,6 +62,21 @@ export class CreateAdminOrderDto {
   @IsOptional()
   @IsString()
   shippingPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsEmail()
+  customerEmail?: string;
+
+  @ApiPropertyOptional({ enum: ['MALE', 'FEMALE', 'OTHER'] })
+  @IsOptional()
+  @IsIn(['MALE', 'FEMALE', 'OTHER'])
+  customerGender?: 'MALE' | 'FEMALE' | 'OTHER';
+
+  @ApiPropertyOptional({ example: '1995-01-01' })
+  @IsOptional()
+  @IsDateString()
+  customerDob?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

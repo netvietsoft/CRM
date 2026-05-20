@@ -42,6 +42,8 @@ interface Customer {
   name: string | null;
   phone: string | null;
   email: string | null;
+  gender?: string | null;
+  dob?: string | null;
   addressStreet?: string | null;
   addressWard?: string | null;
   addressProvince?: string | null;
@@ -53,6 +55,8 @@ interface OrderItem {
   size: string | null;
   color: string | null;
   product: Product;
+  unitPrice: number;
+  isCustomPrice: boolean;
 }
 
 interface StaffMembersResponse {
@@ -132,28 +136,62 @@ function formatCurrency(amount: number) {
   }).format(amount).replace('₫', 'đ');
 }
 
-function NumberInput({ value, onChange, placeholder = '0' }: { value: number; onChange: (val: number) => void; placeholder?: string }) {
-  const [str, setStr] = useState(value ? new Intl.NumberFormat('vi-VN').format(value) : '');
+function formatNumberValue(value: number) {
+  return value ? new Intl.NumberFormat('vi-VN').format(value) : '';
+}
+
+function formatDateInputValue(value?: string | null) {
+  if (!value) {
+    return '';
+  }
+
+  const matchedDate = value.match(/^\d{4}-\d{2}-\d{2}/);
+  if (matchedDate) {
+    return matchedDate[0];
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  return parsedDate.toISOString().slice(0, 10);
+}
+
+function NumberInput({
+  value,
+  onChange,
+  placeholder = '0',
+  className = '',
+}: {
+  value: number;
+  onChange: (val: number) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const displayValue = draft ?? formatNumberValue(value);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '');
     if (!raw) {
-      setStr('');
+      setDraft('');
       onChange(0);
       return;
     }
     const num = parseInt(raw, 10);
-    setStr(new Intl.NumberFormat('vi-VN').format(num));
+    setDraft(new Intl.NumberFormat('vi-VN').format(num));
     onChange(num);
   };
 
   return (
     <input
       type="text"
-      value={str}
+      value={displayValue}
       onChange={handleChange}
+      onBlur={() => setDraft(null)}
       placeholder={placeholder}
-      className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-right font-mono text-sm text-black focus:ring-1 focus:ring-blue-500 outline-none focus:bg-white transition-colors"
+      className={`w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-right font-mono text-sm text-black focus:ring-1 focus:ring-blue-500 outline-none focus:bg-white transition-colors ${className}`.trim()}
     />
   );
 }
@@ -170,10 +208,10 @@ function getAvailableColors(product: Product) {
   ) as string[];
 }
 
-function getUnitPrice(item: OrderItem) {
-  const match = item.product.variants.find((variant) => {
-    const sameSize = (variant.size?.name || null) === (item.size || null);
-    const sameColor = (variant.color?.name || null) === (item.color || null);
+function getCatalogUnitPrice(product: Product, size: string | null, color: string | null) {
+  const match = product.variants.find((variant) => {
+    const sameSize = (variant.size?.name || null) === size;
+    const sameColor = (variant.color?.name || null) === color;
     return sameSize && sameColor;
   });
 
@@ -181,7 +219,40 @@ function getUnitPrice(item: OrderItem) {
     return match.price;
   }
 
-  return item.product.salePrice || item.product.originalPrice;
+  return product.salePrice ?? product.originalPrice;
+}
+
+function getUnitPrice(item: OrderItem) {
+  if (item.isCustomPrice) {
+    return item.unitPrice;
+  }
+
+  return getCatalogUnitPrice(item.product, item.size, item.color);
+}
+
+function buildOrderItem(product: Product): OrderItem {
+  return {
+    productId: product.id,
+    quantity: 1,
+    size: null,
+    color: null,
+    product,
+    unitPrice: getCatalogUnitPrice(product, null, null),
+    isCustomPrice: false,
+  };
+}
+
+function syncOrderItemPricing(item: OrderItem, next: Partial<Pick<OrderItem, 'quantity' | 'size' | 'color'>>): OrderItem {
+  const updatedItem = { ...item, ...next };
+
+  if (updatedItem.isCustomPrice) {
+    return updatedItem;
+  }
+
+  return {
+    ...updatedItem,
+    unitPrice: getCatalogUnitPrice(updatedItem.product, updatedItem.size, updatedItem.color),
+  };
 }
 
 export default function CreateOrderClient({ currentUser }: { currentUser: { id: string; role: string; name?: string } }) {
@@ -198,7 +269,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
-  // Form State
   const [status, setStatus] = useState('PENDING');
   const [assigningCareId, setAssigningCareId] = useState('');
   const [assigningSellerId, setAssigningSellerId] = useState('');
@@ -221,14 +291,18 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
   const [transferMoney, setTransferMoney] = useState(0);
   const [surcharge, setSurcharge] = useState(0);
   const [points, setPoints] = useState(0);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerDob, setCustomerDob] = useState('');
   const [gender, setGender] = useState('');
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [inlineCustomerQuery, setInlineCustomerQuery] = useState('');
+  const [inlineCustomerResults, setInlineCustomerResults] = useState<Customer[]>([]);
+  const [searchingInlineCustomers, setSearchingInlineCustomers] = useState(false);
+  const [activeCustomerField, setActiveCustomerField] = useState<'name' | 'phone' | 'email' | null>(null);
 
-  // Address dropdown states
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
   const [wards, setWards] = useState<AddressOption[]>([]);
 
-  // Staff State
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
@@ -242,7 +316,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
         const list = res.staff || [];
         setStaffList(list);
 
-        // Auto-assign current user as "NV xử lý" if they are STAFF or MODERATOR (not ADMIN)
         if (currentUser && currentUser.role !== 'ADMIN') {
           const match = list.find((staff) => staff.id === currentUser.id);
           if (match) {
@@ -261,7 +334,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
     }))
   ];
 
-  // Address helpers
   const normalizeName = useCallback((n: string) => {
     return n
       .toLowerCase()
@@ -366,6 +438,20 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
     };
   }, [buildCustomerPrefill, selectedCustomer]);
 
+  const applySelectedCustomer = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer);
+    setShippingName(customer.name || '');
+    setShippingPhone(customer.phone || '');
+    setCustomerEmail(customer.email || '');
+    setCustomerDob(formatDateInputValue(customer.dob));
+    setGender(customer.gender || '');
+    setCustomerSearch('');
+    setCustomers([]);
+    setInlineCustomerQuery('');
+    setInlineCustomerResults([]);
+    setActiveCustomerField(null);
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (!customerSearch || customerSearch.trim().length < 2) {
@@ -392,6 +478,34 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
     return () => clearTimeout(timer);
   }, [customerSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!inlineCustomerQuery || inlineCustomerQuery.trim().length < 2) {
+        setInlineCustomerResults([]);
+        setSearchingInlineCustomers(false);
+        return;
+      }
+
+      setSearchingInlineCustomers(true);
+      try {
+        const data = await apiClientClient.get<CustomerSearchResponse>('/admin/customers', {
+          params: {
+            search: inlineCustomerQuery.trim(),
+            limit: 8,
+            includeAll: true,
+          },
+        });
+        setInlineCustomerResults(data.customers || []);
+      } catch (err) {
+        console.error('Inline customer search failed', err);
+      } finally {
+        setSearchingInlineCustomers(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [inlineCustomerQuery]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -422,13 +536,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
   const addProduct = (product: Product) => {
     setOrderItems((current) => [
       ...current,
-      {
-        productId: product.id,
-        quantity: 1,
-        size: null,
-        color: null,
-        product,
-      },
+      buildOrderItem(product),
     ]);
     setProductSearch('');
     setProducts([]);
@@ -441,14 +549,61 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
     setOrderItems((current) =>
       current.map((item, itemIndex) =>
         itemIndex === index
-          ? { ...item, ...next }
+          ? syncOrderItemPricing(item, next)
           : item,
       ),
     );
   };
 
+  const updateOrderItemPrice = (index: number, nextPrice: number) => {
+    setOrderItems((current) =>
+      current.map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
+
+        const catalogUnitPrice = getCatalogUnitPrice(item.product, item.size, item.color);
+        return {
+          ...item,
+          unitPrice: nextPrice,
+          isCustomPrice: nextPrice !== catalogUnitPrice,
+        };
+      }),
+    );
+  };
+
   const removeOrderItem = (index: number) => {
     setOrderItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const handleCustomerIdentityChange = (
+    field: 'name' | 'phone' | 'email',
+    value: string,
+  ) => {
+    if (field === 'name') {
+      setShippingName(value);
+    } else if (field === 'phone') {
+      setShippingPhone(value);
+    } else {
+      setCustomerEmail(value);
+    }
+
+    setActiveCustomerField(field);
+    setInlineCustomerQuery(value);
+  };
+
+  const clearSelectedCustomer = () => {
+    setSelectedCustomer(null);
+    setShippingName('');
+    setShippingPhone('');
+    setCustomerEmail('');
+    setCustomerDob('');
+    setGender('');
+    setCustomerSearch('');
+    setCustomers([]);
+    setInlineCustomerQuery('');
+    setInlineCustomerResults([]);
+    setActiveCustomerField(null);
   };
 
   const subtotal = orderItems.reduce(
@@ -483,6 +638,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
           quantity: item.quantity,
           size: item.size || undefined,
           color: item.color || undefined,
+          unitPrice: item.isCustomPrice ? item.unitPrice : undefined,
         })),
         status,
         metadata: {
@@ -495,6 +651,9 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
         },
         shippingName,
         shippingPhone,
+        customerEmail: customerEmail || undefined,
+        customerGender: gender || undefined,
+        customerDob: customerDob || undefined,
         shippingStreet,
         shippingWard,
         shippingProvince,
@@ -530,12 +689,8 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
       <div className="flex-1 p-4">
         <div className="flex flex-col lg:flex-row gap-4 items-start">
-          {/* Left Column (Products, Payment, Notes) */}
           <div className="flex-1 flex flex-col gap-4">
-
-            {/* Top: Products & Search */}
             <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 flex-1 min-h-[350px] flex flex-col overflow-hidden">
-              {/* Search bar row */}
               <div className="flex flex-wrap items-center gap-3 p-3 border-b border-gray-100 bg-white relative">
                 <div className="flex-1 relative min-w-[250px]">
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -546,7 +701,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                     placeholder="Nhập mã, tên sản phẩm hoặc Barcode"
                   />
 
-                  {/* Product Search Results Dropdown */}
                   {(searchingProducts || products.length > 0) && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 shadow-xl rounded-lg z-50 max-h-80 overflow-y-auto">
                       {searchingProducts && <div className="p-3 text-center text-gray-500">Đang tìm...</div>}
@@ -580,7 +734,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                 </div>
               </div>
 
-              {/* Cart items / Empty state */}
               <div className={`flex-1 overflow-y-auto ${orderItems.length === 0 ? 'bg-white flex items-center justify-center' : 'p-0 bg-white'}`}>
                 {orderItems.length === 0 ? (
                   <div className="text-center text-gray-400 flex flex-col items-center">
@@ -642,7 +795,13 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                               </div>
                             </div>
                           </div>
-                          <div className="w-24 text-right font-medium text-gray-600">{formatCurrency(unitPrice)}</div>
+                          <div className="w-32 px-2">
+                            <NumberInput
+                              value={unitPrice}
+                              onChange={(value) => updateOrderItemPrice(index, value)}
+                              className="py-1 text-sm"
+                            />
+                          </div>
                           <div className="w-24 px-4">
                             <input
                               type="number"
@@ -664,9 +823,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
               </div>
             </div>
 
-            {/* Bottom Row: Payment & Notes */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Payment Box */}
               <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-gray-800 text-sm">Thanh toán</h3>
@@ -710,7 +867,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                 </div>
               </div>
 
-              {/* Notes Box */}
               <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 flex flex-col">
                 <h3 className="font-bold text-gray-800 text-sm mb-4">Ghi chú</h3>
 
@@ -747,10 +903,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
           </div>
 
-          {/* Right Column (Info, Customer, Shipping, Carrier) */}
           <div className="w-full lg:w-[420px] xl:w-[500px] 2xl:w-[580px] flex flex-col gap-4">
-
-            {/* Order Info */}
             <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
               <div className="flex justify-between items-center text-gray-700">
                 <span className="font-medium text-xs">Tạo lúc</span>
@@ -868,7 +1021,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
               </div>
             </div>
 
-            {/* Customer */}
             <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 text-sm">Khách hàng</h3>
@@ -894,7 +1046,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                 </div>
               </div>
 
-              {/* Customer Search Panel */}
               {showCustomerSearch && (
                 <div className="relative">
                   <div className="relative">
@@ -913,19 +1064,18 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                         <p className="font-bold text-blue-800 text-sm">{selectedCustomer.name || 'Khách vãng lai'}</p>
                         <p className="text-xs text-blue-600">{selectedCustomer.phone} {selectedCustomer.email ? `• ${selectedCustomer.email}` : ''}</p>
                       </div>
-                      <button onClick={() => { setSelectedCustomer(null); setShippingName(''); setShippingPhone(''); }} className="text-blue-400 hover:text-red-500 transition-colors">
+                      <button onClick={clearSelectedCustomer} className="text-blue-400 hover:text-red-500 transition-colors">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   )}
-                  {/* Customer Search Results */}
                   {customers.length > 0 && customerSearch && !selectedCustomer && (
                     <div className="mt-1 bg-white border border-gray-200 shadow-xl rounded-lg z-50 overflow-hidden max-h-48 overflow-y-auto">
                       {searchingCustomers && <div className="p-3 text-center text-gray-500 text-xs">Đang tìm...</div>}
                       {customers.map(c => (
                         <button
                           key={c.id}
-                          onClick={() => { setSelectedCustomer(c); setCustomerSearch(''); setCustomers([]); }}
+                          onClick={() => applySelectedCustomer(c)}
                           className="w-full text-left p-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
                         >
                           <p className="font-bold text-gray-900 text-sm">{c.name || 'Khách vãng lai'}</p>
@@ -937,32 +1087,79 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
                 </div>
               )}
 
-              <div className="space-y-3">
+              <div className="space-y-3 relative">
                 <div className="grid grid-cols-2 gap-3">
                   <input
                     value={shippingName}
-                    onChange={e => setShippingName(e.target.value)}
+                    onChange={e => handleCustomerIdentityChange('name', e.target.value)}
+                    onFocus={() => {
+                      setActiveCustomerField('name');
+                      setInlineCustomerQuery(shippingName);
+                    }}
+                    onBlur={() => setTimeout(() => setActiveCustomerField(null), 150)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
                     placeholder="Tên khách hàng"
                   />
                   <input
                     value={shippingPhone}
-                    onChange={e => setShippingPhone(e.target.value)}
+                    onChange={e => handleCustomerIdentityChange('phone', e.target.value)}
+                    onFocus={() => {
+                      setActiveCustomerField('phone');
+                      setInlineCustomerQuery(shippingPhone);
+                    }}
+                    onBlur={() => setTimeout(() => setActiveCustomerField(null), 150)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
                     placeholder="SĐT"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <input className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400" placeholder="Địa chỉ email" />
+                  <input
+                    value={customerEmail}
+                    onChange={e => handleCustomerIdentityChange('email', e.target.value)}
+                    onFocus={() => {
+                      setActiveCustomerField('email');
+                      setInlineCustomerQuery(customerEmail);
+                    }}
+                    onBlur={() => setTimeout(() => setActiveCustomerField(null), 150)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-md px-3 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
+                    placeholder="Địa chỉ email"
+                  />
                   <div className="relative">
-                    <input className="w-full bg-gray-50 border border-gray-200 rounded-md pl-3 pr-8 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400" placeholder="Ngày sinh" />
+                    <input
+                      type="date"
+                      value={customerDob}
+                      onChange={e => setCustomerDob(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-md pl-3 pr-8 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors placeholder-gray-400"
+                    />
                     <CalendarIcon className="w-4 h-4 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
                   </div>
                 </div>
+                {activeCustomerField && inlineCustomerQuery.trim().length >= 2 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 shadow-xl rounded-lg z-50 overflow-hidden max-h-60 overflow-y-auto">
+                    {searchingInlineCustomers && (
+                      <div className="p-3 text-center text-gray-500 text-xs">Đang tìm...</div>
+                    )}
+                    {!searchingInlineCustomers && inlineCustomerResults.length === 0 && (
+                      <div className="p-3 text-center text-gray-500 text-xs">Không tìm thấy khách hàng phù hợp</div>
+                    )}
+                    {!searchingInlineCustomers && inlineCustomerResults.map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        onMouseDown={() => applySelectedCustomer(customer)}
+                        className="w-full text-left p-3 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors"
+                      >
+                        <p className="font-bold text-gray-900 text-sm">{customer.name || 'Khách vãng lai'}</p>
+                        <p className="text-xs text-gray-500">
+                          {[customer.phone, customer.email].filter(Boolean).join(' • ')}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Shipping */}
             <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2"><MapPin className="w-4 h-4 text-blue-600" /> Nhận hàng</h3>
@@ -1009,7 +1206,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
               </div>
             </div>
 
-            {/* Carrier */}
             <div className="bg-white rounded-lg shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 p-5 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-gray-800 text-sm">Vận chuyển</h3>
@@ -1046,7 +1242,6 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
   );
 }
 
-// Icon for Calendar
 function CalendarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
