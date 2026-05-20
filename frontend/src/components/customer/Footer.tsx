@@ -13,6 +13,7 @@ const policyLinks = [
   { href: '/portal/policies/refund', label: 'Chính sách hoàn tiền' },
   { href: '/portal/policies/shipping', label: 'Chính sách giao hàng' },
   { href: '/portal/policies/privacy', label: 'Chính sách bảo mật' },
+  { href: '/portal/policies/terms', label: 'Điều khoản dịch vụ' },
 ];
 
 const socialLinks = [
