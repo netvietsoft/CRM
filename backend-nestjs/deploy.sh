@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# Deployment script for backend-nestjs
 set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# ==========================================
-# Configuration
-# ==========================================
 APP_NAME="backend-nestjs"
 
 
@@ -95,16 +93,26 @@ echo "ℹ️  Current branch: $ORIGINAL_BRANCH"
 
 # Create archive of source code
 echo "📦 Creating archive of source code..."
-TAR_FILES="src scripts prisma package.json ecosystem.config.js nest-cli.json tsconfig.json"
+TAR_FILES=()
+REQUIRED_PATHS=(src prisma package.json ecosystem.config.js nest-cli.json tsconfig.json)
+OPTIONAL_PATHS=(scripts package-lock.json yarn.lock .eslintrc.js .prettierrc tsconfig.build.json .yarn .yarnrc.yml)
 
-# Add optional files if they exist
-[ -f "package-lock.json" ] && TAR_FILES="$TAR_FILES package-lock.json" && echo "  ✓ Including package-lock.json"
-[ -f "yarn.lock" ] && TAR_FILES="$TAR_FILES yarn.lock" && echo "  ✓ Including yarn.lock"
-[ -f ".eslintrc.js" ] && TAR_FILES="$TAR_FILES .eslintrc.js" && echo "  ✓ Including .eslintrc.js"
-[ -f ".prettierrc" ] && TAR_FILES="$TAR_FILES .prettierrc" && echo "  ✓ Including .prettierrc"
-[ -f "tsconfig.build.json" ] && TAR_FILES="$TAR_FILES tsconfig.build.json" && echo "  ✓ Including tsconfig.build.json"
+for path in "${REQUIRED_PATHS[@]}"; do
+    if [ ! -e "$path" ]; then
+        echo "❌ Missing required deployment path: $path"
+        exit 1
+    fi
+    TAR_FILES+=("$path")
+done
 
-tar -czf be-source.tar.gz $TAR_FILES
+for path in "${OPTIONAL_PATHS[@]}"; do
+    if [ -e "$path" ]; then
+        TAR_FILES+=("$path")
+        echo "  ✓ Including $path"
+    fi
+done
+
+tar -czf be-source.tar.gz "${TAR_FILES[@]}"
 
 # Upload to server
 echo "📤 Uploading..."
@@ -127,7 +135,7 @@ cd $SERVER_DIR
 # Extract source
 if [ -f "be-source.tar.gz" ]; then
     echo "Extracting source..."
-    rm -rf src prisma package.json package-lock.json nest-cli.json tsconfig.json tsconfig.build.json
+    rm -rf src scripts prisma .yarn package.json package-lock.json yarn.lock ecosystem.config.js nest-cli.json tsconfig.json tsconfig.build.json .eslintrc.js .prettierrc .yarnrc.yml
     tar -xzf be-source.tar.gz
     rm -f be-source.tar.gz
 fi
