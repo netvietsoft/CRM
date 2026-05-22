@@ -10,17 +10,22 @@ interface PageTransitionProps {
 export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
   const [displayChildren, setDisplayChildren] = useState(children);
-  const [transitionStage, setTransitionStage] = useState<'enter' | 'idle'>('enter');
+  const [transitionStage, setTransitionStage] = useState<'enter' | 'idle'>(
+    pathname.startsWith('/admin/customer-care') ? 'idle' : 'enter',
+  );
   const prevPathRef = useRef(pathname);
+  const disableTransition = pathname.startsWith('/admin/customer-care');
 
   useEffect(() => {
     if (prevPathRef.current !== pathname) {
-      // New page is mounting - trigger enter animation
-      setTransitionStage('enter');
+      setTransitionStage(disableTransition ? 'idle' : 'enter');
       setDisplayChildren(children);
       prevPathRef.current = pathname;
 
-      // After animation completes, set to idle
+      if (disableTransition) {
+        return;
+      }
+
       const timer = setTimeout(() => {
         setTransitionStage('idle');
       }, 500);
@@ -30,15 +35,15 @@ export default function PageTransition({ children }: PageTransitionProps) {
       // Same page, just update children
       setDisplayChildren(children);
     }
-  }, [pathname, children]);
+  }, [pathname, children, disableTransition]);
 
-  // Initial mount - trigger enter
   useEffect(() => {
+    if (disableTransition) return;
     const timer = setTimeout(() => {
       setTransitionStage('idle');
     }, 500);
     return () => clearTimeout(timer);
-  }, []);
+  }, [disableTransition]);
 
   return (
     <div

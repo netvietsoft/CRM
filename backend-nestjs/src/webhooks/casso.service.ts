@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
-import { CommissionsService } from '../commissions/commissions.service';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
+import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 import * as crypto from 'crypto';
 
 interface CassoTransaction {
@@ -35,8 +36,8 @@ export class CassoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly ordersService: OrdersService,
-    private readonly commissionsService: CommissionsService,
     private readonly adminNotificationsService: AdminNotificationsService,
+    private readonly messagingAutomationService: MessagingAutomationService,
   ) {}
 
   verifySignature(signature: string, payload: string, secret: string): boolean {
@@ -129,18 +130,30 @@ export class CassoService {
     }
 
     // Update order status
+    const nextStatus = order.status === 'PENDING' ? 'CONFIRMED' : order.status;
+
     await this.prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: order.id },
         data: {
           paymentStatus: 'PAID',
-          status: 'CONFIRMED',
+          status: nextStatus,
           paidAt: new Date(),
         },
       });
+    });
 
-      // We do not increment user credits, as this is an ecommerce order
-      // The commission logic will handle points calculation when the order reaches 'COMPLETED'
+    await this.messagingAutomationService.handleOrderStateChange({
+      orderId: order.id,
+      previousStatus: order.status as OrderStatus,
+      currentStatus: nextStatus as OrderStatus,
+      previousPaymentStatus: order.paymentStatus as PaymentStatus,
+      currentPaymentStatus: PaymentStatus.PAID,
+      source: 'CASSO_PAYMENT_WEBHOOK',
+      payload: {
+        transactionReference: transaction.reference,
+        amount: transaction.amount,
+      },
     });
 
     this.logger.log(`Successfully processed VietQR payment for order ${orderCode}`);

@@ -43,6 +43,194 @@ export class PancakeService {
     return Array.from(searchTerms).filter((term) => term.length >= 9);
   }
 
+  private getPreferredPhoneForStorage(phone?: string | null) {
+    const rawPhone = phone?.trim() || '';
+    const normalizedPhone = this.normalizePhone(rawPhone);
+
+    if (normalizedPhone.startsWith('84') && normalizedPhone.length >= 11) {
+      return `0${normalizedPhone.slice(2)}`;
+    }
+
+    if (normalizedPhone.length === 9) {
+      return `0${normalizedPhone}`;
+    }
+
+    if (normalizedPhone.length >= 10) {
+      return normalizedPhone;
+    }
+
+    return rawPhone || null;
+  }
+
+  private async generateUniqueReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    while (true) {
+      let code = '';
+      for (let i = 0; i < 8; i += 1) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      const existing = await this.prisma.user.findUnique({
+        where: { referralCode: code },
+      });
+
+      if (!existing) {
+        return code;
+      }
+    }
+  }
+
+  private async resolveCustomerFromPancakeOrder(input: {
+    phone?: string | null;
+    name?: string | null;
+    email?: string | null;
+    fullAddress?: string | null;
+    street?: string | null;
+    ward?: string | null;
+    province?: string | null;
+    gender?: 'MALE' | 'FEMALE' | 'OTHER' | null;
+    dob?: string | null;
+    targetUserId?: string;
+  }) {
+    const preferredPhone = this.getPreferredPhoneForStorage(input.phone);
+    const searchTerms = preferredPhone ? this.buildPhoneSearchTerms(preferredPhone) : [];
+    const email = input.email?.trim().toLowerCase() || null;
+    const name = input.name?.trim() || null;
+    const fullAddress = input.fullAddress?.trim() || null;
+    const street = input.street?.trim() || null;
+    const ward = input.ward?.trim() || null;
+    const province = input.province?.trim() || null;
+    const parsedDob = input.dob ? new Date(input.dob) : null;
+    const safeDob = parsedDob && !Number.isNaN(parsedDob.getTime()) ? parsedDob : null;
+
+    const targetUser = input.targetUserId
+      ? await this.prisma.user.findUnique({ where: { id: input.targetUserId } })
+      : null;
+    const scopedTargetUser = targetUser?.role === 'CUSTOMER' ? targetUser : null;
+
+    let customer =
+      scopedTargetUser ||
+      (searchTerms.length > 0
+        ? await this.prisma.user.findFirst({
+            where: {
+              role: 'CUSTOMER',
+              phone: { in: searchTerms },
+            },
+          })
+        : null);
+
+    if (!customer && email) {
+      customer = await this.prisma.user.findFirst({
+        where: {
+          role: 'CUSTOMER',
+          email,
+        },
+      });
+    }
+
+    if (customer) {
+      const updateData: Record<string, unknown> = {};
+
+      if (preferredPhone && !customer.phone) {
+        updateData.phone = preferredPhone;
+      }
+      if (name && (!customer.name || customer.name === customer.phone)) {
+        updateData.name = name;
+      }
+      if (email && !customer.email) {
+        updateData.email = email;
+      }
+      if (input.gender && !customer.gender) {
+        updateData.gender = input.gender;
+      }
+      if (safeDob && !customer.dob) {
+        updateData.dob = safeDob;
+      }
+      if (fullAddress && !customer.address) {
+        updateData.address = fullAddress;
+      }
+      if (street && !customer.addressStreet) {
+        updateData.addressStreet = street;
+      }
+      if (ward && !customer.addressWard) {
+        updateData.addressWard = ward;
+      }
+      if (province && !customer.addressProvince) {
+        updateData.addressProvince = province;
+      }
+      if (!customer.onboardingComplete) {
+        updateData.onboardingComplete = true;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        customer = await this.prisma.user.update({
+          where: { id: customer.id },
+          data: updateData,
+        });
+      }
+
+      return customer;
+    }
+
+    if (!preferredPhone) {
+      return null;
+    }
+
+    const conflictingUser = await this.prisma.user.findFirst({
+      where: {
+        phone: { in: searchTerms },
+        role: { not: 'CUSTOMER' },
+      },
+    });
+
+    if (conflictingUser) {
+      this.logger.warn(
+        `[Pancake] Skip auto-create customer for phone ${preferredPhone} because it belongs to ${conflictingUser.role}`,
+      );
+      return null;
+    }
+
+    try {
+      return await this.prisma.user.create({
+        data: {
+          role: 'CUSTOMER',
+          name: name || preferredPhone,
+          email,
+          phone: preferredPhone,
+          gender: input.gender || null,
+          dob: safeDob,
+          address: fullAddress,
+          addressStreet: street,
+          addressWard: ward,
+          addressProvince: province,
+          onboardingComplete: true,
+          referralCode: await this.generateUniqueReferralCode(),
+        },
+      });
+    } catch (error: any) {
+      if (error?.code !== 'P2002') {
+        throw error;
+      }
+
+      const conflictedCustomer = await this.prisma.user.findFirst({
+        where: {
+          role: 'CUSTOMER',
+          phone: { in: searchTerms },
+        },
+      });
+
+      if (conflictedCustomer) {
+        return conflictedCustomer;
+      }
+
+      this.logger.warn(
+        `[Pancake] Skip auto-create customer for phone ${preferredPhone} because unique phone conflict could not be mapped to a customer`,
+      );
+      return null;
+    }
+  }
+
   private async getActivePancakeIntegrations(storeId?: string) {
     const integrations = await this.prisma.storeIntegration.findMany({
       where: {
@@ -310,28 +498,94 @@ export class PancakeService {
     };
   }
 
+  private extractCustomerWebhookInfo(customerData: any) {
+    const addresses = customerData?.shop_customer_addresses || customerData?.addresses || [];
+    const primaryAddr = addresses[0];
+    const fullAddress =
+      customerData?.full_address ||
+      customerData?.address_full ||
+      primaryAddr?.full_address ||
+      primaryAddr?.address_full ||
+      null;
+    let province =
+      customerData?.province ||
+      customerData?.city ||
+      primaryAddr?.province ||
+      primaryAddr?.city ||
+      null;
+    let ward =
+      customerData?.ward ||
+      customerData?.district ||
+      primaryAddr?.ward ||
+      primaryAddr?.district ||
+      null;
+
+    if (fullAddress && (!province || !ward)) {
+      const parts = String(fullAddress)
+        .split(',')
+        .map((part: string) => part.trim())
+        .filter(Boolean);
+      if (!province && parts.length >= 1) {
+        province = parts[parts.length - 1];
+      }
+      if (!ward && parts.length >= 2) {
+        ward = parts[parts.length - 2];
+      }
+    }
+
+    const rawGender = customerData?.gender;
+    const genderStr = String(rawGender ?? '')
+      .toLowerCase()
+      .trim();
+    let gender: 'MALE' | 'FEMALE' | 'OTHER' | null = null;
+
+    if (rawGender === 1 || genderStr === '1' || genderStr === 'male' || genderStr === 'nam') {
+      gender = 'MALE';
+    } else if (
+      rawGender === 2 ||
+      genderStr === '2' ||
+      genderStr === 'female' ||
+      genderStr === 'nữ' ||
+      genderStr === 'nu'
+    ) {
+      gender = 'FEMALE';
+    } else if (genderStr === 'other' || genderStr === 'khác' || genderStr === 'khac') {
+      gender = 'OTHER';
+    }
+
+    return {
+      name: customerData?.name || customerData?.full_name || primaryAddr?.full_name || null,
+      phone:
+        customerData?.phone_number ||
+        customerData?.phone ||
+        customerData?.mobile_number ||
+        primaryAddr?.phone_number ||
+        null,
+      email: customerData?.email || customerData?.email_address || primaryAddr?.email || null,
+      fullAddress,
+      street: customerData?.address || primaryAddr?.address || null,
+      ward,
+      province,
+      gender,
+      dob: customerData?.date_of_birth || customerData?.birthday || null,
+    };
+  }
+
   private parseDate(value?: string | null): string | null {
     if (!value) return null;
 
     const normalized = value.trim();
     let toParse = normalized;
 
-    // Handle ISO-like strings (e.g., 2026-05-07T04:38:46.664424 or 2026-05-07T04:38:46Z)
     if (/^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}/.test(normalized)) {
-      // Normalize to ISO format with T separator
       toParse = normalized.replace(' ', 'T');
-
-      // Truncate fractional seconds to 3 digits for consistent parsing
       toParse = toParse.replace(/(\.\d{3})\d+/, '$1');
-
-      // If no timezone info, assume it's GMT+0 (Pancake default)
       if (!toParse.includes('Z') && !/[+-]\d{2}:?\d{2}$/.test(toParse)) {
         toParse = toParse + 'Z';
       }
 
       const parsed = new Date(toParse);
       if (!Number.isNaN(parsed.getTime())) {
-        // Convert GMT+0 to GMT+7 by adding 7 hours
         const vietnamTime = new Date(parsed.getTime() + 7 * 60 * 60 * 1000);
         return vietnamTime.toISOString();
       }
@@ -353,9 +607,7 @@ export class PancakeService {
         [, hour, minute, second = '00', day, month, year] = dateTimeMatch;
       }
 
-      // Pad single digits
       const pad = (v: any) => String(v).padStart(2, '0');
-      // Create date string in ISO format with Vietnam timezone offset
       const isoWithOffset = `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}+07:00`;
       const dateObj = new Date(isoWithOffset);
       return Number.isNaN(dateObj.getTime()) ? null : dateObj.toISOString();
@@ -845,20 +1097,109 @@ export class PancakeService {
     return { synced: totalSynced, errors: totalErrors, total: totalFetched, totalAmount };
   }
 
+  async backfillOrderCustomers(storeId?: string, limit = 500) {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        source: 'PANCAKE',
+        userId: null,
+        shippingPhone: { not: null },
+        ...(storeId ? { storeId } : {}),
+      },
+      select: {
+        id: true,
+        orderCode: true,
+        shippingName: true,
+        shippingPhone: true,
+        shippingStreet: true,
+        metadata: true,
+      },
+      orderBy: { createdAt: 'asc' },
+      take: Math.max(1, Math.min(limit || 500, 5000)),
+    });
+
+    let linkedCount = 0;
+    let createdCustomerCount = 0;
+    let skippedCount = 0;
+    const affectedUserIds = new Set<string>();
+
+    for (const order of orders) {
+      try {
+        const beforeCustomer = await this.prisma.user.findFirst({
+          where: {
+            role: 'CUSTOMER',
+            phone: { in: this.buildPhoneSearchTerms(order.shippingPhone || '') },
+          },
+          select: { id: true },
+        });
+
+        const metadata =
+          order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+            ? (order.metadata as Record<string, any>)
+            : {};
+        const customerMeta =
+          metadata.customer && typeof metadata.customer === 'object' ? metadata.customer : {};
+        const shippingMeta =
+          metadata.shippingAddress && typeof metadata.shippingAddress === 'object'
+            ? metadata.shippingAddress
+            : {};
+
+        const customer = await this.resolveCustomerFromPancakeOrder({
+          phone: order.shippingPhone,
+          name:
+            order.shippingName ||
+            (typeof customerMeta.name === 'string' ? customerMeta.name : null) ||
+            (typeof shippingMeta.fullName === 'string' ? shippingMeta.fullName : null),
+          email: typeof customerMeta.email === 'string' ? customerMeta.email : null,
+          fullAddress:
+            typeof shippingMeta.fullAddress === 'string' ? shippingMeta.fullAddress : null,
+          street:
+            order.shippingStreet ||
+            (typeof shippingMeta.address === 'string' ? shippingMeta.address : null),
+        });
+
+        if (!customer) {
+          skippedCount += 1;
+          continue;
+        }
+
+        await this.prisma.order.update({
+          where: { id: order.id },
+          data: {
+            userId: customer.id,
+          },
+        });
+
+        linkedCount += 1;
+        affectedUserIds.add(customer.id);
+        if (!beforeCustomer) {
+          createdCustomerCount += 1;
+        }
+      } catch (error: any) {
+        skippedCount += 1;
+        this.logger.warn(
+          `[Pancake] Skip backfill for order ${order.orderCode}: ${error?.message || 'Unknown error'}`,
+        );
+      }
+    }
+
+    for (const userId of affectedUserIds) {
+      await this.updateUserRankAndSpent(userId);
+    }
+
+    return {
+      processed: orders.length,
+      linkedCount,
+      createdCustomerCount,
+      skippedCount,
+      recalculatedCustomerCount: affectedUserIds.size,
+    };
+  }
+
   async syncSingleOrder(pOrder: any, storeId: string, targetUserId?: string) {
     const orderCode = `PCK-${pOrder.id}`;
     const existing = await this.prisma.order.findUnique({ where: { orderCode } });
     const phone = pOrder.bill_phone_number || pOrder.shipping_address?.phone_number;
     if (!phone) return { synced: false, amount: 0 };
-    const phoneSearchTerms = this.buildPhoneSearchTerms(phone);
-    const user = targetUserId
-      ? await this.prisma.user.findUnique({ where: { id: targetUserId } })
-      : await this.prisma.user.findFirst({ where: { phone: { in: phoneSearchTerms } } });
-
-    if (user && !user.email && pOrder.bill_email) {
-      await this.prisma.user.update({ where: { id: user.id }, data: { email: pOrder.bill_email } });
-    }
-
     const detailData = (await this.fetchOrderDetail(pOrder.id, storeId)) || pOrder;
     const subtotal = detailData.total_price || pOrder.total_price || 0,
       shippingFee = detailData.shipping_fee || pOrder.shipping_fee || 0,
@@ -890,6 +1231,19 @@ export class PancakeService {
 
     const shippingAddr = detailData.shipping_address || pOrder.shipping_address,
       partner = detailData.partner || pOrder.partner || null;
+    const customerInfo = this.extractCustomerInfo(detailData);
+    const user = await this.resolveCustomerFromPancakeOrder({
+      phone,
+      name: customerInfo.name,
+      email: customerInfo.email || pOrder.bill_email || detailData.bill_email || null,
+      fullAddress: customerInfo.fullAddress,
+      street: customerInfo.street,
+      ward: customerInfo.ward,
+      province: customerInfo.province,
+      gender: customerInfo.gender,
+      dob: customerInfo.dob,
+      targetUserId,
+    });
 
     const orderItemsData = [];
     for (const item of detailData.items || pOrder.items || []) {
@@ -1084,10 +1438,11 @@ export class PancakeService {
         });
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       this.logger.error(
-        `[Pancake] Error ${existing ? 'updating' : 'creating'} order ${orderCode}: ${err.message}`,
+        `[Pancake] Error ${existing ? 'updating' : 'creating'} order ${orderCode}: ${errorMessage}`,
       );
-      return { synced: false, amount: 0, error: err.message };
+      return { synced: false, amount: 0, error: errorMessage };
     }
 
     const isCreditable = status === 'COMPLETED' || status === 'DELIVERED',
@@ -1118,7 +1473,6 @@ export class PancakeService {
       } else {
         tp = n.replace(' ', 'T');
       }
-      // Truncate fractional seconds to 3 digits
       tp = tp.replace(/(\.\d{3})\d+(Z?)$/, '$1$2');
     }
     const p = new Date(tp);
@@ -1214,16 +1568,41 @@ export class PancakeService {
   }
 
   private async handleCustomerWebhook(customerData: any) {
-    const phone = customerData.phone_number || customerData.phone;
-    if (!phone) return { processed: false };
-    const user = await this.prisma.user.findFirst({ where: { phone } });
-    if (!user) return { processed: false };
-    const update: any = {};
-    if (customerData.name && !user.name) update.name = customerData.name;
-    if (customerData.email && !user.email) update.email = customerData.email;
-    if (Object.keys(update).length > 0)
-      await this.prisma.user.update({ where: { id: user.id }, data: update });
-    return { processed: true };
+    const customerInfo = this.extractCustomerWebhookInfo(customerData);
+    if (!customerInfo.phone && !customerInfo.email) {
+      return { processed: false };
+    }
+
+    const customer = await this.resolveCustomerFromPancakeOrder(customerInfo);
+    if (!customer) {
+      return { processed: false };
+    }
+
+    const phoneTerms = customerInfo.phone
+      ? this.buildPhoneSearchTerms(
+          this.getPreferredPhoneForStorage(customerInfo.phone) || customerInfo.phone,
+        )
+      : [];
+
+    if (phoneTerms.length > 0) {
+      await this.prisma.order.updateMany({
+        where: {
+          source: 'PANCAKE',
+          userId: null,
+          shippingPhone: { in: phoneTerms },
+        },
+        data: {
+          userId: customer.id,
+        },
+      });
+    }
+
+    await this.updateUserRankAndSpent(customer.id);
+
+    return {
+      processed: true,
+      customerId: customer.id,
+    };
   }
 
   private async handleProductWebhook(shopId?: string) {
@@ -1265,7 +1644,15 @@ export class PancakeService {
       },
     );
     const data = await response.json();
-    if (data.success) return { success: true, webhookUrl };
+    if (data.success) {
+      const verifiedConfig = await this.getWebhookConfig(storeId);
+      return {
+        success: true,
+        webhookUrl: verifiedConfig?.url || webhookUrl,
+        enabled: verifiedConfig?.enabled || false,
+        types: verifiedConfig?.types || [],
+      };
+    }
     throw new Error('Failed to configure webhook');
   }
 
@@ -1277,8 +1664,9 @@ export class PancakeService {
       { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     );
     const data = await response.json();
-    if (data.success && data.data) {
-      const s = data.data;
+    const shop = data?.shop || data?.data?.shop || data?.data || null;
+    if (data.success && shop) {
+      const s = shop;
       return {
         enabled: s.webhook_enable || false,
         url: s.webhook_url || null,

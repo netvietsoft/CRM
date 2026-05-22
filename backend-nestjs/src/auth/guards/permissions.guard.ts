@@ -6,6 +6,45 @@ import { Permission } from '../enums/permissions.enum';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
+  private readonly messagingPermissionAliases: Record<Permission, Permission[]> = {
+    [Permission.MESSAGING_VIEW]: [
+      Permission.MESSAGING_VIEW,
+      Permission.MESSAGING_COMPOSE,
+      Permission.MESSAGING_SEND,
+      Permission.MESSAGING_SCHEDULE,
+      Permission.MESSAGING_RULE_MANAGE,
+      Permission.MESSAGING_LOG_VIEW,
+      Permission.MESSAGING_MANAGE,
+    ],
+    [Permission.MESSAGING_COMPOSE]: [Permission.MESSAGING_COMPOSE, Permission.MESSAGING_MANAGE],
+    [Permission.MESSAGING_SEND]: [Permission.MESSAGING_SEND, Permission.MESSAGING_MANAGE],
+    [Permission.MESSAGING_SCHEDULE]: [Permission.MESSAGING_SCHEDULE, Permission.MESSAGING_MANAGE],
+    [Permission.MESSAGING_RULE_MANAGE]: [
+      Permission.MESSAGING_RULE_MANAGE,
+      Permission.MESSAGING_MANAGE,
+    ],
+    [Permission.MESSAGING_LOG_VIEW]: [
+      Permission.MESSAGING_LOG_VIEW,
+      Permission.MESSAGING_VIEW,
+      Permission.MESSAGING_MANAGE,
+    ],
+    [Permission.MESSAGING_MANAGE]: [Permission.MESSAGING_MANAGE],
+    [Permission.ORDERS_VIEW]: [Permission.ORDERS_VIEW],
+    [Permission.ORDERS_MANAGE]: [Permission.ORDERS_MANAGE],
+    [Permission.PRODUCTS_VIEW]: [Permission.PRODUCTS_VIEW],
+    [Permission.PRODUCTS_MANAGE]: [Permission.PRODUCTS_MANAGE],
+    [Permission.CATEGORIES_VIEW]: [Permission.CATEGORIES_VIEW],
+    [Permission.CATEGORIES_MANAGE]: [Permission.CATEGORIES_MANAGE],
+    [Permission.VOUCHERS_VIEW]: [Permission.VOUCHERS_VIEW],
+    [Permission.VOUCHERS_MANAGE]: [Permission.VOUCHERS_MANAGE],
+    [Permission.CUSTOMERS_VIEW]: [Permission.CUSTOMERS_VIEW],
+    [Permission.CUSTOMERS_MANAGE]: [Permission.CUSTOMERS_MANAGE],
+    [Permission.STORE_SETTINGS]: [Permission.STORE_SETTINGS],
+    [Permission.INTEGRATIONS_VIEW]: [Permission.INTEGRATIONS_VIEW],
+    [Permission.INTEGRATIONS_MANAGE]: [Permission.INTEGRATIONS_MANAGE],
+    [Permission.STAFF_MANAGE]: [Permission.STAFF_MANAGE],
+  };
+
   constructor(private reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,13 +68,11 @@ export class PermissionsGuard implements CanActivate {
       return false;
     }
 
-    // 1. ADMIN bypasses everything
     if (user.role === 'ADMIN') {
       request.effectiveStoreId = null;
       return true;
     }
 
-    // 2. MODERATOR (Store Owner)
     if (user.role === 'MODERATOR') {
       const ownedStoreId = user.store?.id;
       if (!ownedStoreId) {
@@ -45,18 +82,18 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    // 3. STAFF
     if (user.role === 'STAFF') {
       if (!user.staffStoreId) {
         throw new ForbiddenException('Chưa cấp quyền (Thiếu cửa hàng quản lý)');
       }
       request.effectiveStoreId = user.staffStoreId;
 
-      // Check specific permissions if required
       if (requiredPermissions && requiredPermissions.length > 0) {
         const userPermissions = (user.staffPermissions as string[]) || [];
         const hasAllPermissions = requiredPermissions.every((permission) =>
-          userPermissions.includes(permission),
+          this.resolvePermissionAliases(permission).some((candidate) =>
+            userPermissions.includes(candidate),
+          ),
         );
 
         if (!hasAllPermissions) {
@@ -66,11 +103,14 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    // Default: Deny access for other roles (like CUSTOMER) if permissions are required
     if (requiredPermissions && requiredPermissions.length > 0) {
       throw new ForbiddenException('Access denied for this role');
     }
 
     return true;
+  }
+
+  private resolvePermissionAliases(permission: Permission): Permission[] {
+    return this.messagingPermissionAliases[permission] || [permission];
   }
 }

@@ -88,6 +88,20 @@ export class PancakeController {
     };
   }
 
+  @Post('backfill-order-customers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Backfill Pancake orders without linked customer' })
+  async backfillOrderCustomers(@Body() data?: { storeId?: string; limit?: number }) {
+    const result = await this.pancakeService.backfillOrderCustomers(data?.storeId, data?.limit);
+    return {
+      success: true,
+      message: 'Pancake order customer backfill completed',
+      ...result,
+    };
+  }
+
   @Post('webhook')
   @Public()
   @ApiOperation({ summary: 'Webhook endpoint for Pancake order updates' })
@@ -98,14 +112,7 @@ export class PancakeController {
   ) {
     this.logger.log(`📨 Received Pancake webhook: ${JSON.stringify(payload).substring(0, 200)}`);
 
-    // Validate webhook (optional - if Pancake provides signature)
-    // const isValid = this.pancakeService.validateWebhook(payload, signature, shopId);
-    // if (!isValid) {
-    //   throw new UnauthorizedException('Invalid webhook signature');
-    // }
-
     try {
-      // Process webhook based on event type
       const result = await this.pancakeService.handleWebhookEvent(payload, shopId);
 
       return {

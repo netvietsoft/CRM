@@ -25,7 +25,7 @@ describe('OrdersService VietQR expiry', () => {
       ),
     };
 
-    service = new OrdersService(prisma, {} as any, {} as any, {} as any);
+    service = new OrdersService(prisma, {} as any, {} as any, {} as any, {} as any);
   });
 
   it('cancels expired pending VietQR orders and restores stock', async () => {

@@ -6,10 +6,12 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
+import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateAdminOrderDto } from './dto/create-admin-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -24,6 +26,7 @@ export class OrdersService {
     private usersService: UsersService,
     private commissionsService: CommissionsService,
     private adminNotificationsService: AdminNotificationsService,
+    private messagingAutomationService: MessagingAutomationService,
   ) {}
 
   private generateOrderCode(): string {
@@ -1512,6 +1515,24 @@ export class OrdersService {
       }
 
       await this.commissionsService.cancelCommissions(currentOrder.id);
+    }
+
+    if (
+      (status && status !== currentOrder.status) ||
+      (paymentStatus && paymentStatus !== currentOrder.paymentStatus)
+    ) {
+      await this.messagingAutomationService.handleOrderStateChange({
+        orderId: updatedOrder.id,
+        previousStatus: currentOrder.status as OrderStatus,
+        currentStatus: updatedOrder.status as OrderStatus,
+        previousPaymentStatus: currentOrder.paymentStatus as PaymentStatus,
+        currentPaymentStatus: updatedOrder.paymentStatus as PaymentStatus,
+        source: role === 'CUSTOMER' ? 'ORDER_STATUS_CUSTOMER' : 'ORDER_STATUS_UPDATE',
+        payload: {
+          actorId: userId || null,
+          actorRole: role || null,
+        },
+      });
     }
 
     return updatedOrder;

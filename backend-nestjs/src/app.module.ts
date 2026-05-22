@@ -27,6 +27,7 @@ import { CommissionConfigModule } from './commission-config/commission-config.mo
 import { AdminModule } from './admin/admin.module';
 import { AdminNotificationsModule } from './modules/admin-notifications/admin-notifications.module';
 import { SupportModule } from './support/support.module';
+import { MessagingModule } from './messaging/messaging.module';
 
 const logger = new Logger('AppModule');
 
@@ -47,14 +48,26 @@ function getQueueModules(): any[] {
   return [
     BullModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST', 'localhost'),
-          port: configService.get('REDIS_PORT', 6379),
-          password: configService.get('REDIS_PASSWORD'),
-          db: configService.get('REDIS_DB', 0),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisConnectionUrl = configService.get<string>('REDIS_URL');
+
+        if (redisConnectionUrl) {
+          return {
+            connection: {
+              url: redisConnectionUrl,
+            },
+          };
+        }
+
+        return {
+          connection: {
+            host: configService.get('REDIS_HOST', 'localhost'),
+            port: configService.get('REDIS_PORT', 6379),
+            password: configService.get('REDIS_PASSWORD'),
+            db: configService.get('REDIS_DB', 0),
+          },
+        };
+      },
     }),
     BullBoardModule.forRoot({
       route: '/admin/queues',
@@ -93,6 +106,7 @@ function getQueueModules(): any[] {
     AdminModule,
     AdminNotificationsModule,
     SupportModule,
+    MessagingModule,
   ],
 })
 export class AppModule {}

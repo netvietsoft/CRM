@@ -52,6 +52,12 @@ const navItems = [
     ],
   },
   {
+    label: 'Chăm sóc KH',
+    items: [
+      { name: 'Chăm sóc khách hàng', href: '/admin/customer-care', roles: ADMIN_STAFF },
+    ],
+  },
+  {
     label: 'Hệ thống',
     items: [
       { name: 'Kết nối', href: '/admin/integrations', roles: ADMIN_MODERATOR },

@@ -7,6 +7,7 @@ import { CommissionsModule } from '../commissions/commissions.module';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminNotificationsModule } from '../modules/admin-notifications/admin-notifications.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AdminNotificationsModule } from '../modules/admin-notifications/admin-n
     UsersModule,
     NotificationsModule,
     AdminNotificationsModule,
+    MessagingModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
