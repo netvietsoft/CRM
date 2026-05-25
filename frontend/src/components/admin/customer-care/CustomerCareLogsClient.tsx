@@ -6,6 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { apiClientClient } from '@/lib/apiClientClient';
 import {
   formatDateTime,
+  getMessagePurposeLabel,
   logStatusOptions,
   MessageLogRecord,
   PaginatedResponse,
@@ -51,6 +52,22 @@ function getLogStatusClassName(status: string) {
     return 'bg-gray-100 text-gray-700 ring-gray-200';
   }
   return 'bg-gray-100 text-gray-700 ring-gray-200';
+}
+
+function getLogIssueSummary(log: MessageLogRecord) {
+  if (log.metadata?.skippedReason === 'RECIPIENT_COOLDOWN') {
+    const latestMessageAt =
+      typeof log.metadata.latestMessageAt === 'string' ? log.metadata.latestMessageAt : null;
+    return latestMessageAt
+      ? `Bị chặn cooldown, lần gần nhất: ${formatDateTime(latestMessageAt)}`
+      : 'Bị chặn cooldown chống spam';
+  }
+
+  if (log.metadata?.skippedReason === 'RECIPIENT_OPTED_OUT') {
+    return 'Người nhận đã từ chối nhận tin';
+  }
+
+  return log.errorMessage || log.errorCode || 'Không có lỗi';
 }
 
 export default function CustomerCareLogsClient({ initialData }: CustomerCareLogsClientProps) {
@@ -132,6 +149,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
           { key: 'sentAt', label: 'Thời điểm gửi' },
           { key: 'channelCode', label: 'Kênh' },
           { key: 'campaignName', label: 'Campaign' },
+          { key: 'purpose', label: 'Loại gửi' },
           { key: 'recipientName', label: 'Tên người nhận' },
           { key: 'recipientValue', label: 'Số nhận tin' },
           { key: 'status', label: 'Trạng thái' },
@@ -147,6 +165,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
           sentAt: item.sentAt || '',
           channelCode: item.channel.code,
           campaignName: item.campaign?.name || '',
+          purpose: getMessagePurposeLabel(item.purpose),
           recipientName: item.recipientName || '',
           recipientValue: item.recipientValue,
           status: getLogStatusLabel(item.status),
@@ -313,6 +332,9 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
                         {log.campaign?.name || log.automationRule?.name || 'Gửi thủ công'}
                       </div>
                       <div className="mt-1 max-w-sm line-clamp-2 text-gray-500">{log.content}</div>
+                      <div className="mt-1 text-xs font-semibold text-gray-500">
+                        {getMessagePurposeLabel(log.purpose)}
+                      </div>
                       <div className="mt-2 flex flex-wrap gap-3 text-sm">
                         {log.campaign?.id ? (
                           <Link
@@ -353,7 +375,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
                     </td>
                     <td className="px-4 py-4 text-gray-500">
                       <div className="max-w-xs">
-                        {log.errorMessage || log.errorCode || 'Không có lỗi'}
+                        {getLogIssueSummary(log)}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right">

@@ -8,9 +8,13 @@ import {
   MessageAudiencePreviewResponse,
   CustomerSearchResponse,
   formatPercent,
+  getMessagePurposeHint,
+  getMessagePurposeLabel,
   MessageCampaignRecord,
+  MessagePurpose,
   MessagingOperationsDashboard,
   MessagingOperationsHealth,
+  messagePurposeOptions,
   MessageTemplateRecord,
   formatDateTime,
   messagingChannelOptions,
@@ -83,6 +87,7 @@ interface CustomerPick {
 
 const defaultSingleForm = {
   channelCode: 'SMS',
+  purpose: 'TRANSACTIONAL' as MessagePurpose,
   recipient: '',
   recipientName: '',
   userId: '',
@@ -94,6 +99,7 @@ const defaultSingleForm = {
 
 const defaultCampaignForm = {
   channelCode: 'SMS',
+  purpose: 'MARKETING' as MessagePurpose,
   name: '',
   source: 'CUSTOMERS',
   templateId: '',
@@ -334,6 +340,7 @@ export default function CustomerCareComposeClient() {
     try {
       await apiClientClient.post('/admin/messaging/send-single', {
         channelCode: singleForm.channelCode,
+        purpose: singleForm.purpose,
         recipient: singleForm.recipient,
         recipientName: singleForm.recipientName || undefined,
         userId: singleForm.userId || undefined,
@@ -359,6 +366,7 @@ export default function CustomerCareComposeClient() {
     try {
       await apiClientClient.post('/admin/messaging/campaigns', {
         channelCode: campaignForm.channelCode,
+        purpose: campaignForm.purpose,
         name: campaignForm.name,
         source: campaignForm.source,
         templateId: campaignForm.templateId || undefined,
@@ -567,6 +575,29 @@ export default function CustomerCareComposeClient() {
                 </label>
 
                 <label className="space-y-2">
+                  <span className="text-sm font-semibold text-gray-700">Loại gửi</span>
+                  <select
+                    value={singleForm.purpose}
+                    onChange={(event) =>
+                      setSingleForm((prev) => ({
+                        ...prev,
+                        purpose: event.target.value as MessagePurpose,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  >
+                    {messagePurposeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    {getMessagePurposeHint(singleForm.purpose as MessagePurpose)}
+                  </p>
+                </label>
+
+                <label className="space-y-2">
                   <span className="text-sm font-semibold text-gray-700">Template</span>
                   <select
                     value={singleForm.templateId}
@@ -733,6 +764,29 @@ export default function CustomerCareComposeClient() {
                     placeholder="Ví dụ: SMS khách mua tháng này"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                   />
+                </label>
+
+                <label className="space-y-2">
+                  <span className="text-sm font-semibold text-gray-700">Loại gửi</span>
+                  <select
+                    value={campaignForm.purpose}
+                    onChange={(event) =>
+                      setCampaignForm((prev) => ({
+                        ...prev,
+                        purpose: event.target.value as MessagePurpose,
+                      }))
+                    }
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  >
+                    {messagePurposeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500">
+                    {getMessagePurposeHint(campaignForm.purpose as MessagePurpose)}
+                  </p>
                 </label>
 
                 <label className="space-y-2">
@@ -1050,10 +1104,39 @@ export default function CustomerCareComposeClient() {
                   </div>
                 ) : audiencePreview ? (
                   <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
-                    {audiencePreview.totalCount} đối tượng
+                    {audiencePreview.totalCount} bản ghi / {audiencePreview.uniqueRecipientCount || audiencePreview.totalCount} số duy nhất
                   </div>
                 ) : null}
               </div>
+
+              {audiencePreview ? (
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl bg-gray-50 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Bản ghi hợp lệ
+                    </div>
+                    <div className="mt-2 text-lg font-bold text-gray-900">
+                      {audiencePreview.totalCount}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-emerald-50 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                      Số duy nhất sau dedupe
+                    </div>
+                    <div className="mt-2 text-lg font-bold text-emerald-900">
+                      {audiencePreview.uniqueRecipientCount || audiencePreview.totalCount}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+                      Bản ghi trùng bị gộp
+                    </div>
+                    <div className="mt-2 text-lg font-bold text-amber-900">
+                      {audiencePreview.duplicateRecipientCount || 0}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {!hasAudienceFilters ? (
                 <div className="mt-4 rounded-xl border border-dashed border-gray-200 px-4 py-8 text-sm text-gray-500">
@@ -1118,6 +1201,11 @@ export default function CustomerCareComposeClient() {
                   Chưa có dữ liệu preview cho bộ lọc hiện tại.
                 </div>
               )}
+
+              <div className="mt-4 rounded-xl border border-dashed border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                Loại gửi hiện tại: <span className="font-semibold">{getMessagePurposeLabel(campaignForm.purpose as MessagePurpose)}</span>.
+                <div className="mt-1 text-blue-800">{getMessagePurposeHint(campaignForm.purpose as MessagePurpose)}</div>
+              </div>
             </div>
           ) : null}
 
@@ -1201,7 +1289,9 @@ export default function CustomerCareComposeClient() {
                       {campaign.messageContent || 'Dùng template để gửi'}
                     </div>
                     <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                      <span>{campaign._count?.logs || 0} logs</span>
+                      <span>
+                        {getMessagePurposeLabel(campaign.purpose)} • {campaign._count?.logs || 0} logs
+                      </span>
                       <div className="flex items-center gap-2">
                         <Link
                           href={`/admin/customer-care/campaigns/${campaign.id}`}

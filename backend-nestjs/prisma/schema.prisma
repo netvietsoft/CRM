@@ -569,6 +569,7 @@ model MessageCampaign {
   name             String
   audienceSource   MessageAudienceSource  @default(MANUAL) @map("audience_source")
   sendMode         MessageSendMode        @default(IMMEDIATE) @map("send_mode")
+  purpose          MessagePurpose         @default(MARKETING)
   status           MessageCampaignStatus  @default(DRAFT)
   filters          Json?
   messageContent   String?                @map("message_content") @db.LongText
@@ -589,6 +590,7 @@ model MessageCampaign {
   schedules        MessageSchedule[]
 
   @@index([channelId, status])
+  @@index([purpose])
   @@index([storeId])
   @@index([templateId])
   @@index([providerConfigId])
@@ -621,6 +623,7 @@ model MessageAudience {
   logs              MessageLog[]
 
   @@index([campaignId])
+  @@index([campaignId, recipientValue])
   @@index([channelId, status])
   @@index([storeId])
   @@index([userId])
@@ -798,6 +801,7 @@ model MessageLog {
   createdById          String?                      @map("created_by_id")
   recipientName        String?                      @map("recipient_name")
   recipientValue       String                       @map("recipient_value")
+  purpose              MessagePurpose               @default(TRANSACTIONAL)
   content              String                       @db.LongText
   renderedVariables    Json?                        @map("rendered_variables")
   status               MessageLogStatus             @default(QUEUED)
@@ -835,6 +839,8 @@ model MessageLog {
   @@index([orderId])
   @@index([createdById])
   @@index([recipientValue])
+  @@index([channelId, recipientValue, purpose, createdAt], map: "msg_logs_recipient_purpose_created_idx")
+  @@index([channelId, recipientValue, purpose, status, createdAt], map: "msg_logs_recipient_purpose_status_created_idx")
   @@index([sentAt])
   @@map("message_logs")
 }
@@ -893,6 +899,12 @@ enum MessageSendMode {
   IMMEDIATE
   SCHEDULED
   AUTOMATED
+}
+
+enum MessagePurpose {
+  MARKETING
+  TRANSACTIONAL
+  OTP
 }
 
 enum MessageCampaignStatus {

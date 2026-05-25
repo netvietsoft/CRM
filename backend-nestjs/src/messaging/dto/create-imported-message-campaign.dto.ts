@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MessageChannelCode } from '@prisma/client';
+import { MessageChannelCode, MessagePurpose } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -61,6 +61,11 @@ export class CreateImportedMessageCampaignDto {
   @IsOptional()
   @IsString()
   messageContent?: string;
+
+  @ApiPropertyOptional({ enum: MessagePurpose, default: MessagePurpose.MARKETING })
+  @IsOptional()
+  @IsEnum(MessagePurpose)
+  purpose?: MessagePurpose;
 
   @ApiPropertyOptional()
   @IsOptional()

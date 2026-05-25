@@ -7,6 +7,7 @@ export type MessageChannelCode =
   | 'SHOPEE';
 
 export type MessageTemplateKind = 'PRESET' | 'CUSTOM';
+export type MessagePurpose = 'MARKETING' | 'TRANSACTIONAL' | 'OTP';
 export type MessageCampaignStatus =
   | 'DRAFT'
   | 'READY'
@@ -60,12 +61,14 @@ export interface MessageCampaignRecord {
   id: string;
   name: string;
   status: MessageCampaignStatus;
+  purpose?: MessagePurpose;
   audienceSource?: 'MANUAL' | 'FILTER' | 'IMPORT';
   messageContent?: string | null;
   scheduledAt?: string | null;
   sentAt?: string | null;
   createdAt: string;
   channel: MessageChannelSummary;
+  metadata?: Record<string, unknown> | null;
   template?: { id: string; name: string } | null;
   _count?: {
     audiences: number;
@@ -92,6 +95,8 @@ export interface MessageAudiencePreviewItem {
 
 export interface MessageAudiencePreviewResponse {
   totalCount: number;
+  uniqueRecipientCount?: number;
+  duplicateRecipientCount?: number;
   previewCount: number;
   previewLimit: number;
   source: RecipientSourceType;
@@ -200,6 +205,7 @@ export interface MessageLogRecord {
   id: string;
   recipientName?: string | null;
   recipientValue: string;
+  purpose?: MessagePurpose;
   content: string;
   status: MessageLogStatus;
   providerMessageId?: string | null;
@@ -376,6 +382,12 @@ export const templateKindOptions: Array<{ value: MessageTemplateKind; label: str
   { value: 'PRESET', label: 'Mẫu sẵn có' },
 ];
 
+export const messagePurposeOptions: Array<{ value: MessagePurpose; label: string; hint: string }> = [
+  { value: 'MARKETING', label: 'Marketing', hint: 'Bị giới hạn chống spam chặt nhất' },
+  { value: 'TRANSACTIONAL', label: 'Giao dịch', hint: 'Dùng cho chăm sóc hoặc thông báo nghiệp vụ' },
+  { value: 'OTP', label: 'OTP', hint: 'Dành cho xác thực, thường không dùng ở màn này' },
+];
+
 export const recipientSourceOptions: Array<{ value: RecipientSourceType; label: string }> = [
   { value: 'CUSTOMERS', label: 'Khách hàng' },
   { value: 'ORDERS', label: 'Đơn hàng' },
@@ -449,4 +461,30 @@ export function parseJsonInput<T>(value: string, fallback: T) {
 
 export function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+export function getMessagePurposeLabel(value?: MessagePurpose | null) {
+  if (value === 'MARKETING') {
+    return 'Marketing';
+  }
+  if (value === 'TRANSACTIONAL') {
+    return 'Giao dịch';
+  }
+  if (value === 'OTP') {
+    return 'OTP';
+  }
+  return '—';
+}
+
+export function getMessagePurposeHint(value?: MessagePurpose | null) {
+  if (value === 'MARKETING') {
+    return 'Có cooldown chống spam theo người nhận';
+  }
+  if (value === 'TRANSACTIONAL') {
+    return 'Phù hợp cho nhắc đơn, CSKH, thông báo nghiệp vụ';
+  }
+  if (value === 'OTP') {
+    return 'Dùng cho xác thực một lần';
+  }
+  return '';
 }

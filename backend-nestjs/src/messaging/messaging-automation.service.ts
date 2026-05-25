@@ -5,6 +5,7 @@ import {
   MessageAutomationTriggerType,
   MessageChannelCode,
   MessageLogStatus,
+  MessagePurpose,
   OrderStatus,
   PaymentStatus,
   Prisma,
@@ -356,6 +357,7 @@ export class MessagingAutomationService {
     try {
       const messageLog = await this.messagingService.queueMessage({
         channelCode: rule.channel.code as MessageChannelCode,
+        purpose: MessagePurpose.TRANSACTIONAL,
         recipient: audienceRecord.recipient,
         recipientName: audienceRecord.recipientName,
         storeId: audienceRecord.storeId || rule.storeId || undefined,

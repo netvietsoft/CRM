@@ -3,7 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
-import { formatDateTime, logStatusOptions, MessageLogRecord } from '@/lib/adminMessaging';
+import {
+  formatDateTime,
+  getMessagePurposeHint,
+  getMessagePurposeLabel,
+  logStatusOptions,
+  MessageLogRecord,
+} from '@/lib/adminMessaging';
 
 interface CustomerCareLogDetailClientProps {
   logId: string;
@@ -40,6 +46,11 @@ export default function CustomerCareLogDetailClient({
   const [log, setLog] = useState<MessageLogRecord | null>(initialLog);
   const [loading, setLoading] = useState(!initialLog);
   const [retrying, setRetrying] = useState(false);
+  const skippedReason = typeof log?.metadata?.skippedReason === 'string' ? log.metadata.skippedReason : null;
+  const cooldownWindowMs =
+    typeof log?.metadata?.cooldownWindowMs === 'number' ? log.metadata.cooldownWindowMs : null;
+  const latestMessageAt =
+    typeof log?.metadata?.latestMessageAt === 'string' ? log.metadata.latestMessageAt : null;
 
   useEffect(() => {
     if (initialLog) {
@@ -136,7 +147,17 @@ export default function CustomerCareLogDetailClient({
               </div>
             ) : null}
 
-            <div className="grid gap-4 lg:grid-cols-4">
+            {log.status === 'SKIPPED' && skippedReason === 'RECIPIENT_COOLDOWN' ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <div className="font-semibold">Tin nhắn bị chặn bởi cooldown chống spam</div>
+                <div className="mt-1">
+                  {cooldownWindowMs ? `Cửa sổ chặn hiện tại: ${Math.round(cooldownWindowMs / 3600000)} giờ.` : null}
+                  {latestMessageAt ? ` Lần gửi gần nhất: ${formatDateTime(latestMessageAt)}.` : null}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid gap-4 lg:grid-cols-5">
               <div className="rounded-xl bg-gray-50 p-4 lg:col-span-2">
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
                   Người nhận
@@ -163,6 +184,14 @@ export default function CustomerCareLogDetailClient({
                   Kênh gửi
                 </div>
                 <div className="mt-2 text-sm font-bold text-emerald-900">{log.channel.code}</div>
+              </div>
+              <div className="rounded-xl bg-violet-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-violet-500">
+                  Loại gửi
+                </div>
+                <div className="mt-2 text-sm font-bold text-violet-900">
+                  {getMessagePurposeLabel(log.purpose)}
+                </div>
               </div>
             </div>
 
@@ -217,6 +246,9 @@ export default function CustomerCareLogDetailClient({
                       Template: <span className="font-semibold text-gray-900">{log.template?.name || '—'}</span>
                     </div>
                     <div>
+                      Loại gửi: <span className="font-semibold text-gray-900">{getMessagePurposeLabel(log.purpose)}</span>
+                    </div>
+                    <div>
                       Tin tự động:{' '}
                       {log.automationRule?.id ? (
                         <Link
@@ -253,6 +285,7 @@ export default function CustomerCareLogDetailClient({
                     <div>Provider message ID: {log.providerMessageId || '—'}</div>
                     <div>Mã lỗi: {log.errorCode || '—'}</div>
                     <div>Nội dung lỗi: {log.errorMessage || 'Không có lỗi'}</div>
+                    <div>Ghi chú loại gửi: {getMessagePurposeHint(log.purpose)}</div>
                   </div>
                 </div>
 

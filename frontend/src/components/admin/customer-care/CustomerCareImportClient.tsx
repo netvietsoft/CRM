@@ -5,8 +5,12 @@ import { ChangeEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import {
+  getMessagePurposeHint,
+  getMessagePurposeLabel,
   MessageCampaignRecord,
+  MessagePurpose,
   MessageTemplateRecord,
+  messagePurposeOptions,
   messagingChannelOptions,
   parseJsonInput,
 } from '@/lib/adminMessaging';
@@ -27,6 +31,7 @@ interface CustomerCareImportClientProps {
 
 const defaultForm = {
   channelCode: 'SMS',
+  purpose: 'MARKETING' as MessagePurpose,
   name: '',
   templateId: '',
   messageContent: '',
@@ -275,6 +280,7 @@ export default function CustomerCareImportClient({
         '/admin/messaging/campaigns/import',
         {
           channelCode: form.channelCode,
+          purpose: form.purpose,
           name: form.name.trim(),
           templateId: form.templateId || undefined,
           messageContent: form.messageContent.trim() || undefined,
@@ -499,6 +505,11 @@ export default function CustomerCareImportClient({
                   </div>
                 </div>
 
+                <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                  Loại gửi cho file import: <span className="font-semibold">{getMessagePurposeLabel(form.purpose as MessagePurpose)}</span>
+                  <div className="mt-1 text-blue-800">{getMessagePurposeHint(form.purpose as MessagePurpose)}</div>
+                </div>
+
                 <div className="rounded-2xl border border-gray-200 p-5">
                   <h2 className="text-lg font-bold text-gray-900">Preview dữ liệu hợp lệ</h2>
                   <p className="mt-1 text-sm text-gray-500">
@@ -628,6 +639,7 @@ export default function CustomerCareImportClient({
                       <span className="text-gray-500">
                         {campaign._count?.audiences || 0} người nhận
                       </span>
+                      <span className="text-gray-500">{getMessagePurposeLabel(campaign.purpose)}</span>
                       <span className="text-gray-500">{campaign.channel.code}</span>
                     </div>
                   </div>
@@ -673,6 +685,27 @@ export default function CustomerCareImportClient({
                 placeholder="Ví dụ: Import khách hàng chiến dịch cuối tuần"
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
               />
+            </label>
+
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-gray-700">Loại gửi</span>
+              <select
+                value={form.purpose}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    purpose: event.target.value as MessagePurpose,
+                  }))
+                }
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              >
+                {messagePurposeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">{getMessagePurposeHint(form.purpose as MessagePurpose)}</p>
             </label>
 
             <label className="block space-y-2">
@@ -741,7 +774,7 @@ export default function CustomerCareImportClient({
             <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
               {!parsedFile
                 ? 'Chưa có file để tạo campaign'
-                : `${validRecipients.length} dòng hợp lệ sẽ được dùng để tạo campaign`}
+                : `${validRecipients.length} dòng hợp lệ, ${uniqueRecipientCount} số duy nhất và ${duplicateRecipientCount} dòng trùng sẽ được gộp trước khi tạo campaign`}
             </div>
             <button
               type="submit"

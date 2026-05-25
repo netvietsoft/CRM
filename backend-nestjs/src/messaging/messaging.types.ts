@@ -1,4 +1,4 @@
-import { MessageChannelCode, Prisma } from '@prisma/client';
+import { MessageChannelCode, MessagePurpose, Prisma } from '@prisma/client';
 
 export interface MessageRecipientValidationResult {
   isValid: boolean;
@@ -48,6 +48,7 @@ export interface RenderedMessageContent {
 
 export interface QueueMessageInput {
   channelCode: MessageChannelCode;
+  purpose?: MessagePurpose;
   recipient: string;
   recipientName?: string;
   audienceId?: string;
@@ -67,6 +68,7 @@ export interface QueueMessageInput {
 
 export interface PreviewMessageInput {
   channelCode: MessageChannelCode;
+  purpose?: MessagePurpose;
   recipient?: string;
   storeId?: string;
   userId?: string;

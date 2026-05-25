@@ -11,6 +11,7 @@ import {
   MessageCampaignStatus,
   MessageChannelCode,
   MessageLogStatus,
+  MessagePurpose,
   MessageScheduleStatus,
   MessageSendMode,
   MessageTemplateKind,
@@ -40,6 +41,7 @@ import { UpdateMessageScheduleDto } from './dto/update-message-schedule.dto';
 import { UpdateMessageTemplateDto } from './dto/update-message-template.dto';
 import { UpdateSmsProviderConfigDto } from './dto/update-sms-provider-config.dto';
 import { MessagingAudienceService } from './messaging-audience.service';
+import { MessagingProviderRegistryService } from './messaging-provider-registry.service';
 
 interface CampaignAudienceInput {
   storeId?: string | null;
@@ -59,6 +61,7 @@ export class MessagingAdminService {
     private readonly messagingService: MessagingService,
     private readonly audienceService: MessagingAudienceService,
     private readonly smsService: SmsService,
+    private readonly providerRegistry: MessagingProviderRegistryService,
   ) {}
 
   async getOperationsDashboard(effectiveStoreId: string | null, days?: number) {
@@ -578,9 +581,12 @@ export class MessagingAdminService {
         paymentStatus: this.getString(snapshot.paymentStatus) || null,
       };
     });
+    const uniqueRecipients = new Set(items.map((item) => item.recipient.toLowerCase()));
 
     return {
       totalCount: items.length,
+      uniqueRecipientCount: uniqueRecipients.size,
+      duplicateRecipientCount: items.length - uniqueRecipients.size,
       previewCount: items.length,
       previewLimit,
       source: dto.source,
@@ -597,6 +603,7 @@ export class MessagingAdminService {
   ) {
     const messageLog = await this.messagingService.queueMessage({
       channelCode: dto.channelCode,
+      purpose: dto.purpose || MessagePurpose.TRANSACTIONAL,
       recipient: dto.recipient,
       recipientName: dto.recipientName,
       storeId: effectiveStoreId || undefined,
@@ -659,6 +666,17 @@ export class MessagingAdminService {
       throw new BadRequestException('Khong tim thay nguoi nhan hop le');
     }
 
+    const deduplicatedAudiences = this.dedupeCampaignAudiences(
+      audienceRecords.map((audienceRecord) => ({
+        storeId: audienceRecord.storeId || effectiveStoreId || null,
+        userId: audienceRecord.userId || null,
+        orderId: audienceRecord.orderId || null,
+        recipientName: audienceRecord.recipientName || null,
+        recipientValue: audienceRecord.recipient,
+        snapshotData: this.toJsonValue(audienceRecord.snapshotData),
+      })),
+    );
+
     return this.createCampaignFromAudienceInputs(
       actorId,
       actorRole,
@@ -669,6 +687,7 @@ export class MessagingAdminService {
         providerConfigId: providerConfig?.id || null,
         name: dto.name,
         audienceSource: MessageAudienceSource.FILTER,
+        purpose: dto.purpose || MessagePurpose.MARKETING,
         filters: dto.filters,
         messageContent: dto.messageContent || template?.content,
         scheduledAt: dto.scheduledAt,
@@ -676,16 +695,14 @@ export class MessagingAdminService {
           ...(dto.metadata || {}),
           templateVariables: dto.templateVariables || {},
           source: dto.source,
+          audienceSummary: {
+            originalCount: audienceRecords.length,
+            deduplicatedCount: deduplicatedAudiences.length,
+            duplicateCount: audienceRecords.length - deduplicatedAudiences.length,
+          },
         },
       },
-      audienceRecords.map((audienceRecord) => ({
-        storeId: audienceRecord.storeId || effectiveStoreId || null,
-        userId: audienceRecord.userId || null,
-        orderId: audienceRecord.orderId || null,
-        recipientName: audienceRecord.recipientName || null,
-        recipientValue: audienceRecord.recipient,
-        snapshotData: this.toJsonValue(audienceRecord.snapshotData),
-      })),
+      deduplicatedAudiences,
     );
   }
 
@@ -704,7 +721,11 @@ export class MessagingAdminService {
     const providerConfig = dto.providerConfigId
       ? await this.requireScopedProviderConfig(dto.providerConfigId, channel.id, effectiveStoreId)
       : null;
-    const importedAudiences = this.normalizeImportedRecipients(dto.recipients, effectiveStoreId);
+    const importedAudiences = await this.normalizeImportedRecipients(
+      dto.channelCode,
+      dto.recipients,
+      effectiveStoreId,
+    );
 
     if (importedAudiences.length === 0) {
       throw new BadRequestException('Khong tim thay nguoi nhan hop le trong file import');
@@ -720,6 +741,7 @@ export class MessagingAdminService {
         providerConfigId: providerConfig?.id || null,
         name: dto.name,
         audienceSource: MessageAudienceSource.IMPORT,
+        purpose: dto.purpose || MessagePurpose.MARKETING,
         filters: null,
         messageContent: dto.messageContent || template?.content,
         scheduledAt: dto.scheduledAt,
@@ -729,6 +751,7 @@ export class MessagingAdminService {
           importSummary: {
             originalCount: dto.recipients.length,
             validCount: importedAudiences.length,
+            duplicateCount: dto.recipients.length - importedAudiences.length,
           },
           source: 'IMPORT',
         },
@@ -1195,6 +1218,7 @@ export class MessagingAdminService {
 
     const retryLog = await this.messagingService.queueMessage({
       channelCode: log.channel.code,
+      purpose: log.purpose,
       recipient: log.recipientValue,
       recipientName: log.recipientName || undefined,
       audienceId: log.audienceId || undefined,
@@ -1698,6 +1722,7 @@ export class MessagingAdminService {
         try {
           const messageLog = await this.messagingService.queueMessage({
             channelCode: campaign.channel.code,
+            purpose: campaign.purpose,
             recipient: audience.recipientValue,
             recipientName: audience.recipientName || undefined,
             audienceId: audience.id,
@@ -1757,6 +1782,7 @@ export class MessagingAdminService {
               createdById: campaign.createdById || null,
               recipientName: audience.recipientName || null,
               recipientValue: audience.recipientValue,
+              purpose: campaign.purpose,
               content: campaign.messageContent || '',
               renderedVariables: this.toJsonValue(templateVariables),
               status: MessageLogStatus.FAILED,
@@ -1839,6 +1865,7 @@ export class MessagingAdminService {
       providerConfigId: string | null;
       name: string;
       audienceSource: MessageAudienceSource;
+      purpose: MessagePurpose;
       filters: unknown;
       messageContent?: string | null;
       scheduledAt?: string | null;
@@ -1854,6 +1881,7 @@ export class MessagingAdminService {
 
     const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
     const isScheduled = !!scheduledAt && scheduledAt.getTime() > Date.now();
+    this.ensureBulkDispatchCapacity(audiences.length, input.purpose);
     const campaignStatus = isScheduled
       ? MessageCampaignStatus.SCHEDULED
       : MessageCampaignStatus.READY;
@@ -1872,6 +1900,7 @@ export class MessagingAdminService {
           name: input.name,
           audienceSource: input.audienceSource,
           sendMode,
+          purpose: input.purpose,
           status: campaignStatus,
           filters: this.toJsonValue(input.filters),
           messageContent: contentSnapshot,
@@ -1972,10 +2001,12 @@ export class MessagingAdminService {
     };
   }
 
-  private normalizeImportedRecipients(
+  private async normalizeImportedRecipients(
+    channelCode: MessageChannelCode,
     recipients: ImportedMessageRecipientDto[],
     effectiveStoreId: string | null,
   ) {
+    const provider = this.providerRegistry.getProvider(channelCode);
     const uniqueRecipients = new Map<string, CampaignAudienceInput>();
 
     for (const recipient of recipients) {
@@ -1985,7 +2016,12 @@ export class MessagingAdminService {
         continue;
       }
 
-      const dedupeKey = recipientValue.toLowerCase();
+      const validation = await provider.validateRecipient(recipientValue);
+      if (!validation.isValid || !validation.normalizedRecipient) {
+        continue;
+      }
+
+      const dedupeKey = validation.normalizedRecipient.toLowerCase();
 
       if (uniqueRecipients.has(dedupeKey)) {
         continue;
@@ -1996,9 +2032,10 @@ export class MessagingAdminService {
         userId: recipient.userId?.trim() || null,
         orderId: recipient.orderId?.trim() || null,
         recipientName: recipient.recipientName?.trim() || null,
-        recipientValue,
+        recipientValue: validation.normalizedRecipient,
         snapshotData: this.toJsonValue({
           source: 'IMPORT',
+          normalizedRecipient: validation.normalizedRecipient,
           ...(recipient.metadata || {}),
         }),
       });
@@ -2077,6 +2114,44 @@ export class MessagingAdminService {
     }
 
     return MessageAudienceStatus.QUEUED;
+  }
+
+  private dedupeCampaignAudiences(audiences: CampaignAudienceInput[]) {
+    const uniqueAudiences = new Map<string, CampaignAudienceInput>();
+
+    for (const audience of audiences) {
+      const recipientValue = audience.recipientValue.trim();
+      if (!recipientValue) {
+        continue;
+      }
+
+      const dedupeKey = recipientValue.toLowerCase();
+      if (uniqueAudiences.has(dedupeKey)) {
+        continue;
+      }
+
+      uniqueAudiences.set(dedupeKey, {
+        ...audience,
+        recipientValue,
+      });
+    }
+
+    return Array.from(uniqueAudiences.values());
+  }
+
+  private ensureBulkDispatchCapacity(audienceCount: number, purpose: MessagePurpose) {
+    const maxInlineRecipients = Math.max(
+      Number(process.env.MESSAGING_INLINE_BULK_MAX_RECIPIENTS || 20),
+      0,
+    );
+
+    if (this.messagingService.isDispatchQueueAvailable() || audienceCount <= maxInlineRecipients) {
+      return;
+    }
+
+    throw new BadRequestException(
+      `Campaign ${purpose} co ${audienceCount} nguoi nhan, vuot gioi han ${maxInlineRecipients} khi Redis queue chua san sang`,
+    );
   }
 
   private async isCampaignDispatchStopped(campaignId: string) {

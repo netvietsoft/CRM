@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MessageChannelCode } from '@prisma/client';
+import { MessageChannelCode, MessagePurpose } from '@prisma/client';
 import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class SendSingleMessageDto {
@@ -40,6 +40,11 @@ export class SendSingleMessageDto {
   @IsOptional()
   @IsString()
   messageContent?: string;
+
+  @ApiPropertyOptional({ enum: MessagePurpose, default: MessagePurpose.TRANSACTIONAL })
+  @IsOptional()
+  @IsEnum(MessagePurpose)
+  purpose?: MessagePurpose;
 
   @ApiPropertyOptional()
   @IsOptional()

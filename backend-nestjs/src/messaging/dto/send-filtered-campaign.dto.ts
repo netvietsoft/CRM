@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MessageChannelCode, OrderStatus, PaymentStatus, Rank } from '@prisma/client';
+import { MessageChannelCode, MessagePurpose, OrderStatus, PaymentStatus, Rank } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -138,6 +138,11 @@ export class SendFilteredCampaignDto {
   @IsOptional()
   @IsString()
   messageContent?: string;
+
+  @ApiPropertyOptional({ enum: MessagePurpose, default: MessagePurpose.MARKETING })
+  @IsOptional()
+  @IsEnum(MessagePurpose)
+  purpose?: MessagePurpose;
 
   @ApiPropertyOptional({ type: AudienceFilterDto })
   @IsOptional()

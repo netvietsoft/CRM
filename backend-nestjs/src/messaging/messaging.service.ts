@@ -13,6 +13,7 @@ import {
   MessageChannelCode,
   MessageLog,
   MessageLogStatus,
+  MessagePurpose,
   MessageScheduleStatus,
   Prisma,
 } from '@prisma/client';
@@ -48,9 +49,11 @@ export class MessagingService {
 
   async previewMessage(input: PreviewMessageInput) {
     const preparedMessage = await this.prepareMessage(input);
+    const purpose = this.resolveMessagePurpose(input.purpose);
 
     return {
       channelCode: input.channelCode,
+      purpose,
       templateId: preparedMessage.template?.id || null,
       providerConfigId: preparedMessage.providerConfig?.id || null,
       recipient: preparedMessage.recipientValidation?.normalizedRecipient || null,
@@ -67,6 +70,7 @@ export class MessagingService {
     const preparedMessage = await this.prepareMessage(input);
     const { channel, template, providerConfig, recipientValidation, renderedContent } =
       preparedMessage;
+    const purpose = this.resolveMessagePurpose(input.purpose);
 
     this.validator.validatePayload(input.channelCode, recipientValidation!, renderedContent);
 
@@ -81,6 +85,7 @@ export class MessagingService {
         content: renderedContent.content,
         campaignId: input.campaignId,
         automationRuleId: input.automationRuleId,
+        purpose,
         storeId: input.storeId,
         userId: input.userId,
         orderId: input.orderId,
@@ -91,6 +96,7 @@ export class MessagingService {
     const baseMetadata = this.mergeJsonObjects(input.metadata, {
       source: 'messaging-core',
       channelCode: input.channelCode,
+      purpose,
     });
 
     if (activeOptOut) {
@@ -101,6 +107,7 @@ export class MessagingService {
         providerConfigId: providerConfig?.id,
         idempotencyKey,
         recipientValue,
+        purpose,
         content: renderedContent.content,
         renderedVariables: renderedContent.renderedVariables,
         metadata: this.mergeJsonObjects(baseMetadata, {
@@ -117,6 +124,34 @@ export class MessagingService {
       return messageLog;
     }
 
+    const cooldownConflict = await this.findCooldownConflict(channel.id, recipientValue, purpose);
+    if (cooldownConflict) {
+      const { messageLog } = await this.createMessageLog({
+        input,
+        channelId: channel.id,
+        templateId: template?.id,
+        providerConfigId: providerConfig?.id,
+        idempotencyKey,
+        recipientValue,
+        purpose,
+        content: renderedContent.content,
+        renderedVariables: renderedContent.renderedVariables,
+        metadata: this.mergeJsonObjects(baseMetadata, {
+          skippedReason: 'RECIPIENT_COOLDOWN',
+          cooldownWindowMs: cooldownConflict.windowMs,
+          cooldownMaxMessages: cooldownConflict.maxMessages,
+          recentMessageLogIds: cooldownConflict.logIds,
+          latestMessageAt: cooldownConflict.latestCreatedAt?.toISOString() || null,
+        }),
+        status: MessageLogStatus.SKIPPED,
+        queuedAt: new Date(),
+        errorCode: 'RECIPIENT_COOLDOWN',
+        errorMessage: `Recipient exceeded ${purpose} cooldown policy`,
+      });
+
+      return messageLog;
+    }
+
     const { messageLog, deduplicated } = await this.createMessageLog({
       input,
       channelId: channel.id,
@@ -124,6 +159,7 @@ export class MessagingService {
       providerConfigId: providerConfig?.id,
       idempotencyKey,
       recipientValue,
+      purpose,
       content: renderedContent.content,
       renderedVariables: renderedContent.renderedVariables,
       metadata: baseMetadata,
@@ -156,6 +192,10 @@ export class MessagingService {
       this.logger.warn(`Queue unavailable for ${messageLog.id}, fallback to inline dispatch`);
       return (await this.processDispatchJob(jobData, 1, this.getAttemptLimit())) || messageLog;
     }
+  }
+
+  isDispatchQueueAvailable() {
+    return !!this.dispatchQueue;
   }
 
   private async prepareMessage(input: PreviewMessageInput) {
@@ -319,6 +359,7 @@ export class MessagingService {
     providerConfigId?: string;
     idempotencyKey: string;
     recipientValue: string;
+    purpose: MessagePurpose;
     content: string;
     renderedVariables: Record<string, string>;
     metadata: Prisma.InputJsonValue | undefined;
@@ -343,6 +384,7 @@ export class MessagingService {
           createdById: params.input.createdById,
           recipientName: params.input.recipientName,
           recipientValue: params.recipientValue,
+          purpose: params.purpose,
           content: params.content,
           renderedVariables: params.renderedVariables,
           status: params.status,
@@ -620,6 +662,7 @@ export class MessagingService {
     content: string;
     campaignId?: string;
     automationRuleId?: string;
+    purpose: MessagePurpose;
     storeId?: string;
     userId?: string;
     orderId?: string;
@@ -634,6 +677,7 @@ export class MessagingService {
           content: input.content,
           campaignId: input.campaignId,
           automationRuleId: input.automationRuleId,
+          purpose: input.purpose,
           storeId: input.storeId,
           userId: input.userId,
           orderId: input.orderId,
@@ -645,6 +689,64 @@ export class MessagingService {
 
   private getAttemptLimit(): number {
     return Number(process.env.MESSAGING_QUEUE_ATTEMPTS || 3);
+  }
+
+  private resolveMessagePurpose(purpose?: MessagePurpose) {
+    return purpose || MessagePurpose.TRANSACTIONAL;
+  }
+
+  private async findCooldownConflict(
+    channelId: string,
+    recipientValue: string,
+    purpose: MessagePurpose,
+  ) {
+    if (!recipientValue) {
+      return null;
+    }
+
+    const cooldownConfig = this.getCooldownConfig(purpose);
+    if (cooldownConfig.windowMs <= 0 || cooldownConfig.maxMessages <= 0) {
+      return null;
+    }
+
+    const since = new Date(Date.now() - cooldownConfig.windowMs);
+    const recentLogs = await this.prisma.messageLog.findMany({
+      where: {
+        channelId,
+        recipientValue,
+        purpose,
+        status: {
+          in: [
+            MessageLogStatus.QUEUED,
+            MessageLogStatus.SENT,
+            MessageLogStatus.DELIVERED,
+            MessageLogStatus.READ,
+          ],
+        },
+        createdAt: {
+          gte: since,
+        },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: cooldownConfig.maxMessages,
+    });
+
+    if (recentLogs.length < cooldownConfig.maxMessages) {
+      return null;
+    }
+
+    return {
+      windowMs: cooldownConfig.windowMs,
+      maxMessages: cooldownConfig.maxMessages,
+      logIds: recentLogs.map((log) => log.id),
+      latestCreatedAt: recentLogs[0]?.createdAt || null,
+    };
   }
 
   private async calculateDispatchDelay(): Promise<number> {
@@ -887,5 +989,32 @@ export class MessagingService {
     }
 
     return Math.min(Math.max(rawValue, 0), 1);
+  }
+
+  private getCooldownConfig(purpose: MessagePurpose) {
+    if (purpose === MessagePurpose.MARKETING) {
+      return {
+        windowMs: Math.max(Number(process.env.MESSAGING_MARKETING_COOLDOWN_MS || 86400000), 0),
+        maxMessages: Math.max(
+          Number(process.env.MESSAGING_MARKETING_COOLDOWN_MAX_MESSAGES || 1),
+          0,
+        ),
+      };
+    }
+
+    if (purpose === MessagePurpose.OTP) {
+      return {
+        windowMs: Math.max(Number(process.env.MESSAGING_OTP_COOLDOWN_MS || 0), 0),
+        maxMessages: Math.max(Number(process.env.MESSAGING_OTP_COOLDOWN_MAX_MESSAGES || 0), 0),
+      };
+    }
+
+    return {
+      windowMs: Math.max(Number(process.env.MESSAGING_TRANSACTIONAL_COOLDOWN_MS || 0), 0),
+      maxMessages: Math.max(
+        Number(process.env.MESSAGING_TRANSACTIONAL_COOLDOWN_MAX_MESSAGES || 0),
+        0,
+      ),
+    };
   }
 }

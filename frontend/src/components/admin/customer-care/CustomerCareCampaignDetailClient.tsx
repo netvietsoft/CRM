@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
-import { formatDateTime, MessageCampaignDetailRecord } from '@/lib/adminMessaging';
+import {
+  formatDateTime,
+  getMessagePurposeHint,
+  getMessagePurposeLabel,
+  MessageCampaignDetailRecord,
+} from '@/lib/adminMessaging';
 
 export default function CustomerCareCampaignDetailClient({ campaignId }: { campaignId: string }) {
   const [campaign, setCampaign] = useState<MessageCampaignDetailRecord | null>(null);
@@ -76,6 +81,8 @@ export default function CustomerCareCampaignDetailClient({ campaignId }: { campa
                   <span>{campaign.audienceSource}</span>
                   <span>•</span>
                   <span>{campaign.sendMode}</span>
+                  <span>•</span>
+                  <span>{getMessagePurposeLabel(campaign.purpose)}</span>
                 </div>
               </div>
               <div className="rounded-xl bg-blue-50 p-4">
@@ -120,6 +127,67 @@ export default function CustomerCareCampaignDetailClient({ campaignId }: { campa
                 </div>
               </div>
             </div>
+
+            <div className="rounded-xl border border-dashed border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+              Loại gửi của campaign: <span className="font-semibold">{getMessagePurposeLabel(campaign.purpose)}</span>
+              <div className="mt-1 text-blue-800">{getMessagePurposeHint(campaign.purpose)}</div>
+            </div>
+
+            {campaign.metadata?.audienceSummary ? (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Bản ghi nguồn
+                  </div>
+                  <div className="mt-2 text-lg font-bold text-gray-900">
+                    {String((campaign.metadata.audienceSummary as Record<string, unknown>).originalCount || '—')}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-emerald-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                    Sau dedupe
+                  </div>
+                  <div className="mt-2 text-lg font-bold text-emerald-900">
+                    {String((campaign.metadata.audienceSummary as Record<string, unknown>).deduplicatedCount || '—')}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+                    Bị gộp do trùng
+                  </div>
+                  <div className="mt-2 text-lg font-bold text-amber-900">
+                    {String((campaign.metadata.audienceSummary as Record<string, unknown>).duplicateCount || 0)}
+                  </div>
+                </div>
+              </div>
+            ) : campaign.metadata?.importSummary ? (
+              <div className="grid gap-4 lg:grid-cols-3">
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Dòng file gốc
+                  </div>
+                  <div className="mt-2 text-lg font-bold text-gray-900">
+                    {String((campaign.metadata.importSummary as Record<string, unknown>).originalCount || '—')}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-emerald-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                    Dòng hợp lệ
+                  </div>
+                  <div className="mt-2 text-lg font-bold text-emerald-900">
+                    {String((campaign.metadata.importSummary as Record<string, unknown>).validCount || '—')}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+                    Dòng trùng bị gộp
+                  </div>
+                  <div className="mt-2 text-lg font-bold text-amber-900">
+                    {String((campaign.metadata.importSummary as Record<string, unknown>).duplicateCount || 0)}
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="rounded-xl bg-gray-50 p-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
