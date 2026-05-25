@@ -77,6 +77,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [copied, setCopied] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const [navigatingSlug, setNavigatingSlug] = useState<string | null>(null);
   const relatedScrollRef = useRef<HTMLDivElement>(null);
 
@@ -176,6 +177,15 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
   const discountPercent = hasDiscount
     ? Math.round((1 - (currentPrice / product.originalPrice)) * 100)
     : 0;
+  const normalizedProductImageUrl =
+    typeof product.imageUrl === 'string' &&
+    product.imageUrl.trim() &&
+    product.imageUrl.trim().toLowerCase() !== 'null' &&
+    product.imageUrl.trim().toLowerCase() !== 'undefined'
+      ? product.imageUrl.trim()
+      : null;
+  const hasValidMainImage =
+    Boolean(normalizedProductImageUrl) && failedImageSrc !== normalizedProductImageUrl;
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -315,27 +325,30 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
         </div>
 
         <div className="mb-12">
-          <div className="flex flex-col md:flex-row items-start gap-6 md:gap-14">
+          <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[340px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[360px_minmax(0,720px)] lg:gap-12">
             {/* Left: Image Box */}
-            <div className="flex-shrink-0 relative w-full md:w-auto flex justify-center md:justify-start pt-2 md:pt-8 md:pl-10">
-              {product.imageUrl ? (
-                <div className="relative w-[85%] sm:w-full max-w-[280px] aspect-[3/4]">
+            <div className="relative flex w-full justify-center pt-2 md:justify-start md:pt-6 md:pl-6">
+              <div className="relative w-[85%] sm:w-full md:w-[320px] md:min-w-[320px] aspect-[3/4] overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-br from-gray-100 via-white to-gray-50 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.45)]">
+                {hasValidMainImage && normalizedProductImageUrl ? (
                   <Image
                     loader={passthroughImageLoader}
                     unoptimized
-                    src={product.imageUrl}
+                    src={normalizedProductImageUrl}
                     alt={product.name}
                     fill
                     sizes="(max-width: 640px) 85vw, 280px"
                     onClick={() => setIsImageModalOpen(true)}
+                    onError={() => setFailedImageSrc(normalizedProductImageUrl)}
                     className="object-cover rounded-2xl shadow-xl cursor-pointer hover:opacity-90 transition-opacity"
                   />
-                </div>
-              ) : (
-                <div className="w-full max-w-[280px] aspect-[3/4] bg-gray-200 rounded-2xl flex items-center justify-center shadow-xl">
-                  <span className="text-6xl">📦</span>
-                </div>
-              )}
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+                    <span className="text-6xl">📦</span>
+                    <div className="mt-4 text-sm font-semibold text-gray-700">Sản phẩm chưa có hình ảnh</div>
+                    <div className="mt-1 text-xs text-gray-500">Vui lòng quay lại sau hoặc liên hệ cửa hàng để được hỗ trợ.</div>
+                  </div>
+                )}
+              </div>
 
               {hasDiscount && (
                 <div className="absolute top-6 left-6 bg-red-500 text-white font-bold px-4 py-2 rounded-full shadow-lg">
@@ -345,11 +358,11 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
             </div>
 
             {/* Right: Info Box */}
-            <div className="flex-1 lg:pt-8 py-4 md:pl-0 w-full">
-              <div className="flex justify-between items-start mb-3">
-                <div>
+            <div className="w-full py-3 md:pt-6">
+              <div className="mb-3 flex items-start justify-between gap-4">
+                <div className="min-w-0">
                   {/* Category & Store Track */}
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
                     {product.categories.length > 0 && (
                       <div className="flex items-center gap-2">
                         {product.categories.map((c, idx) => (
@@ -392,16 +405,16 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                       </>
                     )}
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                  <h1 className="max-w-xl text-3xl font-bold text-gray-900 leading-tight">
                     {product.name}
                   </h1>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50/80 p-1.5">
                   <button
                     onClick={handleShareProduct}
-                    className={`p-2 rounded-full transition-all duration-300 ${copied
+                    className={`rounded-full p-2 transition-all duration-300 ${copied
                         ? 'bg-green-50 text-green-500'
-                        : 'hover:bg-blue-50 text-gray-400 hover:text-blue-500'
+                        : 'text-gray-400 hover:bg-blue-50 hover:text-blue-500'
                       }`}
                     title="Chia sẻ sản phẩm"
                   >
@@ -409,21 +422,21 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                   </button>
                   <button
                     onClick={toggleWishlist}
-                    className="p-2 rounded-full hover:bg-red-50 transition-colors"
+                    className="rounded-full p-2 transition-colors hover:bg-red-50"
                   >
                     <Heart
-                      className={`w-6 h-6 transition-colors ${isWishlist ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
+                      className={`h-5 w-5 transition-colors ${isWishlist ? 'fill-red-500 text-red-500' : 'text-gray-400'}`}
                     />
                   </button>
                 </div>
               </div>
 
               {product.sku && (
-                <p className="text-xs text-gray-500 font-mono mb-3">SKU: {product.sku}</p>
+                <p className="mb-3 text-xs font-mono text-gray-500">SKU: {product.sku}</p>
               )}
 
               {/* Price */}
-              <div className="mb-5 flex items-end gap-3">
+              <div className="mb-6 flex flex-wrap items-end gap-3">
                 <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
                   {formatCurrency(currentPrice)}
                 </span>
@@ -439,7 +452,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
 
               {/* Sizes */}
               {availableSizes.length > 0 && (
-                <div className="mb-4">
+                <div className="mb-5">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold text-gray-900 text-sm">Kích thước</span>
                   </div>
@@ -464,7 +477,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
 
               {/* Colors */}
               {availableColors.length > 0 && (
-                <div className="mb-5">
+                <div className="mb-6">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold text-gray-900 text-sm">Màu sắc</span>
                     {selectedSizeId && (
@@ -499,8 +512,8 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
               )}
 
               {/* Quantity & Add to Cart */}
-              <div className="flex gap-3 mb-6">
-                <div className="flex items-center w-28 bg-gray-50 border border-gray-200 rounded-xl overflow-hidden">
+              <div className="mb-6 grid grid-cols-1 gap-3 lg:grid-cols-[140px_minmax(0,1fr)_minmax(0,1fr)]">
+                <div className="flex w-28 items-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 lg:w-auto">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
@@ -525,7 +538,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                 <button
                   onClick={handleAddToCart}
                   disabled={loadingCart}
-                  className="flex-1 border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold py-2.5 px-2 sm:px-4 rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="flex items-center justify-center gap-2 rounded-xl border-2 border-indigo-600 px-3 py-3 text-sm font-bold text-indigo-600 transition-all hover:bg-indigo-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span className="hidden sm:inline">THÊM VÀO GIỎ</span>
@@ -534,14 +547,14 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                 <button
                   onClick={handleBuyNow}
                   disabled={loadingCart}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-2.5 px-3 rounded-xl shadow-lg shadow-orange-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-200 transition-all hover:from-orange-600 hover:to-red-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   MUA NGAY
                 </button>
               </div>
 
               {/* Meta Features */}
-              <div className="grid grid-cols-2 gap-3 text-xs text-gray-600 pb-5 border-b border-gray-100">
+              <div className="grid grid-cols-1 gap-3 border-b border-gray-100 pb-5 text-xs text-gray-600 sm:grid-cols-2">
                 <div className="flex items-center gap-2">
                   <Truck className="w-4 h-4 text-indigo-500" />
                   <span>Miễn phí giao hàng</span>
@@ -801,7 +814,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
       </div>
 
       {/* Image Modal */}
-      {isImageModalOpen && product.imageUrl && (
+      {isImageModalOpen && hasValidMainImage && normalizedProductImageUrl && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
           onClick={() => setIsImageModalOpen(false)}
@@ -816,7 +829,7 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
             <Image
               loader={passthroughImageLoader}
               unoptimized
-              src={product.imageUrl}
+              src={normalizedProductImageUrl}
               alt={product.name}
               fill
               sizes="90vw"
