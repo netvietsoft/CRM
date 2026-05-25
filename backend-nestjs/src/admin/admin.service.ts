@@ -187,35 +187,91 @@ export class AdminService {
       where.rank = rank;
     }
 
-    const [customers, total] = await Promise.all([
+    const [customerSeeds, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         select: {
           id: true,
-          name: true,
-          email: true,
-          phone: true,
-          gender: true,
-          dob: true,
-          rank: true,
-          totalSpent: true,
-          commissionBalance: true,
-          referralCode: true,
-          addressStreet: true,
-          addressWard: true,
-          addressProvince: true,
           createdAt: true,
-          _count: { select: { orders: true, referees: true } },
         },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
       }),
       this.prisma.user.count({ where }),
     ]);
 
+    const seededCustomerIds = customerSeeds.map((customer) => customer.id);
+    const orderWhere =
+      effectiveStoreId && !params?.includeAll
+        ? {
+            storeId: effectiveStoreId,
+          }
+        : {};
+
+    const latestOrderGroups =
+      seededCustomerIds.length > 0
+        ? await this.prisma.order.groupBy({
+            by: ['userId'],
+            where: {
+              userId: { in: seededCustomerIds },
+              ...orderWhere,
+            },
+            _max: {
+              updatedAt: true,
+            },
+            orderBy: {
+              _max: {
+                updatedAt: 'desc',
+              },
+            },
+          })
+        : [];
+
+    const customerOrderPriorityIds = latestOrderGroups
+      .map((group) => group.userId)
+      .filter((userId): userId is string => Boolean(userId));
+    const prioritizedIdSet = new Set(customerOrderPriorityIds);
+    const sortedCustomerIds = [
+      ...customerOrderPriorityIds,
+      ...customerSeeds
+        .map((customer) => customer.id)
+        .filter((customerId) => !prioritizedIdSet.has(customerId)),
+    ];
+    const pagedCustomerIds = sortedCustomerIds.slice((page - 1) * limit, page * limit);
+
+    const customers =
+      pagedCustomerIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: {
+              id: {
+                in: pagedCustomerIds,
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              gender: true,
+              dob: true,
+              rank: true,
+              totalSpent: true,
+              commissionBalance: true,
+              referralCode: true,
+              addressStreet: true,
+              addressWard: true,
+              addressProvince: true,
+              createdAt: true,
+              _count: { select: { orders: true, referees: true } },
+            },
+          })
+        : [];
+    const customersById = new Map(customers.map((customer) => [customer.id, customer]));
+    const orderedCustomers = pagedCustomerIds
+      .map((customerId) => customersById.get(customerId))
+      .filter(Boolean);
+
     return {
-      customers,
+      customers: orderedCustomers,
       pagination: {
         page,
         limit,

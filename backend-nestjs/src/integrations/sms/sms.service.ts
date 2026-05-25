@@ -264,15 +264,26 @@ export class SmsService {
       return response.json();
     }
 
-    return response.text();
+    const rawText = await response.text();
+    const trimmedText = rawText.trim();
+
+    if (!trimmedText) {
+      return rawText;
+    }
+
+    try {
+      return JSON.parse(trimmedText);
+    } catch {
+      return rawText;
+    }
   }
 
   private isSuccessResponse(rawResponse: unknown): boolean {
-    if (!rawResponse || typeof rawResponse !== 'object' || Array.isArray(rawResponse)) {
+    const response = this.toResponseObject(rawResponse);
+    if (!response) {
       return false;
     }
 
-    const response = rawResponse as Record<string, unknown>;
     return (
       response.code === 1 ||
       response.code === '1' ||
@@ -283,33 +294,57 @@ export class SmsService {
   }
 
   private extractProviderMessageId(rawResponse: unknown): string | undefined {
-    if (!rawResponse || typeof rawResponse !== 'object' || Array.isArray(rawResponse)) {
+    const response = this.toResponseObject(rawResponse);
+    if (!response) {
       return undefined;
     }
 
-    const response = rawResponse as Record<string, unknown>;
     const value = response.transId ?? response.tranId ?? response.messageId;
     return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
   }
 
   private extractErrorCode(rawResponse: unknown): string | undefined {
-    if (!rawResponse || typeof rawResponse !== 'object' || Array.isArray(rawResponse)) {
+    const response = this.toResponseObject(rawResponse);
+    if (!response) {
       return undefined;
     }
 
-    const response = rawResponse as Record<string, unknown>;
     const value = response.code ?? response.errorCode;
     return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
   }
 
   private extractErrorMessage(rawResponse: unknown): string | undefined {
-    if (!rawResponse || typeof rawResponse !== 'object' || Array.isArray(rawResponse)) {
+    const response = this.toResponseObject(rawResponse);
+    if (!response) {
       return typeof rawResponse === 'string' ? rawResponse : undefined;
     }
 
-    const response = rawResponse as Record<string, unknown>;
     const value = response.message ?? response.error ?? response.description;
     return typeof value === 'string' ? value : undefined;
+  }
+
+  private toResponseObject(rawResponse: unknown): Record<string, unknown> | null {
+    if (rawResponse && typeof rawResponse === 'object' && !Array.isArray(rawResponse)) {
+      return rawResponse as Record<string, unknown>;
+    }
+
+    if (typeof rawResponse !== 'string') {
+      return null;
+    }
+
+    const trimmedText = rawResponse.trim();
+    if (!trimmedText.startsWith('{') || !trimmedText.endsWith('}')) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(trimmedText);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   private serializeUnknown(value: unknown): unknown {
