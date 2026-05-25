@@ -52,7 +52,57 @@ export default function OrderList({ orders }: { orders: Order[] }) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [reordering, setReordering] = useState<string | null>(null);
   const [reviewingOrder, setReviewingOrder] = useState<Order | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'ALL' | 'PURCHASED' | 'WAITING_FOR_SHIPPING' | 'SHIPPED' | 'RETURNS'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
+
+  const filterConfigs: Array<{
+    key: 'ALL' | 'PURCHASED' | 'WAITING_FOR_SHIPPING' | 'SHIPPED' | 'RETURNS';
+    label: string;
+    matches: (order: Order) => boolean;
+  }> = [
+    { key: 'ALL', label: 'Tất cả đơn hàng', matches: () => true },
+    {
+      key: 'PURCHASED',
+      label: 'Đơn đã mua',
+      matches: (order) => ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'].includes(order.status),
+    },
+    {
+      key: 'WAITING_FOR_SHIPPING',
+      label: 'Chờ Vận Chuyển',
+      matches: (order) => ['WAITING_FOR_SHIPPING', 'PACKAGING', 'WAITING_FOR_GOODS'].includes(order.status),
+    },
+    {
+      key: 'SHIPPED',
+      label: 'Chờ Giao Hàng',
+      matches: (order) => order.status === 'SHIPPED',
+    },
+    {
+      key: 'RETURNS',
+      label: 'Trả Hàng Hoàn Tiền',
+      matches: (order) => ['RETURNING', 'REFUNDED'].includes(order.status),
+    },
+  ];
+
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+  const filteredOrders = orders.filter((order) => {
+    const activeConfig = filterConfigs.find((config) => config.key === activeFilter);
+    const matchesFilter = activeConfig ? activeConfig.matches(order) : true;
+    if (!matchesFilter) return false;
+
+    if (!normalizedSearchTerm) return true;
+
+    const matchesOrderCode = order.orderCode.toLowerCase().includes(normalizedSearchTerm);
+    const matchesLinkedProduct = (order.items || []).some((item) =>
+      item.product?.name?.toLowerCase().includes(normalizedSearchTerm),
+    );
+    const matchesPancakeProduct = (order.metadata?.items || []).some((item) =>
+      item.name.toLowerCase().includes(normalizedSearchTerm),
+    );
+
+    return matchesOrderCode || matchesLinkedProduct || matchesPancakeProduct;
+  });
 
   const toggleRow = (id: string) => {
     setExpandedRow(prev => (prev === id ? null : id));
@@ -158,10 +208,48 @@ export default function OrderList({ orders }: { orders: Order[] }) {
         </div>
       )}
 
+      <div className="mb-4">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Tìm theo mã đơn hàng hoặc tên sản phẩm"
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        />
+      </div>
+
+      <div className="mb-6 flex gap-3 overflow-x-auto pb-2">
+        {filterConfigs.map((filter) => {
+          const count = orders.filter(filter.matches).length;
+
+          return (
+            <button
+              key={filter.key}
+              type="button"
+              onClick={() => setActiveFilter(filter.key)}
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                activeFilter === filter.key
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              {filter.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Mobile View */}
         <div className="md:hidden flex flex-col divide-y divide-gray-100">
-          {orders.map(order => {
+          {filteredOrders.length === 0 && (
+            <div className="p-8 text-center">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Không có đơn hàng phù hợp</h3>
+              <p className="text-sm text-gray-600">Không tìm thấy đơn hàng nào trong bộ lọc này.</p>
+            </div>
+          )}
+
+          {filteredOrders.map(order => {
             const isPancake = order.source === 'PANCAKE';
             const displayItems = isPancake && order.metadata?.items
               ? order.metadata.items.map((item, index): DisplayOrderItem => ({
@@ -290,7 +378,16 @@ export default function OrderList({ orders }: { orders: Order[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {orders.map(order => {
+              {filteredOrders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-10 text-center">
+                    <div className="text-lg font-bold text-gray-800">Không có đơn hàng phù hợp</div>
+                    <div className="mt-2 text-sm text-gray-600">Không tìm thấy đơn hàng nào trong bộ lọc này.</div>
+                  </td>
+                </tr>
+              )}
+
+              {filteredOrders.map(order => {
                 // For Pancake orders, items are in metadata
                 const isPancake = order.source === 'PANCAKE';
                 const displayItems = isPancake && order.metadata?.items
