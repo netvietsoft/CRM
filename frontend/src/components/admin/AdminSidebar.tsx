@@ -61,6 +61,7 @@ const navItems = [
     label: 'Hệ thống',
     items: [
       { name: 'Kết nối', href: '/admin/integrations', roles: ADMIN_MODERATOR },
+      { name: 'Phân hạng', href: '/admin/ranks', roles: ADMIN_ONLY },
       { name: 'Hoa hồng', href: '/admin/commissions', roles: ADMIN_ONLY },
       { name: 'Cấu hình QR', href: '/admin/qr-config', roles: ADMIN_ONLY },
     ],

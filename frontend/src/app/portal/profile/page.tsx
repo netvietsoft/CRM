@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth';
 import ProfileForm from './ProfileForm';
 import { apiClient } from '@/lib/apiClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
-import { getMembershipStatus, membershipBadgeClassMap } from '@/lib/membership';
+import { membershipBadgeClassMap, MembershipProgress } from '@/lib/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +48,7 @@ interface DashboardData {
     status: string;
     createdAt: string | Date;
   }>;
-  spentInLast30Days: number;
+  rankProgress: MembershipProgress;
 }
 
 export default async function ProfilePage() {
@@ -75,9 +75,8 @@ export default async function ProfilePage() {
     );
   }
 
-  const { user, spentInLast30Days, refereeCount } = dashboardData;
+  const { user, refereeCount } = dashboardData;
   const detailedUser = profileData;
-  const { effectiveRank } = getMembershipStatus(user.rank, spentInLast30Days);
 
   return (
     <>
@@ -108,8 +107,8 @@ export default async function ProfilePage() {
           <div>
             <h2 className="text-2xl font-bold text-gray-800">{detailedUser.name}</h2>
             <div className="flex items-center gap-3 mt-2">
-              <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${membershipBadgeClassMap[effectiveRank]}`}>
-                {effectiveRank}
+              <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${membershipBadgeClassMap[user.rank as keyof typeof membershipBadgeClassMap] || membershipBadgeClassMap.MEMBER}`}>
+                {user.rank}
               </span>
               <span className="text-sm text-gray-600">
                 Thành viên từ {detailedUser.createdAt ? new Intl.DateTimeFormat('vi-VN', { month: 'long', year: 'numeric' }).format(new Date(detailedUser.createdAt)) : 'Gần đây'}

@@ -65,6 +65,59 @@ async function main() {
     ),
   );
 
+  const defaultRankConfigs = [
+    {
+      rank: 'MEMBER',
+      minTotalSpent: 0,
+      minOrdersMonth: null,
+      discountPercent: 0,
+      description: 'Hạng mặc định cho tài khoản mới.',
+    },
+    {
+      rank: 'SILVER',
+      minTotalSpent: 2000000,
+      minOrdersMonth: null,
+      discountPercent: 0,
+      description: 'Mốc khách hàng bắt đầu tích lũy ổn định.',
+    },
+    {
+      rank: 'GOLD',
+      minTotalSpent: 5000000,
+      minOrdersMonth: null,
+      discountPercent: 0,
+      description: 'Mốc khách hàng có giá trị mua hàng cao hơn trung bình.',
+    },
+    {
+      rank: 'DIAMOND',
+      minTotalSpent: 10000000,
+      minOrdersMonth: null,
+      discountPercent: 0,
+      description: 'Mốc khách hàng ưu tiên với tổng chi tiêu lớn.',
+    },
+    {
+      rank: 'PLATINUM',
+      minTotalSpent: 20000000,
+      minOrdersMonth: null,
+      discountPercent: 0,
+      description: 'Hạng cao nhất hiện đang áp dụng.',
+    },
+  ] as const;
+
+  await Promise.all(
+    defaultRankConfigs.map((config) =>
+      prisma.rankConfig.upsert({
+        where: { rank: config.rank },
+        update: {
+          minTotalSpent: config.minTotalSpent,
+          minOrdersMonth: config.minOrdersMonth,
+          discountPercent: config.discountPercent,
+          description: config.description,
+        },
+        create: config,
+      }),
+    ),
+  );
+
   const smsChannel = await prisma.messageChannel.findUnique({
     where: { code: MessageChannelCode.SMS },
     select: { id: true },
@@ -223,6 +276,7 @@ async function main() {
   });
 
   console.log(`[SEED] Message channels ensured: ${channels.length}`);
+  console.log(`[SEED] Default rank configs ensured: ${defaultRankConfigs.length}`);
   console.log('[SEED] Default SMS provider config ensured when SMS env is available');
   console.log('[SEED] Default SMS templates ensured: 3');
   console.log(`[SEED] Admin account ensured: ${admin.phone}`);

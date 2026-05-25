@@ -3,7 +3,7 @@ import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import TrackingButton from '@/components/customer/TrackingButton';
 import { apiClient } from '@/lib/apiClient';
-import { getMembershipStatus, membershipBadgeClassMap, MembershipRank } from '@/lib/membership';
+import { membershipBadgeClassMap, MembershipConfig, MembershipProgress, MembershipRank } from '@/lib/membership';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
@@ -32,7 +32,8 @@ interface PortalDashboardData {
   orderCount: number;
   refereeCount: number;
   recentOrders: RecentOrder[];
-  spentInLast30Days: number;
+  rankConfigs: MembershipConfig[];
+  rankProgress: MembershipProgress;
 }
 
 export default async function PortalDashboard() {
@@ -52,8 +53,7 @@ export default async function PortalDashboard() {
     );
   }
 
-  const { user, voucherCount, orderCount, refereeCount, recentOrders, spentInLast30Days } = dashboardData;
-  const { effectiveRank, progress, percentage } = getMembershipStatus(user.rank, spentInLast30Days);
+  const { user, voucherCount, orderCount, refereeCount, recentOrders, rankProgress } = dashboardData;
 
   return (
     <>
@@ -95,25 +95,25 @@ export default async function PortalDashboard() {
       <div className="bg-white p-6 rounded-xl shadow-sm mt-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold">Tiến trình hạng thành viên</h3>
-          <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${membershipBadgeClassMap[effectiveRank]}`}>
-            {effectiveRank}
+          <span className={`px-3.5 py-1 rounded-full text-sm font-semibold shadow-sm border ${membershipBadgeClassMap[user.rank]}`}>
+            {user.rank}
           </span>
         </div>
         <div className="mb-3">
           <div className="flex justify-between text-xs font-medium text-gray-700 mb-2">
-            <span>{fmt(spentInLast30Days)}</span>
-            {progress.target > 0 && <span>{fmt(progress.target)} → {progress.next}</span>}
+            <span>{fmt(user.totalSpent)}</span>
+            {rankProgress.nextRank !== 'MAX' && <span>{fmt(rankProgress.nextThreshold)} → {rankProgress.nextRank}</span>}
           </div>
           <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden shadow-inner">
             <div
               className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-1000"
-              style={{ width: `${percentage}%` }}
+              style={{ width: `${rankProgress.progressPercent}%` }}
             />
           </div>
         </div>
-        {progress.target > 0 ? (
+        {rankProgress.nextRank !== 'MAX' ? (
           <p className="text-xs text-gray-600 font-medium">
-            🔥 Còn <span className="text-indigo-600 font-bold">{fmt(Math.max(0, progress.target - spentInLast30Days))}</span> nữa để lên hạng <span className="font-bold">{progress.next}</span> (trong 30 ngày)
+            🔥 Còn <span className="text-indigo-600 font-bold">{fmt(rankProgress.remainingToNext)}</span> nữa để lên hạng <span className="font-bold">{rankProgress.nextRank}</span>
           </p>
         ) : (
           <p className="text-xs text-green-600 font-semibold flex items-center gap-1">

@@ -1,57 +1,14 @@
 import Link from 'next/link';
 import { Metadata } from 'next';
-import { MembershipRank } from '@/lib/membership';
+import { apiClient } from '@/lib/apiClient';
+import { MembershipConfig, MembershipRank, normalizeMembershipConfigs } from '@/lib/membership';
 
 export const metadata: Metadata = {
   title: 'Phân hạng VIP | Customer CRM',
-  description: 'Bảng tra cứu mốc chi tiêu 30 ngày gần nhất và cách hệ thống đang hiển thị hạng thành viên trên Customer CRM.',
+  description: 'Bảng tra cứu mốc chi tiêu tích lũy và cách hệ thống đang phân hạng thành viên trên Customer CRM.',
 };
 
-const lastUpdated = '20/05/2026';
-
-const milestones: Array<{
-  rank: MembershipRank;
-  threshold: number;
-  title: string;
-  description: string;
-  next: MembershipRank | 'MAX';
-}> = [
-  {
-    rank: 'MEMBER',
-    threshold: 0,
-    title: 'Mốc mặc định khi bắt đầu',
-    description: 'Tài khoản mới bắt đầu từ MEMBER. Từ đây portal sẽ theo dõi chi tiêu 30 ngày để tính tiến độ lên mốc kế tiếp.',
-    next: 'SILVER',
-  },
-  {
-    rank: 'SILVER',
-    threshold: 2000000,
-    title: 'Mốc hiển thị SILVER',
-    description: 'Khi chạm mốc này trong 30 ngày gần nhất, giao diện portal sẽ hiển thị SILVER và tiếp tục theo dõi mục tiêu lên GOLD.',
-    next: 'GOLD',
-  },
-  {
-    rank: 'GOLD',
-    threshold: 5000000,
-    title: 'Mốc hiển thị GOLD',
-    description: 'Dashboard, hồ sơ cá nhân và thanh điều hướng cùng dùng mốc này để thể hiện tiến trình thành viên.',
-    next: 'DIAMOND',
-  },
-  {
-    rank: 'DIAMOND',
-    threshold: 10000000,
-    title: 'Mốc hiển thị DIAMOND',
-    description: 'Khi đã đạt DIAMOND, người dùng vẫn thấy số tiền còn thiếu để lên PLATINUM trong cùng chu kỳ 30 ngày.',
-    next: 'PLATINUM',
-  },
-  {
-    rank: 'PLATINUM',
-    threshold: 20000000,
-    title: 'Mốc cao nhất đang hiển thị',
-    description: 'PLATINUM là cấp cao nhất mà portal hiện đang hiển thị trong phần theo dõi hạng thành viên.',
-    next: 'MAX',
-  },
-];
+const lastUpdated = '25/05/2026';
 
 const highlightCards = [
   {
@@ -61,8 +18,8 @@ const highlightCards = [
   },
   {
     eyebrow: 'Chu kỳ đang dùng',
-    title: 'Portal tính theo 30 ngày gần nhất',
-    description: 'Trang hướng dẫn này bám đúng cách frontend đang hiển thị tiến độ nâng hạng ở thời điểm hiện tại.',
+    title: 'Portal dùng mốc backend',
+    description: 'Trang hướng dẫn này lấy trực tiếp cấu hình rank từ backend, không còn dùng mốc cứng ở frontend.',
   },
   {
     eyebrow: 'Điều cần lưu ý',
@@ -73,8 +30,8 @@ const highlightCards = [
 
 const availableNow = [
   'Tên hạng thành viên đang hiển thị trực tiếp ở giao diện portal.',
-  'Thanh tiến độ nâng hạng hiện cho xem số tiền đã chi và số tiền còn thiếu để lên mốc tiếp theo.',
-  'Ba màn hình chính là navbar, dashboard và hồ sơ cá nhân hiện đã dùng cùng một bộ mốc hiển thị.',
+  'Thanh tiến độ nâng hạng hiện cho xem tổng chi tiêu tích lũy và số tiền còn thiếu để lên mốc tiếp theo.',
+  'Ba màn hình chính là navbar, dashboard và hồ sơ cá nhân hiện dùng cùng một cấu hình rank từ backend.',
 ];
 
 const notShownYet = [
@@ -87,7 +44,7 @@ const quickLinks = [
   {
     href: '/portal',
     title: 'Dashboard',
-    description: 'Xem thanh tiến độ hạng thành viên và mức chi tiêu đang được tính trong 30 ngày gần nhất.',
+    description: 'Xem thanh tiến độ hạng thành viên và mức chi tiêu tích lũy đang được backend dùng để xếp hạng.',
     accent: 'from-sky-500/15 to-cyan-500/5',
   },
   {
@@ -161,7 +118,32 @@ function fmt(n: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 }
 
-export default function MembershipGuidePage() {
+async function getRankConfigs() {
+  try {
+    const response = await apiClient.get<{ configs: MembershipConfig[] }>('/rank-config', { cache: 'no-store' });
+    return normalizeMembershipConfigs(response.configs);
+  } catch (error) {
+    console.error('Error fetching rank configs:', error);
+    return [];
+  }
+}
+
+export default async function MembershipGuidePage() {
+  const rankConfigs = await getRankConfigs();
+  const milestones: Array<{
+    rank: MembershipRank;
+    threshold: number;
+    title: string;
+    description: string;
+    next: MembershipRank | 'MAX';
+  }> = rankConfigs.map((item, index) => ({
+    rank: item.rank,
+    threshold: item.minTotalSpent,
+    title: index === 0 ? 'Mốc mặc định khi bắt đầu' : `Mốc hiển thị ${item.rank}`,
+    description: item.description || `Khi tổng chi tiêu tích lũy chạm mốc này, hệ thống sẽ cập nhật hạng ${item.rank}.`,
+    next: rankConfigs[index + 1]?.rank || 'MAX',
+  }));
+
   return (
     <div className="min-h-screen bg-slate-50 py-6 md:py-12">
       <div className="mx-auto w-full">
@@ -175,14 +157,14 @@ export default function MembershipGuidePage() {
                 Phân hạng VIP
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base md:text-lg">
-                Trang này chỉ mô tả đúng những gì portal đang hiển thị: mốc chi tiêu 30 ngày gần nhất, vị trí hạng đang xuất hiện và những gì hệ thống chưa thể hiện thành một bảng quyền lợi cố định.
+                Trang này mô tả đúng những gì hệ thống đang áp dụng: mốc chi tiêu tích lũy từ backend, vị trí hạng đang xuất hiện và những gì chưa được thể hiện thành một bảng quyền lợi cố định.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100 sm:px-4 sm:text-sm">
                   5 hạng đang dùng
                 </span>
                 <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100 sm:px-4 sm:text-sm">
-                  Theo dõi 30 ngày gần nhất
+                  Theo dõi theo mốc backend
                 </span>
                 <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100 sm:px-4 sm:text-sm">
                   Hiển thị trên portal thực tế
@@ -195,7 +177,7 @@ export default function MembershipGuidePage() {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 sm:text-xs sm:tracking-[0.2em]">Cập nhật</div>
                 <div className="mt-3 break-words text-2xl font-black text-white sm:text-3xl">{lastUpdated}</div>
                 <div className="mt-2 text-sm leading-6 text-slate-300">
-                  Nội dung đã chỉnh theo đúng phần logic hạng thành viên đang hiển thị ở frontend.
+                  Nội dung đã chỉnh theo đúng cấu hình rank đang lấy từ backend.
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white p-5 text-slate-900">
@@ -236,7 +218,7 @@ export default function MembershipGuidePage() {
               <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">Mốc chi tiêu đang hiển thị trên portal</h2>
             </div>
             <div className="max-w-2xl text-sm leading-6 text-slate-500 2xl:max-w-md">
-              Cách đọc rất đơn giản: chạm đúng mốc trong 30 ngày gần nhất thì giao diện sẽ hiển thị hạng tương ứng và chuyển sang mục tiêu tiếp theo.
+              Cách đọc rất đơn giản: khi tổng chi tiêu tích lũy chạm mốc cấu hình, backend sẽ cập nhật hạng tương ứng và portal hiển thị lại theo hạng đó.
             </div>
           </div>
 

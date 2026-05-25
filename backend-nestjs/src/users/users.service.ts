@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
+import { RankConfigService } from '../rank-config/rank-config.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rankConfigService: RankConfigService,
+  ) {}
 
   async updateUserRank(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -14,25 +18,13 @@ export class UsersService {
 
     if (!user) return;
 
-    // Get rank configs ordered by minTotalSpent descending
-    const rankConfigs = await this.prisma.rankConfig.findMany({
-      orderBy: { minTotalSpent: 'desc' },
-    });
+    const rankConfigs = await this.rankConfigService.findAll();
+    const newRank = this.rankConfigService.resolveRank(user.totalSpent, rankConfigs);
 
-    // Find appropriate rank
-    let newRank = 'MEMBER';
-    for (const config of rankConfigs) {
-      if (user.totalSpent >= config.minTotalSpent) {
-        newRank = config.rank;
-        break;
-      }
-    }
-
-    // Update user rank and points
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        rank: newRank as any,
+        rank: newRank,
         points: Math.floor(user.totalSpent / 10000),
       },
     });
@@ -248,12 +240,7 @@ export class UsersService {
   }
 
   async getPortalDashboard(userId: string) {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    thirtyDaysAgo.setHours(0, 0, 0, 0);
-
-    const [user, voucherCount, orderCount, refereeCount, recentOrders, spentLast30Days] =
+    const [user, voucherCount, orderCount, refereeCount, recentOrders, rankConfigs] =
       await Promise.all([
         this.prisma.user.findUnique({
           where: { id: userId },
@@ -287,42 +274,38 @@ export class UsersService {
             createdAt: true,
           },
         }),
-        this.prisma.order.aggregate({
-          where: {
-            userId,
-            status: { in: ['COMPLETED', 'DELIVERED'] },
-            createdAt: { gte: thirtyDaysAgo },
-          },
-          _sum: { totalAmount: true },
-        }),
+        this.rankConfigService.findAll(),
       ]);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
+    const resolvedRank = this.rankConfigService.resolveRank(user.totalSpent, rankConfigs);
+    const rankProgress = this.rankConfigService.buildRankProgress(user.totalSpent, rankConfigs);
+
     return {
-      user,
+      user: {
+        ...user,
+        rank: resolvedRank,
+      },
       voucherCount,
       orderCount,
       refereeCount,
       recentOrders,
-      spentInLast30Days: spentLast30Days._sum.totalAmount || 0,
+      rankConfigs,
+      rankProgress,
     };
   }
 
   async getPortalLayoutMeta(userId: string) {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    thirtyDaysAgo.setHours(0, 0, 0, 0);
-
-    const [user, cart, spentLast30Days, store] = await Promise.all([
+    const [user, cart, store, rankConfigs] = await Promise.all([
       this.prisma.user.findUnique({
         where: { id: userId },
         select: {
           onboardingComplete: true,
           rank: true,
+          totalSpent: true,
         },
       }),
       this.prisma.cart.findUnique({
@@ -333,27 +316,20 @@ export class UsersService {
           },
         },
       }),
-      this.prisma.order.aggregate({
-        where: {
-          userId,
-          status: { in: ['COMPLETED', 'DELIVERED'] },
-          createdAt: { gte: thirtyDaysAgo },
-        },
-        _sum: { totalAmount: true },
-      }),
       this.prisma.store.findUnique({
         where: { ownerId: userId },
         select: { id: true, name: true, isActive: true },
       }),
+      this.rankConfigService.findAll(),
     ]);
 
     const cartItemCount = cart ? cart.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+    const resolvedRank = this.rankConfigService.resolveRank(user?.totalSpent || 0, rankConfigs);
 
     return {
       onboardingComplete: user?.onboardingComplete || false,
-      rank: user?.rank || 'MEMBER',
+      rank: resolvedRank,
       cartItemCount,
-      spentInLast30Days: spentLast30Days._sum.totalAmount || 0,
       hasStore: !!store,
       store: store || null,
     };

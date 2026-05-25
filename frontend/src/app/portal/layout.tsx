@@ -7,7 +7,6 @@ import Footer from '@/components/customer/Footer';
 import QrClaimModal from '@/components/customer/QrClaimModal';
 import PortalContent from '@/components/customer/PortalContent';
 import { apiClient } from '@/lib/apiClient';
-import { getMembershipStatus } from '@/lib/membership';
 
 interface PortalSessionUser {
   role?: string | null;
@@ -22,7 +21,6 @@ interface PortalLayoutMeta {
   onboardingComplete: boolean;
   rank: string;
   cartItemCount: number;
-  spentInLast30Days: number;
   hasStore?: boolean;
   store?: {
     id: string;
@@ -58,7 +56,6 @@ export default async function PortalLayout({ children }: { children: React.React
     onboardingComplete: true,
     rank: 'MEMBER',
     cartItemCount: 0,
-    spentInLast30Days: 0,
   };
 
   try {
@@ -82,11 +79,9 @@ export default async function PortalLayout({ children }: { children: React.React
     redirect(`/onboarding?returnTo=${encodeURIComponent(returnTo)}`);
   }
 
-  const { effectiveRank } = getMembershipStatus(meta.rank, meta.spentInLast30Days || 0);
-
   const navbarUser = {
     name: session.name || 'Người dùng',
-    rank: effectiveRank,
+    rank: meta.rank || 'MEMBER',
     referralCode: session.referralCode || '',
     totalSpent: session.totalSpent || 0,
     commissionBalance: session.commissionBalance || 0,
