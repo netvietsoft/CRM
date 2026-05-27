@@ -80,7 +80,7 @@ export default function OrderList({ orders }: { orders: Order[] }) {
     {
       key: 'RETURNS',
       label: 'Trả Hàng Hoàn Tiền',
-      matches: (order) => ['RETURNING', 'REFUNDED'].includes(order.status),
+      matches: (order) => ['RETURNING', 'EXCHANGING', 'REFUNDED'].includes(order.status),
     },
   ];
 
