@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { ArrowUpDown } from 'lucide-react';
 import { MessageSquareShare } from 'lucide-react';
 import ZaloZnsModal from './ZaloZnsModal';
 
@@ -9,9 +10,12 @@ interface CustomerSummary {
   name: string | null;
   email: string | null;
   phone: string | null;
+  dob?: string | Date | null;
   rank: string;
   totalSpent: number;
   commissionBalance: number;
+  addressWard?: string | null;
+  addressProvince?: string | null;
   createdAt: string | Date;
   _count?: {
     orders?: number;
@@ -23,6 +27,9 @@ interface CustomersTableSearchParams {
   page?: string;
   search?: string;
   rank?: string;
+  province?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 interface CustomersTableClientProps {
@@ -37,10 +44,16 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-function formatDate(date: string | Date) {
+function formatDate(date: string | Date | null | undefined) {
+  if (!date) return '—';
+
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   }).format(new Date(date));
+}
+
+function formatRegion(customer: CustomerSummary) {
+  return customer.addressProvince || '—';
 }
 
 export default function CustomersTableClient({ customers, searchParams, isZaloEnabled = false }: CustomersTableClientProps) {
@@ -72,6 +85,37 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
   const isAllSelected = customers.length > 0 && customers.every(c => selectedIds.has(c.id));
   const isIndeterminate = customers.some(c => selectedIds.has(c.id)) && !isAllSelected;
 
+  const buildSortHref = (sortBy: 'rank' | 'totalSpent' | 'orders' | 'commissionBalance') => {
+    const params = new URLSearchParams();
+
+    if (searchParams.search) params.set('search', searchParams.search);
+    if (searchParams.rank) params.set('rank', searchParams.rank);
+    if (searchParams.province) params.set('province', searchParams.province);
+
+    const nextSortOrder = searchParams.sortBy === sortBy && searchParams.sortOrder === 'asc' ? 'desc' : 'asc';
+    params.set('sortBy', sortBy);
+    params.set('sortOrder', nextSortOrder);
+
+    return `/admin/customers?${params.toString()}`;
+  };
+
+  const renderSortLabel = (label: string, sortBy: 'rank' | 'totalSpent' | 'orders' | 'commissionBalance') => {
+    const isActive = searchParams.sortBy === sortBy;
+    const direction = searchParams.sortOrder === 'asc' ? 'asc' : 'desc';
+
+    return (
+      <Link
+        href={buildSortHref(sortBy)}
+        className={`inline-flex items-center gap-1.5 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+      >
+        <span>{label}</span>
+        <span className={`text-[10px] font-bold ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
+          {isActive ? (direction === 'asc' ? '↑' : '↓') : <ArrowUpDown size={12} />}
+        </span>
+      </Link>
+    );
+  };
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
@@ -89,11 +133,13 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
                   />
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Khách hàng</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Hạng</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Tổng chi tiêu</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Số đơn</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Ngày sinh</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Khu vực</th>
+                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">{renderSortLabel('Hạng', 'rank')}</th>
+                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">{renderSortLabel('Tổng chi tiêu', 'totalSpent')}</th>
+                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">{renderSortLabel('Số đơn', 'orders')}</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Giới thiệu</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Hoa hồng</th>
+                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">{renderSortLabel('Hoa hồng', 'commissionBalance')}</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Ngày đăng ký</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap"></th>
               </tr>
@@ -101,7 +147,7 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
             <tbody className="divide-y divide-gray-50">
               {customers.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={11}>
                     <div className="text-center py-12">
                       <div className="text-6xl mb-3">👥</div>
                       <div className="text-xl font-semibold text-gray-800 mb-2">Không tìm thấy khách hàng</div>
@@ -134,12 +180,14 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-700">{formatDate(customer.dob)}</td>
+                    <td className="px-4 py-3 text-gray-700 min-w-40">{formatRegion(customer)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${customer.rank === 'PLATINUM' ? 'bg-purple-100 text-purple-700' :
-                          customer.rank === 'DIAMOND' ? 'bg-blue-100 text-blue-700' :
-                            customer.rank === 'GOLD' ? 'bg-yellow-100 text-yellow-700' :
-                              customer.rank === 'SILVER' ? 'bg-gray-200 text-gray-700' :
-                                'bg-gray-100 text-gray-600'
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${customer.rank === 'PLATINUM' ? 'bg-fuchsia-100 text-fuchsia-900 border border-fuchsia-300 ring-1 ring-fuchsia-200 shadow-sm' :
+                          customer.rank === 'DIAMOND' ? 'bg-cyan-100 text-cyan-900 border border-cyan-300 ring-1 ring-cyan-200 shadow-sm' :
+                            customer.rank === 'GOLD' ? 'bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-200 shadow-sm' :
+                              customer.rank === 'SILVER' ? 'bg-slate-200 text-slate-900 border border-slate-400 ring-1 ring-slate-300 shadow-sm' :
+                                'bg-slate-100 text-slate-800 border border-slate-300 ring-1 ring-slate-200 shadow-sm'
                         }`}>
                         {customer.rank}
                       </span>

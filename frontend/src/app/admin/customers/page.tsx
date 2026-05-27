@@ -3,6 +3,7 @@ import Link from 'next/link';
 import CustomerActions from '@/components/admin/CustomerActions';
 import CustomerSearch from '@/components/admin/CustomerSearch';
 import CustomersTableClient from '@/components/admin/CustomersTableClient';
+import CustomersLoadErrorState from '@/components/admin/CustomersLoadErrorState';
 import { apiClient } from '@/lib/apiClient';
 
 interface CustomerSummary {
@@ -10,9 +11,12 @@ interface CustomerSummary {
   name: string | null;
   email: string | null;
   phone: string | null;
+  dob?: string | Date | null;
   rank: string;
   totalSpent: number;
   commissionBalance: number;
+  addressWard?: string | null;
+  addressProvince?: string | null;
   createdAt: string | Date;
   _count?: {
     orders?: number;
@@ -40,6 +44,9 @@ interface SearchParams {
   page?: string;
   search?: string;
   rank?: string;
+  province?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export default async function CustomersPage(props: {
@@ -50,6 +57,7 @@ export default async function CustomersPage(props: {
   let customers: CustomerSummary[] = [];
   let pagination: PaginationData = { page: 1, limit: 20, total: 0, totalPages: 0 };
   let isZaloEnabled = false;
+  let customerLoadError = false;
 
   try {
     const [data, zaloConfig] = await Promise.all([
@@ -58,6 +66,9 @@ export default async function CustomersPage(props: {
           page: searchParams.page,
           search: searchParams.search,
           rank: searchParams.rank,
+          province: searchParams.province,
+          sortBy: searchParams.sortBy,
+          sortOrder: searchParams.sortOrder,
         }
       }),
       apiClient.get<ZaloConfigResponse>('/notifications/zalo/config').catch(() => ({ isConfigured: false }))
@@ -66,6 +77,7 @@ export default async function CustomersPage(props: {
     pagination = data.pagination;
     isZaloEnabled = Boolean(zaloConfig.isConfigured);
   } catch (error) {
+    customerLoadError = true;
     console.error('Error fetching customers:', error);
   }
 
@@ -84,14 +96,18 @@ export default async function CustomersPage(props: {
       {/* Filters */}
       <CustomerSearch />
 
-      <CustomersTableClient 
-        customers={customers} 
-        searchParams={searchParams} 
-        isZaloEnabled={isZaloEnabled}
-      />
+      {customerLoadError ? (
+        <CustomersLoadErrorState />
+      ) : (
+        <>
+          <CustomersTableClient 
+            customers={customers} 
+            searchParams={searchParams} 
+            isZaloEnabled={isZaloEnabled}
+          />
 
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (() => {
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (() => {
         const currentPage = Number(pagination.page);
         const totalPages = pagination.totalPages;
         const pages: (number | string)[] = [];
@@ -108,7 +124,7 @@ export default async function CustomersPage(props: {
         }
 
         const buildHref = (p: number) =>
-          `/admin/customers?page=${p}${searchParams.search ? `&search=${searchParams.search}` : ''}${searchParams.rank ? `&rank=${searchParams.rank}` : ''}`;
+          `/admin/customers?page=${p}${searchParams.search ? `&search=${searchParams.search}` : ''}${searchParams.rank ? `&rank=${searchParams.rank}` : ''}${searchParams.province ? `&province=${searchParams.province}` : ''}${searchParams.sortBy ? `&sortBy=${searchParams.sortBy}` : ''}${searchParams.sortOrder ? `&sortOrder=${searchParams.sortOrder}` : ''}`;
 
         return (
           <div className="flex items-center justify-center gap-1.5 mt-6">
@@ -151,7 +167,9 @@ export default async function CustomersPage(props: {
             )}
           </div>
         );
-      })()}
+          })()}
+        </>
+      )}
     </>
   );
 }

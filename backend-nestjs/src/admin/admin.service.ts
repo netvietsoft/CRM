@@ -161,6 +161,9 @@ export class AdminService {
       limit?: number;
       search?: string;
       rank?: string;
+      province?: string;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
       includeAll?: boolean;
     },
   ) {
@@ -168,6 +171,9 @@ export class AdminService {
     const limit = params?.limit || 20;
     const search = params?.search || '';
     const rank = params?.rank || '';
+    const province = params?.province || '';
+    const sortBy = params?.sortBy || '';
+    const sortOrder = params?.sortOrder === 'asc' ? 'asc' : 'desc';
 
     const where: any = { role: 'CUSTOMER' };
 
@@ -185,6 +191,10 @@ export class AdminService {
 
     if (rank) {
       where.rank = rank;
+    }
+
+    if (province) {
+      where.addressProvince = province;
     }
 
     const [customerSeeds, total] = await Promise.all([
@@ -230,20 +240,19 @@ export class AdminService {
       .map((group) => group.userId)
       .filter((userId): userId is string => Boolean(userId));
     const prioritizedIdSet = new Set(customerOrderPriorityIds);
-    const sortedCustomerIds = [
+    const defaultSortedCustomerIds = [
       ...customerOrderPriorityIds,
       ...customerSeeds
         .map((customer) => customer.id)
         .filter((customerId) => !prioritizedIdSet.has(customerId)),
     ];
-    const pagedCustomerIds = sortedCustomerIds.slice((page - 1) * limit, page * limit);
 
-    const customers =
-      pagedCustomerIds.length > 0
+    const allCustomers =
+      defaultSortedCustomerIds.length > 0
         ? await this.prisma.user.findMany({
             where: {
               id: {
-                in: pagedCustomerIds,
+                in: defaultSortedCustomerIds,
               },
             },
             select: {
@@ -265,13 +274,47 @@ export class AdminService {
             },
           })
         : [];
-    const customersById = new Map(customers.map((customer) => [customer.id, customer]));
-    const orderedCustomers = pagedCustomerIds
+    const customersById = new Map(allCustomers.map((customer) => [customer.id, customer]));
+    const orderedCustomers = defaultSortedCustomerIds
       .map((customerId) => customersById.get(customerId))
       .filter(Boolean);
 
+    const rankOrder = {
+      MEMBER: 0,
+      SILVER: 1,
+      GOLD: 2,
+      DIAMOND: 3,
+      PLATINUM: 4,
+    } as const;
+
+    if (sortBy) {
+      orderedCustomers.sort((a: any, b: any) => {
+        let comparison = 0;
+
+        if (sortBy === 'rank') {
+          comparison =
+            (rankOrder[a.rank as keyof typeof rankOrder] ?? -1) -
+            (rankOrder[b.rank as keyof typeof rankOrder] ?? -1);
+        } else if (sortBy === 'totalSpent') {
+          comparison = (a.totalSpent || 0) - (b.totalSpent || 0);
+        } else if (sortBy === 'orders') {
+          comparison = (a._count?.orders || 0) - (b._count?.orders || 0);
+        } else if (sortBy === 'commissionBalance') {
+          comparison = (a.commissionBalance || 0) - (b.commissionBalance || 0);
+        }
+
+        if (comparison === 0) {
+          comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    const pagedCustomers = orderedCustomers.slice((page - 1) * limit, page * limit);
+
     return {
-      customers: orderedCustomers,
+      customers: pagedCustomers,
       pagination: {
         page,
         limit,

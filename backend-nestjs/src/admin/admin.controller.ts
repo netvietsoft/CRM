@@ -44,6 +44,9 @@ export class AdminController {
     @Query('limit') limit?: number,
     @Query('search') search?: string,
     @Query('rank') rank?: string,
+    @Query('province') province?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
     @Query('includeAll') includeAll?: string,
   ) {
     return this.adminService.getCustomers(user, effectiveStoreId, {
@@ -51,6 +54,9 @@ export class AdminController {
       limit,
       search,
       rank,
+      province,
+      sortBy,
+      sortOrder,
       includeAll: includeAll === 'true',
     });
   }

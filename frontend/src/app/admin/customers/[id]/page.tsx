@@ -131,11 +131,11 @@ const statusMap: Record<string, { label: string; className: string }> = {
 };
 
 const rankMap: Record<string, string> = {
-  MEMBER: 'bg-gray-100 text-gray-700',
-  SILVER: 'bg-gray-200 text-gray-700',
-  GOLD: 'bg-yellow-100 text-yellow-800',
-  DIAMOND: 'bg-blue-100 text-blue-700',
-  PLATINUM: 'bg-slate-200 text-slate-800',
+  MEMBER: 'bg-slate-100 text-slate-800 border border-slate-300 ring-1 ring-slate-200 shadow-sm',
+  SILVER: 'bg-slate-200 text-slate-900 border border-slate-400 ring-1 ring-slate-300 shadow-sm',
+  GOLD: 'bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-200 shadow-sm',
+  DIAMOND: 'bg-cyan-100 text-cyan-900 border border-cyan-300 ring-1 ring-cyan-200 shadow-sm',
+  PLATINUM: 'bg-fuchsia-100 text-fuchsia-900 border border-fuchsia-300 ring-1 ring-fuchsia-200 shadow-sm',
 };
 
 export default async function CustomerDetailPage(props: {
