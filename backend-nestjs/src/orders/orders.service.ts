@@ -13,6 +13,7 @@ import { UsersService } from '../users/users.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
+import { RankConfigService } from '../rank-config/rank-config.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateAdminOrderDto } from './dto/create-admin-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
@@ -54,7 +55,20 @@ export class OrdersService {
     private commissionsService: CommissionsService,
     private adminNotificationsService: AdminNotificationsService,
     private messagingAutomationService: MessagingAutomationService,
+    private rankConfigService: RankConfigService,
   ) {}
+
+  private applyCustomerRankDiscount(
+    basePrice: number,
+    rank: string | null,
+    discountPercent: number,
+  ) {
+    if (!rank || rank === 'MEMBER') {
+      return basePrice;
+    }
+
+    return this.rankConfigService.applyRankDiscount(basePrice, discountPercent);
+  }
 
   private generateOrderCode(): string {
     const prefix = 'ORD';
@@ -648,6 +662,13 @@ export class OrdersService {
       throw new NotFoundException('User not found');
     }
 
+    const rankConfigs = await this.rankConfigService.findAll();
+    const resolvedRank = this.rankConfigService.resolveRank(user.totalSpent || 0, rankConfigs);
+    const rankDiscountPercent = this.rankConfigService.getDiscountPercentForRank(
+      resolvedRank,
+      rankConfigs,
+    );
+
     let subtotal = 0;
     let orderStoreId: string | null | undefined;
     const orderItemsToCreate = [];
@@ -711,6 +732,8 @@ export class OrdersService {
         data: { stockQuantity: { decrement: item.quantity } },
       });
 
+      itemPrice = this.applyCustomerRankDiscount(itemPrice, resolvedRank, rankDiscountPercent);
+
       subtotal += itemPrice * item.quantity;
       totalProductQuantity += item.quantity;
       product.categories.forEach((category) => orderCategoryIds.add(category.id));
@@ -747,10 +770,10 @@ export class OrdersService {
         discountAmount: Number(order.discountAmount || 0),
         createdAt: order.createdAt,
       })),
-      currentRank: user.rank || 'MEMBER',
+      currentRank: resolvedRank,
       now: new Date(),
     });
-    const currentCustomerRank = user.rank || 'MEMBER';
+    const currentCustomerRank = resolvedRank;
     const currentCustomerOccasions = this.getCustomerOccasions(user.dob, new Date());
     const normalizedShippingProvince = this.normalizeProvinceName(addressProvince);
     const currentPaymentMethod = paymentMethod || 'COD';

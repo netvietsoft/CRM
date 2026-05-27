@@ -69,38 +69,48 @@ export class UsersService {
    * Get detailed profile with OAuth accounts
    */
   async getProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        gender: true,
-        dob: true,
-        address: true,
-        addressStreet: true,
-        addressWard: true,
-        addressDistrict: true,
-        addressProvince: true,
-        avatarUrl: true,
-        createdAt: true,
-        rank: true,
-        interests: true,
-        onboardingComplete: true,
-        role: true,
-        referralCode: true,
-        oauthAccounts: {
-          select: { provider: true },
+    const [user, rankConfigs] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          gender: true,
+          dob: true,
+          address: true,
+          addressStreet: true,
+          addressWard: true,
+          addressDistrict: true,
+          addressProvince: true,
+          avatarUrl: true,
+          createdAt: true,
+          rank: true,
+          totalSpent: true,
+          interests: true,
+          onboardingComplete: true,
+          role: true,
+          referralCode: true,
+          oauthAccounts: {
+            select: { provider: true },
+          },
         },
-      },
-    });
+      }),
+      this.rankConfigService.findAll(),
+    ]);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    const resolvedRank = this.rankConfigService.resolveRank(user.totalSpent || 0, rankConfigs);
+
+    return {
+      ...user,
+      rank: resolvedRank,
+      rankConfigs,
+    };
   }
 
   /**

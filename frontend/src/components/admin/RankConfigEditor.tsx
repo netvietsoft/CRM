@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { toast } from 'react-toastify';
 
 interface RankConfigEditorProps {
   rank: string;
@@ -10,6 +11,11 @@ interface RankConfigEditorProps {
   minOrdersMonth?: number | null;
   discountPercent?: number | null;
   description?: string | null;
+}
+
+interface UpdateRankConfigResponse {
+  success: boolean;
+  config: RankConfigEditorProps;
 }
 
 export default function RankConfigEditor({
@@ -20,27 +26,39 @@ export default function RankConfigEditor({
   description,
 }: RankConfigEditorProps) {
   const router = useRouter();
-  const [form, setForm] = useState({
+  const buildFormState = () => ({
     minTotalSpent: minTotalSpent.toString(),
     minOrdersMonth: minOrdersMonth?.toString() || '',
     discountPercent: discountPercent?.toString() || '',
     description: description || '',
   });
+  const [form, setForm] = useState(buildFormState);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiClientClient.put('/rank-config', {
+      const response = await apiClientClient.put<UpdateRankConfigResponse>('/rank-config', {
         rank,
         minTotalSpent: Number(form.minTotalSpent || 0),
         minOrdersMonth: form.minOrdersMonth ? Number(form.minOrdersMonth) : null,
         discountPercent: form.discountPercent ? Number(form.discountPercent) : null,
         description: form.description.trim() || null,
       });
+      const updatedConfig = response.config;
+
+      setForm({
+        minTotalSpent: updatedConfig.minTotalSpent.toString(),
+        minOrdersMonth: updatedConfig.minOrdersMonth?.toString() || '',
+        discountPercent: updatedConfig.discountPercent?.toString() || '',
+        description: updatedConfig.description || '',
+      });
+
+      toast.success(`Đã lưu cấu hình hạng ${rank}`);
+
       router.refresh();
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Không thể cập nhật cấu hình rank');
+      toast.error(error instanceof Error ? error.message : 'Không thể cập nhật cấu hình rank');
     } finally {
       setSaving(false);
     }

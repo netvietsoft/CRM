@@ -8,6 +8,7 @@ import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminNotificationsModule } from '../modules/admin-notifications/admin-notifications.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { RankConfigModule } from '../rank-config/rank-config.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     NotificationsModule,
     AdminNotificationsModule,
     MessagingModule,
+    RankConfigModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth';
 import CartClient, { type CartItemData } from './CartClient';
 import { apiClient } from '@/lib/apiClient';
+import type { UserProfile } from '@/types/commerce';
 
 interface CartResponse {
   items?: CartItemData[] | null;
@@ -11,9 +12,14 @@ export default async function CartPage() {
   if (!session) return null;
 
   let cartItems: CartItemData[] = [];
+  let userProfile: UserProfile | null = null;
   try {
-    const cart = await apiClient.get<CartResponse>('/cart');
+    const [cart, profile] = await Promise.all([
+      apiClient.get<CartResponse>('/cart'),
+      apiClient.get<UserProfile>('/users/profile', { cache: 'no-store' }),
+    ]);
     cartItems = cart.items || [];
+    userProfile = profile;
   } catch (error) {
     console.error('Error fetching cart:', error);
   }
@@ -28,7 +34,7 @@ export default async function CartPage() {
           </p>
         </div>
 
-        <CartClient initialItems={cartItems} />
+        <CartClient initialItems={cartItems} userProfile={userProfile} />
       </div>
     </div>
   );

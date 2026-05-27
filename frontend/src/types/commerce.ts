@@ -82,6 +82,14 @@ export interface UserVoucher {
   sourceOrderCode?: string | null;
 }
 
+export interface UserRankConfig {
+  rank: 'MEMBER' | 'SILVER' | 'GOLD' | 'DIAMOND' | 'PLATINUM';
+  minTotalSpent: number;
+  minOrdersMonth?: number | null;
+  discountPercent?: number | null;
+  description?: string | null;
+}
+
 export interface UserProfile {
   name?: string | null;
   phone?: string | null;
@@ -89,6 +97,7 @@ export interface UserProfile {
   addressWard?: string | null;
   addressProvince?: string | null;
   rank?: string | null;
+  rankConfigs?: UserRankConfig[];
   dob?: string | Date | null;
   commissionBalance?: number | null;
 }

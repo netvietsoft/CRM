@@ -49,3 +49,31 @@ export function getNextMembershipConfig(
 
   return normalized[currentIndex + 1];
 }
+
+export function getMembershipDiscountPercent(
+  currentRank: string | null | undefined,
+  configs: MembershipConfig[] | null | undefined,
+) {
+  const normalized = normalizeMembershipConfigs(configs || []);
+  const rank = isMembershipRank(currentRank) ? currentRank : 'MEMBER';
+  const config = normalized.find((item) => item.rank === rank);
+  const discountPercent = Number(config?.discountPercent || 0);
+
+  if (!Number.isFinite(discountPercent) || discountPercent <= 0) {
+    return 0;
+  }
+
+  return Math.min(100, discountPercent);
+}
+
+export function applyMembershipDiscount(price: number, discountPercent: number) {
+  if (!Number.isFinite(price) || price <= 0) {
+    return 0;
+  }
+
+  if (!Number.isFinite(discountPercent) || discountPercent <= 0) {
+    return price;
+  }
+
+  return Math.max(0, Math.round((price * (100 - Math.min(100, discountPercent))) / 100));
+}

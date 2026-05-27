@@ -40,6 +40,31 @@ const DEFAULT_RANK_CONFIGS: Array<{
 export class RankConfigService {
   constructor(private prisma: PrismaService) {}
 
+  getDiscountPercentForRank(rank: Rank | string | null | undefined, configs: RankConfig[]) {
+    if (!rank) return 0;
+
+    const config = configs.find((item) => item.rank === rank);
+    const discountPercent = Number(config?.discountPercent || 0);
+
+    if (!Number.isFinite(discountPercent) || discountPercent <= 0) {
+      return 0;
+    }
+
+    return Math.min(100, discountPercent);
+  }
+
+  applyRankDiscount(price: number, discountPercent: number) {
+    if (!Number.isFinite(price) || price <= 0) {
+      return 0;
+    }
+
+    if (!Number.isFinite(discountPercent) || discountPercent <= 0) {
+      return price;
+    }
+
+    return Math.max(0, Math.round((price * (100 - Math.min(100, discountPercent))) / 100));
+  }
+
   async ensureDefaults() {
     const count = await this.prisma.rankConfig.count();
     if (count > 0) return;
@@ -60,6 +85,15 @@ export class RankConfigService {
   async upsert(updateDto: UpdateRankConfigDto) {
     await this.ensureDefaults();
 
+    const existingConfig = await this.prisma.rankConfig.findUnique({
+      where: { rank: updateDto.rank },
+    });
+
+    const shouldRecalculateRanks =
+      !existingConfig ||
+      existingConfig.minTotalSpent !== updateDto.minTotalSpent ||
+      (existingConfig.minOrdersMonth ?? null) !== (updateDto.minOrdersMonth ?? null);
+
     const config = await this.prisma.rankConfig.upsert({
       where: { rank: updateDto.rank },
       create: {
@@ -77,7 +111,9 @@ export class RankConfigService {
       },
     });
 
-    await this.recalculateAllUserRanks();
+    if (shouldRecalculateRanks) {
+      await this.recalculateAllUserRanks();
+    }
 
     return config;
   }

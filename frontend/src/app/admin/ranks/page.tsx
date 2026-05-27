@@ -55,7 +55,10 @@ export default async function AdminRanksPage() {
 
       <div className="space-y-4">
         {configs.map((config) => (
-          <RankConfigEditor key={config.id} {...config} />
+          <RankConfigEditor
+            key={`${config.id}-${config.minTotalSpent}-${config.minOrdersMonth ?? ''}-${config.discountPercent ?? ''}-${config.description ?? ''}`}
+            {...config}
+          />
         ))}
       </div>
     </>

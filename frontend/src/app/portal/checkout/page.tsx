@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth';
 import CheckoutClient from './CheckoutClient';
 import { redirect } from 'next/navigation';
 import { apiClient } from '@/lib/apiClient';
+import { applyMembershipDiscount, getMembershipDiscountPercent } from '@/lib/membership';
 import type {
   CartItem,
   CartResponse,
@@ -50,6 +51,11 @@ export default async function CheckoutPage(props: { searchParams: Promise<{ [key
   }
 
   if (cartMode) {
+    const rankDiscountPercent = getMembershipDiscountPercent(
+      detailedUser.rank,
+      detailedUser.rankConfigs,
+    );
+
     // Cart mode: checkout multiple items from cart
     const itemIds = (searchParams.items || '').split(',').filter(Boolean);
     if (itemIds.length === 0) redirect('/portal/cart');
@@ -78,6 +84,8 @@ export default async function CheckoutPage(props: { searchParams: Promise<{ [key
         price = variant.price;
       }
 
+      price = applyMembershipDiscount(price, rankDiscountPercent);
+
       return {
         cartItemId: ci.id,
         product: ci.product,
@@ -99,6 +107,8 @@ export default async function CheckoutPage(props: { searchParams: Promise<{ [key
       </div>
     );
   }
+
+  const rankDiscountPercent = getMembershipDiscountPercent(detailedUser.rank, detailedUser.rankConfigs);
 
   // Single product mode (Buy Now)
   const productId = searchParams.productId;
@@ -126,6 +136,8 @@ export default async function CheckoutPage(props: { searchParams: Promise<{ [key
   if (variant?.price) {
     price = variant.price;
   }
+
+  price = applyMembershipDiscount(price, rankDiscountPercent);
 
   const orderItems: CheckoutOrderItem[] = [{
     product,

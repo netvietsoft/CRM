@@ -2,12 +2,59 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
+import { RankConfigService } from '../rank-config/rank-config.service';
 
 @Injectable()
 export class CartService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private rankConfigService: RankConfigService,
+  ) {}
+
+  private resolveCartItemBasePrice(item: {
+    size: string | null;
+    color: string | null;
+    product: {
+      originalPrice: number;
+      salePrice: number | null;
+      variants?: Array<{
+        price: number | null;
+        size?: { name: string } | null;
+        color?: { name: string } | null;
+      }>;
+    };
+  }) {
+    let price = item.product.salePrice || item.product.originalPrice;
+
+    if (item.product.variants && item.product.variants.length > 0) {
+      let variant = null;
+      if (item.size && item.color) {
+        variant = item.product.variants.find(
+          (v) => v.size?.name === item.size && v.color?.name === item.color,
+        );
+      } else if (item.size) {
+        variant = item.product.variants.find((v) => v.size?.name === item.size);
+      } else if (item.color) {
+        variant = item.product.variants.find((v) => v.color?.name === item.color);
+      }
+
+      if (variant && variant.price) {
+        price = variant.price;
+      }
+    }
+
+    return price;
+  }
 
   async getCart(userId: string) {
+    const [user, rankConfigs] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { rank: true, totalSpent: true },
+      }),
+      this.rankConfigService.findAll(),
+    ]);
+
     let cart = await this.prisma.cart.findUnique({
       where: { userId },
       include: {
@@ -62,24 +109,16 @@ export class CartService {
       });
     }
 
+    const resolvedRank = this.rankConfigService.resolveRank(user?.totalSpent || 0, rankConfigs);
+    const discountPercent = this.rankConfigService.getDiscountPercentForRank(
+      resolvedRank,
+      rankConfigs,
+    );
+
     // Calculate totals
     const subtotal = cart.items.reduce((sum, item) => {
-      let price = item.product.salePrice || item.product.originalPrice;
-      if (item.product.variants && item.product.variants.length > 0) {
-        let variant = null;
-        if (item.size && item.color) {
-          variant = item.product.variants.find(
-            (v: any) => v.size?.name === item.size && v.color?.name === item.color,
-          );
-        } else if (item.size) {
-          variant = item.product.variants.find((v: any) => v.size?.name === item.size);
-        } else if (item.color) {
-          variant = item.product.variants.find((v: any) => v.color?.name === item.color);
-        }
-        if (variant && variant.price) {
-          price = variant.price;
-        }
-      }
+      const basePrice = this.resolveCartItemBasePrice(item);
+      const price = this.rankConfigService.applyRankDiscount(basePrice, discountPercent);
       return sum + price * item.quantity;
     }, 0);
 

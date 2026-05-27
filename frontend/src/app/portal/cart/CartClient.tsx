@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { applyMembershipDiscount, getMembershipDiscountPercent } from '@/lib/membership';
+import type { UserProfile } from '@/types/commerce';
 
 interface ProductVariant {
   price: number | null;
@@ -39,6 +41,7 @@ export interface CartItemData {
 
 interface CartClientProps {
   initialItems: CartItemData[];
+  userProfile: UserProfile | null;
 }
 
 function formatCurrency(amount: number) {
@@ -49,7 +52,7 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-const getCartItemPrice = (item: CartItemData) => {
+const getCartItemPrice = (item: CartItemData, discountPercent: number) => {
   let price = item.product.salePrice || item.product.originalPrice;
   if (item.product.variants && item.product.variants.length > 0) {
     let variant: ProductVariant | undefined;
@@ -71,13 +74,18 @@ const getCartItemPrice = (item: CartItemData) => {
       price = variant.price;
     }
   }
-  return price;
+
+  return applyMembershipDiscount(price, discountPercent);
 };
 
-export default function CartClient({ initialItems }: CartClientProps) {
+export default function CartClient({ initialItems, userProfile }: CartClientProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const rankDiscountPercent = getMembershipDiscountPercent(
+    userProfile?.rank,
+    userProfile?.rankConfigs,
+  );
 
   // Group items by store
   const storeGroups = items.reduce<Record<string, { storeName: string; storeId: string | null; items: CartItemData[] }>>((acc, item) => {
@@ -105,7 +113,7 @@ export default function CartClient({ initialItems }: CartClientProps) {
   // Calculate subtotal for selected items only
   const selectedItems = items.filter(i => selectedIds.has(i.id));
   const subtotal = selectedItems.reduce((sum, item) => {
-    return sum + getCartItemPrice(item) * item.quantity;
+    return sum + getCartItemPrice(item, rankDiscountPercent) * item.quantity;
   }, 0);
 
   const toggleSelect = (itemId: string) => {
@@ -237,7 +245,7 @@ export default function CartClient({ initialItems }: CartClientProps) {
               {/* Items */}
               <div className="space-y-0">
                 {group.items.map((item) => {
-                  const price = getCartItemPrice(item);
+                  const price = getCartItemPrice(item, rankDiscountPercent);
                   const itemTotal = price * item.quantity;
                   const isOutOfStock = !item.product.isActive;
                   const disabled = isItemDisabled(item);
