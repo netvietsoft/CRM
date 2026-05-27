@@ -1,5 +1,6 @@
 import { Module, Logger } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import type { RegisterQueueOptions } from '@nestjs/bullmq';
 import { BullBoardModule } from '@bull-board/nestjs';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { MESSAGE_DEAD_LETTER_QUEUE, MESSAGE_DISPATCH_QUEUE } from './messaging.constants';
@@ -30,34 +31,33 @@ function getQueueImports(): any[] {
 
   const attempts = Number(process.env.MESSAGING_QUEUE_ATTEMPTS || 3);
   const backoffDelay = Number(process.env.MESSAGING_QUEUE_BACKOFF_MS || 5000);
+  const dispatchQueueOptions: RegisterQueueOptions = {
+    name: MESSAGE_DISPATCH_QUEUE,
+    defaultJobOptions: {
+      attempts,
+      backoff: {
+        type: 'exponential',
+        delay: backoffDelay,
+      },
+      removeOnComplete: {
+        age: 86400,
+        count: 1000,
+      },
+      removeOnFail: {
+        age: 604800,
+      },
+    },
+  };
+  const deadLetterQueueOptions: RegisterQueueOptions = {
+    name: MESSAGE_DEAD_LETTER_QUEUE,
+    defaultJobOptions: {
+      removeOnComplete: false,
+      removeOnFail: false,
+    },
+  };
 
   return [
-    BullModule.registerQueue(
-      {
-        name: MESSAGE_DISPATCH_QUEUE,
-        defaultJobOptions: {
-          attempts,
-          backoff: {
-            type: 'exponential',
-            delay: backoffDelay,
-          },
-          removeOnComplete: {
-            age: 86400,
-            count: 1000,
-          },
-          removeOnFail: {
-            age: 604800,
-          },
-        },
-      },
-      {
-        name: MESSAGE_DEAD_LETTER_QUEUE,
-        defaultJobOptions: {
-          removeOnComplete: false,
-          removeOnFail: false,
-        },
-      },
-    ),
+    BullModule.registerQueue(dispatchQueueOptions, deadLetterQueueOptions),
     BullBoardModule.forFeature({
       name: MESSAGE_DISPATCH_QUEUE,
       adapter: BullMQAdapter,
