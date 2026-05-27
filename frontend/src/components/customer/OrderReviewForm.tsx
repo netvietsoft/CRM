@@ -2,9 +2,9 @@
 
 import Image from '@/components/ui/AppImage';
 import { useState } from 'react';
-import { Star, X } from 'lucide-react';
-import { UploadButton } from '@/lib/uploadthing';
+import { Star } from 'lucide-react';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import ReviewImageUploader from './ReviewImageUploader';
 
 type OrderItem = {
   id: string;
@@ -94,10 +94,6 @@ export default function OrderReviewForm({
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
   };
 
   return (
@@ -195,51 +191,11 @@ export default function OrderReviewForm({
         <label className="block text-sm font-semibold text-gray-900 mb-2">
           Hình ảnh (tùy chọn, tối đa 5 ảnh, 4MB/ảnh)
         </label>
-
-        {images.length > 0 && (
-          <div className="flex flex-wrap gap-3 mb-3">
-            {images.map((img, idx) => (
-              <div key={idx} className="relative group">
-                <Image
-                  loader={passthroughImageLoader}
-                  unoptimized
-                  src={img}
-                  alt=""
-                  width={96}
-                  height={96}
-                  className="w-24 h-24 object-cover rounded-lg border border-gray-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeImage(idx)}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {images.length < 5 && (
-          <UploadButton
-            endpoint="imageUploader"
-            onClientUploadComplete={(res) => {
-              if (res) {
-                const newImages = res.map((file) => file.url);
-                setImages([...images, ...newImages].slice(0, 5));
-              }
-            }}
-            onUploadError={(uploadError: Error) => {
-              setError(`Lỗi upload: ${uploadError.message}`);
-            }}
-            appearance={{
-              button:
-                'ut-ready:bg-indigo-600 ut-uploading:cursor-not-allowed ut-uploading:bg-indigo-400 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm',
-              allowedContent: 'text-xs text-gray-500 mt-2',
-            }}
-          />
-        )}
+        <ReviewImageUploader
+          images={images}
+          onChange={setImages}
+          onError={setError}
+        />
       </div>
 
       {error && (

@@ -1,7 +1,4 @@
-import jwt from 'jsonwebtoken';
 import { apiClient } from './apiClient';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 
 export interface SessionUser {
   id: string;
@@ -16,14 +13,6 @@ export interface SessionUser {
   store?: {
     id: string;
   } | null;
-}
-
-export function verifyToken(token: string): { userId: string; role: string } | null {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; role: string };
-  } catch {
-    return null;
-  }
 }
 
 export async function getSession(): Promise<SessionUser | null> {
