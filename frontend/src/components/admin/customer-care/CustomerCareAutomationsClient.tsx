@@ -23,14 +23,28 @@ function getTriggerLabel(value: string) {
 }
 
 function getTriggerClassName(value: string) {
-  if (value === 'BIRTHDAY') {
+  if (value === 'BIRTHDAY' || value === 'BIRTHDAY_TODAY') {
     return 'bg-pink-50 text-pink-700 ring-pink-200';
   }
-  if (value === 'ORDER_SHIPPING_STATUS') {
+  if (value === 'ORDER_SHIPPING_STATUS' || value === 'ORDER_SHIPPED') {
     return 'bg-blue-50 text-blue-700 ring-blue-200';
   }
-  if (value === 'ORDER_DELIVERED_PAID') {
+  if (
+    value === 'ORDER_DELIVERED_PAID' ||
+    value === 'ORDER_DELIVERED' ||
+    value === 'PAYMENT_SUCCESS' ||
+    value === 'VOUCHER_ACTIVATED'
+  ) {
     return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+  }
+  if (value.startsWith('ORDER_') || value === 'PAYMENT_FAILED') {
+    return 'bg-amber-50 text-amber-700 ring-amber-200';
+  }
+  if (value.startsWith('VOUCHER_')) {
+    return 'bg-violet-50 text-violet-700 ring-violet-200';
+  }
+  if (value.startsWith('CUSTOMER_')) {
+    return 'bg-cyan-50 text-cyan-700 ring-cyan-200';
   }
   return 'bg-gray-100 text-gray-700 ring-gray-200';
 }

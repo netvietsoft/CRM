@@ -23,7 +23,24 @@ export type MessageAutomationExecutionStatus = 'PENDING' | 'QUEUED' | 'SENT' | '
 export type MessageAutomationTriggerType =
   | 'BIRTHDAY'
   | 'ORDER_SHIPPING_STATUS'
-  | 'ORDER_DELIVERED_PAID';
+  | 'ORDER_DELIVERED_PAID'
+  | 'CUSTOMER_CREATED'
+  | 'ORDER_CREATED'
+  | 'ORDER_CONFIRMED'
+  | 'ORDER_SHIPPED'
+  | 'ORDER_DELIVERED'
+  | 'ORDER_PARTIAL_DELIVERED'
+  | 'ORDER_CANCELLED'
+  | 'PAYMENT_SUCCESS'
+  | 'PAYMENT_FAILED'
+  | 'VOUCHER_CREATED'
+  | 'VOUCHER_ACTIVATED'
+  | 'VOUCHER_USED'
+  | 'VOUCHER_EXPIRING_3D'
+  | 'VOUCHER_EXPIRED'
+  | 'BIRTHDAY_TODAY'
+  | 'CUSTOMER_INACTIVE_30D'
+  | 'CUSTOMER_INACTIVE_60D';
 export type RecipientSourceType = 'CUSTOMERS' | 'ORDERS';
 export type AudiencePurchaseState = 'PURCHASED_SUCCESS' | 'PURCHASED_FAILED' | 'NOT_PURCHASED';
 
@@ -375,6 +392,23 @@ export const triggerTypeOptions: Array<{ value: MessageAutomationTriggerType; la
   { value: 'BIRTHDAY', label: 'Sinh nhật khách hàng' },
   { value: 'ORDER_SHIPPING_STATUS', label: 'Đơn chuyển sang vận chuyển' },
   { value: 'ORDER_DELIVERED_PAID', label: 'Đơn đã nhận và thanh toán xong' },
+  { value: 'CUSTOMER_CREATED', label: 'Khách hàng mới tạo' },
+  { value: 'ORDER_CREATED', label: 'Đơn hàng mới tạo' },
+  { value: 'ORDER_CONFIRMED', label: 'Đơn hàng xác nhận' },
+  { value: 'ORDER_SHIPPED', label: 'Đơn hàng đã gửi' },
+  { value: 'ORDER_DELIVERED', label: 'Đơn hàng giao thành công' },
+  { value: 'ORDER_PARTIAL_DELIVERED', label: 'Đơn giao một phần' },
+  { value: 'ORDER_CANCELLED', label: 'Đơn hàng bị hủy' },
+  { value: 'PAYMENT_SUCCESS', label: 'Thanh toán thành công' },
+  { value: 'PAYMENT_FAILED', label: 'Thanh toán thất bại' },
+  { value: 'VOUCHER_CREATED', label: 'Voucher được tạo cho khách' },
+  { value: 'VOUCHER_ACTIVATED', label: 'Voucher được kích hoạt' },
+  { value: 'VOUCHER_USED', label: 'Voucher đã sử dụng' },
+  { value: 'VOUCHER_EXPIRING_3D', label: 'Voucher sắp hết hạn 3 ngày' },
+  { value: 'VOUCHER_EXPIRED', label: 'Voucher đã hết hạn' },
+  { value: 'BIRTHDAY_TODAY', label: 'Đúng ngày sinh nhật' },
+  { value: 'CUSTOMER_INACTIVE_30D', label: 'Khách ngủ đông 30 ngày' },
+  { value: 'CUSTOMER_INACTIVE_60D', label: 'Khách ngủ đông 60 ngày' },
 ];
 
 export const templateKindOptions: Array<{ value: MessageTemplateKind; label: string }> = [

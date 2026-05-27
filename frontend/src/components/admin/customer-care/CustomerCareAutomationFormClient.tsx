@@ -38,6 +38,15 @@ const emptyForm: AutomationFormState = {
   skipExchangeOrders: true,
 };
 
+function isOrderLikeTrigger(triggerType: string) {
+  return (
+    triggerType === 'ORDER_SHIPPING_STATUS' ||
+    triggerType === 'ORDER_DELIVERED_PAID' ||
+    triggerType.startsWith('ORDER_') ||
+    triggerType.startsWith('PAYMENT_')
+  );
+}
+
 interface CustomerCareAutomationFormClientProps {
   ruleId?: string;
 }
@@ -138,12 +147,12 @@ export default function CustomerCareAutomationFormClient({
       templateId: form.templateId || undefined,
       isActive: form.isActive,
       triggerConfig:
-        form.triggerType === 'BIRTHDAY'
-          ? {}
-          : {
+        isOrderLikeTrigger(form.triggerType)
+          ? {
               skipPartialOrders: form.skipPartialOrders,
               skipExchangeOrders: form.skipExchangeOrders,
-            },
+            }
+          : {},
       audienceFilter: {
         search: form.search.trim() || undefined,
         purchaseState: form.purchaseState || undefined,
@@ -305,7 +314,7 @@ export default function CustomerCareAutomationFormClient({
               </select>
             </label>
 
-            {form.triggerType !== 'BIRTHDAY' ? (
+            {isOrderLikeTrigger(form.triggerType) ? (
               <>
                 <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
                   <input
