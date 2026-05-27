@@ -65,6 +65,10 @@ interface OrderProductSummary {
 interface OrderItem {
   id: string;
   product?: OrderProductSummary | null;
+  productName?: string | null;
+  productImageUrl?: string | null;
+  productDisplayId?: string | null;
+  productBarcode?: string | null;
   size?: string | null;
   color?: string | null;
   quantity: number;
@@ -92,6 +96,20 @@ interface MetadataItem {
   discountEachProduct?: number | null;
   isDiscountPercent?: boolean;
   returnedCount?: number | null;
+  price: number;
+}
+
+
+interface OrderDisplayItem {
+  key: string;
+  image?: string | null;
+  name?: string | null;
+  displayId?: string | null;
+  barcode?: string | null;
+  fields?: MetadataField[] | null;
+  quantity: number;
+  weight?: number | null;
+  isGift?: boolean;
   price: number;
 }
 
@@ -308,6 +326,43 @@ export default async function OrderDetailPage(props: {
     ? shippingAddr.fullAddress
     : [order.user?.addressStreet, order.user?.addressWard, order.user?.addressProvince].filter(Boolean).join(', ');
 
+  const linkedDisplayItems: OrderDisplayItem[] = (order.items || []).map((item) => ({
+    key: item.id,
+    image: item.product?.imageUrl || item.productImageUrl,
+    name: item.product?.name || item.productName || 'Sản phẩm',
+    displayId: item.productDisplayId,
+    barcode: item.productBarcode,
+    fields:
+      item.size || item.color
+        ? [
+            ...(item.size ? [{ name: 'Size', value: item.size }] : []),
+            ...(item.color ? [{ name: 'Màu', value: item.color }] : []),
+          ]
+        : null,
+    quantity: item.quantity,
+    isGift: item.isGift,
+    price: item.price,
+  }));
+
+  const metadataDisplayItems: OrderDisplayItem[] = (m.items || []).map((item, idx) => ({
+    key: String(item.id ?? item.variationId ?? idx),
+    image: item.image,
+    name: item.name || 'Sản phẩm',
+    displayId: item.displayId,
+    barcode: item.barcode,
+    fields: item.fields,
+    quantity: item.quantity,
+    weight: item.weight,
+    isGift: item.isBonusProduct,
+    price: item.price,
+  }));
+
+  const displayItems = isPancake && metadataDisplayItems.length > linkedDisplayItems.length
+    ? metadataDisplayItems
+    : linkedDisplayItems.length > 0
+      ? linkedDisplayItems
+      : metadataDisplayItems;
+
   return (
     <>
       <OrderReadStatusManager orderId={order.id} isRead={order.isRead ?? false} />
@@ -350,43 +405,54 @@ export default async function OrderDetailPage(props: {
           {/* Order Items */}
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4">
-              Sản phẩm ({order.items?.length || m.items?.length || 0})
+              Sản phẩm ({displayItems.length})
             </h2>
             <div className="space-y-4">
-              {/* Real order items (linked products) */}
-              {order.items?.map((item) => (
+              {displayItems.map((item) => (
                 <div
-                  key={item.id}
+                  key={item.key}
                   className="flex gap-4 p-4 bg-gray-50 rounded-lg"
                 >
                   <div className="w-14 h-14 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                    {item.product?.imageUrl ? (
+                    {item.image ? (
                       <Image
                         loader={passthroughImageLoader}
                         unoptimized
-                        src={item.product.imageUrl}
-                        alt={item.product.name ?? 'Sản phẩm'}
+                        src={item.image}
+                        alt={item.name ?? 'Sản phẩm'}
                         width={56}
                         height={56}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-10 h-10 flex items-center justify-center text-gray-400">
+                      <div className="w-14 h-14 flex items-center justify-center text-gray-400">
                         📦
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-800 mb-1">
-                      {item.product?.name || 'Sản phẩm'}
+                      {item.name || 'Sản phẩm'}
                     </h3>
-                    {(item.size || item.color) && (
+                    <div className="flex gap-2 flex-wrap mb-1">
+                      {item.displayId && (
+                        <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                          SKU: {item.displayId}
+                        </span>
+                      )}
+                      {item.barcode && (
+                        <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                          {item.barcode}
+                        </span>
+                      )}
+                    </div>
+                    {item.fields && item.fields.length > 0 && (
                       <p className="text-sm text-gray-600 mb-1">
-                        {[item.size, item.color].filter(Boolean).join(' • ')}
+                        {item.fields.map((field) => `${field.name || field.keyValue}: ${field.value}`).join(' • ')}
                       </p>
                     )}
                     <p className="text-sm text-gray-600">
-                      Số lượng: {item.quantity}
+                      Số lượng: {item.quantity} {item.weight ? `• ${item.weight}g` : ''}
                     </p>
                     {item.isGift && (
                       <span className="inline-block mt-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
@@ -402,86 +468,6 @@ export default async function OrderDetailPage(props: {
                   </div>
                 </div>
               ))}
-
-              {/* Fallback: show items from metadata if no linked items */}
-              {(!order.items || order.items.length === 0) && (m.items?.length ?? 0) > 0 && (
-                <>
-                  {m.items?.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex gap-4 p-4 bg-gray-50 rounded-lg"
-                    >
-                      <div className="w-14 h-14 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                        {item.image ? (
-                          <Image
-                            loader={passthroughImageLoader}
-                            unoptimized
-                            src={item.image}
-                            alt={item.name ?? 'Sản phẩm'}
-                            width={56}
-                            height={56}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 flex items-center justify-center text-gray-400">
-                            📦
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 mb-1">
-                          {item.name || 'Sản phẩm'}
-                        </h3>
-                        {/* SKU / barcode */}
-                        <div className="flex gap-2 flex-wrap mb-1">
-                          {item.displayId && (
-                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
-                              SKU: {item.displayId}
-                            </span>
-                          )}
-                          {item.barcode && (
-                            <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
-                              {item.barcode}
-                            </span>
-                          )}
-                        </div>
-                        {/* Variant fields (size, color etc.) */}
-                        {item.fields && item.fields.length > 0 && (
-                          <p className="text-sm text-gray-600 mb-1">
-                            {item.fields.map((field) => `${field.name || field.keyValue}: ${field.value}`).join(' • ')}
-                          </p>
-                        )}
-                        <p className="text-sm text-gray-600">
-                          SL: {item.quantity} {item.weight ? `• ${item.weight}g` : ''}
-                        </p>
-                        <div className="flex gap-1.5 mt-1 flex-wrap">
-                          {item.isBonusProduct && (
-                            <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
-                              Quà tặng
-                            </span>
-                          )}
-                          {(item.discountEachProduct ?? 0) > 0 && (
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-                              -{item.isDiscountPercent ? `${item.discountEachProduct ?? 0}%` : fmt(item.discountEachProduct ?? 0)}
-                            </span>
-                          )}
-                          {(item.returnedCount ?? 0) > 0 && (
-                            <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
-                              Hoàn: {item.returnedCount ?? 0}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-gray-800">{fmt(item.price)}</p>
-                        <p className="text-sm text-gray-600">
-                          Tổng: {fmt(item.price * item.quantity)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
             </div>
           </div>
 

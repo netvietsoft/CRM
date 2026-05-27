@@ -429,17 +429,17 @@ export class PancakeService {
   private extractItemsMetadata(items: any[]) {
     if (!items || items.length === 0) return [];
     return items.map((item) => ({
-      name: item.variation_info?.name || 'Sản phẩm không rõ',
-      price: item.variation_info?.retail_price || 0,
+      name: item.variation_info?.name || item.name || item.product_name || 'Sản phẩm không rõ',
+      price: item.variation_info?.retail_price ?? item.price ?? 0,
       quantity: item.quantity || 1,
-      image: item.variation_info?.images?.[0] || null,
-      images: item.variation_info?.images || [],
+      image: item.variation_info?.images?.[0] || item.image || null,
+      images: item.variation_info?.images || (item.image ? [item.image] : []),
       productId: item.product_id || null,
       variationId: item.variation_id || null,
-      displayId: item.variation_info?.display_id || null,
+      displayId: item.variation_info?.display_id || item.display_id || null,
       productDisplayId: item.variation_info?.product_display_id || null,
-      barcode: item.variation_info?.barcode || null,
-      weight: item.variation_info?.weight || 0,
+      barcode: item.variation_info?.barcode || item.barcode || null,
+      weight: item.variation_info?.weight || item.weight || 0,
       fields: item.variation_info?.fields || [],
       detail: item.variation_info?.detail || null,
       discountEachProduct: item.discount_each_product || 0,
@@ -1247,32 +1247,38 @@ export class PancakeService {
 
     const orderItemsData = [];
     for (const item of detailData.items || pOrder.items || []) {
+      const rawItemName =
+        item.variation_info?.name || item.name || item.product_name || 'Sản phẩm không rõ';
       const { baseName, color, size } = this.extractProductInfo(
-        item.variation_info?.name || item.name || '',
+        rawItemName,
         item.variation_info?.fields,
       );
-      if (!baseName) continue;
+      const normalizedBaseName = (baseName || rawItemName).replace(/_+/g, ' ').trim();
 
-      const matchingProduct = await this.prisma.product.findFirst({
-        where: {
-          storeId,
-          OR: [
-            { externalId: baseName.toLowerCase().replace(/\s+/g, '-') },
-            { name: { contains: baseName } },
-          ],
-        },
+      const matchingProduct = normalizedBaseName
+        ? await this.prisma.product.findFirst({
+            where: {
+              storeId,
+              OR: [
+                { externalId: normalizedBaseName.toLowerCase().replace(/\s+/g, '-') },
+                { name: { contains: normalizedBaseName } },
+              ],
+            },
+          })
+        : null;
+
+      orderItemsData.push({
+        productId: matchingProduct?.id || null,
+        productName: normalizedBaseName || rawItemName,
+        productImageUrl: item.variation_info?.images?.[0] || item.image || null,
+        productDisplayId: item.variation_info?.display_id || item.display_id || null,
+        productBarcode: item.variation_info?.barcode || item.barcode || null,
+        quantity: item.quantity || 1,
+        price: item.variation_info?.retail_price ?? item.price ?? 0,
+        isGift: item.is_bonus_product || false,
+        size,
+        color,
       });
-
-      if (matchingProduct) {
-        orderItemsData.push({
-          productId: matchingProduct.id,
-          quantity: item.quantity || 1,
-          price: item.variation_info?.retail_price || item.price || 0,
-          isGift: item.is_bonus_product || false,
-          size,
-          color,
-        });
-      }
     }
 
     const metadata: Record<string, any> = {

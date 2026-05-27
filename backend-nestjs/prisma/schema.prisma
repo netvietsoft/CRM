@@ -361,16 +361,20 @@ model OrderVoucher {
 }
 
 model OrderItem {
-  id        String  @id @default(uuid())
-  orderId   String  @map("order_id")
-  productId String  @map("product_id")
-  quantity  Int
-  price     Float
-  isGift    Boolean @default(false) @map("is_gift")
-  size      String?
-  color     String?
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product @relation(fields: [productId], references: [id])
+  id               String   @id @default(uuid())
+  orderId          String   @map("order_id")
+  productId        String?  @map("product_id")
+  productName      String?  @map("product_name")
+  productImageUrl  String?  @map("product_image_url") @db.Text
+  productDisplayId String?  @map("product_display_id")
+  productBarcode   String?  @map("product_barcode")
+  quantity         Int
+  price            Float
+  isGift           Boolean  @default(false) @map("is_gift")
+  size             String?
+  color            String?
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])

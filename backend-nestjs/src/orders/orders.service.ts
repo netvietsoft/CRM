@@ -29,6 +29,11 @@ interface CustomerSegmentOrderSnapshot {
   createdAt: Date;
 }
 
+type OrderItemSnapshotFields = {
+  productName?: string | null;
+  productImageUrl?: string | null;
+};
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -86,6 +91,18 @@ export class OrdersService {
       (sum, appliedVoucher) => sum + (Number(appliedVoucher.discountApplied) || 0),
       0,
     );
+  }
+
+  private getOrderItemDisplayName(
+    item: { product?: { name?: string | null } | null } & OrderItemSnapshotFields,
+  ) {
+    return item.product?.name || item.productName || 'Sản phẩm';
+  }
+
+  private getOrderItemDisplayImage(
+    item: { product?: { imageUrl?: string | null } | null } & OrderItemSnapshotFields,
+  ) {
+    return item.product?.imageUrl || item.productImageUrl || null;
   }
 
   private getDisplayShippingFee(order: {
@@ -2201,8 +2218,8 @@ export class OrdersService {
       paymentStatus: order.paymentStatus,
       status: order.status,
       items: order.items.map((item) => ({
-        name: item.product?.name || 'Sản phẩm',
-        image: item.product?.imageUrl,
+        name: this.getOrderItemDisplayName(item),
+        image: this.getOrderItemDisplayImage(item),
         quantity: item.quantity,
       })),
     };
@@ -2288,8 +2305,8 @@ export class OrdersService {
       paymentStatus: matchedOrder.paymentStatus,
       isPancake: matchedOrder.source === 'PANCAKE',
       items: (matchedOrder as any).items.map((item) => ({
-        name: item.product?.name || 'Sản phẩm',
-        image: item.product?.imageUrl,
+        name: this.getOrderItemDisplayName(item),
+        image: this.getOrderItemDisplayImage(item),
         quantity: item.quantity,
         price: item.price,
         size: item.size,
