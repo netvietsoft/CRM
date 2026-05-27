@@ -19,6 +19,11 @@ interface ProductVariantInput {
   stock: number;
 }
 
+interface ProductSubmitComboItem {
+  childProductId: string;
+  quantity: number;
+}
+
 interface ProductSubmitPayload {
   name: string;
   slug: string;
@@ -32,8 +37,13 @@ interface ProductSubmitPayload {
   isComboSet: boolean;
   isGiftItem: boolean;
   isActive: boolean;
+  supplierId?: string;
+  materialId?: string;
+  unitId?: string;
   categoryIds: string[];
+  tagIds?: string[];
   variants?: ProductVariantInput[];
+  comboItems?: ProductSubmitComboItem[];
 }
 
 export interface ProductFormProduct {
@@ -50,7 +60,24 @@ export interface ProductFormProduct {
   isComboSet?: boolean;
   isGiftItem?: boolean;
   isActive?: boolean;
+  supplier?: { id: string } | null;
+  material?: { id: string } | null;
+  unit?: { id: string } | null;
   categories?: Array<{ id: string }> | null;
+  tagMaps?: Array<{
+    tagId?: string | null;
+    tag?: { id: string } | null;
+  }> | null;
+  comboItems?: Array<{
+    id?: string | null;
+    childProductId?: string | null;
+    quantity?: number | null;
+    childProduct?: {
+      id: string;
+      name: string;
+      sku?: string | null;
+    } | null;
+  }> | null;
   variants?: Array<{
     id?: string | null;
     sizeId?: string | null;

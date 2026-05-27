@@ -39,6 +39,10 @@ const navItems = [
       { name: 'Đơn hàng', href: '/admin/orders', roles: ALL_ROLES },
       { name: 'Sản phẩm', href: '/admin/products', roles: ALL_ROLES },
       { name: 'Danh mục', href: '/admin/categories', roles: ALL_ROLES },
+      { name: 'Nhà cung cấp', href: '/admin/suppliers', roles: ALL_ROLES },
+      { name: 'Chất liệu', href: '/admin/materials', roles: ALL_ROLES },
+      { name: 'Đơn vị tính', href: '/admin/units', roles: ALL_ROLES },
+      { name: 'Tag sản phẩm', href: '/admin/product-tags', roles: ALL_ROLES },
     ],
   },
   {

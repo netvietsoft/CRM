@@ -19,6 +19,11 @@ interface ProductSubmitVariant {
   stock: number;
 }
 
+interface ProductSubmitComboItem {
+  childProductId: string;
+  quantity: number;
+}
+
 interface ProductSubmitPayload {
   name: string;
   slug: string;
@@ -32,8 +37,13 @@ interface ProductSubmitPayload {
   isComboSet: boolean;
   isGiftItem: boolean;
   isActive: boolean;
+  supplierId?: string;
+  materialId?: string;
+  unitId?: string;
   categoryIds: string[];
+  tagIds?: string[];
   variants?: ProductSubmitVariant[];
+  comboItems?: ProductSubmitComboItem[];
 }
 
 interface ApiErrorLike {

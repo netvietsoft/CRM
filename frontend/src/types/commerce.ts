@@ -7,6 +7,11 @@ export interface StoreSummary {
   addressProvince?: string | null;
 }
 
+export interface CategorySummary {
+  id: string;
+  name: string;
+}
+
 export interface ProductOption {
   name: string;
 }
@@ -27,6 +32,7 @@ export interface ProductSummary {
   isActive?: boolean;
   storeId?: string | null;
   store?: StoreSummary | null;
+  categories?: CategorySummary[];
   variants?: ProductVariant[];
 }
 
@@ -49,6 +55,15 @@ export interface VoucherDefinition {
   value: number;
   maxDiscount?: number | null;
   minOrderValue: number;
+  requiredCategoryId?: string | null;
+  minProductCount?: number | null;
+  orderSources?: string[] | null;
+  salesChannels?: string[] | null;
+  customerSegments?: string[] | null;
+  customerRanks?: string[] | null;
+  customerOccasions?: string[] | null;
+  shippingProvinces?: string[] | null;
+  paymentMethods?: string[] | null;
   stackTiers?: VoucherStackTier[] | null;
   campaignCategory?: string | null;
   store?: StoreSummary | null;
@@ -73,6 +88,8 @@ export interface UserProfile {
   addressStreet?: string | null;
   addressWard?: string | null;
   addressProvince?: string | null;
+  rank?: string | null;
+  dob?: string | Date | null;
   commissionBalance?: number | null;
 }
 
