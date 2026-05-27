@@ -31,7 +31,7 @@ function getQueueImports(): any[] {
 
   const attempts = Number(process.env.MESSAGING_QUEUE_ATTEMPTS || 3);
   const backoffDelay = Number(process.env.MESSAGING_QUEUE_BACKOFF_MS || 5000);
-  const dispatchQueueOptions: RegisterQueueOptions = {
+  const dispatchQueueOptions = {
     name: MESSAGE_DISPATCH_QUEUE,
     defaultJobOptions: {
       attempts,
@@ -47,14 +47,14 @@ function getQueueImports(): any[] {
         age: 604800,
       },
     },
-  };
-  const deadLetterQueueOptions: RegisterQueueOptions = {
+  } as RegisterQueueOptions;
+  const deadLetterQueueOptions = {
     name: MESSAGE_DEAD_LETTER_QUEUE,
     defaultJobOptions: {
       removeOnComplete: false,
       removeOnFail: false,
     },
-  };
+  } as RegisterQueueOptions;
 
   return [
     BullModule.registerQueue(dispatchQueueOptions, deadLetterQueueOptions),

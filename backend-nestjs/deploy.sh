@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
@@ -109,7 +109,54 @@ fi
 
 echo "🚀 Deploying on server..."
 ssh "$SSH_USER@$HOST" << EOF
+set -euo pipefail
+
 cd $SERVER_DIR
+
+install_dependencies() {
+    if [ -f "yarn.lock" ]; then
+        if command -v yarn >/dev/null 2>&1; then
+            yarn install --frozen-lockfile
+            return
+        fi
+
+        if command -v corepack >/dev/null 2>&1; then
+            corepack enable
+            yarn install --frozen-lockfile
+            return
+        fi
+
+        echo "❌ yarn.lock found but neither yarn nor corepack is available on server"
+        exit 1
+    fi
+
+    if [ -f "package-lock.json" ]; then
+        npm ci
+        return
+    fi
+
+    npm install
+}
+
+run_build() {
+    if [ -f "yarn.lock" ]; then
+        if command -v yarn >/dev/null 2>&1; then
+            yarn build
+            return
+        fi
+
+        if command -v corepack >/dev/null 2>&1; then
+            corepack enable
+            yarn build
+            return
+        fi
+
+        echo "❌ yarn.lock found but neither yarn nor corepack is available on server"
+        exit 1
+    fi
+
+    npm run build
+}
 
 if [ -f "be-source.tar.gz" ]; then
     echo "Extracting source..."
@@ -120,11 +167,7 @@ fi
 
 if [ "$INSTALL_DEPS" == "yes" ] || [ "$INSTALL_DEPS" == "y" ]; then
     echo "📦 Installing dependencies..."
-    if command -v yarn >/dev/null 2>&1; then
-        yarn install
-    else
-        npm install
-    fi
+    install_dependencies
 else
     echo "⏭️ Skipping dependency installation..."
 fi
@@ -204,11 +247,7 @@ else
 fi
 
 echo "📦 Building application on server..."
-if command -v yarn >/dev/null 2>&1; then
-    yarn build
-else
-    npm run build
-fi
+run_build
 
 if [ -f "ecosystem.config.js" ]; then
     pm2 startOrReload ecosystem.config.js --update-env && pm2 save

@@ -24,7 +24,7 @@ function getQueueImports(): any[] {
     return [];
   }
 
-  const voucherQueueOptions: RegisterQueueOptions = {
+  const voucherQueueOptions = {
     name: 'voucher-queue',
     defaultJobOptions: {
       attempts: 3,
@@ -40,7 +40,7 @@ function getQueueImports(): any[] {
         age: 604800,
       },
     },
-  };
+  } as RegisterQueueOptions;
 
   return [
     BullModule.registerQueue(voucherQueueOptions),
