@@ -1,8 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import Select from '@/components/ui/Select';
+
+function toDateTimeLocalValue(value?: string | null) {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
 
 type StackConditionType = 'products' | 'amount';
 type StackDiscountType = 'FIXED_AMOUNT' | 'PERCENT';
@@ -40,11 +50,80 @@ interface VoucherData {
   validFrom: string | null;
   validTo: string | null;
   durationDays: number | null;
+  storeId?: string | null;
+  requiredCategoryId?: string | null;
+  minProductCount?: number | null;
+  orderSources?: string[] | null;
+  salesChannels?: string[] | null;
+  customerSegments?: string[] | null;
+  customerRanks?: string[] | null;
+  customerOccasions?: string[] | null;
+  shippingProvinces?: string[] | null;
+  paymentMethods?: string[] | null;
   isStackable: boolean;
   isActive: boolean;
   usedCount: number;
   stackTiers: VoucherStackTierLike[] | null;
 }
+
+interface CategoryOption {
+  id: string;
+  name: string;
+}
+
+interface StoreOption {
+  id: string;
+  name: string;
+}
+
+interface AddressOption {
+  code: string;
+  name: string;
+}
+
+const ORDER_SOURCE_OPTIONS = [
+  { value: 'PORTAL_DIRECT', label: 'Website / Web' },
+  { value: 'ADMIN_MANUAL', label: 'Tại quầy / Admin tạo tay' },
+  { value: 'PANCAKE', label: 'Pancake / Social commerce' },
+];
+
+const SALES_CHANNEL_OPTIONS = [
+  { value: 'ONLINE', label: 'Online' },
+  { value: 'OFFLINE', label: 'Tại quầy' },
+];
+
+const CUSTOMER_SEGMENT_OPTIONS = [
+  { value: 'NEW_CUSTOMER', label: 'Khách mới' },
+  { value: 'EXISTING_CUSTOMER', label: 'Khách cũ' },
+  { value: 'BOUGHT_1_TIME', label: 'Khách mua 1 lần' },
+  { value: 'BOUGHT_2_3_TIMES', label: 'Khách mua 2-3 lần' },
+  { value: 'VIP_CUSTOMER', label: 'VIP' },
+  { value: 'INACTIVE_30D', label: 'Khách ngủ đông 30 ngày' },
+  { value: 'INACTIVE_60D', label: 'Khách ngủ đông 60 ngày' },
+  { value: 'CHURN_RISK', label: 'Khách sắp rời bỏ' },
+  { value: 'DEAL_HUNTER', label: 'Khách săn sale' },
+  { value: 'HIGH_AOV', label: 'Khách AOV cao' },
+  { value: 'FREQUENT_RETURNS', label: 'Khách hoàn hàng nhiều' },
+  { value: 'COD_FAILED', label: 'Khách COD fail' },
+];
+
+const CUSTOMER_RANK_OPTIONS = [
+  { value: 'MEMBER', label: 'Member' },
+  { value: 'SILVER', label: 'Silver' },
+  { value: 'GOLD', label: 'Gold' },
+  { value: 'DIAMOND', label: 'Diamond' },
+  { value: 'PLATINUM', label: 'Platinum' },
+];
+
+const CUSTOMER_OCCASION_OPTIONS = [
+  { value: 'BIRTHDAY_TODAY', label: 'Đúng ngày sinh nhật' },
+  { value: 'BIRTHDAY_MONTH', label: 'Trong tháng sinh nhật' },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'COD', label: 'Thanh toán khi nhận hàng (COD)' },
+  { value: 'VIETQR', label: 'VietQR' },
+];
 
 interface Props {
   voucher: VoucherData;
@@ -89,6 +168,9 @@ function normalizeStackTier(tier: VoucherStackTierLike, index = 0): StackTier {
 export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [stores, setStores] = useState<StoreOption[]>([]);
+  const [provinces, setProvinces] = useState<AddressOption[]>([]);
 
   const [form, setForm] = useState({
     name: voucher.name || '',
@@ -100,10 +182,37 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
     maxDiscount: voucher.maxDiscount ? String(voucher.maxDiscount) : '',
     totalUsageLimit: voucher.totalUsageLimit ? String(voucher.totalUsageLimit) : '',
     perCustomerLimit: String(voucher.perCustomerLimit || 1),
+    validFrom: toDateTimeLocalValue(voucher.validFrom),
+    validTo: toDateTimeLocalValue(voucher.validTo),
     durationDays: voucher.durationDays ? String(voucher.durationDays) : '',
+    storeId: voucher.storeId || '',
+    requiredCategoryId: voucher.requiredCategoryId || '',
+    minProductCount: voucher.minProductCount ? String(voucher.minProductCount) : '',
+    orderSources: voucher.orderSources || [],
+    salesChannels: voucher.salesChannels || [],
+    customerSegments: voucher.customerSegments || [],
+    customerRanks: voucher.customerRanks || [],
+    customerOccasions: voucher.customerOccasions || [],
+    shippingProvinces: voucher.shippingProvinces || [],
+    paymentMethods: voucher.paymentMethods || [],
     isStackable: voucher.isStackable || false,
     isActive: voucher.isActive,
   });
+
+  useEffect(() => {
+    apiClientClient.get<CategoryOption[]>('/categories')
+      .then(setCategories)
+      .catch(() => setCategories([]));
+
+    apiClientClient.get<StoreOption[]>('/stores/admin')
+      .then((data) => setStores(Array.isArray(data) ? data : []))
+      .catch(() => setStores([]));
+
+    fetch('/internal-api/address?type=provinces')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setProvinces(Array.isArray(data) ? data : []))
+      .catch(() => setProvinces([]));
+  }, []);
 
   const [stackTiers, setStackTiers] = useState<StackTier[]>(
     voucher.stackTiers && Array.isArray(voucher.stackTiers)
@@ -113,6 +222,69 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
 
   const update = (field: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleOrderSource = (source: string) => {
+    setForm((prev) => ({
+      ...prev,
+      orderSources: prev.orderSources.includes(source)
+        ? prev.orderSources.filter((item) => item !== source)
+        : [...prev.orderSources, source],
+    }));
+  };
+
+  const toggleSalesChannel = (channel: string) => {
+    setForm((prev) => ({
+      ...prev,
+      salesChannels: prev.salesChannels.includes(channel)
+        ? prev.salesChannels.filter((item) => item !== channel)
+        : [...prev.salesChannels, channel],
+    }));
+  };
+
+  const toggleCustomerSegment = (segment: string) => {
+    setForm((prev) => ({
+      ...prev,
+      customerSegments: prev.customerSegments.includes(segment)
+        ? prev.customerSegments.filter((item) => item !== segment)
+        : [...prev.customerSegments, segment],
+    }));
+  };
+
+  const toggleCustomerRank = (rank: string) => {
+    setForm((prev) => ({
+      ...prev,
+      customerRanks: prev.customerRanks.includes(rank)
+        ? prev.customerRanks.filter((item) => item !== rank)
+        : [...prev.customerRanks, rank],
+    }));
+  };
+
+  const toggleCustomerOccasion = (occasion: string) => {
+    setForm((prev) => ({
+      ...prev,
+      customerOccasions: prev.customerOccasions.includes(occasion)
+        ? prev.customerOccasions.filter((item) => item !== occasion)
+        : [...prev.customerOccasions, occasion],
+    }));
+  };
+
+  const toggleShippingProvince = (province: string) => {
+    setForm((prev) => ({
+      ...prev,
+      shippingProvinces: prev.shippingProvinces.includes(province)
+        ? prev.shippingProvinces.filter((item) => item !== province)
+        : [...prev.shippingProvinces, province],
+    }));
+  };
+
+  const togglePaymentMethod = (method: string) => {
+    setForm((prev) => ({
+      ...prev,
+      paymentMethods: prev.paymentMethods.includes(method)
+        ? prev.paymentMethods.filter((item) => item !== method)
+        : [...prev.paymentMethods, method],
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,7 +303,19 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
         maxDiscount: form.maxDiscount ? parseFloat(form.maxDiscount) : null,
         totalUsageLimit: form.totalUsageLimit ? parseInt(form.totalUsageLimit) : null,
         perCustomerLimit: parseInt(form.perCustomerLimit) || 1,
+        validFrom: form.validFrom || null,
+        validTo: form.validTo || null,
         durationDays: form.durationDays ? parseInt(form.durationDays) : null,
+        storeId: form.storeId || null,
+        requiredCategoryId: form.requiredCategoryId || null,
+        minProductCount: form.minProductCount ? parseInt(form.minProductCount) : null,
+        orderSources: form.orderSources,
+        salesChannels: form.salesChannels,
+        customerSegments: form.customerSegments,
+        customerRanks: form.customerRanks,
+        customerOccasions: form.customerOccasions,
+        shippingProvinces: form.shippingProvinces,
+        paymentMethods: form.paymentMethods,
         isStackable: form.isStackable,
         isActive: form.isActive,
         stackTiers: form.type === 'STACK' ? stackTiers : undefined,
@@ -372,6 +556,223 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
                 </p>
               </div>
             )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kho áp dụng</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={form.storeId}
+                  onChange={e => update('storeId', e.target.value)}
+                >
+                  <option value="">Toàn hệ thống</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Áp dụng từ</label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={form.validFrom}
+                  onChange={e => update('validFrom', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Áp dụng đến</label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={form.validTo}
+                  onChange={e => update('validTo', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục áp dụng</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={form.requiredCategoryId}
+                  onChange={e => update('requiredCategoryId', e.target.value)}
+                >
+                  <option value="">Tất cả danh mục</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Số lượng SP tối thiểu</label>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={form.minProductCount}
+                  onChange={e => update('minProductCount', e.target.value)}
+                  placeholder="Không giới hạn"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nguồn đơn áp dụng</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                {ORDER_SOURCE_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={form.orderSources.includes(option.value)}
+                      onChange={() => toggleOrderSource(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher áp dụng cho mọi nguồn đơn.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Kênh áp dụng</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {SALES_CHANNEL_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={form.salesChannels.includes(option.value)}
+                      onChange={() => toggleSalesChannel(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher áp dụng cho cả online và tại quầy.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nhóm khách hàng áp dụng</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {CUSTOMER_SEGMENT_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={form.customerSegments.includes(option.value)}
+                      onChange={() => toggleCustomerSegment(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher áp dụng cho mọi nhóm khách hàng.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Hạng khách hàng áp dụng</label>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                {CUSTOMER_RANK_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={form.customerRanks.includes(option.value)}
+                      onChange={() => toggleCustomerRank(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher áp dụng cho mọi hạng khách hàng.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Dịp khách hàng áp dụng</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {CUSTOMER_OCCASION_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={form.customerOccasions.includes(option.value)}
+                      onChange={() => toggleCustomerOccasion(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher không giới hạn theo sinh nhật.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/thành giao hàng áp dụng</label>
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 p-3">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  {provinces.map((option) => (
+                    <label
+                      key={option.code}
+                      className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        checked={form.shippingProvinces.includes(option.name)}
+                        onChange={() => toggleShippingProvince(option.name)}
+                      />
+                      <span>{option.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher áp dụng cho mọi tỉnh/thành giao hàng.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phương thức thanh toán áp dụng</label>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {PAYMENT_METHOD_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      checked={form.paymentMethods.includes(option.value)}
+                      onChange={() => togglePaymentMethod(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">Để trống nếu voucher áp dụng cho mọi phương thức thanh toán.</p>
+            </div>
 
             {/* Limits */}
             <div className="grid grid-cols-3 gap-4">

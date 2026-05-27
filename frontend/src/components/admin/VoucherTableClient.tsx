@@ -29,6 +29,15 @@ export interface VoucherTableRow {
   validFrom: string | null;
   validTo: string | null;
   durationDays: number | null;
+  requiredCategoryId?: string | null;
+  minProductCount?: number | null;
+  orderSources?: string[] | null;
+  salesChannels?: string[] | null;
+  customerSegments?: string[] | null;
+  customerRanks?: string[] | null;
+  customerOccasions?: string[] | null;
+  shippingProvinces?: string[] | null;
+  paymentMethods?: string[] | null;
   isStackable: boolean;
   isActive: boolean;
   usedCount: number;
@@ -46,6 +55,13 @@ function formatDate(date: string | Date | null) {
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   }).format(new Date(date));
+}
+
+function formatDateRange(validFrom: string | Date | null, validTo: string | Date | null) {
+  if (!validFrom && !validTo) return 'Không giới hạn';
+  if (!validFrom) return `Đến ${formatDate(validTo)}`;
+  if (!validTo) return `Từ ${formatDate(validFrom)}`;
+  return `${formatDate(validFrom)} - ${formatDate(validTo)}`;
 }
 
 function getTypeBadge(type: string) {
@@ -185,7 +201,7 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
                     {voucher.usedCount}
                     {voucher.totalUsageLimit ? `/${voucher.totalUsageLimit}` : ''}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{formatDate(voucher.validTo)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{formatDateRange(voucher.validFrom, voucher.validTo)}</td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
                       voucher.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'

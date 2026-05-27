@@ -23,6 +23,102 @@ interface AddressOption {
   name: string;
 }
 
+interface CustomerOrderSummary {
+  status?: string | null;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  totalAmount?: number | null;
+  discountAmount?: number | null;
+  createdAt?: string | Date | null;
+}
+
+const MAX_VOUCHERS_PER_ORDER = 1;
+const MAX_VOUCHER_DISCOUNT_RATE = 0.25;
+
+function getCustomerOccasions(dob?: string | Date | null, now = new Date()) {
+  if (!dob) return [] as string[];
+
+  const parsedDob = dob instanceof Date ? dob : new Date(dob);
+  if (Number.isNaN(parsedDob.getTime())) return [] as string[];
+
+  const occasions: string[] = [];
+  if (parsedDob.getMonth() === now.getMonth()) {
+    occasions.push('BIRTHDAY_MONTH');
+    if (parsedDob.getDate() === now.getDate()) {
+      occasions.push('BIRTHDAY_TODAY');
+    }
+  }
+
+  return occasions;
+}
+
+function getCustomerSegments(orderData: CustomerOrderSummary[], now = new Date()) {
+  const qualifyingOrders = orderData.filter(
+    (order) => order.status !== 'CANCELLED' && order.status !== 'REFUNDED',
+  );
+  const successfulOrders = orderData.filter(
+    (order) =>
+      order.status === 'DELIVERED' ||
+      order.status === 'PAYMENT_COLLECTED' ||
+      order.status === 'COMPLETED',
+  );
+
+  if (qualifyingOrders.length === 0) {
+    return ['NEW_CUSTOMER'];
+  }
+
+  const segments = ['EXISTING_CUSTOMER'];
+  if (successfulOrders.length === 1) {
+    segments.push('BOUGHT_1_TIME');
+  }
+
+  if (successfulOrders.length >= 2 && successfulOrders.length <= 3) {
+    segments.push('BOUGHT_2_3_TIMES');
+  }
+
+  const lastSuccessfulOrder = successfulOrders
+    .map((order) => (order.createdAt ? new Date(order.createdAt) : null))
+    .filter((value): value is Date => value instanceof Date && !Number.isNaN(value.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+
+  if (lastSuccessfulOrder) {
+    const inactiveDays = Math.floor((now.getTime() - lastSuccessfulOrder.getTime()) / (1000 * 60 * 60 * 24));
+    if (inactiveDays >= 21 && inactiveDays < 30) {
+      segments.push('CHURN_RISK');
+    }
+    if (inactiveDays >= 30) {
+      segments.push('INACTIVE_30D');
+    }
+    if (inactiveDays >= 60) {
+      segments.push('INACTIVE_60D');
+    }
+  }
+
+  const discountedSuccessfulOrders = successfulOrders.filter((order) => Number(order.discountAmount || 0) > 0);
+  if (successfulOrders.length >= 2 && discountedSuccessfulOrders.length / successfulOrders.length >= 0.5) {
+    segments.push('DEAL_HUNTER');
+  }
+
+  const averageOrderValue = successfulOrders.length > 0
+    ? successfulOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0) / successfulOrders.length
+    : 0;
+  if (averageOrderValue >= 1000000) {
+    segments.push('HIGH_AOV');
+  }
+
+  const frequentReturnCount = orderData.filter((order) => order.status === 'RETURNING' || order.status === 'REFUNDED').length;
+  if (frequentReturnCount >= 2) {
+    segments.push('FREQUENT_RETURNS');
+  }
+
+  const hasCodFailedOrder = orderData.some((order) => order.paymentMethod === 'COD' && order.status === 'CANCELLED' && order.paymentStatus !== 'PAID');
+  if (hasCodFailedOrder) {
+    segments.push('COD_FAILED');
+  }
+
+  return segments;
+}
+
 export default function CheckoutClient({ user, items, store, cartMode }: CheckoutClientProps) {
   const router = useRouter();
 
@@ -47,15 +143,25 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [showVietQRModal, setShowVietQRModal] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [currentCustomerSegments, setCurrentCustomerSegments] = useState<string[]>(['NEW_CUSTOMER']);
+  const currentCustomerRank = user.rank || 'MEMBER';
+  const effectiveCustomerSegments = ['GOLD', 'DIAMOND', 'PLATINUM'].includes(currentCustomerRank)
+    ? Array.from(new Set([...currentCustomerSegments, 'VIP_CUSTOMER']))
+    : currentCustomerSegments;
+  const currentCustomerOccasions = getCustomerOccasions(user.dob);
+  const currentOrderSource = 'PORTAL_DIRECT';
+  const currentSalesChannel = 'ONLINE';
 
   const [loading, setLoading] = useState(false);
   const [importingAddress, setImportingAddress] = useState(false);
   const [shippingFee, setShippingFee] = useState(0);
   const [isCalculatingFee, setIsCalculatingFee] = useState(false);
+  const orderCategoryIds = items.flatMap(item => item.product.categories?.map(category => category.id) || []);
 
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalWeight = items.reduce((sum, item) => sum + item.quantity * (item.product.weight || 500), 0);
   const distinctProductCount = new Set(items.map(item => item.product.id)).size;
+  const totalProductQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const cartStoreId = items[0]?.product.storeId || items[0]?.product.store?.id || store?.id || null;
   const isShippingAddressComplete = Boolean(province && ward && street && street.length >= 5);
   const effectiveShippingFee = isShippingAddressComplete ? shippingFee : 0;
@@ -188,16 +294,28 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
 
   const isVoucherApplicable = useCallback((voucher: CheckoutVoucher) => {
     if (subtotal < voucher.minOrderValue) return false;
+    if (voucher.orderSources?.length && !voucher.orderSources.includes(currentOrderSource)) return false;
+    if (voucher.salesChannels?.length && !voucher.salesChannels.includes(currentSalesChannel)) return false;
+    if (voucher.customerSegments?.length && !voucher.customerSegments.some((segment) => effectiveCustomerSegments.includes(segment))) return false;
+    if (voucher.customerRanks?.length && !voucher.customerRanks.includes(currentCustomerRank)) return false;
+    if (voucher.customerOccasions?.length && !voucher.customerOccasions.some((occasion) => currentCustomerOccasions.includes(occasion))) return false;
+    if (voucher.shippingProvinces?.length && !voucher.shippingProvinces.includes(province)) return false;
+    if (voucher.paymentMethods?.length && !voucher.paymentMethods.includes(paymentMethod)) return false;
+    if (voucher.requiredCategoryId && !orderCategoryIds.includes(voucher.requiredCategoryId)) return false;
+    if (voucher.minProductCount && totalProductQuantity < voucher.minProductCount) return false;
     if (voucher.type === 'STACK') return Boolean(getMatchedStackTier(voucher));
     return true;
-  }, [getMatchedStackTier, subtotal]);
+  }, [currentCustomerOccasions, currentCustomerRank, currentOrderSource, currentSalesChannel, effectiveCustomerSegments, getMatchedStackTier, orderCategoryIds, paymentMethod, province, subtotal, totalProductQuantity]);
 
   useEffect(() => {
     Promise.all([
+      apiClientClient.get<CustomerOrderSummary[]>('/orders'),
       apiClientClient.get<CheckoutUserVoucher[]>('/vouchers/user/my-vouchers'),
       apiClientClient.get<CheckoutVoucher[]>('/vouchers', { params: cartStoreId ? { storeId: cartStoreId } : undefined }),
     ])
-      .then(([userVoucherData, systemVoucherData]) => {
+      .then(([orderData, userVoucherData, systemVoucherData]) => {
+        setCurrentCustomerSegments(Array.isArray(orderData) ? getCustomerSegments(orderData) : ['NEW_CUSTOMER']);
+
         const voucherMap = new Map<string, CheckoutVoucher>();
 
         if (Array.isArray(userVoucherData)) {
@@ -219,6 +337,15 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                 value: uv.voucher.value,
                 maxDiscount: uv.voucher.maxDiscount,
                 minOrderValue: uv.voucher.minOrderValue,
+                orderSources: uv.voucher.orderSources,
+                salesChannels: uv.voucher.salesChannels,
+                customerSegments: uv.voucher.customerSegments,
+                customerRanks: uv.voucher.customerRanks,
+                customerOccasions: uv.voucher.customerOccasions,
+                shippingProvinces: uv.voucher.shippingProvinces,
+                paymentMethods: uv.voucher.paymentMethods,
+                requiredCategoryId: uv.voucher.requiredCategoryId,
+                minProductCount: uv.voucher.minProductCount,
                 stackTiers: uv.voucher.stackTiers,
               });
             });
@@ -238,7 +365,9 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
   const activeSelectedVoucherIds = selectedVoucherIds.filter((id) => {
     const voucher = vouchers.find((candidate) => candidate.id === id);
     return voucher ? isVoucherApplicable(voucher) : false;
-  });
+  }).slice(0, MAX_VOUCHERS_PER_ORDER);
+
+  const maxVoucherDiscountAmount = subtotal * MAX_VOUCHER_DISCOUNT_RATE;
 
   // Calc Discounts - sum all selected vouchers
   let voucherDiscount = 0;
@@ -263,6 +392,10 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
       if (sel.maxDiscount && thisDiscount > sel.maxDiscount) thisDiscount = sel.maxDiscount;
     }
     voucherDiscount += thisDiscount;
+  }
+
+  if (voucherDiscount > maxVoucherDiscountAmount) {
+    voucherDiscount = maxVoucherDiscountAmount;
   }
 
   let finalAmount = subtotal + effectiveShippingFee - voucherDiscount;
@@ -467,9 +600,9 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                   <Ticket className="w-5 h-5 text-indigo-600" /> Mã giảm giá
                 </label>
                 <div className="flex items-center gap-3">
-                  {activeSelectedVoucherIds.length > 0 && (
-                    <button type="button" onClick={() => setSelectedVoucherIds([])} className="text-xs text-rose-500 font-medium hover:underline border-0 bg-transparent p-0">Bỏ chọn</button>
-                  )}
+                    {activeSelectedVoucherIds.length > 0 && (
+                      <button type="button" onClick={() => setSelectedVoucherIds([])} className="text-xs text-rose-500 font-medium hover:underline border-0 bg-transparent p-0">Bỏ chọn</button>
+                    )}
                   <button
                     type="button"
                     onClick={() => setShowVoucherModal(true)}
@@ -479,6 +612,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                   </button>
                 </div>
               </div>
+              <p className="mt-2 text-xs text-gray-500">Mỗi đơn hiện chỉ áp dụng tối đa 1 voucher và tổng giảm từ voucher không vượt 25% giá trị đơn.</p>
               {activeSelectedVoucherIds.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {activeSelectedVoucherIds.map(id => {
@@ -605,8 +739,8 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
                       key={v.id}
                       onClick={() => {
                         if (!isEligible) return;
-                        setSelectedVoucherIds(prev =>
-                          isSelected ? prev.filter(x => x !== v.id) : [...prev, v.id]
+                        setSelectedVoucherIds((prev) =>
+                          isSelected ? prev.filter((x) => x !== v.id) : [v.id]
                         );
                       }}
                       className={`relative p-4 rounded-xl border transition-all ${!isEligible

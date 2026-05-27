@@ -85,6 +85,7 @@ export class UsersService {
         addressProvince: true,
         avatarUrl: true,
         createdAt: true,
+        rank: true,
         interests: true,
         onboardingComplete: true,
         role: true,

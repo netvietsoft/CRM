@@ -8,6 +8,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { VouchersService } from '../vouchers/vouchers.service';
 import { UsersService } from '../users/users.service';
 import { CommissionsService } from '../commissions/commissions.service';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
@@ -16,13 +17,39 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { CreateAdminOrderDto } from './dto/create-admin-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
+const SUCCESSFUL_ORDER_STATUSES = ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'] as const;
+
+interface CustomerSegmentOrderSnapshot {
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string;
+  totalAmount: number;
+  discountAmount: number;
+  createdAt: Date;
+}
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
   private isExpiringVietqrOrders = false;
+  private readonly maxVouchersPerOrder = 1;
+  private readonly maxVoucherDiscountRate = 0.25;
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
+  }
+
+  private getErrorStack(error: unknown): string | undefined {
+    return error instanceof Error ? error.stack : undefined;
+  }
 
   constructor(
     private prisma: PrismaService,
+    private vouchersService: VouchersService,
     private usersService: UsersService,
     private commissionsService: CommissionsService,
     private adminNotificationsService: AdminNotificationsService,
@@ -106,8 +133,11 @@ export class OrdersService {
       if (expiredCount > 0) {
         this.logger.log(`Expired ${expiredCount} overdue VietQR order(s).`);
       }
-    } catch (error) {
-      this.logger.error(`Failed to expire overdue VietQR orders: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Failed to expire overdue VietQR orders: ${this.getErrorMessage(error)}`,
+        this.getErrorStack(error),
+      );
     } finally {
       this.isExpiringVietqrOrders = false;
     }
@@ -157,7 +187,7 @@ export class OrdersService {
         : {};
     const vietqr = metadata.vietqr && typeof metadata.vietqr === 'object' ? metadata.vietqr : {};
 
-    return this.prisma.$transaction(async (tx) => {
+    const didCancel = await this.prisma.$transaction(async (tx) => {
       const updateResult = await tx.order.updateMany({
         where: {
           id: order.id,
@@ -206,9 +236,27 @@ export class OrdersService {
         }
       }
 
+      await this.releaseAppliedVouchersForOrder(order.id, tx);
+
       this.logger.log(`Cancelled expired VietQR order ${order.orderCode} and restored stock.`);
       return true;
     });
+
+    if (didCancel) {
+      await this.messagingAutomationService.handleOrderStateChange({
+        orderId: order.id,
+        previousStatus: OrderStatus.PENDING,
+        currentStatus: OrderStatus.CANCELLED,
+        previousPaymentStatus: PaymentStatus.UNPAID,
+        currentPaymentStatus: PaymentStatus.UNPAID,
+        source: 'VIETQR_EXPIRY_CRON',
+        payload: {
+          expiredAt: now.toISOString(),
+        },
+      });
+    }
+
+    return didCancel;
   }
 
   private normalizeCustomerGender(value?: string | null): 'MALE' | 'FEMALE' | 'OTHER' | null {
@@ -226,6 +274,158 @@ export class OrdersService {
   ): string | null {
     const value = [street, ward, province].filter(Boolean).join(', ').trim();
     return value || null;
+  }
+
+  private getCustomerOccasions(dob?: Date | string | null, now = new Date()) {
+    if (!dob) return [] as string[];
+
+    const parsedDob = dob instanceof Date ? dob : new Date(dob);
+    if (Number.isNaN(parsedDob.getTime())) return [] as string[];
+
+    const occasions: string[] = [];
+    if (parsedDob.getMonth() === now.getMonth()) {
+      occasions.push('BIRTHDAY_MONTH');
+      if (parsedDob.getDate() === now.getDate()) {
+        occasions.push('BIRTHDAY_TODAY');
+      }
+    }
+
+    return occasions;
+  }
+
+  private normalizeProvinceName(value?: string | null) {
+    return value?.trim().toLowerCase() || '';
+  }
+
+  private getCustomerSegments(input: {
+    orders: CustomerSegmentOrderSnapshot[];
+    currentRank?: string | null;
+    now?: Date;
+  }) {
+    const now = input.now || new Date();
+    const segments: string[] = [];
+    const successfulOrders = input.orders.filter((order) =>
+      SUCCESSFUL_ORDER_STATUSES.includes(
+        order.status as (typeof SUCCESSFUL_ORDER_STATUSES)[number],
+      ),
+    );
+    const qualifyingOrderCount = input.orders.filter(
+      (order) => order.status !== 'CANCELLED' && order.status !== 'REFUNDED',
+    ).length;
+
+    if (qualifyingOrderCount === 0) {
+      segments.push('NEW_CUSTOMER');
+      return segments;
+    }
+
+    segments.push('EXISTING_CUSTOMER');
+
+    if (successfulOrders.length === 1) {
+      segments.push('BOUGHT_1_TIME');
+    }
+
+    if (successfulOrders.length >= 2 && successfulOrders.length <= 3) {
+      segments.push('BOUGHT_2_3_TIMES');
+    }
+
+    if (['GOLD', 'DIAMOND', 'PLATINUM'].includes(input.currentRank || '')) {
+      segments.push('VIP_CUSTOMER');
+    }
+
+    const lastSuccessfulOrderAt = successfulOrders
+      .map((order) => order.createdAt)
+      .sort((a, b) => b.getTime() - a.getTime())[0];
+
+    if (lastSuccessfulOrderAt) {
+      const diffMs = now.getTime() - lastSuccessfulOrderAt.getTime();
+      const inactiveDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (inactiveDays >= 21 && inactiveDays < 30) {
+        segments.push('CHURN_RISK');
+      }
+
+      if (inactiveDays >= 30) {
+        segments.push('INACTIVE_30D');
+      }
+
+      if (inactiveDays >= 60) {
+        segments.push('INACTIVE_60D');
+      }
+    }
+
+    const discountedSuccessfulOrders = successfulOrders.filter((order) => order.discountAmount > 0);
+    if (
+      successfulOrders.length >= 2 &&
+      discountedSuccessfulOrders.length / successfulOrders.length >= 0.5
+    ) {
+      segments.push('DEAL_HUNTER');
+    }
+
+    const averageOrderValue =
+      successfulOrders.length > 0
+        ? successfulOrders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0) /
+          successfulOrders.length
+        : 0;
+    if (averageOrderValue >= 1000000) {
+      segments.push('HIGH_AOV');
+    }
+
+    const frequentReturnCount = input.orders.filter(
+      (order) => order.status === 'RETURNING' || order.status === 'REFUNDED',
+    ).length;
+    if (frequentReturnCount >= 2) {
+      segments.push('FREQUENT_RETURNS');
+    }
+
+    const hasCodFailedOrder = input.orders.some(
+      (order) =>
+        order.paymentMethod === 'COD' &&
+        order.status === 'CANCELLED' &&
+        order.paymentStatus !== 'PAID',
+    );
+    if (hasCodFailedOrder) {
+      segments.push('COD_FAILED');
+    }
+
+    return segments;
+  }
+
+  private async releaseAppliedVouchersForOrder(orderId: string, tx: any = this.prisma) {
+    const appliedVouchers = await tx.orderVoucher.findMany({
+      where: { orderId },
+      select: { userVoucherId: true },
+    });
+
+    for (const appliedVoucher of appliedVouchers) {
+      const releasedVoucher = await tx.userVoucher.updateMany({
+        where: {
+          id: appliedVoucher.userVoucherId,
+          isUsed: true,
+        },
+        data: {
+          isUsed: false,
+          usedAt: null,
+        },
+      });
+
+      if (releasedVoucher.count > 0) {
+        await tx.voucher.updateMany({
+          where: {
+            userVouchers: {
+              some: {
+                id: appliedVoucher.userVoucherId,
+              },
+            },
+            usedCount: {
+              gt: 0,
+            },
+          },
+          data: {
+            usedCount: { decrement: 1 },
+          },
+        });
+      }
+    }
   }
 
   private async generateUniqueReferralCode() {
@@ -451,11 +651,22 @@ export class OrdersService {
     let subtotal = 0;
     let orderStoreId: string | null | undefined;
     const orderItemsToCreate = [];
+    const orderCategoryIds = new Set<string>();
+    let totalProductQuantity = 0;
+    const currentOrderSource = 'PORTAL_DIRECT';
+    const currentSalesChannel = 'ONLINE';
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
         where: { id: item.productId },
-        include: { variants: { include: { size: true, color: true } } },
+        include: {
+          categories: {
+            select: {
+              id: true,
+            },
+          },
+          variants: { include: { size: true, color: true } },
+        },
       });
 
       if (!product || !product.isActive) {
@@ -501,6 +712,8 @@ export class OrdersService {
       });
 
       subtotal += itemPrice * item.quantity;
+      totalProductQuantity += item.quantity;
+      product.categories.forEach((category) => orderCategoryIds.add(category.id));
       orderItemsToCreate.push({
         productId: product.id,
         quantity: item.quantity,
@@ -512,9 +725,47 @@ export class OrdersService {
 
     let discountAmount = 0;
     const appliedUserVoucherIds: string[] = [];
+    const customerOrderStats = await this.prisma.order.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        status: true,
+        paymentStatus: true,
+        paymentMethod: true,
+        totalAmount: true,
+        discountAmount: true,
+        createdAt: true,
+      },
+    });
+    const currentCustomerSegments = this.getCustomerSegments({
+      orders: customerOrderStats.map((order) => ({
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        totalAmount: Number(order.totalAmount || 0),
+        discountAmount: Number(order.discountAmount || 0),
+        createdAt: order.createdAt,
+      })),
+      currentRank: user.rank || 'MEMBER',
+      now: new Date(),
+    });
+    const currentCustomerRank = user.rank || 'MEMBER';
+    const currentCustomerOccasions = this.getCustomerOccasions(user.dob, new Date());
+    const normalizedShippingProvince = this.normalizeProvinceName(addressProvince);
+    const currentPaymentMethod = paymentMethod || 'COD';
 
-    const resolvedVoucherIds =
-      voucherIds && voucherIds.length > 0 ? voucherIds : voucherId ? [voucherId] : [];
+    const resolvedVoucherIds = Array.from(
+      new Set(voucherIds && voucherIds.length > 0 ? voucherIds : voucherId ? [voucherId] : []),
+    );
+
+    if (resolvedVoucherIds.length > this.maxVouchersPerOrder) {
+      throw new BadRequestException(
+        `Mỗi đơn hàng hiện chỉ được áp dụng tối đa ${this.maxVouchersPerOrder} voucher.`,
+      );
+    }
+
+    const maxVoucherDiscountAmount = subtotal * this.maxVoucherDiscountRate;
 
     for (const currentVoucherId of resolvedVoucherIds) {
       const now = new Date();
@@ -538,13 +789,78 @@ export class OrdersService {
       const isVoucherForOrderStore =
         targetVoucher &&
         (!targetVoucher.storeId || targetVoucher.storeId === (orderStoreId || null));
+      const voucherOrderSources = Array.isArray((targetVoucher as any)?.orderSources)
+        ? ((targetVoucher as any).orderSources as string[])
+        : [];
+      const voucherSalesChannels = Array.isArray((targetVoucher as any)?.salesChannels)
+        ? ((targetVoucher as any).salesChannels as string[])
+        : [];
+      const voucherCustomerSegments = Array.isArray((targetVoucher as any)?.customerSegments)
+        ? ((targetVoucher as any).customerSegments as string[])
+        : [];
+      const voucherCustomerRanks = Array.isArray((targetVoucher as any)?.customerRanks)
+        ? ((targetVoucher as any).customerRanks as string[])
+        : [];
+      const voucherCustomerOccasions = Array.isArray((targetVoucher as any)?.customerOccasions)
+        ? ((targetVoucher as any).customerOccasions as string[])
+        : [];
+      const voucherShippingProvinces = Array.isArray((targetVoucher as any)?.shippingProvinces)
+        ? ((targetVoucher as any).shippingProvinces as string[])
+        : [];
+      const voucherPaymentMethods = Array.isArray((targetVoucher as any)?.paymentMethods)
+        ? ((targetVoucher as any).paymentMethods as string[])
+        : [];
+      const matchesOrderSource =
+        targetVoucher &&
+        (voucherOrderSources.length === 0 || voucherOrderSources.includes(currentOrderSource));
+      const matchesSalesChannel =
+        targetVoucher &&
+        (voucherSalesChannels.length === 0 || voucherSalesChannels.includes(currentSalesChannel));
+      const matchesCustomerSegment =
+        targetVoucher &&
+        (voucherCustomerSegments.length === 0 ||
+          voucherCustomerSegments.some((segment) => currentCustomerSegments.includes(segment)));
+      const matchesCustomerRank =
+        targetVoucher &&
+        (voucherCustomerRanks.length === 0 || voucherCustomerRanks.includes(currentCustomerRank));
+      const matchesCustomerOccasion =
+        targetVoucher &&
+        (voucherCustomerOccasions.length === 0 ||
+          voucherCustomerOccasions.some((occasion) => currentCustomerOccasions.includes(occasion)));
+      const matchesShippingProvince =
+        targetVoucher &&
+        (voucherShippingProvinces.length === 0 ||
+          (normalizedShippingProvince.length > 0 &&
+            voucherShippingProvinces.some(
+              (province) => this.normalizeProvinceName(province) === normalizedShippingProvince,
+            )));
+      const matchesPaymentMethod =
+        targetVoucher &&
+        (voucherPaymentMethods.length === 0 ||
+          voucherPaymentMethods.includes(currentPaymentMethod));
+      const matchesRequiredCategory =
+        targetVoucher &&
+        (!targetVoucher.requiredCategoryId ||
+          orderCategoryIds.has(targetVoucher.requiredCategoryId));
+      const matchesMinProductCount =
+        targetVoucher &&
+        (!targetVoucher.minProductCount || totalProductQuantity >= targetVoucher.minProductCount);
 
       if (
         targetVoucher &&
         targetVoucher.isActive &&
         isVoucherInDateRange &&
         hasVoucherStock &&
-        isVoucherForOrderStore
+        isVoucherForOrderStore &&
+        matchesOrderSource &&
+        matchesSalesChannel &&
+        matchesCustomerSegment &&
+        matchesCustomerRank &&
+        matchesCustomerOccasion &&
+        matchesShippingProvince &&
+        matchesPaymentMethod &&
+        matchesRequiredCategory &&
+        matchesMinProductCount
       ) {
         if (targetVoucher.code.startsWith('QR-ORDER-')) {
           let resolvedStatus = (targetVoucher as any).status || 'AUTO';
@@ -645,6 +961,18 @@ export class OrdersService {
 
           if (voucherDiscount > subtotal) {
             voucherDiscount = subtotal;
+          }
+
+          const remainingVoucherDiscountCap = Math.max(
+            0,
+            maxVoucherDiscountAmount - discountAmount,
+          );
+          if (voucherDiscount > remainingVoucherDiscountCap) {
+            voucherDiscount = remainingVoucherDiscountCap;
+          }
+
+          if (voucherDiscount <= 0) {
+            continue;
           }
 
           discountAmount += voucherDiscount;
@@ -769,6 +1097,19 @@ export class OrdersService {
       await this.prisma.cartItem.deleteMany({
         where: { id: { in: cartItemIds } },
       });
+    }
+
+    await this.messagingAutomationService.handleOrderCreated(order.id, 'PORTAL_ORDER_CREATED', {
+      paymentMethod,
+      source: 'PORTAL_DIRECT',
+    });
+
+    for (const appliedUserVoucherId of appliedUserVoucherIds) {
+      await this.messagingAutomationService.handleVoucherUsed(
+        appliedUserVoucherId,
+        order.id,
+        'ORDER_CREATED',
+      );
     }
 
     let vietqrData = null;
@@ -967,6 +1308,11 @@ export class OrdersService {
           create: orderItemsToCreate,
         },
       },
+    });
+
+    await this.messagingAutomationService.handleOrderCreated(order.id, 'ADMIN_ORDER_CREATED', {
+      paymentMethod: paymentMethod || 'COD',
+      source: 'ADMIN_MANUAL',
     });
 
     return { success: true, orderId: order.id, orderCode: order.orderCode };
@@ -1493,9 +1839,15 @@ export class OrdersService {
           await this.commissionsService.calculateCommissions(currentOrder);
         }
       }
+
+      await this.vouchersService.processSuccessfulOrderVoucherRules(currentOrder.id);
     }
 
     const isCancelled = status === 'CANCELLED' || status === 'REFUNDED' || status === 'RETURNED';
+    if (isCancelled && currentOrder.paymentStatus !== 'PAID') {
+      await this.releaseAppliedVouchersForOrder(currentOrder.id);
+    }
+
     if (isCancelled && wasCreditable) {
       for (const item of currentOrder.items) {
         if (!item.isGift) {
