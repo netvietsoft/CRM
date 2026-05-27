@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrdersService } from '../orders/orders.service';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
+import { VouchersService } from '../vouchers/vouchers.service';
 import * as crypto from 'crypto';
 
 interface CassoTransaction {
@@ -38,6 +39,7 @@ export class CassoService {
     private readonly ordersService: OrdersService,
     private readonly adminNotificationsService: AdminNotificationsService,
     private readonly messagingAutomationService: MessagingAutomationService,
+    private readonly vouchersService: VouchersService,
   ) {}
 
   verifySignature(signature: string, payload: string, secret: string): boolean {
@@ -155,6 +157,8 @@ export class CassoService {
         amount: transaction.amount,
       },
     });
+
+    await this.vouchersService.processSuccessfulOrderVoucherRules(order.id);
 
     this.logger.log(`Successfully processed VietQR payment for order ${orderCode}`);
     return true;

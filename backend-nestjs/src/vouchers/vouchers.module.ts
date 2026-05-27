@@ -7,6 +7,8 @@ import { VouchersService } from './vouchers.service';
 import { VoucherProcessor } from './voucher.processor';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SmsModule } from '../integrations/sms/sms.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 const logger = new Logger('VouchersModule');
 
@@ -66,6 +68,8 @@ function getProviders(): any[] {
   imports: [
     PrismaModule,
     SmsModule,
+    NotificationsModule,
+    MessagingModule,
     ...getQueueImports(), // Conditionally load queue modules
   ],
   controllers: [VouchersController],

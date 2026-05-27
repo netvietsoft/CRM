@@ -10,16 +10,58 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../integrations/sms/sms.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 
 @Injectable()
 export class VouchersService implements OnModuleInit {
   private readonly logger = new Logger(VouchersService.name);
+  private readonly firstOrderRewardMinAmount = 500000;
+  private readonly firstOrderRewardValue = 50000;
+  private readonly firstOrderRewardDurationDays = 30;
+  private readonly goldComebackRewardValue = 150000;
+  private readonly goldComebackRewardMinOrderValue = 1000000;
+  private readonly goldComebackInactiveDays = 60;
+  private readonly allowedOrderSources = ['PORTAL_DIRECT', 'ADMIN_MANUAL', 'PANCAKE'];
+  private readonly allowedSalesChannels = ['ONLINE', 'OFFLINE'];
+  private readonly allowedCustomerSegments = [
+    'NEW_CUSTOMER',
+    'EXISTING_CUSTOMER',
+    'BOUGHT_1_TIME',
+    'BOUGHT_2_3_TIMES',
+    'VIP_CUSTOMER',
+    'INACTIVE_30D',
+    'INACTIVE_60D',
+    'CHURN_RISK',
+    'DEAL_HUNTER',
+    'HIGH_AOV',
+    'FREQUENT_RETURNS',
+    'COD_FAILED',
+  ];
+  private readonly allowedCustomerRanks = ['MEMBER', 'SILVER', 'GOLD', 'DIAMOND', 'PLATINUM'];
+  private readonly allowedCustomerOccasions = ['BIRTHDAY_TODAY', 'BIRTHDAY_MONTH'];
+  private readonly allowedPaymentMethods = ['COD', 'VIETQR'];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly smsService: SmsService,
+    private readonly notificationsService: NotificationsService,
+    private readonly messagingAutomationService: MessagingAutomationService,
     @Optional() @InjectQueue('voucher-queue') private voucherQueue?: Queue,
   ) {}
+
+  private async emitUserVoucherLifecycle(
+    userVoucherId: string,
+    status: string,
+    source: string,
+    payload?: Record<string, unknown>,
+  ) {
+    await this.messagingAutomationService.handleVoucherCreated(userVoucherId, source, payload);
+
+    if (status === 'ACTIVE') {
+      await this.messagingAutomationService.handleVoucherActivated(userVoucherId, source, payload);
+    }
+  }
 
   async onModuleInit() {
     // Only register cron job if queue is available
@@ -509,6 +551,10 @@ export class VouchersService implements OnModuleInit {
       },
     });
 
+    await this.emitUserVoucherLifecycle(userVoucher.id, userVoucher.status, 'QR_VOUCHER_CLAIMED', {
+      orderCode,
+    });
+
     this.logger.log(
       `🎫 User ${userId} claimed voucher ${finalVoucherId} with order ${orderCode}. Status: ${isImmediatelyActive ? 'ACTIVE' : 'PENDING'}, unlock at: ${isImmediatelyActive ? new Date() : unlockAt}`,
     );
@@ -787,6 +833,10 @@ export class VouchersService implements OnModuleInit {
           where: { id: uv.id },
           data: { status: 'ACTIVE' },
         });
+        await this.messagingAutomationService.handleVoucherActivated(
+          uv.id,
+          'USER_VOUCHER_UNLOCK_CHECK',
+        );
         uv.status = 'ACTIVE';
       }
     }
@@ -871,6 +921,17 @@ export class VouchersService implements OnModuleInit {
 
     if (formattedData.validFrom) formattedData.validFrom = new Date(formattedData.validFrom);
     if (formattedData.validTo) formattedData.validTo = new Date(formattedData.validTo);
+    formattedData.orderSources = this.normalizeOrderSources(formattedData.orderSources);
+    formattedData.salesChannels = this.normalizeSalesChannels(formattedData.salesChannels);
+    formattedData.customerSegments = this.normalizeCustomerSegments(formattedData.customerSegments);
+    formattedData.customerRanks = this.normalizeCustomerRanks(formattedData.customerRanks);
+    formattedData.customerOccasions = this.normalizeCustomerOccasions(
+      formattedData.customerOccasions,
+    );
+    formattedData.shippingProvinces = this.normalizeShippingProvinces(
+      formattedData.shippingProvinces,
+    );
+    formattedData.paymentMethods = this.normalizePaymentMethods(formattedData.paymentMethods);
 
     // Mutation Anti-Spoofing: If not admin, force storeId
     if (user && user.role !== 'ADMIN') {
@@ -878,6 +939,17 @@ export class VouchersService implements OnModuleInit {
         throw new BadRequestException('User has no assigned store');
       }
       formattedData.storeId = effectiveStoreId;
+    }
+
+    if (formattedData.requiredCategoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: formattedData.requiredCategoryId },
+        select: { id: true },
+      });
+
+      if (!category) {
+        throw new BadRequestException('Danh mục áp dụng không tồn tại');
+      }
     }
 
     return this.prisma.voucher.create({
@@ -908,6 +980,28 @@ export class VouchersService implements OnModuleInit {
 
     if (formattedData.validFrom) formattedData.validFrom = new Date(formattedData.validFrom);
     if (formattedData.validTo) formattedData.validTo = new Date(formattedData.validTo);
+    formattedData.orderSources = this.normalizeOrderSources(formattedData.orderSources);
+    formattedData.salesChannels = this.normalizeSalesChannels(formattedData.salesChannels);
+    formattedData.customerSegments = this.normalizeCustomerSegments(formattedData.customerSegments);
+    formattedData.customerRanks = this.normalizeCustomerRanks(formattedData.customerRanks);
+    formattedData.customerOccasions = this.normalizeCustomerOccasions(
+      formattedData.customerOccasions,
+    );
+    formattedData.shippingProvinces = this.normalizeShippingProvinces(
+      formattedData.shippingProvinces,
+    );
+    formattedData.paymentMethods = this.normalizePaymentMethods(formattedData.paymentMethods);
+
+    if (formattedData.requiredCategoryId) {
+      const category = await this.prisma.category.findUnique({
+        where: { id: formattedData.requiredCategoryId },
+        select: { id: true },
+      });
+
+      if (!category) {
+        throw new BadRequestException('Danh mục áp dụng không tồn tại');
+      }
+    }
 
     return this.prisma.voucher.update({
       where: { id },
@@ -988,7 +1082,7 @@ export class VouchersService implements OnModuleInit {
         ? new Date(Date.now() + voucher.durationDays * 24 * 60 * 60 * 1000)
         : voucher.validTo || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
-      await this.prisma.userVoucher.create({
+      const userVoucher = await this.prisma.userVoucher.create({
         data: {
           userId,
           voucherId: voucher.id,
@@ -997,12 +1091,201 @@ export class VouchersService implements OnModuleInit {
           isUsed: false,
         },
       });
+      await this.emitUserVoucherLifecycle(userVoucher.id, userVoucher.status, 'WELCOME_VOUCHER');
       grantedCount++;
     }
 
     if (grantedCount > 0) {
       this.logger.log(`✅ Granted ${grantedCount} welcome vouchers to user ${userId}`);
     }
+  }
+
+  async processSuccessfulOrderVoucherRules(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderCode: true,
+        userId: true,
+        storeId: true,
+        subtotal: true,
+        totalAmount: true,
+        status: true,
+        paymentStatus: true,
+        createdAt: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            rank: true,
+          },
+        },
+      },
+    });
+
+    if (!order?.userId) {
+      return { processed: false, reason: 'ORDER_OR_USER_NOT_FOUND' };
+    }
+
+    const successfulStatuses = ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'];
+    if (!successfulStatuses.includes(order.status)) {
+      return { processed: false, reason: 'ORDER_NOT_SUCCESSFUL' };
+    }
+
+    const issuedVoucherCodes: string[] = [];
+    const priorSuccessfulOrder = await this.prisma.order.findFirst({
+      where: {
+        userId: order.userId,
+        id: { not: order.id },
+        status: { in: successfulStatuses as any },
+        createdAt: { lt: order.createdAt },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    const firstOrderVoucherCode = `AUTO-FIRST-${order.orderCode}`;
+
+    const existingFirstOrderVoucher = await this.prisma.voucher.findUnique({
+      where: { code: firstOrderVoucherCode },
+      select: { id: true },
+    });
+
+    if (!existingFirstOrderVoucher) {
+      const orderValue = Number(order.totalAmount) || Number(order.subtotal) || 0;
+      if (!priorSuccessfulOrder && orderValue >= this.firstOrderRewardMinAmount) {
+        const voucher = await this.prisma.voucher.create({
+          data: {
+            code: firstOrderVoucherCode,
+            name: 'Voucher mua đơn đầu thành công',
+            description: `Tặng ${this.firstOrderRewardValue.toLocaleString('vi-VN')}đ cho khách hoàn tất đơn đầu tiên từ ${this.firstOrderRewardMinAmount.toLocaleString('vi-VN')}đ`,
+            campaignCategory: 'WELCOME',
+            type: 'FIXED_AMOUNT',
+            value: this.firstOrderRewardValue,
+            minOrderValue: 0,
+            perCustomerLimit: 1,
+            totalUsageLimit: 1,
+            durationDays: this.firstOrderRewardDurationDays,
+            isActive: true,
+            storeId: order.storeId || null,
+          },
+        });
+
+        const expiresAt = new Date(
+          Date.now() + this.firstOrderRewardDurationDays * 24 * 60 * 60 * 1000,
+        );
+
+        const userVoucher = await this.prisma.userVoucher.create({
+          data: {
+            userId: order.userId,
+            voucherId: voucher.id,
+            expiresAt,
+            status: 'ACTIVE',
+            isUsed: false,
+          },
+        });
+        await this.emitUserVoucherLifecycle(
+          userVoucher.id,
+          userVoucher.status,
+          'FIRST_ORDER_REWARD',
+          { orderId: order.id, orderCode: order.orderCode },
+        );
+
+        issuedVoucherCodes.push(voucher.code);
+        this.logger.log(
+          `🎁 Issued first-order success voucher ${voucher.code} for order ${order.orderCode}`,
+        );
+      }
+    }
+
+    const goldComebackVoucherCode = `AUTO-GOLD-COME-BACK-${order.orderCode}`;
+    const existingGoldComebackVoucher = await this.prisma.voucher.findUnique({
+      where: { code: goldComebackVoucherCode },
+      select: { id: true },
+    });
+
+    const inactivityMs = priorSuccessfulOrder
+      ? order.createdAt.getTime() - priorSuccessfulOrder.createdAt.getTime()
+      : 0;
+    const inactivityDays = Math.floor(inactivityMs / (24 * 60 * 60 * 1000));
+
+    if (
+      !existingGoldComebackVoucher &&
+      order.user?.rank === 'GOLD' &&
+      priorSuccessfulOrder &&
+      inactivityDays >= this.goldComebackInactiveDays
+    ) {
+      const voucher = await this.prisma.voucher.create({
+        data: {
+          code: goldComebackVoucherCode,
+          name: 'Voucher tri an VIP Gold quay lại',
+          description: `Tặng ${this.goldComebackRewardValue.toLocaleString('vi-VN')}đ cho khách VIP Gold quay lại sau ${this.goldComebackInactiveDays} ngày chưa mua hàng. Áp dụng cho đơn từ ${this.goldComebackRewardMinOrderValue.toLocaleString('vi-VN')}đ.`,
+          campaignCategory: 'VIP',
+          type: 'FIXED_AMOUNT',
+          value: this.goldComebackRewardValue,
+          minOrderValue: this.goldComebackRewardMinOrderValue,
+          perCustomerLimit: 1,
+          totalUsageLimit: 1,
+          isActive: true,
+          storeId: order.storeId || null,
+          customerRanks: ['GOLD'],
+          customerSegments: ['INACTIVE_60D'],
+        },
+      });
+
+      const userVoucher = await this.prisma.userVoucher.create({
+        data: {
+          userId: order.userId,
+          voucherId: voucher.id,
+          status: 'ACTIVE',
+          isUsed: false,
+        },
+      });
+
+      await this.emitUserVoucherLifecycle(userVoucher.id, userVoucher.status, 'VIP_GOLD_COMEBACK', {
+        orderId: order.id,
+        orderCode: order.orderCode,
+      });
+
+      issuedVoucherCodes.push(voucher.code);
+
+      const customerName = order.user?.name?.trim() || 'Quy khach';
+      const fallbackSmsMessage = `${customerName}, CHY tang ban voucher ${this.goldComebackRewardValue.toLocaleString('vi-VN')}d cho hang GOLD quay lai sau ${this.goldComebackInactiveDays} ngay. Ma: ${voucher.code}. Ap dung don tu ${this.goldComebackRewardMinOrderValue.toLocaleString('vi-VN')}d.`;
+
+      await this.notificationsService.sendVoucherRewardZaloWithFallback({
+        userId: order.userId,
+        title: 'Qua tang VIP Gold quay lai',
+        body: `Tang voucher ${this.goldComebackRewardValue.toLocaleString('vi-VN')}d cho khach hang Gold quay lai sau ${this.goldComebackInactiveDays} ngay.`,
+        templateTypePrefix: 'PROMOTION_VOUCHER_',
+        templateData: {
+          customer_name: customerName,
+          voucher_code: voucher.code,
+          voucher_value: this.goldComebackRewardValue.toString(),
+          min_order_value: this.goldComebackRewardMinOrderValue.toString(),
+        },
+        fallbackSmsMessage,
+        metadata: {
+          rule: 'VIP_GOLD_COMEBACK_60D',
+          orderId: order.id,
+          voucherCode: voucher.code,
+        },
+      });
+
+      this.logger.log(
+        `🎁 Issued VIP Gold comeback voucher ${voucher.code} for order ${order.orderCode}`,
+      );
+    }
+
+    return {
+      processed: issuedVoucherCodes.length > 0,
+      issuedVoucherCodes,
+    };
   }
 
   /**
@@ -1117,7 +1400,7 @@ export class VouchersService implements OnModuleInit {
             ? new Date(Date.now() + voucher.durationDays * 24 * 60 * 60 * 1000)
             : voucher.validTo || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
-          await this.prisma.userVoucher.create({
+          const userVoucher = await this.prisma.userVoucher.create({
             data: {
               userId: referrerId,
               voucherId: voucher.id,
@@ -1126,6 +1409,12 @@ export class VouchersService implements OnModuleInit {
               isUsed: false,
             },
           });
+          await this.emitUserVoucherLifecycle(
+            userVoucher.id,
+            userVoucher.status,
+            'REFERRAL_REWARD',
+            { milestone: refereeCount },
+          );
           this.logger.log(
             `🎫 Granted voucher "${voucher.code}" to referrer ${referrerId} for milestone ${refereeCount}`,
           );
@@ -1134,5 +1423,162 @@ export class VouchersService implements OnModuleInit {
     } catch (error) {
       this.logger.error(`Error granting referral reward to ${referrerId}:`, error);
     }
+  }
+
+  private normalizeOrderSources(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Nguồn đơn áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.some((source) => !this.allowedOrderSources.includes(source))) {
+      throw new BadRequestException('Có nguồn đơn áp dụng không được hỗ trợ');
+    }
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeSalesChannels(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Kênh áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.some((channel) => !this.allowedSalesChannels.includes(channel))) {
+      throw new BadRequestException('Có kênh áp dụng không được hỗ trợ');
+    }
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeCustomerSegments(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Nhóm khách hàng áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.some((segment) => !this.allowedCustomerSegments.includes(segment))) {
+      throw new BadRequestException('Có nhóm khách hàng áp dụng không được hỗ trợ');
+    }
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeCustomerRanks(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Hạng khách hàng áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.some((rank) => !this.allowedCustomerRanks.includes(rank))) {
+      throw new BadRequestException('Có hạng khách hàng áp dụng không được hỗ trợ');
+    }
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeCustomerOccasions(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Dịp khách hàng áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.some((occasion) => !this.allowedCustomerOccasions.includes(occasion))) {
+      throw new BadRequestException('Có dịp khách hàng áp dụng không được hỗ trợ');
+    }
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeShippingProvinces(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Tỉnh/thành áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizePaymentMethods(value: unknown) {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    if (!Array.isArray(value)) {
+      throw new BadRequestException('Phương thức thanh toán áp dụng không hợp lệ');
+    }
+
+    const normalized = Array.from(
+      new Set(
+        value
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (normalized.some((method) => !this.allowedPaymentMethods.includes(method))) {
+      throw new BadRequestException('Có phương thức thanh toán áp dụng không được hỗ trợ');
+    }
+
+    return normalized.length > 0 ? normalized : null;
   }
 }

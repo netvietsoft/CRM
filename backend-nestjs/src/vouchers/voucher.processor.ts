@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 import axios from 'axios';
 
 interface ShippingStatus {
@@ -13,8 +14,32 @@ interface ShippingStatus {
 export class VoucherProcessor extends WorkerHost {
   private readonly logger = new Logger(VoucherProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly messagingAutomationService: MessagingAutomationService,
+  ) {
     super();
+  }
+
+  private async isDeliveredPaidOrder(orderCode: string) {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        OR: [{ orderCode }, { metadata: { string_contains: orderCode } }],
+      },
+      select: {
+        status: true,
+        paymentStatus: true,
+      },
+    });
+
+    if (!order) {
+      return false;
+    }
+
+    const isDeliveredState = ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'].includes(order.status);
+    const isPaidState = order.paymentStatus === 'PAID' || order.status === 'PAYMENT_COLLECTED';
+
+    return isDeliveredState && isPaidState;
   }
 
   async process(job: Job): Promise<any> {
@@ -91,11 +116,27 @@ export class VoucherProcessor extends WorkerHost {
         };
       }
 
+      if (!(await this.isDeliveredPaidOrder(orderCode))) {
+        this.logger.log(
+          `Voucher ${userVoucherId} remains PENDING because order ${orderCode} is not delivered+paid.`,
+        );
+        return {
+          success: true,
+          action: 'pending',
+          reason: 'ORDER_NOT_DELIVERED_AND_PAID',
+        };
+      }
+
       // Activate the voucher
       await this.prisma.userVoucher.update({
         where: { id: userVoucherId },
         data: { status: 'ACTIVE' },
       });
+      await this.messagingAutomationService.handleVoucherActivated(
+        userVoucherId,
+        'VOUCHER_UNLOCK_JOB',
+        { orderCode },
+      );
 
       this.logger.log(
         `✅ Voucher ${userVoucherId} (${voucherCode}) ACTIVATED for user ${userVoucher.user.name}`,
@@ -230,13 +271,18 @@ export class VoucherProcessor extends WorkerHost {
 
       let newStatus: string;
 
-      if (shippingStatus.status === 'COMPLETED') {
+      if (shippingStatus.status === 'COMPLETED' && (await this.isDeliveredPaidOrder(orderCode))) {
         // Order delivered successfully - activate voucher
         newStatus = 'ACTIVE';
         await this.prisma.userVoucher.update({
           where: { id: userVoucher.id },
           data: { status: 'ACTIVE' },
         });
+        await this.messagingAutomationService.handleVoucherActivated(
+          userVoucher.id,
+          'VOUCHER_VERIFY_JOB',
+          { orderCode },
+        );
 
         this.logger.log(
           `✅ Voucher ${userVoucher.id} ACTIVATED for user ${userVoucher.user.name} (Order: ${orderCode})`,

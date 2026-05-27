@@ -9,6 +9,7 @@ import { OrdersModule } from '../orders/orders.module';
 import { AdminNotificationsModule } from '../modules/admin-notifications/admin-notifications.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { VouchersModule } from '../vouchers/vouchers.module';
 
 const logger = new Logger('WebhooksModule');
 
@@ -37,6 +38,7 @@ function getQueueImports(): any[] {
     AdminNotificationsModule,
     IntegrationsModule,
     MessagingModule,
+    VouchersModule,
     ...getQueueImports(), // Conditionally load queue modules
   ],
   controllers: [WebhooksController, CassoController],

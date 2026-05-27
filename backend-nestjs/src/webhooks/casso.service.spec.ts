@@ -4,6 +4,8 @@ describe('CassoService VietQR processing', () => {
   let prisma: any;
   let ordersService: any;
   let adminNotificationsService: any;
+  let messagingAutomationService: any;
+  let vouchersService: any;
   let service: CassoService;
 
   const transaction = {
@@ -43,8 +45,20 @@ describe('CassoService VietQR processing', () => {
     adminNotificationsService = {
       createNotification: jest.fn(),
     };
+    messagingAutomationService = {
+      handleOrderStateChange: jest.fn(),
+    };
+    vouchersService = {
+      processSuccessfulOrderVoucherRules: jest.fn(),
+    };
 
-    service = new CassoService(prisma, ordersService, {} as any, adminNotificationsService);
+    service = new CassoService(
+      prisma,
+      ordersService,
+      adminNotificationsService,
+      messagingAutomationService,
+      vouchersService,
+    );
   });
 
   it('does not mark expired cancelled VietQR orders as paid', async () => {
@@ -122,5 +136,6 @@ describe('CassoService VietQR processing', () => {
         paidAt: expect.any(Date),
       },
     });
+    expect(vouchersService.processSuccessfulOrderVoucherRules).toHaveBeenCalledWith('order-1');
   });
 });

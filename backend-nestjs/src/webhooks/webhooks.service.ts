@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
 import { PancakeService } from '../integrations/pancake/pancake.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
+import { VouchersService } from '../vouchers/vouchers.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class WebhooksService {
     private readonly adminNotificationsService: AdminNotificationsService,
     private readonly pancakeService: PancakeService,
     private readonly messagingAutomationService: MessagingAutomationService,
+    private readonly vouchersService: VouchersService,
     @Optional() @InjectQueue('voucher-queue') private voucherQueue?: Queue,
   ) {}
 
@@ -208,6 +210,9 @@ export class WebhooksService {
     for (const order of orders) {
       const newOrderStatus = this.mapVtpStatusToOrderStatus(ORDER_STATUS);
       const location = LOCATION_CURRENTLY || LOCALION_CURRENTLY || '';
+      const isPartialDelivery = this.isPartialDeliveryPayload(payload, {
+        totalAmount: Number(order.totalAmount || 0),
+      });
 
       const courierUpdate = {
         status: STATUS_NAME || `VTP-${ORDER_STATUS}`,
@@ -239,6 +244,7 @@ export class WebhooksService {
             ...existingPartner,
             trackingCode: existingPartner.trackingCode || ORDER_NUMBER,
             courierUpdates: [...existingUpdates, courierUpdate],
+            ...(isPartialDelivery ? { partialDelivery: true } : {}),
             ...(MONEY_COLLECTION !== undefined ? { cod: MONEY_COLLECTION } : {}),
           },
         },
@@ -311,6 +317,28 @@ export class WebhooksService {
           statusName: STATUS_NAME || null,
         },
       });
+
+      if (
+        updatedOrder.status !== previousStatus &&
+        ['CANCELLED', 'REFUNDED'].includes(updatedOrder.status) &&
+        updatedOrder.paymentStatus !== 'PAID'
+      ) {
+        await this.releaseAppliedVouchersForOrder(updatedOrder.id);
+      }
+
+      if (isPartialDelivery && Number(MONEY_COLLECTION || 0) > 0) {
+        await this.recalculateAppliedVoucherForPartialDelivery(
+          updatedOrder.id,
+          Number(MONEY_COLLECTION),
+        );
+      }
+
+      if (
+        updatedOrder.status !== previousStatus &&
+        ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'].includes(updatedOrder.status)
+      ) {
+        await this.vouchersService.processSuccessfulOrderVoucherRules(updatedOrder.id);
+      }
     }
   }
 
@@ -409,8 +437,171 @@ export class WebhooksService {
     }
   }
 
+  private isDeliveredPaidOrder(order?: { status?: string | null; paymentStatus?: string | null }) {
+    if (!order) {
+      return false;
+    }
+
+    const isDeliveredState = ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'].includes(
+      order.status || '',
+    );
+    const isPaidState = order.paymentStatus === 'PAID' || order.status === 'PAYMENT_COLLECTED';
+
+    return isDeliveredState && isPaidState;
+  }
+
+  private isPartialDeliveryPayload(
+    payload: ViettelPostWebhookDto,
+    order?: { totalAmount?: number | null },
+  ) {
+    const statusName = `${payload.DATA.STATUS_NAME || ''} ${payload.DATA.NOTE || ''}`.toLowerCase();
+    const flaggedByText =
+      statusName.includes('một phần') ||
+      statusName.includes('mot phan') ||
+      statusName.includes('partial');
+
+    const collectedAmount = Number(payload.DATA.MONEY_COLLECTION || 0);
+    const flaggedByAmount =
+      !!order?.totalAmount && collectedAmount > 0 && collectedAmount < Number(order.totalAmount);
+
+    return flaggedByText || flaggedByAmount;
+  }
+
+  private async recalculateAppliedVoucherForPartialDelivery(
+    orderId: string,
+    actualCollectedAmount: number,
+  ) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        subtotal: true,
+        shippingFee: true,
+        metadata: true,
+        totalAmount: true,
+        appliedVouchers: {
+          select: {
+            userVoucherId: true,
+            discountApplied: true,
+          },
+        },
+      },
+    });
+
+    if (!order || !order.totalAmount || actualCollectedAmount <= 0) {
+      return;
+    }
+
+    const ratio = Math.max(0, Math.min(1, actualCollectedAmount / Number(order.totalAmount)));
+    if (ratio >= 1 || order.appliedVouchers.length === 0) {
+      return;
+    }
+
+    for (const appliedVoucher of order.appliedVouchers) {
+      const currentDiscount = Number(appliedVoucher.discountApplied || 0);
+      const recalculatedDiscount = Number((currentDiscount * ratio).toFixed(2));
+      await this.prisma.orderVoucher.update({
+        where: {
+          orderId_userVoucherId: {
+            orderId,
+            userVoucherId: appliedVoucher.userVoucherId,
+          },
+        },
+        data: {
+          discountApplied: recalculatedDiscount,
+        },
+      });
+    }
+
+    const refreshedAppliedVouchers = await this.prisma.orderVoucher.findMany({
+      where: { orderId },
+      select: { discountApplied: true },
+    });
+    const voucherDiscountAmount = refreshedAppliedVouchers.reduce(
+      (sum, item) => sum + Number(item.discountApplied || 0),
+      0,
+    );
+    const metadata =
+      order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+        ? (order.metadata as Record<string, any>)
+        : {};
+    const commissionDiscount = Number(metadata.commissionDiscount || 0);
+    const nextDiscountAmount = Number((voucherDiscountAmount + commissionDiscount).toFixed(2));
+    const nextTotalAmount = Math.max(
+      0,
+      Number(order.subtotal || 0) - nextDiscountAmount + Number(order.shippingFee || 0),
+    );
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        discountAmount: nextDiscountAmount,
+        totalAmount: Number(nextTotalAmount.toFixed(2)),
+      },
+    });
+  }
+
+  private async releaseAppliedVouchersForOrder(orderId: string) {
+    const appliedVouchers = await this.prisma.orderVoucher.findMany({
+      where: { orderId },
+      select: { userVoucherId: true },
+    });
+
+    for (const appliedVoucher of appliedVouchers) {
+      const releasedVoucher = await this.prisma.userVoucher.updateMany({
+        where: {
+          id: appliedVoucher.userVoucherId,
+          isUsed: true,
+        },
+        data: {
+          isUsed: false,
+          usedAt: null,
+        },
+      });
+
+      if (releasedVoucher.count > 0) {
+        await this.prisma.voucher.updateMany({
+          where: {
+            userVouchers: {
+              some: {
+                id: appliedVoucher.userVoucherId,
+              },
+            },
+            usedCount: {
+              gt: 0,
+            },
+          },
+          data: {
+            usedCount: { decrement: 1 },
+          },
+        });
+      }
+    }
+  }
+
   private async scheduleVoucherUnlock(userVoucher: any, payload: ViettelPostWebhookDto) {
     const { ORDER_NUMBER } = payload.DATA;
+
+    const sourceOrder = await this.prisma.order.findFirst({
+      where: {
+        OR: [{ orderCode: ORDER_NUMBER }, { metadata: { string_contains: ORDER_NUMBER } }],
+      },
+      select: {
+        id: true,
+        status: true,
+        paymentStatus: true,
+      },
+    });
+
+    if (!this.isDeliveredPaidOrder(sourceOrder)) {
+      this.logger.log(
+        `Voucher ${userVoucher.id} remains PENDING because order ${ORDER_NUMBER} is not delivered+paid yet.`,
+      );
+      return {
+        action: 'pending',
+        reason: 'ORDER_NOT_DELIVERED_AND_PAID',
+      };
+    }
 
     if (!this.voucherQueue) {
       this.logger.warn(
@@ -517,6 +708,27 @@ export class WebhooksService {
   private async activateVoucherImmediately(userVoucher: any, payload: ViettelPostWebhookDto) {
     const { ORDER_NUMBER } = payload.DATA;
 
+    const sourceOrder = await this.prisma.order.findFirst({
+      where: {
+        OR: [{ orderCode: ORDER_NUMBER }, { metadata: { string_contains: ORDER_NUMBER } }],
+      },
+      select: {
+        id: true,
+        status: true,
+        paymentStatus: true,
+      },
+    });
+
+    if (!this.isDeliveredPaidOrder(sourceOrder)) {
+      this.logger.log(
+        `Voucher ${userVoucher.id} stays PENDING because order ${ORDER_NUMBER} is not delivered+paid.`,
+      );
+      return {
+        action: 'pending',
+        reason: 'ORDER_NOT_DELIVERED_AND_PAID',
+      };
+    }
+
     try {
       await this.prisma.userVoucher.update({
         where: { id: userVoucher.id },
@@ -524,6 +736,11 @@ export class WebhooksService {
           status: 'ACTIVE',
         },
       });
+      await this.messagingAutomationService.handleVoucherActivated(
+        userVoucher.id,
+        'VIETTELPOST_WEBHOOK',
+        { orderCode: ORDER_NUMBER },
+      );
 
       this.logger.log(
         `✅ Voucher ${userVoucher.id} ACTIVATED immediately (Order: ${ORDER_NUMBER})`,
