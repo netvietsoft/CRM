@@ -121,8 +121,7 @@ install_dependencies() {
         fi
 
         if command -v corepack >/dev/null 2>&1; then
-            corepack enable
-            yarn install --frozen-lockfile
+            corepack yarn install --frozen-lockfile
             return
         fi
 
@@ -146,8 +145,7 @@ run_build() {
         fi
 
         if command -v corepack >/dev/null 2>&1; then
-            corepack enable
-            yarn build
+            corepack yarn build
             return
         fi
 
