@@ -7,6 +7,7 @@ import { NotificationsController } from './notifications.controller';
 import { ZaloTokenService } from './zalo-token.service';
 import { ZbsTemplateService } from './zbs-template.service';
 import { ZaloZnsProcessor } from './zalo-zns.processor';
+import { SmsModule } from '../integrations/sms/sms.module';
 
 const logger = new Logger('NotificationsModule');
 
@@ -44,7 +45,7 @@ function getProviders(): any[] {
 }
 
 @Module({
-  imports: [...getQueueImports()],
+  imports: [SmsModule, ...getQueueImports()],
   controllers: [NotificationsController],
   providers: getProviders(),
   exports: [NotificationsService, ZaloTokenService],

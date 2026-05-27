@@ -11,6 +11,7 @@ import { UsersModule } from '../users/users.module';
 import { VouchersModule } from '../vouchers/vouchers.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { AdminNotificationsModule } from '../modules/admin-notifications/admin-notifications.module';
+import { MessagingModule } from '../messaging/messaging.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AdminNotificationsModule } from '../modules/admin-notifications/admin-n
     VouchersModule,
     IntegrationsModule,
     AdminNotificationsModule,
+    MessagingModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

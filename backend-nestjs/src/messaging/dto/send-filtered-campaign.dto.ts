@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { MessageChannelCode, MessagePurpose, OrderStatus, PaymentStatus, Rank } from '@prisma/client';
+import {
+  MessageChannelCode,
+  MessagePurpose,
+  OrderStatus,
+  PaymentStatus,
+  Rank,
+} from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsArray,

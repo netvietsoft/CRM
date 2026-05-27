@@ -29,6 +29,10 @@ import { AdminNotificationsModule } from './modules/admin-notifications/admin-no
 import { SupportModule } from './support/support.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { RankConfigModule } from './rank-config/rank-config.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { MaterialsModule } from './materials/materials.module';
+import { UnitsModule } from './units/units.module';
+import { ProductTagsModule } from './product-tags/product-tags.module';
 
 const logger = new Logger('AppModule');
 
@@ -109,6 +113,10 @@ function getQueueModules(): any[] {
     SupportModule,
     MessagingModule,
     RankConfigModule,
+    SuppliersModule,
+    MaterialsModule,
+    UnitsModule,
+    ProductTagsModule,
   ],
 })
 export class AppModule {}

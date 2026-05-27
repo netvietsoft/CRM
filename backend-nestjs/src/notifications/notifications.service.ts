@@ -3,13 +3,130 @@ import { PrismaService } from '../prisma/prisma.service';
 import { getQueueToken } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { SendBulkZaloDto } from './dto/send-bulk-zalo.dto';
+import { SmsService } from '../integrations/sms/sms.service';
 
 @Injectable()
 export class NotificationsService {
   constructor(
     private prisma: PrismaService,
+    private readonly smsService: SmsService,
     @Optional() @Inject(getQueueToken('zalo-zns')) private readonly zaloQueue: Queue,
   ) {}
+
+  async sendVoucherRewardZaloWithFallback(input: {
+    userId: string;
+    title: string;
+    body: string;
+    templateTypePrefix?: string;
+    templateData?: Record<string, string>;
+    fallbackSmsMessage: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: input.userId },
+      select: {
+        id: true,
+        phone: true,
+      },
+    });
+
+    if (!user?.phone) {
+      return {
+        success: false,
+        channel: 'NONE',
+        reason: 'USER_PHONE_NOT_FOUND',
+      };
+    }
+
+    const template = await this.prisma.notificationTemplate.findFirst({
+      where: {
+        channel: 'ZALO',
+        zaloStatus: 'ENABLE',
+        isActive: true,
+        ...(input.templateTypePrefix
+          ? {
+              type: {
+                startsWith: input.templateTypePrefix,
+              },
+            }
+          : {}),
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    if (!template || !this.zaloQueue) {
+      const smsResult = await this.smsService.sendMessage(user.phone, input.fallbackSmsMessage);
+      return {
+        success: smsResult.success,
+        channel: 'SMS',
+        reason: template ? 'ZALO_QUEUE_UNAVAILABLE' : 'ZALO_TEMPLATE_UNAVAILABLE',
+        smsResult,
+      };
+    }
+
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId: user.id,
+        channel: 'ZALO',
+        type: template.type,
+        title: input.title,
+        body: input.body,
+        status: 'QUEUED',
+        metadata: {
+          ...(input.metadata || {}),
+          templateData: input.templateData || {},
+          fallbackSmsMessage: input.fallbackSmsMessage,
+        } as any,
+      },
+    });
+
+    try {
+      await this.zaloQueue.add(
+        'send-zns',
+        {
+          notificationId: notification.id,
+          phone: user.phone,
+          templateId: template.zaloTemplateId,
+          templateData: input.templateData || {},
+          fallbackSmsMessage: input.fallbackSmsMessage,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+        },
+      );
+
+      return {
+        success: true,
+        channel: 'ZALO',
+        notificationId: notification.id,
+      };
+    } catch (error) {
+      const smsResult = await this.smsService.sendMessage(user.phone, input.fallbackSmsMessage);
+      await this.prisma.notification.update({
+        where: { id: notification.id },
+        data: {
+          status: smsResult.success ? 'DELIVERED' : 'FAILED',
+          error: smsResult.success ? 'ZALO_QUEUE_FAILED_SMS_FALLBACK_SENT' : 'ZALO_QUEUE_FAILED',
+          metadata: {
+            ...(input.metadata || {}),
+            queueError: error instanceof Error ? error.message : String(error),
+            fallbackSmsMessage: input.fallbackSmsMessage,
+            smsFallbackSuccess: smsResult.success,
+          } as any,
+        },
+      });
+
+      return {
+        success: smsResult.success,
+        channel: 'SMS',
+        reason: 'ZALO_QUEUE_ADD_FAILED',
+        smsResult,
+      };
+    }
+  }
 
   /**
    * Get user notifications with pagination

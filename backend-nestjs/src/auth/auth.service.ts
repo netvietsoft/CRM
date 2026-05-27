@@ -13,6 +13,7 @@ import { VouchersService } from '../vouchers/vouchers.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
+import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +24,7 @@ export class AuthService {
     private usersService: UsersService,
     private vouchersService: VouchersService,
     private adminNotificationsService: AdminNotificationsService,
+    private messagingAutomationService: MessagingAutomationService,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -114,6 +116,9 @@ export class AuthService {
 
     // Grant welcome vouchers
     await this.vouchersService.grantWelcomeVouchers(user.id);
+    await this.messagingAutomationService.handleCustomerCreated(user.id, 'AUTH_REGISTER', {
+      referralCode: referralCode || null,
+    });
 
     // Generate tokens
     const tokens = await this.generateTokens(user.id, user.role);
@@ -288,6 +293,9 @@ export class AuthService {
 
       // Grant welcome vouchers
       await this.vouchersService.grantWelcomeVouchers(user.id);
+      await this.messagingAutomationService.handleCustomerCreated(user.id, 'AUTH_GOOGLE_REGISTER', {
+        referralCode: referralCode || null,
+      });
     }
 
     // Create or update OAuth account

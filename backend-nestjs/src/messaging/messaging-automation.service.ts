@@ -44,11 +44,35 @@ interface AutomationOrderSnapshot {
   metadata: Prisma.JsonValue | null;
 }
 
+interface VoucherAutomationSnapshot {
+  id: string;
+  userId: string;
+  voucherId: string;
+  status: string;
+  isUsed: boolean;
+  expiresAt: Date | null;
+  createdAt: Date;
+  unlockAt: Date | null;
+  voucher: {
+    id: string;
+    code: string;
+    name: string;
+    description: string | null;
+    value: number;
+    minOrderValue: number;
+    storeId: string | null;
+  };
+}
+
 const DELIVERED_PAID_TRIGGER_STATUSES: OrderStatus[] = [
   OrderStatus.DELIVERED,
   OrderStatus.PAYMENT_COLLECTED,
   OrderStatus.COMPLETED,
 ];
+
+const SUCCESSFUL_ORDER_STATUSES: OrderStatus[] = [...DELIVERED_PAID_TRIGGER_STATUSES];
+
+const CANCELLED_TRIGGER_STATUSES: OrderStatus[] = [OrderStatus.CANCELLED, OrderStatus.REFUNDED];
 
 @Injectable()
 export class MessagingAutomationService {
@@ -69,10 +93,30 @@ export class MessagingAutomationService {
     }
   }
 
+  @Cron('0 5 8 * * *', { timeZone: process.env.APP_TIMEZONE || 'Asia/Bangkok' })
+  async processVoucherLifecycleRulesCron() {
+    try {
+      await this.processVoucherLifecycleRules();
+    } catch (error: any) {
+      this.logger.error(`Failed to process voucher lifecycle rules: ${error.message}`);
+    }
+  }
+
+  @Cron('0 10 8 * * *', { timeZone: process.env.APP_TIMEZONE || 'Asia/Bangkok' })
+  async processCustomerInactivityRulesCron() {
+    try {
+      await this.processCustomerInactivityRules();
+    } catch (error: any) {
+      this.logger.error(`Failed to process customer inactivity rules: ${error.message}`);
+    }
+  }
+
   async processBirthdayRules(now = new Date()) {
     const rules = await this.prisma.messageAutomationRule.findMany({
       where: {
-        triggerType: MessageAutomationTriggerType.BIRTHDAY,
+        triggerType: {
+          in: [MessageAutomationTriggerType.BIRTHDAY, MessageAutomationTriggerType.BIRTHDAY_TODAY],
+        },
         isActive: true,
         channel: {
           isActive: true,
@@ -106,24 +150,111 @@ export class MessagingAutomationService {
     };
   }
 
-  async handleOrderStateChange(input: OrderStateChangeInput) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: input.orderId },
-      select: {
-        id: true,
-        orderCode: true,
-        storeId: true,
-        userId: true,
-        status: true,
-        paymentStatus: true,
-        shippingName: true,
-        shippingPhone: true,
-        metadata: true,
+  async processVoucherLifecycleRules(now = new Date()) {
+    await this.processVoucherReminderRules(MessageAutomationTriggerType.VOUCHER_EXPIRING_3D, now);
+    await this.processVoucherExpiredRules(now);
+  }
+
+  async processCustomerInactivityRules(now = new Date()) {
+    await this.processCustomerInactivityThresholdRules(
+      MessageAutomationTriggerType.CUSTOMER_INACTIVE_30D,
+      30,
+      now,
+    );
+    await this.processCustomerInactivityThresholdRules(
+      MessageAutomationTriggerType.CUSTOMER_INACTIVE_60D,
+      60,
+      now,
+    );
+  }
+
+  async handleCustomerCreated(userId: string, source: string, payload?: Record<string, unknown>) {
+    await this.processCustomerRules(
+      MessageAutomationTriggerType.CUSTOMER_CREATED,
+      userId,
+      {
+        trigger_source: source,
       },
+      {
+        source,
+        payload: payload || {},
+      },
+      `customer-created:user:${userId}`,
+    );
+  }
+
+  async handleOrderCreated(orderId: string, source: string, payload?: Record<string, unknown>) {
+    const order = await this.getOrderSnapshot(orderId);
+    if (!order) {
+      return;
+    }
+
+    await this.processOrderRules(MessageAutomationTriggerType.ORDER_CREATED, order, {
+      orderId,
+      previousStatus: order.status,
+      currentStatus: order.status,
+      previousPaymentStatus: order.paymentStatus,
+      currentPaymentStatus: order.paymentStatus,
+      source,
+      payload,
     });
+  }
+
+  async handleVoucherCreated(
+    userVoucherId: string,
+    source: string,
+    payload?: Record<string, unknown>,
+  ) {
+    await this.processVoucherRules(
+      MessageAutomationTriggerType.VOUCHER_CREATED,
+      userVoucherId,
+      source,
+      payload,
+    );
+  }
+
+  async handleVoucherActivated(
+    userVoucherId: string,
+    source: string,
+    payload?: Record<string, unknown>,
+  ) {
+    await this.processVoucherRules(
+      MessageAutomationTriggerType.VOUCHER_ACTIVATED,
+      userVoucherId,
+      source,
+      payload,
+    );
+  }
+
+  async handleVoucherUsed(
+    userVoucherId: string,
+    orderId: string,
+    source: string,
+    payload?: Record<string, unknown>,
+  ) {
+    await this.processVoucherRules(
+      MessageAutomationTriggerType.VOUCHER_USED,
+      userVoucherId,
+      source,
+      {
+        ...(payload || {}),
+        orderId,
+      },
+    );
+  }
+
+  async handleOrderStateChange(input: OrderStateChangeInput) {
+    const order = await this.getOrderSnapshot(input.orderId);
 
     if (!order) {
       return;
+    }
+
+    if (
+      input.previousStatus !== input.currentStatus &&
+      input.currentStatus === OrderStatus.CONFIRMED
+    ) {
+      await this.processOrderRules(MessageAutomationTriggerType.ORDER_CONFIRMED, order, input);
     }
 
     if (this.didEnterShippingState(input.previousStatus, input.currentStatus)) {
@@ -132,6 +263,40 @@ export class MessagingAutomationService {
         order,
         input,
       );
+      await this.processOrderRules(MessageAutomationTriggerType.ORDER_SHIPPED, order, input);
+    }
+
+    if (
+      input.previousStatus !== input.currentStatus &&
+      DELIVERED_PAID_TRIGGER_STATUSES.includes(input.currentStatus)
+    ) {
+      await this.processOrderRules(MessageAutomationTriggerType.ORDER_DELIVERED, order, input);
+
+      if (this.isPartialOrder(order)) {
+        await this.processOrderRules(
+          MessageAutomationTriggerType.ORDER_PARTIAL_DELIVERED,
+          order,
+          input,
+        );
+      }
+    }
+
+    if (
+      input.previousStatus !== input.currentStatus &&
+      CANCELLED_TRIGGER_STATUSES.includes(input.currentStatus)
+    ) {
+      await this.processOrderRules(MessageAutomationTriggerType.ORDER_CANCELLED, order, input);
+
+      if (input.currentPaymentStatus !== PaymentStatus.PAID) {
+        await this.processOrderRules(MessageAutomationTriggerType.PAYMENT_FAILED, order, input);
+      }
+    }
+
+    if (
+      input.currentPaymentStatus === PaymentStatus.PAID &&
+      input.previousPaymentStatus !== PaymentStatus.PAID
+    ) {
+      await this.processOrderRules(MessageAutomationTriggerType.PAYMENT_SUCCESS, order, input);
     }
 
     if (
@@ -336,6 +501,236 @@ export class MessagingAutomationService {
     }
   }
 
+  private async processCustomerRules(
+    triggerType: MessageAutomationTriggerType,
+    userId: string,
+    templateVariables: Record<string, unknown>,
+    payload: Record<string, unknown>,
+    triggerKeyOverride?: string,
+  ) {
+    const rules = await this.prisma.messageAutomationRule.findMany({
+      where: {
+        triggerType,
+        isActive: true,
+        channel: {
+          isActive: true,
+        },
+      },
+      include: {
+        channel: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    for (const rule of rules) {
+      const triggerKey =
+        triggerKeyOverride ||
+        `${triggerType.toLowerCase()}:user:${userId}:${this.formatDateKey(new Date())}`;
+      const execution = await this.reserveExecution({
+        automationRuleId: rule.id,
+        triggerType,
+        triggerKey,
+        storeId: rule.storeId || null,
+        userId,
+        orderId: null,
+        payload: this.toJsonValue(payload),
+      });
+
+      if (!execution) {
+        continue;
+      }
+
+      if (!this.isChannelSupported(rule.channel.code)) {
+        await this.completeExecution(execution.id, MessageAutomationExecutionStatus.SKIPPED, {
+          reason: 'CHANNEL_NOT_SUPPORTED',
+        });
+        await this.touchRule(rule.id);
+        continue;
+      }
+
+      const audienceRecords = await this.audienceService.resolveAudienceRecords(
+        rule.channel.code,
+        RecipientSourceType.CUSTOMERS,
+        this.mergeAudienceFilter(this.parseAudienceFilter(rule.audienceFilter), {
+          userIds: [userId],
+          limit: 1,
+        }),
+        rule.storeId || null,
+      );
+
+      if (audienceRecords.length === 0) {
+        await this.completeExecution(execution.id, MessageAutomationExecutionStatus.SKIPPED, {
+          reason: 'NO_ELIGIBLE_RECIPIENT',
+        });
+        await this.touchRule(rule.id);
+        continue;
+      }
+
+      await this.dispatchExecution(rule, execution.id, audienceRecords[0], templateVariables);
+      await this.touchRule(rule.id);
+    }
+  }
+
+  private async processVoucherRules(
+    triggerType: MessageAutomationTriggerType,
+    userVoucherId: string,
+    source: string,
+    payload?: Record<string, unknown>,
+  ) {
+    const userVoucher = await this.getVoucherSnapshot(userVoucherId);
+    if (!userVoucher) {
+      return;
+    }
+
+    await this.processCustomerRules(
+      triggerType,
+      userVoucher.userId,
+      {
+        trigger_source: source,
+        voucher_code: userVoucher.voucher.code,
+        voucher_name: userVoucher.voucher.name,
+        voucher_value: userVoucher.voucher.value,
+        voucher_min_order_value: userVoucher.voucher.minOrderValue,
+        voucher_expires_at: userVoucher.expiresAt?.toISOString() || null,
+      },
+      {
+        source,
+        userVoucherId,
+        voucherId: userVoucher.voucherId,
+        voucherCode: userVoucher.voucher.code,
+        payload: payload || {},
+      },
+      `${triggerType.toLowerCase()}:user-voucher:${userVoucherId}`,
+    );
+  }
+
+  private async processVoucherReminderRules(triggerType: MessageAutomationTriggerType, now: Date) {
+    const rules = await this.prisma.messageAutomationRule.findMany({
+      where: {
+        triggerType,
+        isActive: true,
+        channel: {
+          isActive: true,
+        },
+      },
+      include: { channel: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (rules.length === 0) {
+      return;
+    }
+
+    const targetDate = new Date(now);
+    targetDate.setDate(targetDate.getDate() + 3);
+    const start = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const end = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+
+    const userVouchers = await this.prisma.userVoucher.findMany({
+      where: {
+        status: 'ACTIVE',
+        isUsed: false,
+        expiresAt: {
+          gte: start,
+          lt: end,
+        },
+      },
+      select: { id: true },
+    });
+
+    for (const userVoucher of userVouchers) {
+      await this.processVoucherRules(triggerType, userVoucher.id, 'VOUCHER_LIFECYCLE_CRON', {
+        lifecycleDate: this.formatDateKey(start),
+      });
+    }
+  }
+
+  private async processVoucherExpiredRules(now: Date) {
+    const rules = await this.prisma.messageAutomationRule.findMany({
+      where: {
+        triggerType: MessageAutomationTriggerType.VOUCHER_EXPIRED,
+        isActive: true,
+        channel: {
+          isActive: true,
+        },
+      },
+      include: { channel: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const expiringVouchers = await this.prisma.userVoucher.findMany({
+      where: {
+        status: 'ACTIVE',
+        isUsed: false,
+        expiresAt: {
+          lt: now,
+        },
+      },
+      select: { id: true },
+    });
+
+    for (const userVoucher of expiringVouchers) {
+      await this.prisma.userVoucher.update({
+        where: { id: userVoucher.id },
+        data: { status: 'EXPIRED' },
+      });
+
+      if (rules.length > 0) {
+        await this.processVoucherRules(
+          MessageAutomationTriggerType.VOUCHER_EXPIRED,
+          userVoucher.id,
+          'VOUCHER_LIFECYCLE_CRON',
+          { expiredAt: now.toISOString() },
+        );
+      }
+    }
+  }
+
+  private async processCustomerInactivityThresholdRules(
+    triggerType: MessageAutomationTriggerType,
+    inactivityDays: number,
+    now: Date,
+  ) {
+    const rows = await this.prisma.order.groupBy({
+      by: ['userId'],
+      where: {
+        userId: { not: null },
+        status: { in: SUCCESSFUL_ORDER_STATUSES },
+      },
+      _max: {
+        createdAt: true,
+      },
+    });
+
+    for (const row of rows) {
+      if (!row.userId || !row._max.createdAt) {
+        continue;
+      }
+
+      const diffDays = Math.floor(
+        (now.getTime() - row._max.createdAt.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (diffDays !== inactivityDays) {
+        continue;
+      }
+
+      await this.processCustomerRules(
+        triggerType,
+        row.userId,
+        {
+          inactivity_days: inactivityDays,
+          last_successful_order_at: row._max.createdAt.toISOString(),
+        },
+        {
+          source: 'CUSTOMER_INACTIVITY_CRON',
+          inactivityDays,
+          lastSuccessfulOrderAt: row._max.createdAt.toISOString(),
+        },
+        `${triggerType.toLowerCase()}:user:${row.userId}:${this.formatDateKey(now)}`,
+      );
+    }
+  }
+
   private async dispatchExecution(
     rule: AutomationRuleRecord,
     executionId: string,
@@ -516,6 +911,52 @@ export class MessagingAutomationService {
     return rows.map((row) => row.id);
   }
 
+  private async getOrderSnapshot(orderId: string): Promise<AutomationOrderSnapshot | null> {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        orderCode: true,
+        storeId: true,
+        userId: true,
+        status: true,
+        paymentStatus: true,
+        shippingName: true,
+        shippingPhone: true,
+        metadata: true,
+      },
+    });
+  }
+
+  private async getVoucherSnapshot(
+    userVoucherId: string,
+  ): Promise<VoucherAutomationSnapshot | null> {
+    return this.prisma.userVoucher.findUnique({
+      where: { id: userVoucherId },
+      select: {
+        id: true,
+        userId: true,
+        voucherId: true,
+        status: true,
+        isUsed: true,
+        expiresAt: true,
+        createdAt: true,
+        unlockAt: true,
+        voucher: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            description: true,
+            value: true,
+            minOrderValue: true,
+            storeId: true,
+          },
+        },
+      },
+    });
+  }
+
   private didEnterShippingState(previousStatus: OrderStatus, currentStatus: OrderStatus) {
     return previousStatus !== OrderStatus.SHIPPED && currentStatus === OrderStatus.SHIPPED;
   }
@@ -662,11 +1103,20 @@ export class MessagingAutomationService {
   }
 
   private buildOrderTriggerKey(triggerType: MessageAutomationTriggerType, orderId: string) {
-    if (triggerType === MessageAutomationTriggerType.ORDER_SHIPPING_STATUS) {
-      return `order-shipping:${orderId}`;
-    }
+    const triggerMap: Partial<Record<MessageAutomationTriggerType, string>> = {
+      [MessageAutomationTriggerType.ORDER_SHIPPING_STATUS]: 'order-shipping',
+      [MessageAutomationTriggerType.ORDER_DELIVERED_PAID]: 'order-delivered-paid',
+      [MessageAutomationTriggerType.ORDER_CREATED]: 'order-created',
+      [MessageAutomationTriggerType.ORDER_CONFIRMED]: 'order-confirmed',
+      [MessageAutomationTriggerType.ORDER_SHIPPED]: 'order-shipped',
+      [MessageAutomationTriggerType.ORDER_DELIVERED]: 'order-delivered',
+      [MessageAutomationTriggerType.ORDER_PARTIAL_DELIVERED]: 'order-partial-delivered',
+      [MessageAutomationTriggerType.ORDER_CANCELLED]: 'order-cancelled',
+      [MessageAutomationTriggerType.PAYMENT_SUCCESS]: 'payment-success',
+      [MessageAutomationTriggerType.PAYMENT_FAILED]: 'payment-failed',
+    };
 
-    return `order-delivered-paid:${orderId}`;
+    return `${triggerMap[triggerType] || 'order-event'}:${orderId}`;
   }
 
   private isChannelSupported(channelCode: MessageChannelCode) {

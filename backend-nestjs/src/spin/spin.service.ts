@@ -1,9 +1,13 @@
 import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 
 @Injectable()
 export class SpinService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private messagingAutomationService: MessagingAutomationService,
+  ) {}
 
   /**
    * Get all active spin prizes
@@ -124,6 +128,7 @@ export class SpinService {
       // 3. Apply prize if won
       let rewardMessage = selectedPrize.name;
       let voucherCode = null;
+      let createdUserVoucherId: string | null = null;
 
       if (won) {
         // Increment won count
@@ -159,12 +164,13 @@ export class SpinService {
               } as any,
             });
 
-            await tx.userVoucher.create({
+            const userVoucher = await tx.userVoucher.create({
               data: {
                 userId,
                 voucherId: newVoucher.id,
               },
             });
+            createdUserVoucherId = userVoucher.id;
             voucherCode = code;
             rewardMessage = `Chúc mừng! Bạn nhận được voucher ${newVoucher.name}`;
           }
@@ -181,10 +187,22 @@ export class SpinService {
         prizeName: selectedPrize.name,
         won,
         voucherCode,
+        createdUserVoucherId,
         message: rewardMessage,
         remainingTurns: updatedUser?.spinTurns || 0,
       };
     });
+
+    if (result.createdUserVoucherId) {
+      await this.messagingAutomationService.handleVoucherCreated(
+        result.createdUserVoucherId,
+        'SPIN_REWARD',
+      );
+      await this.messagingAutomationService.handleVoucherActivated(
+        result.createdUserVoucherId,
+        'SPIN_REWARD',
+      );
+    }
 
     return result;
   }

@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ZaloTokenService } from './zalo-token.service';
+import { SmsService } from '../integrations/sms/sms.service';
 import axios from 'axios';
 
 @Processor('zalo-zns')
@@ -12,6 +13,7 @@ export class ZaloZnsProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly zaloTokenService: ZaloTokenService,
+    private readonly smsService: SmsService,
   ) {
     super();
   }
@@ -19,7 +21,7 @@ export class ZaloZnsProcessor extends WorkerHost {
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}...`);
 
-    const { notificationId, phone, templateId, templateData } = job.data;
+    const { notificationId, phone, templateId, templateData, fallbackSmsMessage } = job.data;
 
     try {
       // 1. Format phone number to Zalo standard (84...)
@@ -96,11 +98,25 @@ export class ZaloZnsProcessor extends WorkerHost {
       const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
       this.logger.error(`Job ${job.id} encountered error: ${errorMsg}`);
 
+      const maxAttempts = job.opts.attempts ?? 1;
+      const isFinalAttempt = job.attemptsMade + 1 >= maxAttempts;
+      let smsFallbackSuccess = false;
+
+      if (isFinalAttempt && fallbackSmsMessage) {
+        const smsResult = await this.smsService.sendMessage(phone, fallbackSmsMessage);
+        smsFallbackSuccess = smsResult.success;
+      }
+
       await this.prisma.notification.update({
         where: { id: notificationId },
         data: {
-          status: 'FAILED',
-          error: errorMsg,
+          status: smsFallbackSuccess ? 'DELIVERED' : 'FAILED',
+          error: smsFallbackSuccess ? `${errorMsg} | SMS fallback sent` : errorMsg,
+          metadata: {
+            zaloError: errorMsg,
+            smsFallbackTriggered: isFinalAttempt && !!fallbackSmsMessage,
+            smsFallbackSuccess,
+          } as any,
         },
       });
 
