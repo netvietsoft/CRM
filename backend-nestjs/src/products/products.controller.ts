@@ -64,6 +64,12 @@ export class ProductsController {
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('supplierId') supplierId?: string,
+    @Query('materialId') materialId?: string,
+    @Query('unitId') unitId?: string,
+    @Query('tagId') tagId?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
     @Query('isActive') isActive?: string,
   ) {
     return this.productsService.findAdminProducts({
@@ -72,6 +78,12 @@ export class ProductsController {
       limit: limit ? parseInt(limit) : undefined,
       search,
       categoryId,
+      supplierId,
+      materialId,
+      unitId,
+      tagId,
+      sortBy,
+      sortOrder,
       isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
     });
   }

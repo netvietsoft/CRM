@@ -7,6 +7,7 @@ import {
   IsArray,
   Min,
   IsUrl,
+  IsInt,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -36,6 +37,19 @@ class ProductVariantDto {
   @IsOptional()
   @IsNumber()
   stock?: number;
+}
+
+class ProductComboItemDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  childProductId: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quantity?: number;
 }
 
 export class CreateProductDto {
@@ -111,17 +125,44 @@ export class CreateProductDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  supplierId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  materialId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  unitId?: string;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   categoryIds?: string[];
 
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tagIds?: string[];
+
   @ApiPropertyOptional({ type: [ProductVariantDto] })
   @IsOptional()
   @IsArray()
   @Type(() => ProductVariantDto)
   variants?: ProductVariantDto[];
+
+  @ApiPropertyOptional({ type: [ProductComboItemDto] })
+  @IsOptional()
+  @IsArray()
+  @Type(() => ProductComboItemDto)
+  comboItems?: ProductComboItemDto[];
 
   @ApiPropertyOptional({
     description: 'Store ID - required for ADMIN, auto-assigned for MODERATOR',

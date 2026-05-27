@@ -9,7 +9,14 @@ export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
   async create(role: string, effectiveStoreId: string | null, createProductDto: CreateProductDto) {
-    const { categoryIds, variants, storeId: providedStoreId, ...productData } = createProductDto;
+    const {
+      categoryIds,
+      tagIds,
+      variants,
+      comboItems,
+      storeId: providedStoreId,
+      ...productData
+    } = createProductDto;
 
     let storeId: string | undefined;
 
@@ -49,37 +56,59 @@ export class ProductsService {
       }
     }
 
+    await this.validateProductRelations({
+      categoryIds,
+      tagIds,
+      supplierId: productData.supplierId,
+      materialId: productData.materialId,
+      unitId: productData.unitId,
+      comboItems,
+    });
+
     // Generate slug from name
     const slug = this.generateSlug(productData.name);
 
-    const product = await this.prisma.product.create({
-      data: {
-        ...productData,
-        slug,
-        storeId,
-        categories: categoryIds
-          ? {
-              connect: categoryIds.map((id) => ({ id })),
-            }
-          : undefined,
-      },
-      include: {
-        categories: true,
-        variants: {
-          include: {
-            size: true,
-            color: true,
-          },
+    const product = await this.prisma.$transaction(async (tx) => {
+      const createdProduct = await tx.product.create({
+        data: {
+          ...productData,
+          slug,
+          storeId,
+          categories: categoryIds
+            ? {
+                connect: categoryIds.map((id) => ({ id })),
+              }
+            : undefined,
         },
-      },
+      });
+
+      if (variants && variants.length > 0) {
+        await this.createVariants(tx, createdProduct.id, variants);
+      }
+
+      if (tagIds && tagIds.length > 0) {
+        await tx.productTagMap.createMany({
+          data: tagIds.map((tagId) => ({
+            productId: createdProduct.id,
+            tagId,
+          })),
+        });
+      }
+
+      if (comboItems && comboItems.length > 0) {
+        await tx.productComboItem.createMany({
+          data: comboItems.map((item) => ({
+            comboProductId: createdProduct.id,
+            childProductId: item.childProductId,
+            quantity: item.quantity || 1,
+          })),
+        });
+      }
+
+      return createdProduct;
     });
 
-    // Create variants if provided
-    if (variants && variants.length > 0) {
-      await this.createVariants(product.id, variants);
-    }
-
-    return product;
+    return this.findOne(product.id);
   }
 
   async findAdminProducts(params: {
@@ -88,6 +117,12 @@ export class ProductsService {
     limit?: number;
     search?: string;
     categoryId?: string;
+    supplierId?: string;
+    materialId?: string;
+    unitId?: string;
+    tagId?: string;
+    sortBy?: string;
+    sortOrder?: string;
     isActive?: boolean;
   }) {
     const { effectiveStoreId } = params;
@@ -115,18 +150,66 @@ export class ProductsService {
       };
     }
 
+    if (params.supplierId) {
+      where.supplierId = params.supplierId;
+    }
+
+    if (params.materialId) {
+      where.materialId = params.materialId;
+    }
+
+    if (params.unitId) {
+      where.unitId = params.unitId;
+    }
+
+    if (params.tagId) {
+      where.tagMaps = {
+        some: { tagId: params.tagId },
+      };
+    }
+
     if (params.isActive !== undefined) {
       where.isActive = params.isActive;
     }
 
-    const [products, total] = await Promise.all([
+    const sortOrder = params.sortOrder === 'asc' ? 'asc' : 'desc';
+    let orderBy: any = { createdAt: 'desc' };
+
+    if (params.sortBy === 'name') {
+      orderBy = { name: sortOrder };
+    } else if (params.sortBy === 'price') {
+      orderBy = [{ salePrice: sortOrder }, { originalPrice: sortOrder }];
+    } else if (params.sortBy === 'stock') {
+      orderBy = { stockQuantity: sortOrder };
+    } else if (params.sortBy === 'sold') {
+      orderBy = { orderItems: { _count: sortOrder } };
+    } else if (params.sortBy === 'status') {
+      orderBy = { isActive: sortOrder };
+    }
+
+    const [products, total, activeCount, totalStockAggregate, lowStockCount] = await Promise.all([
       this.prisma.product.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           categories: { select: { id: true, name: true } },
+          supplier: { select: { id: true, name: true, code: true } },
+          material: { select: { id: true, name: true, code: true } },
+          unit: { select: { id: true, name: true, code: true } },
+          tagMaps: {
+            include: {
+              tag: true,
+            },
+          },
+          comboItems: {
+            include: {
+              childProduct: {
+                select: { id: true, name: true, sku: true },
+              },
+            },
+          },
           variants: {
             include: {
               size: true,
@@ -143,6 +226,27 @@ export class ProductsService {
         },
       }),
       this.prisma.product.count({ where }),
+      this.prisma.product.count({
+        where: {
+          ...where,
+          isActive: true,
+        },
+      }),
+      this.prisma.product.aggregate({
+        where,
+        _sum: {
+          stockQuantity: true,
+        },
+      }),
+      this.prisma.product.count({
+        where: {
+          ...where,
+          isActive: true,
+          stockQuantity: {
+            lt: 10,
+          },
+        },
+      }),
     ]);
 
     return {
@@ -152,6 +256,12 @@ export class ProductsService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
+      },
+      summary: {
+        total,
+        activeCount,
+        totalStock: totalStockAggregate._sum.stockQuantity ?? 0,
+        lowStockCount,
       },
     };
   }
@@ -210,6 +320,21 @@ export class ProductsService {
         orderBy: { [sortBy]: sortOrder },
         include: {
           categories: true,
+          supplier: { select: { id: true, name: true, code: true } },
+          material: { select: { id: true, name: true, code: true } },
+          unit: { select: { id: true, name: true, code: true } },
+          tagMaps: {
+            include: {
+              tag: true,
+            },
+          },
+          comboItems: {
+            include: {
+              childProduct: {
+                select: { id: true, name: true, sku: true },
+              },
+            },
+          },
           variants: {
             include: {
               size: true,
@@ -245,6 +370,26 @@ export class ProductsService {
       where: { id },
       include: {
         categories: true,
+        supplier: true,
+        material: true,
+        unit: true,
+        tagMaps: {
+          include: {
+            tag: true,
+          },
+        },
+        comboItems: {
+          include: {
+            childProduct: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
         variants: {
           include: {
             size: true,
@@ -299,6 +444,26 @@ export class ProductsService {
       where: { slug },
       include: {
         categories: { select: { id: true, name: true } },
+        supplier: true,
+        material: true,
+        unit: true,
+        tagMaps: {
+          include: {
+            tag: true,
+          },
+        },
+        comboItems: {
+          include: {
+            childProduct: {
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
         variants: {
           include: {
             size: true,
@@ -408,7 +573,8 @@ export class ProductsService {
     role: string,
     effectiveStoreId: string | null,
   ) {
-    const { categoryIds, variants, ...productData } = updateProductDto;
+    void userId;
+    const { categoryIds, tagIds, variants, comboItems, ...productData } = updateProductDto;
 
     // Check if product exists and if user has access
     const existingProduct = await this.prisma.product.findUnique({
@@ -423,41 +589,72 @@ export class ProductsService {
       throw new BadRequestException('You do not have permission to update this product');
     }
 
-    const product = await this.prisma.product.update({
-      where: { id },
-      data: {
-        ...productData,
-        categories: categoryIds
-          ? {
-              set: categoryIds.map((id) => ({ id })),
-            }
-          : undefined,
-      },
-      include: {
-        categories: true,
-        variants: {
-          include: {
-            size: true,
-            color: true,
-          },
-        },
-      },
+    await this.validateProductRelations({
+      categoryIds,
+      tagIds,
+      supplierId: productData.supplierId,
+      materialId: productData.materialId,
+      unitId: productData.unitId,
+      comboItems,
+      currentProductId: id,
     });
 
-    // Update variants if provided
-    if (variants) {
-      // Delete existing variants
-      await this.prisma.productVariant.deleteMany({
-        where: { productId: id },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id },
+        data: {
+          ...productData,
+          categories: categoryIds
+            ? {
+                set: categoryIds.map((categoryId) => ({ id: categoryId })),
+              }
+            : undefined,
+        },
       });
 
-      // Create new variants
-      if (variants.length > 0) {
-        await this.createVariants(id, variants);
-      }
-    }
+      if (variants) {
+        await tx.productVariant.deleteMany({
+          where: { productId: id },
+        });
 
-    return product;
+        if (variants.length > 0) {
+          await this.createVariants(tx, id, variants);
+        }
+      }
+
+      if (tagIds !== undefined) {
+        await tx.productTagMap.deleteMany({
+          where: { productId: id },
+        });
+
+        if (tagIds.length > 0) {
+          await tx.productTagMap.createMany({
+            data: tagIds.map((tagId) => ({
+              productId: id,
+              tagId,
+            })),
+          });
+        }
+      }
+
+      if (comboItems !== undefined) {
+        await tx.productComboItem.deleteMany({
+          where: { comboProductId: id },
+        });
+
+        if (comboItems.length > 0) {
+          await tx.productComboItem.createMany({
+            data: comboItems.map((item) => ({
+              comboProductId: id,
+              childProductId: item.childProductId,
+              quantity: item.quantity || 1,
+            })),
+          });
+        }
+      }
+    });
+
+    return this.findOne(id);
   }
 
   async remove(id: string, userId: string, role: string, effectiveStoreId: string | null) {
@@ -478,6 +675,14 @@ export class ProductsService {
     await this.prisma.$transaction(async (tx) => {
       // Delete variants
       await tx.productVariant.deleteMany({ where: { productId: id } });
+      // Delete combo relations
+      await tx.productComboItem.deleteMany({
+        where: {
+          OR: [{ comboProductId: id }, { childProductId: id }],
+        },
+      });
+      // Delete product tags
+      await tx.productTagMap.deleteMany({ where: { productId: id } });
       // Delete reviews
       await tx.review.deleteMany({ where: { productId: id } });
       // Delete wishlists
@@ -517,7 +722,7 @@ export class ProductsService {
     });
   }
 
-  private async createVariants(productId: string, variants: any[]) {
+  private async createVariants(tx: PrismaService | any, productId: string, variants: any[]) {
     const variantData = variants.map((v) => ({
       productId,
       sizeId: v.sizeId,
@@ -526,9 +731,83 @@ export class ProductsService {
       stock: v.stock || 0,
     }));
 
-    await this.prisma.productVariant.createMany({
+    await tx.productVariant.createMany({
       data: variantData,
     });
+  }
+
+  private async validateProductRelations(params: {
+    categoryIds?: string[];
+    tagIds?: string[];
+    supplierId?: string;
+    materialId?: string;
+    unitId?: string;
+    comboItems?: Array<{ childProductId: string; quantity?: number }>;
+    currentProductId?: string;
+  }) {
+    const { categoryIds, tagIds, supplierId, materialId, unitId, comboItems, currentProductId } =
+      params;
+
+    if (categoryIds?.length) {
+      const count = await this.prisma.category.count({
+        where: { id: { in: categoryIds } },
+      });
+      if (count !== new Set(categoryIds).size) {
+        throw new BadRequestException('Có danh mục không tồn tại');
+      }
+    }
+
+    if (tagIds?.length) {
+      const count = await this.prisma.productTag.count({
+        where: { id: { in: tagIds } },
+      });
+      if (count !== new Set(tagIds).size) {
+        throw new BadRequestException('Có tag sản phẩm không tồn tại');
+      }
+    }
+
+    if (supplierId) {
+      const supplier = await this.prisma.supplier.findUnique({
+        where: { id: supplierId },
+      });
+      if (!supplier) {
+        throw new BadRequestException('Nhà cung cấp không tồn tại');
+      }
+    }
+
+    if (materialId) {
+      const material = await this.prisma.material.findUnique({
+        where: { id: materialId },
+      });
+      if (!material) {
+        throw new BadRequestException('Chất liệu không tồn tại');
+      }
+    }
+
+    if (unitId) {
+      const unit = await this.prisma.unit.findUnique({
+        where: { id: unitId },
+      });
+      if (!unit) {
+        throw new BadRequestException('Đơn vị tính không tồn tại');
+      }
+    }
+
+    if (comboItems?.length) {
+      const childIds = comboItems.map((item) => item.childProductId);
+      if (new Set(childIds).size !== childIds.length) {
+        throw new BadRequestException('Sản phẩm con trong combo bị trùng');
+      }
+      if (currentProductId && childIds.includes(currentProductId)) {
+        throw new BadRequestException('Combo không thể chứa chính nó');
+      }
+      const count = await this.prisma.product.count({
+        where: { id: { in: childIds } },
+      });
+      if (count !== childIds.length) {
+        throw new BadRequestException('Có sản phẩm con trong combo không tồn tại');
+      }
+    }
   }
 
   private generateSlug(name: string): string {
