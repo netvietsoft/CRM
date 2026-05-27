@@ -15,6 +15,12 @@ export class CartService {
           include: {
             product: {
               include: {
+                categories: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
                 variants: {
                   include: {
                     size: true,
@@ -36,6 +42,12 @@ export class CartService {
             include: {
               product: {
                 include: {
+                  categories: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
                   variants: {
                     include: {
                       size: true,
