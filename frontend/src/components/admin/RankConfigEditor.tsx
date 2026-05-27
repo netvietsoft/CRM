@@ -18,6 +18,22 @@ interface UpdateRankConfigResponse {
   config: RankConfigEditorProps;
 }
 
+const rankPanelClassMap: Record<string, string> = {
+  MEMBER: 'border-slate-300 bg-slate-50 shadow-slate-200/70',
+  SILVER: 'border-slate-400 bg-slate-100 shadow-slate-300/70',
+  GOLD: 'border-amber-300 bg-amber-50 shadow-amber-200/70',
+  DIAMOND: 'border-cyan-300 bg-cyan-50 shadow-cyan-200/70',
+  PLATINUM: 'border-fuchsia-300 bg-fuchsia-50 shadow-fuchsia-200/70',
+};
+
+const rankBadgeClassMap: Record<string, string> = {
+  MEMBER: 'bg-slate-100 text-slate-800 border border-slate-300 ring-1 ring-slate-200 shadow-sm',
+  SILVER: 'bg-slate-200 text-slate-900 border border-slate-400 ring-1 ring-slate-300 shadow-sm',
+  GOLD: 'bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-200 shadow-sm',
+  DIAMOND: 'bg-cyan-100 text-cyan-900 border border-cyan-300 ring-1 ring-cyan-200 shadow-sm',
+  PLATINUM: 'bg-fuchsia-100 text-fuchsia-900 border border-fuchsia-300 ring-1 ring-fuchsia-200 shadow-sm',
+};
+
 export default function RankConfigEditor({
   rank,
   minTotalSpent,
@@ -65,11 +81,11 @@ export default function RankConfigEditor({
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className={`rounded-2xl border p-5 shadow-sm ${rankPanelClassMap[rank] || 'border-gray-200 bg-white shadow-gray-200/70'}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-lg font-bold text-gray-900">{rank}</div>
-          <div className="text-sm text-gray-500">Điều kiện tối thiểu để đạt hạng này</div>
+          <div className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide ${rankBadgeClassMap[rank] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>{rank}</div>
+          <div className={`text-sm ${rank === 'SILVER' ? 'text-slate-700' : 'text-gray-600'}`}>Điều kiện tối thiểu để đạt hạng này</div>
         </div>
         <button
           onClick={handleSave}

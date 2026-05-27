@@ -7,11 +7,40 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 
+const configuredOrigins = [process.env.CORS, process.env.FRONTEND_URL]
+  .flatMap((value) => (value ? value.split(',') : []))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = new Set(
+  configuredOrigins.length > 0
+    ? configuredOrigins
+    : [
+        'http://localhost:3000',
+        'http://localhost:3002',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:3002',
+      ],
+);
+
 @WebSocketGateway({
   cors: {
-    origin: '*', // Should restrict in prod
+    origin: (origin, callback) => {
+      const isLocalDevOrigin =
+        !!origin &&
+        /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) &&
+        process.env.NODE_ENV !== 'production';
+
+      if (!origin || allowedOrigins.has(origin) || isLocalDevOrigin) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Socket CORS blocked for origin: ${origin}`), false);
+    },
+    credentials: true,
   },
-  namespace: '/admin', // Dedicated namespace for admin
+  namespace: '/admin',
 })
 export class AdminNotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()

@@ -69,12 +69,16 @@ export default function AdminNotifications() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
     const baseUrl = apiUrl.replace('/api', '');
     const newSocket = io(`${baseUrl}/admin`, {
-      withCredentials: true,
-      transports: ['websocket'],
+      transports: ['polling'],
+      reconnection: true,
     });
 
     newSocket.on('connect', () => {
       console.log('Connected to Admin Notification Gateway');
+    });
+
+    newSocket.on('connect_error', () => {
+      // Keep notification transport failures from polluting the console and blocking the page UX.
     });
 
     newSocket.on('new_admin_notification', (notification: AdminNotification) => {
