@@ -197,6 +197,60 @@ model StoreIntegration {
   @@map("store_integrations")
 }
 
+model Supplier {
+  id        String    @id @default(uuid())
+  name      String
+  code      String?   @unique
+  phone     String?
+  email     String?
+  address   String?   @db.Text
+  note      String?   @db.Text
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@index([isActive])
+  @@map("suppliers")
+}
+
+model Material {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  code      String?   @unique
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@index([isActive])
+  @@map("materials")
+}
+
+model Unit {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  code      String    @unique
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+
+  @@index([isActive])
+  @@map("units")
+}
+
+model ProductTag {
+  id        String          @id @default(uuid())
+  name      String          @unique
+  slug      String          @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  products  ProductTagMap[]
+
+  @@map("product_tags")
+}
+
 model Product {
   id             String           @id @default(uuid())
   name           String
@@ -214,6 +268,9 @@ model Product {
   flashSaleEnd   DateTime?        @map("flash_sale_end")
   isGiftItem     Boolean          @default(false) @map("is_gift_item")
   isActive       Boolean          @default(true) @map("is_active")
+  supplierId     String?          @map("supplier_id")
+  materialId     String?          @map("material_id")
+  unitId         String?          @map("unit_id")
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   orderItems     OrderItem[]
@@ -226,10 +283,19 @@ model Product {
   reviews        Review[]
   storeId        String?          @map("store_id")
   store          Store?           @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  supplier       Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  material       Material?        @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  unit           Unit?            @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  tagMaps        ProductTagMap[]
+  comboItems     ProductComboItem[] @relation("ComboProductItems")
+  usedInCombos   ProductComboItem[] @relation("ComboChildProduct")
 
   @@index([storeId])
   @@index([sku])
   @@index([externalId])
+  @@index([supplierId])
+  @@index([materialId])
+  @@index([unitId])
   @@map("products")
 }
 
@@ -329,6 +395,13 @@ model Voucher {
   durationDays       Int?             @map("duration_days")
   requiredCategoryId String?          @map("required_category_id")
   minProductCount    Int?             @map("min_product_count")
+  orderSources       Json?            @map("order_sources")
+  salesChannels      Json?            @map("sales_channels")
+  customerSegments   Json?            @map("customer_segments")
+  customerRanks      Json?            @map("customer_ranks")
+  customerOccasions  Json?            @map("customer_occasions")
+  shippingProvinces  Json?            @map("shipping_provinces")
+  paymentMethods     Json?            @map("payment_methods")
   isStackable        Boolean          @default(false) @map("is_stackable")
   stackTiers         Json?            @map("stack_tiers")
   isActive           Boolean          @default(true) @map("is_active")
@@ -946,6 +1019,23 @@ enum MessageAutomationTriggerType {
   BIRTHDAY
   ORDER_SHIPPING_STATUS
   ORDER_DELIVERED_PAID
+  CUSTOMER_CREATED
+  ORDER_CREATED
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_PARTIAL_DELIVERED
+  ORDER_CANCELLED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  VOUCHER_CREATED
+  VOUCHER_ACTIVATED
+  VOUCHER_USED
+  VOUCHER_EXPIRING_3D
+  VOUCHER_EXPIRED
+  BIRTHDAY_TODAY
+  CUSTOMER_INACTIVE_30D
+  CUSTOMER_INACTIVE_60D
 }
 
 enum MessageAutomationExecutionStatus {
@@ -1125,6 +1215,34 @@ model ProductVariant {
   @@index([sizeId])
   @@index([colorId])
   @@map("product_variants")
+}
+
+model ProductTagMap {
+  id        String     @id @default(uuid())
+  productId String     @map("product_id")
+  tagId     String     @map("tag_id")
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, tagId])
+  @@index([productId])
+  @@index([tagId])
+  @@map("product_tag_map")
+}
+
+model ProductComboItem {
+  id             String   @id @default(uuid())
+  comboProductId String   @map("combo_product_id")
+  childProductId String   @map("child_product_id")
+  quantity       Int      @default(1)
+  createdAt      DateTime @default(now())
+  comboProduct   Product  @relation("ComboProductItems", fields: [comboProductId], references: [id], onDelete: Cascade)
+  childProduct   Product  @relation("ComboChildProduct", fields: [childProductId], references: [id], onDelete: Cascade)
+
+  @@unique([comboProductId, childProductId])
+  @@index([comboProductId])
+  @@index([childProductId])
+  @@map("product_combo_items")
 }
 
 model Wishlist {
