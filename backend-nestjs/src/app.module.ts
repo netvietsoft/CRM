@@ -14,6 +14,7 @@ import { VouchersModule } from './vouchers/vouchers.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { StoresModule } from './stores/stores.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { ViettelpostModule } from './integrations/viettelpost/viettelpost.module';
 import { CartModule } from './cart/cart.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -33,6 +34,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
 import { MaterialsModule } from './materials/materials.module';
 import { UnitsModule } from './units/units.module';
 import { ProductTagsModule } from './product-tags/product-tags.module';
+import { OrderSourcesModule } from './order-sources/order-sources.module';
 
 const logger = new Logger('AppModule');
 
@@ -98,6 +100,7 @@ function getQueueModules(): any[] {
     WebhooksModule,
     StoresModule,
     IntegrationsModule,
+    ViettelpostModule,
     CartModule,
     WishlistModule,
     ReviewsModule,
@@ -117,6 +120,7 @@ function getQueueModules(): any[] {
     MaterialsModule,
     UnitsModule,
     ProductTagsModule,
+    OrderSourcesModule,
   ],
 })
 export class AppModule {}
