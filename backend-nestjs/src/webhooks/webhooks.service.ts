@@ -8,6 +8,7 @@ import { AdminNotificationsService } from '../modules/admin-notifications/admin-
 import { PancakeService } from '../integrations/pancake/pancake.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 import { VouchersService } from '../vouchers/vouchers.service';
+import { OrderSourcesService } from '../order-sources/order-sources.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
@@ -21,8 +22,40 @@ export class WebhooksService {
     private readonly pancakeService: PancakeService,
     private readonly messagingAutomationService: MessagingAutomationService,
     private readonly vouchersService: VouchersService,
+    private readonly orderSourcesService: OrderSourcesService,
     @Optional() @InjectQueue('voucher-queue') private voucherQueue?: Queue,
   ) {}
+
+  /**
+   * Chế độ CAPTURE webhook đẩy đơn ViettelPost: log + lưu 5 payload mẫu gần nhất vào
+   * SystemConfig key 'viettel_order_webhook_samples' để xem đúng cấu trúc rồi map chính xác.
+   * (Bước 2 sẽ thêm tạo/cập nhật đơn source='VIETTEL' dựa trên payload thật.)
+   */
+  async captureViettelOrderWebhook(payload: any, headers?: Record<string, string>) {
+    try {
+      const existing = await this.prisma.systemConfig.findUnique({
+        where: { key: 'viettel_order_webhook_samples' },
+      });
+      const prev =
+        existing && (existing.value as any)?.samples && Array.isArray((existing.value as any).samples)
+          ? (existing.value as any).samples
+          : [];
+      prev.unshift({
+        at: new Date().toISOString(),
+        headers: headers || {},
+        payload,
+      });
+      const samples = prev.slice(0, 5);
+      await this.prisma.systemConfig.upsert({
+        where: { key: 'viettel_order_webhook_samples' },
+        update: { value: { samples } },
+        create: { key: 'viettel_order_webhook_samples', value: { samples } },
+      });
+    } catch (e: any) {
+      this.logger.warn(`[VIETTEL-ORDER] Lưu mẫu payload lỗi: ${e?.message || e}`);
+    }
+    return { success: true, received: true };
+  }
 
   async validateWebhookToken(
     token: string,
@@ -41,8 +74,15 @@ export class WebhooksService {
     }
 
     if (!expectedToken) {
+      // FAIL-CLOSED ở production: không cấu hình token + không khớp store integration → từ chối.
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error(
+          '⛔ VIETTELPOST webhook bị từ chối: chưa cấu hình VIETTELPOST_WEBHOOK_TOKEN và không khớp store integration (production).',
+        );
+        return false;
+      }
       this.logger.warn(
-        '⚠️ VIETTELPOST_WEBHOOK_TOKEN not configured and no store integration matched',
+        '⚠️ VIETTELPOST_WEBHOOK_TOKEN chưa cấu hình và không khớp store integration — CHO QUA vì đang ở môi trường dev.',
       );
       return true;
     }
@@ -339,6 +379,72 @@ export class WebhooksService {
       ) {
         await this.vouchersService.processSuccessfulOrderVoucherRules(updatedOrder.id);
       }
+    }
+  }
+
+  /** Tạo đơn source='VIETTEL' từ payload webhook khi không khớp đơn nào (kéo đơn về). */
+  private async createOrderFromViettel(
+    payload: ViettelPostWebhookDto,
+    storeId?: string | null,
+  ): Promise<void> {
+    const d = payload.DATA;
+    const orderCode = d.ORDER_NUMBER;
+    if (!orderCode) return;
+
+    await this.orderSourcesService.ensureExists('VIETTEL', 'Viettel');
+
+    const status = this.mapVtpStatusToOrderStatus(d.ORDER_STATUS) || 'PENDING';
+    const cod = Number(d.MONEY_COLLECTION || 0);
+    const total = Number(d.MONEY_TOTAL || 0) || cod;
+    const paymentStatus = [500, 505].includes(d.ORDER_STATUS) ? 'PAID' : 'UNPAID';
+    const statusDate = this.parseProviderDate(d.ORDER_STATUSDATE) || new Date();
+
+    try {
+      const created = await this.prisma.order.create({
+        data: {
+          orderCode,
+          source: 'VIETTEL',
+          storeId: storeId || null,
+          shippingName: d.RECEIVER_FULLNAME || null,
+          subtotal: total,
+          totalAmount: total,
+          status: status as OrderStatus,
+          paymentStatus: paymentStatus as PaymentStatus,
+          note: d.STATUS_NAME || d.NOTE || null,
+          metadata: {
+            partner: {
+              provider: 'VIETTELPOST',
+              trackingCode: orderCode,
+              reference: d.ORDER_REFERENCE || null,
+              cod,
+              courierUpdates: [
+                {
+                  status: d.STATUS_NAME || `VTP-${d.ORDER_STATUS}`,
+                  key: `VTP_${d.ORDER_STATUS}`,
+                  note: d.NOTE || null,
+                  update_at: statusDate.toISOString(),
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      this.logger.log(`✅ [VTP] Tạo đơn source=VIETTEL: ${orderCode} (status ${status})`);
+
+      await this.adminNotificationsService.createNotification({
+        type: 'VTP',
+        title: `Đơn ViettelPost mới: ${orderCode}`,
+        message: d.STATUS_NAME || `VTP-${d.ORDER_STATUS}`,
+        link: `/admin/orders/${created.id}`,
+        metadata: { orderId: created.id, trackingCode: orderCode, status: d.ORDER_STATUS, source: 'VIETTEL' },
+      });
+    } catch (e: any) {
+      if (e?.code === 'P2002') {
+        this.logger.warn(`[VTP] Đơn ${orderCode} đã tồn tại (P2002) → bỏ qua tạo trùng.`);
+        return;
+      }
+      throw e;
     }
   }
 
@@ -675,12 +781,15 @@ export class WebhooksService {
     const { ORDER_NUMBER, STATUS_NAME } = payload.DATA;
 
     try {
-      const jobId = `unlock-voucher-${userVoucher.id}`;
-      const existingJob = await this.voucherQueue.getJob(jobId);
+      // Guard: voucherQueue là @Optional() — có thể undefined khi không cấu hình Redis
+      if (this.voucherQueue) {
+        const jobId = `unlock-voucher-${userVoucher.id}`;
+        const existingJob = await this.voucherQueue.getJob(jobId);
 
-      if (existingJob) {
-        await existingJob.remove();
-        this.logger.log(`🗑️ Cancelled pending unlock job ${jobId}`);
+        if (existingJob) {
+          await existingJob.remove();
+          this.logger.log(`🗑️ Cancelled pending unlock job ${jobId}`);
+        }
       }
 
       await this.prisma.userVoucher.update({
