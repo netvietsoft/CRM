@@ -364,7 +364,9 @@ export class WebhooksService {
 
     const status = this.mapVtpStatusToOrderStatus(d.ORDER_STATUS) || 'PENDING';
     const cod = Number(d.MONEY_COLLECTION || 0);
-    const total = Number(d.MONEY_TOTAL || 0) || cod;
+    // Giá trị đơn = COD (tiền khách trả cho hàng). Thực tế MONEY_TOTAL của VTP là TỔNG CƯỚC PHÍ
+    // (phí ship + VAT), KHÔNG phải giá trị hàng → ưu tiên COD; fallback MONEY_TOTAL khi không có COD (đơn trả trước).
+    const total = cod || Number(d.MONEY_TOTAL || 0);
     const paymentStatus = [500, 505].includes(d.ORDER_STATUS) ? 'PAID' : 'UNPAID';
     const statusDate = this.parseProviderDate(d.ORDER_STATUSDATE) || new Date();
 
