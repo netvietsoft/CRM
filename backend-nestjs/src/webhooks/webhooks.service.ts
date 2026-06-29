@@ -9,6 +9,7 @@ import { PancakeService } from '../integrations/pancake/pancake.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 import { VouchersService } from '../vouchers/vouchers.service';
 import { OrderSourcesService } from '../order-sources/order-sources.service';
+import { ViettelCustomerService } from '../integrations/viettelpost/viettel-customer.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class WebhooksService {
     private readonly messagingAutomationService: MessagingAutomationService,
     private readonly vouchersService: VouchersService,
     private readonly orderSourcesService: OrderSourcesService,
+    private readonly viettelCustomerService: ViettelCustomerService,
     @Optional() @InjectQueue('voucher-queue') private voucherQueue?: Queue,
   ) {}
 
@@ -90,6 +92,9 @@ export class WebhooksService {
     this.logger.log(
       `🔍 Processing order ${ORDER_NUMBER} with status ${ORDER_STATUS} (${STATUS_NAME})`,
     );
+
+    // Ghi toàn bộ field VTP vào bảng riêng "viettel_customers" (bổ trợ, không chặn xử lý đơn).
+    await this.viettelCustomerService.upsertFromWebhook(payload, storeId);
 
     await this.updateOrderFromWebhook(payload, storeId);
 

@@ -817,6 +817,7 @@ model MessageProviderConfig {
   schedules       MessageSchedule[]
   automationRules MessageAutomationRule[]
 
+  @@unique([channelId, storeId])
   @@index([channelId, isActive])
   @@index([storeId])
   @@index([providerKey])
@@ -1292,6 +1293,64 @@ model SystemConfig {
   updatedAt DateTime @updatedAt
 
   @@map("system_configs")
+}
+
+// Registry nguồn đơn hàng (Order.source giữ là chuỗi `code`, bảng này để quản lý tên/màu/bật-tắt)
+model OrderSource {
+  id        String   @id @default(uuid())
+  code      String   @unique // mã dùng trong Order.source: PANCAKE, VIETTEL, SHOPEE...
+  name      String // tên hiển thị: Viettel, Website, Shopee...
+  type      String   @default("manual") // 'manual' (admin chọn) | 'integration' (tự động)
+  color     String? // màu badge (hex), tùy chọn
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("order_sources")
+}
+
+// Đơn/khách tải về từ ViettelPost (1 dòng / mã vận đơn, upsert mỗi webhook). Lưu TẤT CẢ field VTP.
+model ViettelCustomer {
+  id                   String    @id @default(uuid())
+  trackingCode         String    @unique @map("tracking_code")
+  orderReference       String?   @map("order_reference")
+  status               Int?
+  statusName           String?   @map("status_name")
+  statusDate           DateTime? @map("status_date")
+  receiverFullname     String?   @map("receiver_fullname")
+  receiverPhone        String?   @map("receiver_phone")
+  receiverAddress      String?   @map("receiver_address") @db.Text
+  cod                  Float     @default(0)
+  codOrigin            Float?    @map("cod_origin")
+  moneyTotal           Float?    @map("money_total")
+  moneyTotalFee        Float?    @map("money_total_fee")
+  moneyTotalVat        Float?    @map("money_total_vat")
+  moneyFeeCod          Float?    @map("money_fee_cod")
+  voucherValue         Float?    @map("voucher_value")
+  productWeight        Int?      @map("product_weight")
+  orderService         String?   @map("order_service")
+  orderServiceAdd      String?   @map("order_service_add")
+  orderPayment         Int?      @map("order_payment")
+  expectedDelivery     String?   @map("expected_delivery") @db.Text
+  expectedDeliveryDate String?   @map("expected_delivery_date")
+  note                 String?   @db.Text
+  orderNote            String?   @map("order_note") @db.Text
+  locationCurrently    String?   @map("location_currently") @db.Text
+  employeeName         String?   @map("employee_name")
+  employeePhone        String?   @map("employee_phone")
+  isReturning          Boolean   @default(false) @map("is_returning")
+  reasonCode           String?   @map("reason_code")
+  groupAddressId       String?   @map("group_address_id")
+  detail               Json?
+  pod                  Json?
+  courierHistory       Json?     @map("courier_history")
+  rawPayload           Json?     @map("raw_payload")
+  storeId              String?   @map("store_id")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@map("viettel_customers")
 }
 
 model AdminNotification {

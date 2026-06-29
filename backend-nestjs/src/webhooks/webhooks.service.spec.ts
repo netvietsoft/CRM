@@ -12,6 +12,7 @@ function makeService() {
   const messagingAutomationService: any = { handleOrderStateChange: jest.fn() };
   const vouchersService: any = { processSuccessfulOrderVoucherRules: jest.fn() };
   const orderSourcesService: any = { ensureExists: jest.fn() };
+  const viettelCustomerService: any = { upsertFromWebhook: jest.fn() };
   const service = new WebhooksService(
     prisma,
     adminNotificationsService,
@@ -19,8 +20,9 @@ function makeService() {
     messagingAutomationService,
     vouchersService,
     orderSourcesService,
+    viettelCustomerService,
   );
-  return { service, prisma, adminNotificationsService, orderSourcesService };
+  return { service, prisma, adminNotificationsService, orderSourcesService, viettelCustomerService };
 }
 
 describe('WebhooksService.createOrderFromViettel', () => {

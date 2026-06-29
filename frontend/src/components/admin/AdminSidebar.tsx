@@ -43,6 +43,8 @@ const navItems = [
       { name: 'Chất liệu', href: '/admin/materials', roles: ALL_ROLES },
       { name: 'Đơn vị tính', href: '/admin/units', roles: ALL_ROLES },
       { name: 'Tag sản phẩm', href: '/admin/product-tags', roles: ALL_ROLES },
+      { name: 'Nguồn đơn', href: '/admin/order-sources', roles: ADMIN_STAFF },
+      { name: 'Khách hàng Viettel', href: '/admin/viettel-customers', roles: ADMIN_STAFF },
     ],
   },
   {

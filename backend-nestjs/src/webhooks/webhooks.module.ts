@@ -11,6 +11,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 import { MessagingModule } from '../messaging/messaging.module';
 import { VouchersModule } from '../vouchers/vouchers.module';
 import { OrderSourcesModule } from '../order-sources/order-sources.module';
+import { ViettelpostModule } from '../integrations/viettelpost/viettelpost.module';
 
 const logger = new Logger('WebhooksModule');
 
@@ -41,6 +42,7 @@ function getQueueImports(): any[] {
     MessagingModule,
     VouchersModule,
     OrderSourcesModule,
+    ViettelpostModule,
     ...getQueueImports(), // Conditionally load queue modules
   ],
   controllers: [WebhooksController, CassoController],
