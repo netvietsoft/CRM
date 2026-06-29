@@ -1321,6 +1321,12 @@ model ViettelCustomer {
   receiverFullname     String?   @map("receiver_fullname")
   receiverPhone        String?   @map("receiver_phone")
   receiverAddress      String?   @map("receiver_address") @db.Text
+  receiverProvinceId   Int?      @map("receiver_province_id")
+  receiverDistrictId   Int?      @map("receiver_district_id")
+  receiverWardId       Int?      @map("receiver_ward_id")
+  productName          String?   @map("product_name") @db.Text
+  detailPayload        Json?     @map("detail_payload")
+  detailEnrichedAt     DateTime? @map("detail_enriched_at")
   cod                  Float     @default(0)
   codOrigin            Float?    @map("cod_origin")
   moneyTotal           Float?    @map("money_total")

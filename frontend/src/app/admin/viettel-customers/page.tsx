@@ -14,6 +14,8 @@ interface ViettelCustomer {
   receiverFullname: string | null;
   receiverPhone: string | null;
   receiverAddress: string | null;
+  productName: string | null;
+  detailEnrichedAt: string | null;
   cod: number;
   moneyTotal: number | null;
   moneyTotalFee: number | null;
@@ -51,6 +53,7 @@ export default function ViettelCustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +70,20 @@ export default function ViettelCustomersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const syncNow = useCallback(async () => {
+    setSyncing(true);
+    setError('');
+    try {
+      const r = await apiClientClient.post<{ candidates: number; updated: number; skipped: number }>('/viettelpost/reconcile', {});
+      await load();
+      alert(`Đồng bộ xong: ${r.updated}/${r.candidates} đơn được cập nhật/enrich.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Đồng bộ thất bại');
+    } finally {
+      setSyncing(false);
+    }
+  }, [load]);
+
   const totalCod = rows.reduce((s, r) => s + (r.cod || 0), 0);
 
   return (
@@ -76,9 +93,14 @@ export default function ViettelCustomersPage() {
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">📦 Khách hàng Viettel</h1>
           <p className="text-sm text-gray-500 mt-1">Toàn bộ thông tin đơn/khách tải về từ ViettelPost (1 dòng / mã vận đơn, cập nhật theo webhook).</p>
         </div>
-        <button onClick={() => void load()} disabled={loading} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
-          {loading ? 'Đang tải...' : '↻ Làm mới'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => void syncNow()} disabled={syncing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50" title="Gọi ViettelPost lấy SĐT/địa chỉ/SP + cập nhật trạng thái cho đơn chưa hoàn tất">
+            {syncing ? 'Đang đồng bộ...' : '⟳ Đồng bộ ViettelPost'}
+          </button>
+          <button onClick={() => void load()} disabled={loading} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
+            {loading ? 'Đang tải...' : '↻ Làm mới'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -102,6 +124,8 @@ export default function ViettelCustomersPage() {
                 <th className="px-3 py-3 font-semibold">Mã vận đơn</th>
                 <th className="px-3 py-3 font-semibold">Người nhận</th>
                 <th className="px-3 py-3 font-semibold">SĐT</th>
+                <th className="px-3 py-3 font-semibold">Địa chỉ</th>
+                <th className="px-3 py-3 font-semibold">Sản phẩm</th>
                 <th className="px-3 py-3 font-semibold">Trạng thái</th>
                 <th className="px-3 py-3 font-semibold text-right">COD</th>
                 <th className="px-3 py-3 font-semibold">Dịch vụ</th>
@@ -115,16 +139,18 @@ export default function ViettelCustomersPage() {
             </thead>
             <tbody>
               {loading && rows.length === 0 ? (
-                <tr><td colSpan={12} className="px-4 py-10 text-center text-gray-400">Đang tải...</td></tr>
+                <tr><td colSpan={14} className="px-4 py-10 text-center text-gray-400">Đang tải...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={12} className="px-4 py-10 text-center text-gray-400">Chưa có khách Viettel nào. Dữ liệu sẽ tự về khi ViettelPost đẩy webhook.</td></tr>
+                <tr><td colSpan={14} className="px-4 py-10 text-center text-gray-400">Chưa có khách Viettel nào. Dữ liệu sẽ tự về khi ViettelPost đẩy webhook.</td></tr>
               ) : (
                 rows.map((r, i) => (
                   <Fragment key={r.id}>
                     <tr className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-50/40 border-b border-gray-50`}>
                       <td className="px-3 py-3 font-mono font-semibold text-gray-900">{r.trackingCode}</td>
                       <td className="px-3 py-3 text-gray-800">{r.receiverFullname || '—'}</td>
-                      <td className="px-3 py-3 text-gray-500">{r.receiverPhone || <span className="text-gray-300 italic">webhook không gửi</span>}</td>
+                      <td className="px-3 py-3 text-gray-700">{r.receiverPhone || <span className="text-gray-300 italic">chưa đồng bộ</span>}</td>
+                      <td className="px-3 py-3 text-gray-500 max-w-[200px] truncate" title={r.receiverAddress || ''}>{r.receiverAddress || '—'}</td>
+                      <td className="px-3 py-3 text-gray-600 max-w-[220px] truncate" title={r.productName || ''}>{r.productName || '—'}</td>
                       <td className="px-3 py-3"><span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{r.status ?? '—'} {r.statusName || ''}</span></td>
                       <td className="px-3 py-3 text-right font-semibold">{fmtMoney(r.cod)}</td>
                       <td className="px-3 py-3 text-gray-600">{r.orderService || '—'}</td>
@@ -141,7 +167,7 @@ export default function ViettelCustomersPage() {
                     </tr>
                     {openId === r.id && (
                       <tr className="bg-indigo-50/30 border-b border-gray-100">
-                        <td colSpan={12} className="px-4 py-4">
+                        <td colSpan={14} className="px-4 py-4">
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs font-semibold text-gray-700 mb-2">Hành trình ({r.courierHistory?.length || 0})</div>

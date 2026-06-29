@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -30,5 +30,13 @@ export class ViettelpostController {
   @ApiOperation({ summary: 'List ViettelPost customers (full captured fields)' })
   async listCustomers() {
     return this.viettelCustomerService.listCustomers();
+  }
+
+  // Đồng bộ ngay: gọi order/detail-v2 cho đơn chưa trạng thái cuối → enrich + cập nhật status.
+  @Post('reconcile')
+  @Roles('ADMIN', 'STAFF')
+  @ApiOperation({ summary: 'Run ViettelPost reconcile/enrich now' })
+  async reconcileNow() {
+    return this.viettelpostSyncService.reconcileOpenOrders();
   }
 }

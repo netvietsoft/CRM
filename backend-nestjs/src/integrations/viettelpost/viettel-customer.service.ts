@@ -108,6 +108,34 @@ export class ViettelCustomerService {
     }
   }
 
+  /**
+   * Bồi (enrich) 1 dòng từ dữ liệu order/detail-v2 (có SĐT + địa chỉ + tên SP mà webhook không gửi).
+   * Chỉ cập nhật field còn thiếu/quan trọng; không tạo dòng mới (đã có từ webhook).
+   */
+  async enrichFromDetail(trackingCode: string, detail: any): Promise<void> {
+    if (!trackingCode || !detail) return;
+    try {
+      const homeNo = detail.RECEIVER_HOME_NO || detail.RECEIVER_ADDRESS || null;
+      await this.prisma.viettelCustomer.updateMany({
+        where: { trackingCode },
+        data: {
+          receiverFullname: detail.RECEIVER_FULLNAME || undefined,
+          receiverPhone: detail.RECEIVER_PHONE ? String(detail.RECEIVER_PHONE) : undefined,
+          receiverAddress: homeNo || undefined,
+          receiverProvinceId: this.num(detail.RECEIVER_PROVINCE) ?? undefined,
+          receiverDistrictId: this.num(detail.RECEIVER_DISTRICT) ?? undefined,
+          receiverWardId: this.num(detail.RECEIVER_WARD) ?? undefined,
+          productName: detail.PRODUCT_NAME || undefined,
+          cod: this.num(detail.MONEY_COLLECTION) ?? undefined,
+          detailPayload: detail,
+          detailEnrichedAt: new Date(),
+        },
+      });
+    } catch (e: any) {
+      this.logger.warn(`[VTP] enrich ${trackingCode} lỗi (bỏ qua): ${e?.message || e}`);
+    }
+  }
+
   /** Liệt kê cho trang admin "Khách hàng Viettel". */
   async listCustomers() {
     return this.prisma.viettelCustomer.findMany({ orderBy: { updatedAt: 'desc' } });

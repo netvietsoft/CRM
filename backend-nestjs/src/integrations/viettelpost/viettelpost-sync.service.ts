@@ -1,18 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ViettelpostAuthService } from './viettelpost-auth.service';
+import { ViettelCustomerService } from './viettel-customer.service';
 
 /**
- * Cron RECONCILE đơn ViettelPost (khung — phần gọi API VTP cắm sau).
+ * Cron RECONCILE đơn ViettelPost (mỗi 10 phút).
  *
- * ViettelPost là PUSH (webhook) — không có API "lấy danh sách đơn". Cron này chỉ RE-CHECK
- * trạng thái các đơn source='VIETTEL' CHƯA ở trạng thái cuối, phòng khi webhook bị miss
- * (tunnel/sập). Với mỗi đơn → gọi fetchOrderStatusFromViettel(trackingCode) rồi cập nhật.
- *
- * ⚠️ fetchOrderStatusFromViettel HIỆN LÀ STUB (trả null) vì endpoint tra cứu của partner2 (API mới)
- * chưa có spec chính xác — endpoint cũ partner.viettelpost.vn/v2/order/getOrderInfoByCode trả 405.
- * Khi có spec: cắm HTTP call vào method đó (dùng token = accessToken của StoreIntegration VIETTELPOST),
- * map ORDER_STATUS → OrderStatus rồi update đơn. Phần còn lại của cron đã sẵn sàng.
+ * ViettelPost là PUSH (webhook) — không có API "lấy danh sách đơn". Cron này RE-CHECK các đơn
+ * source='VIETTEL' CHƯA ở trạng thái cuối: gọi order/detail-v2 (qua ViettelpostAuthService) →
+ * cập nhật trạng thái Order (phòng webhook miss) + ENRICH viettel_customers (SĐT/địa chỉ/tên SP
+ * mà webhook không gửi).
  *
  * Env:
  *  - VIETTELPOST_RECONCILE=false : tắt cron
@@ -33,7 +31,21 @@ export class ViettelpostSyncService {
     'RETURNING',
   ];
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authService: ViettelpostAuthService,
+    private readonly customerService: ViettelCustomerService,
+  ) {}
+
+  // Map mã trạng thái VTP → OrderStatus (đồng nhất với webhooks.service.mapVtpStatusToOrderStatus).
+  private mapVtpStatus(vtp: number): string | null {
+    if ([102, 200, 201, 300, 301].includes(vtp)) return 'SHIPPED';
+    if ([501, 515].includes(vtp)) return 'DELIVERED';
+    if ([500, 505].includes(vtp)) return 'PAYMENT_COLLECTED';
+    if ([502, 510].includes(vtp)) return 'RETURNING';
+    if ([503, 504, 107].includes(vtp)) return 'CANCELLED';
+    return null;
+  }
 
   @Cron(process.env.VIETTELPOST_SYNC_CRON || CronExpression.EVERY_10_MINUTES, {
     name: 'viettelpost-reconcile',
@@ -72,24 +84,40 @@ export class ViettelpostSyncService {
       select: { id: true, orderCode: true, status: true, metadata: true },
     });
 
-    const token = await this.getViettelToken();
     let updated = 0;
     let skipped = 0;
 
     for (const order of orders) {
-      const trackingCode =
-        (order.metadata as any)?.partner?.trackingCode || order.orderCode;
-      const info = await this.fetchOrderStatusFromViettel(trackingCode, token);
-      if (!info) {
-        // Chưa cắm API (stub) hoặc không lấy được → bỏ qua, không đụng đơn.
+      const trackingCode = (order.metadata as any)?.partner?.trackingCode || order.orderCode;
+      const detail = await this.fetchOrderDetail(trackingCode);
+      if (!detail) {
         skipped++;
         continue;
       }
-      // TODO (khi cắm API): map info.ORDER_STATUS → OrderStatus, update nếu khác order.status.
+
+      // Enrich bảng viettel_customers (SĐT/địa chỉ/SP từ detail-v2).
+      await this.customerService.enrichFromDetail(trackingCode, detail);
+
+      // Cập nhật trạng thái Order nếu VTP có trạng thái mới (phòng webhook miss).
+      const vtpStatus = Number(detail.ORDER_STATUS);
+      const mapped = Number.isNaN(vtpStatus) ? null : this.mapVtpStatus(vtpStatus);
+      if (mapped && mapped !== order.status) {
+        await this.prisma.order.update({ where: { id: order.id }, data: { status: mapped as any } });
+      }
       updated++;
     }
 
     return { candidates: orders.length, updated, skipped };
+  }
+
+  /** Gọi order/detail-v2?o=<trackingCode> (GET, kèm token) → object DATA hoặc null. */
+  private async fetchOrderDetail(trackingCode: string): Promise<any | null> {
+    if (!trackingCode) return null;
+    const json = await this.authService.get(
+      `order/detail-v2?o=${encodeURIComponent(trackingCode)}`,
+    );
+    if (json?.status === 200 && json?.data) return json.data;
+    return null;
   }
 
   /**
@@ -146,26 +174,5 @@ export class ViettelpostSyncService {
         updatedAt: o.updatedAt,
       };
     });
-  }
-
-  /** Lấy token API VTP từ StoreIntegration (cho outbound khi cắm API). */
-  private async getViettelToken(): Promise<string | null> {
-    const it = await this.prisma.storeIntegration.findFirst({
-      where: { platform: 'VIETTELPOST', isActive: true },
-      select: { accessToken: true },
-    });
-    return it?.accessToken || process.env.VIETTELPOST_TOKEN || null;
-  }
-
-  /**
-   * STUB — gọi API tra cứu trạng thái đơn của ViettelPost (partner2).
-   * Trả null cho đến khi có spec endpoint/method/param chính xác (endpoint v2 cũ đã 405).
-   * Khi cắm: POST tới endpoint partner2 với header Token, trả về { ORDER_STATUS, STATUS_NAME, ... }.
-   */
-  private async fetchOrderStatusFromViettel(
-    _trackingCode: string,
-    _token: string | null,
-  ): Promise<{ ORDER_STATUS: number } | null> {
-    return null;
   }
 }
