@@ -151,4 +151,18 @@ describe('WebhooksService.handleViettelWebhook', () => {
     const res = await service.handleViettelWebhook(payload, {});
     expect(res).toEqual({ success: true });
   });
+
+  it('returns 200 even if secret lookup (findMany) throws', async () => {
+    const { service, prisma } = makeService();
+    jest.spyOn(service as any, 'captureViettelOrderWebhook').mockResolvedValue(undefined);
+    prisma.storeIntegration.findMany.mockRejectedValue(new Error('db connection failed'));
+    const proc = jest
+      .spyOn(service as any, 'processViettelPostWebhook')
+      .mockResolvedValue(undefined);
+
+    const res = await service.handleViettelWebhook(payload, {});
+
+    expect(res).toEqual({ success: true });
+    expect(proc).not.toHaveBeenCalled();
+  });
 });

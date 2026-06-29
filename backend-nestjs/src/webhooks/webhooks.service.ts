@@ -64,19 +64,19 @@ export class WebhooksService {
   ): Promise<{ success: true; skipped?: string }> {
     await this.captureViettelOrderWebhook(payload, headers);
 
-    const token =
-      payload?.TOKEN || payload?.DATA?.token || headers?.['x-viettelpost-token'] || null;
-    const { integration, anySecret } = await this.matchViettelWebhookStore(token);
-
-    if (!integration && anySecret && process.env.NODE_ENV === 'production') {
-      this.logger.warn('⛔ [VTP] Secret webhook không khớp — bỏ qua xử lý (production).');
-      return { success: true, skipped: 'invalid_secret' };
-    }
-    if (!integration && !anySecret) {
-      this.logger.warn('⚠️ [VTP] Chưa cấu hình webhookSecret cho store nào — cho qua (dev/chưa cấu hình).');
-    }
-
     try {
+      const token =
+        payload?.TOKEN || payload?.DATA?.token || headers?.['x-viettelpost-token'] || null;
+      const { integration, anySecret } = await this.matchViettelWebhookStore(token);
+
+      if (!integration && anySecret && process.env.NODE_ENV === 'production') {
+        this.logger.warn('⛔ [VTP] Secret webhook không khớp — bỏ qua xử lý (production).');
+        return { success: true, skipped: 'invalid_secret' };
+      }
+      if (!integration && !anySecret) {
+        this.logger.warn('⚠️ [VTP] Chưa cấu hình webhookSecret cho store nào — cho qua (dev/chưa cấu hình).');
+      }
+
       await this.processViettelPostWebhook(payload, integration?.storeId);
     } catch (e: any) {
       this.logger.error(`[VTP] Xử lý webhook lỗi (bypass, trả 200): ${e?.message || e}`);
