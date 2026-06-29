@@ -865,6 +865,37 @@ export class WebhooksService {
     }
   }
 
+  /**
+   * Đối chiếu secret webhook (payload.DATA.token) với StoreIntegration.metadata.webhookSecret
+   * của các integration VIETTELPOST đang bật, dùng timingSafeEqual.
+   * Trả integration khớp (để lấy storeId) + cờ anySecret (đã có store nào cấu hình secret chưa).
+   */
+  private async matchViettelWebhookStore(
+    token?: string | null,
+  ): Promise<{ integration: { id: string; storeId: string } | null; anySecret: boolean }> {
+    const integrations = await this.prisma.storeIntegration.findMany({
+      where: { platform: 'VIETTELPOST', isActive: true },
+      select: { id: true, storeId: true, metadata: true },
+    });
+
+    let anySecret = false;
+    let matched: { id: string; storeId: string } | null = null;
+    const tokenBuf = token ? Buffer.from(String(token)) : null;
+
+    for (const it of integrations) {
+      const secret = (it.metadata as any)?.webhookSecret;
+      if (!secret) continue;
+      anySecret = true;
+      if (!tokenBuf) continue;
+      const secretBuf = Buffer.from(String(secret));
+      if (secretBuf.length === tokenBuf.length && crypto.timingSafeEqual(secretBuf, tokenBuf)) {
+        matched = { id: it.id, storeId: it.storeId };
+      }
+    }
+
+    return { integration: matched, anySecret };
+  }
+
   private async tryPancakeSyncById(orderId: number): Promise<boolean> {
     try {
       const integration = await this.prisma.storeIntegration.findFirst({

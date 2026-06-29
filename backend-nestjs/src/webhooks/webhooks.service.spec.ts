@@ -63,3 +63,35 @@ describe('WebhooksService.createOrderFromViettel', () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe('WebhooksService.matchViettelWebhookStore', () => {
+  it('matches the store integration by webhookSecret (constant-time)', async () => {
+    const { service, prisma } = makeService();
+    prisma.storeIntegration.findMany.mockResolvedValue([
+      { id: 'i1', storeId: 's1', metadata: { webhookSecret: 'sekret-abc' } },
+    ]);
+    const res = await (service as any).matchViettelWebhookStore('sekret-abc');
+    expect(res.anySecret).toBe(true);
+    expect(res.integration).toEqual({ id: 'i1', storeId: 's1' });
+  });
+
+  it('returns no integration when secret does not match, but anySecret=true', async () => {
+    const { service, prisma } = makeService();
+    prisma.storeIntegration.findMany.mockResolvedValue([
+      { id: 'i1', storeId: 's1', metadata: { webhookSecret: 'right' } },
+    ]);
+    const res = await (service as any).matchViettelWebhookStore('wrong-and-longer');
+    expect(res.anySecret).toBe(true);
+    expect(res.integration).toBeNull();
+  });
+
+  it('reports anySecret=false when no integration has a webhookSecret', async () => {
+    const { service, prisma } = makeService();
+    prisma.storeIntegration.findMany.mockResolvedValue([
+      { id: 'i1', storeId: 's1', metadata: {} },
+    ]);
+    const res = await (service as any).matchViettelWebhookStore('anything');
+    expect(res.anySecret).toBe(false);
+    expect(res.integration).toBeNull();
+  });
+});
