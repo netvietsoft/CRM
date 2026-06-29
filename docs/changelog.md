@@ -40,7 +40,7 @@
 - Env `VIETTELPOST_WEBHOOK_TOKEN` + `VIETTELPOST_WEBHOOK_SECRET` (inbound) nay **lỗi thời**, thay bằng per-store secret.
 
 ### Tạo đơn source='VIETTEL' khi không khớp đơn CRM
-- `processViettelPostWebhook`: nếu không tìm thấy đơn khớp (trackingCode / ORDER_REFERENCE / `PCK-{id}`) → **tạo đơn mới** `source='VIETTEL'`, userId=null, orderCode=ORDER_NUMBER, totalAmount từ COD, status map từ ORDER_STATUS (101→PENDING, 107→CONFIRMED, 201→SHIPPING, 501→DELIVERED, 503/504→CANCELLED), trackingCode vào metadata.
+- `processViettelPostWebhook`: nếu không tìm thấy đơn khớp (trackingCode / ORDER_REFERENCE / `PCK-{id}`) → **tạo đơn mới** `source='VIETTEL'`, userId=null, orderCode=ORDER_NUMBER, totalAmount từ COD, status map từ ORDER_STATUS (100/101→null, fallback PENDING khi tạo mới; 102/200/201/300/301→SHIPPED; 500/505→PAYMENT_COLLECTED; 501/515→DELIVERED; 502/510→RETURNING; 503/504/107→CANCELLED; còn lại→null), trackingCode vào metadata.
 - Idempotency: `orderCode` unique — P2002 bắt im lặng, không throw.
 
 ### Admin UI — cấu hình webhook ViettelPost

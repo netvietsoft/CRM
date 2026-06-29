@@ -51,18 +51,19 @@ Nhận webhook từ ViettelPost để cập nhật trạng thái vận chuyển 
    - **Không khớp** → `createOrderFromViettel`: TẠO ĐƠN MỚI `source='VIETTEL'`, userId=null (khách vãng lai), orderCode=ORDER_NUMBER, totalAmount=MONEY_COLLECTION (COD), status map từ ORDER_STATUS, trackingCode lưu vào metadata. Idempotency: orderCode unique (P2002 bắt im lặng).
 
 ### Map mã trạng thái VTP → OrderStatus
-| ORDER_STATUS | OrderStatus CRM |
-|---|---|
-| 101 | PENDING |
-| 107 | CONFIRMED |
-| 201 | SHIPPING |
-| 501 | DELIVERED |
-| 503, 504 | CANCELLED |
-| 107 (thất bại) | RETURNING |
+| ORDER_STATUS | OrderStatus CRM | Ghi chú |
+|---|---|---|
+| 100, 101 | _(không đổi)_ | Khi TẠO đơn mới (không khớp CRM) thì fallback PENDING |
+| 102, 200, 201, 300, 301 | SHIPPED | |
+| 500, 505 | PAYMENT_COLLECTED | Khi tạo đơn còn set paymentStatus=PAID |
+| 501, 515 | DELIVERED | |
+| 502, 510 | RETURNING | |
+| 503, 504, 107 | CANCELLED | |
+| còn lại | _(không đổi)_ | |
 
 ### Voucher & messaging
 - Giao thành công (501/515) → hẹn mở voucher sau 7 ngày (BullMQ) hoặc mở ngay nếu queue tắt.
-- Thất bại (502–504) → reject voucher. Giao 1 phần → tính lại discount theo tỷ lệ.
+- Hoàn hàng (502/510) hoặc huỷ (503/504/107) → reject voucher. Giao 1 phần → tính lại discount theo tỷ lệ.
 - Bắn `messagingAutomationService.handleOrderStateChange()` + tạo AdminNotification.
 
 ### ENV (inbound VTP)
