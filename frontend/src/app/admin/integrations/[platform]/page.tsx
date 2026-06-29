@@ -525,6 +525,56 @@ export default function IntegrationDetailPage() {
                 </div>
               </div>
 
+              {/* Secret để ViettelPost xác thực webhook đổ về (payload.DATA.token) */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tham số bí mật (Webhook Secret)
+                </label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-xl pl-4 pr-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                  value={(formMetadata?.webhookSecret as string) || ''}
+                  onChange={e =>
+                    setFormMetadata({ ...formMetadata, webhookSecret: e.target.value })
+                  }
+                  placeholder="Tự đặt 1 chuỗi bí mật, khai báo y hệt bên ViettelPost"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Dán chuỗi này vào mục "Tham số bí mật" trên cấu hình tài khoản ViettelPost. VTP sẽ
+                  gửi kèm để CRM xác thực nguồn webhook.
+                </p>
+              </div>
+
+              {/* URL webhook để dán sang ViettelPost */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Webhook URL</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    className="w-full border border-gray-200 bg-gray-50 rounded-xl pl-4 pr-4 py-3 font-mono text-sm text-gray-700"
+                    value={`${process.env.NEXT_PUBLIC_API_URL || ''}/viettelpost/webhook`}
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm whitespace-nowrap"
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        `${process.env.NEXT_PUBLIC_API_URL || ''}/viettelpost/webhook`,
+                      )
+                    }
+                  >
+                    Sao chép
+                  </button>
+                </div>
+                {(process.env.NEXT_PUBLIC_API_URL || '').includes('localhost') && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    ⚠️ Đang trỏ localhost — ViettelPost KHÔNG gọi được. Cần domain công khai (deploy
+                    hoặc tunnel) thì webhook mới về.
+                  </p>
+                )}
+              </div>
+
               <div className="pt-4 border-t border-gray-100">
                 <p className="font-semibold text-gray-800 mb-3">Cấu hình địa chỉ gửi mặc định (Tính phí ship)</p>
                 <div className="space-y-4">
