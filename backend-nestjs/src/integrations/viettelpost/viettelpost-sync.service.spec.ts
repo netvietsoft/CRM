@@ -53,4 +53,44 @@ describe('ViettelpostSyncService', () => {
 
     expect(spy).not.toHaveBeenCalled();
   });
+
+  it('listPulledOrders flattens metadata.partner (trackingCode, cod, current location, update count)', async () => {
+    const { service, prisma } = makeService();
+    prisma.order.findMany.mockResolvedValue([
+      {
+        id: 'o1',
+        orderCode: '145545623275',
+        status: 'SHIPPED',
+        totalAmount: 1029000,
+        shippingName: 'Vy Do',
+        createdAt: new Date('2026-06-29T00:00:00Z'),
+        updatedAt: new Date('2026-06-29T01:00:00Z'),
+        metadata: {
+          partner: {
+            trackingCode: '145545623275',
+            cod: 1029000,
+            courierUpdates: [
+              { key: 'VTP_100', note: 'Tạo đơn', update_at: '2026-06-29T00:00:00Z' },
+              { key: 'VTP_300', note: 'Đang giao - Bình Dương', update_at: '2026-06-29T01:00:00Z' },
+            ],
+          },
+        },
+      },
+    ]);
+
+    const rows = await service.listPulledOrders();
+
+    expect(prisma.order.findMany.mock.calls[0][0].where).toEqual({ source: 'VIETTEL' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      orderCode: '145545623275',
+      trackingCode: '145545623275',
+      status: 'SHIPPED',
+      cod: 1029000,
+      shippingName: 'Vy Do',
+      currentLocation: 'Đang giao - Bình Dương',
+      updateCount: 2,
+      lastUpdateAt: '2026-06-29T01:00:00Z',
+    });
+  });
 });

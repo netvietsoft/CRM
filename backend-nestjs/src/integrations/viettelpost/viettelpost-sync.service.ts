@@ -92,6 +92,62 @@ export class ViettelpostSyncService {
     return { candidates: orders.length, updated, skipped };
   }
 
+  /**
+   * Liệt kê đơn ĐÃ TẢI VỀ từ ViettelPost (source='VIETTEL') cho trang admin xem bảng.
+   * Bóc các field VTP từ metadata.partner (trackingCode, cod, hành trình) thành phẳng dễ render.
+   */
+  async listPulledOrders(): Promise<
+    Array<{
+      id: string;
+      orderCode: string;
+      trackingCode: string | null;
+      status: string;
+      cod: number;
+      totalAmount: number;
+      shippingName: string | null;
+      currentLocation: string | null;
+      updateCount: number;
+      lastUpdateAt: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+    }>
+  > {
+    const orders = await this.prisma.order.findMany({
+      where: { source: 'VIETTEL' },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        orderCode: true,
+        status: true,
+        totalAmount: true,
+        shippingName: true,
+        createdAt: true,
+        updatedAt: true,
+        metadata: true,
+      },
+    });
+
+    return orders.map((o) => {
+      const partner = (o.metadata as any)?.partner || {};
+      const updates: any[] = Array.isArray(partner.courierUpdates) ? partner.courierUpdates : [];
+      const last = updates[updates.length - 1];
+      return {
+        id: o.id,
+        orderCode: o.orderCode,
+        trackingCode: partner.trackingCode || null,
+        status: o.status,
+        cod: Number(partner.cod ?? o.totalAmount ?? 0),
+        totalAmount: Number(o.totalAmount ?? 0),
+        shippingName: o.shippingName || null,
+        currentLocation: last?.note || null,
+        updateCount: updates.length,
+        lastUpdateAt: last?.update_at || null,
+        createdAt: o.createdAt,
+        updatedAt: o.updatedAt,
+      };
+    });
+  }
+
   /** Lấy token API VTP từ StoreIntegration (cho outbound khi cắm API). */
   private async getViettelToken(): Promise<string | null> {
     const it = await this.prisma.storeIntegration.findFirst({

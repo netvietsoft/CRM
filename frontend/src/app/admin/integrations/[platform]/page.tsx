@@ -515,6 +515,13 @@ export default function IntegrationDetailPage() {
 
           {['VIETTELPOST'].includes(platformId) && (
             <>
+              <a
+                href="/admin/integrations/viettelpost/orders"
+                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 transition-colors"
+              >
+                <span className="text-sm font-semibold text-indigo-700">📦 Xem bảng đơn đã tải về từ ViettelPost</span>
+                <span className="text-indigo-400">→</span>
+              </a>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Token (ViettelPost)</label>
                 <div className="relative">
