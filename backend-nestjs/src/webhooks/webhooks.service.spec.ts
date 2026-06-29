@@ -95,3 +95,60 @@ describe('WebhooksService.matchViettelWebhookStore', () => {
     expect(res.integration).toBeNull();
   });
 });
+
+describe('WebhooksService.handleViettelWebhook', () => {
+  const payload = { DATA: { ORDER_NUMBER: 'VTP1', ORDER_STATUS: 501, token: 'good' } } as any;
+
+  it('verifies secret, dispatches processing with storeId, returns 200 shape', async () => {
+    const { service, prisma } = makeService();
+    jest.spyOn(service as any, 'captureViettelOrderWebhook').mockResolvedValue(undefined);
+    prisma.storeIntegration.findMany.mockResolvedValue([
+      { id: 'i1', storeId: 's1', metadata: { webhookSecret: 'good' } },
+    ]);
+    const proc = jest
+      .spyOn(service as any, 'processViettelPostWebhook')
+      .mockResolvedValue(undefined);
+
+    const res = await service.handleViettelWebhook(payload, {});
+
+    expect(res).toEqual({ success: true });
+    expect(proc).toHaveBeenCalledWith(payload, 's1');
+  });
+
+  it('skips processing on invalid secret in production (still returns 200)', async () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const { service, prisma } = makeService();
+      jest.spyOn(service as any, 'captureViettelOrderWebhook').mockResolvedValue(undefined);
+      prisma.storeIntegration.findMany.mockResolvedValue([
+        { id: 'i1', storeId: 's1', metadata: { webhookSecret: 'right' } },
+      ]);
+      const proc = jest
+        .spyOn(service as any, 'processViettelPostWebhook')
+        .mockResolvedValue(undefined);
+
+      const res = await service.handleViettelWebhook(
+        { DATA: { ORDER_NUMBER: 'VTP1', ORDER_STATUS: 501, token: 'wrong' } } as any,
+        {},
+      );
+
+      expect(res).toEqual({ success: true, skipped: 'invalid_secret' });
+      expect(proc).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
+  });
+
+  it('returns 200 even if processing throws', async () => {
+    const { service, prisma } = makeService();
+    jest.spyOn(service as any, 'captureViettelOrderWebhook').mockResolvedValue(undefined);
+    prisma.storeIntegration.findMany.mockResolvedValue([]);
+    jest
+      .spyOn(service as any, 'processViettelPostWebhook')
+      .mockRejectedValue(new Error('boom'));
+
+    const res = await service.handleViettelWebhook(payload, {});
+    expect(res).toEqual({ success: true });
+  });
+});

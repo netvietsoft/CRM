@@ -57,60 +57,41 @@ export class WebhooksService {
     return { success: true, received: true };
   }
 
-  async validateWebhookToken(
-    token: string,
-    signature: string,
-    payload: ViettelPostWebhookDto,
-  ): Promise<boolean> {
-    const expectedToken = process.env.VIETTELPOST_WEBHOOK_TOKEN;
+  /** Điểm vào webhook ViettelPost: verify secret + capture mẫu + dispatch. LUÔN trả 200. */
+  async handleViettelWebhook(
+    payload: any,
+    headers?: Record<string, string>,
+  ): Promise<{ success: true; skipped?: string }> {
+    await this.captureViettelOrderWebhook(payload, headers);
 
-    if (token) {
-      const storeIntegration = await this.prisma.storeIntegration.findFirst({
-        where: { platform: 'VIETTELPOST', isActive: true, accessToken: token },
-      });
-      if (storeIntegration) {
-        return true;
-      }
+    const token =
+      payload?.TOKEN || payload?.DATA?.token || headers?.['x-viettelpost-token'] || null;
+    const { integration, anySecret } = await this.matchViettelWebhookStore(token);
+
+    if (!integration && anySecret && process.env.NODE_ENV === 'production') {
+      this.logger.warn('⛔ [VTP] Secret webhook không khớp — bỏ qua xử lý (production).');
+      return { success: true, skipped: 'invalid_secret' };
+    }
+    if (!integration && !anySecret) {
+      this.logger.warn('⚠️ [VTP] Chưa cấu hình webhookSecret cho store nào — cho qua (dev/chưa cấu hình).');
     }
 
-    if (!expectedToken) {
-      // FAIL-CLOSED ở production: không cấu hình token + không khớp store integration → từ chối.
-      if (process.env.NODE_ENV === 'production') {
-        this.logger.error(
-          '⛔ VIETTELPOST webhook bị từ chối: chưa cấu hình VIETTELPOST_WEBHOOK_TOKEN và không khớp store integration (production).',
-        );
-        return false;
-      }
-      this.logger.warn(
-        '⚠️ VIETTELPOST_WEBHOOK_TOKEN chưa cấu hình và không khớp store integration — CHO QUA vì đang ở môi trường dev.',
-      );
-      return true;
+    try {
+      await this.processViettelPostWebhook(payload, integration?.storeId);
+    } catch (e: any) {
+      this.logger.error(`[VTP] Xử lý webhook lỗi (bypass, trả 200): ${e?.message || e}`);
     }
-
-    if (token !== expectedToken) {
-      return false;
-    }
-
-    if (signature && process.env.VIETTELPOST_WEBHOOK_SECRET) {
-      const expectedSignature = crypto
-        .createHmac('sha256', process.env.VIETTELPOST_WEBHOOK_SECRET)
-        .update(JSON.stringify(payload))
-        .digest('hex');
-
-      return signature === expectedSignature;
-    }
-
-    return true;
+    return { success: true };
   }
 
-  async processViettelPostWebhook(payload: ViettelPostWebhookDto) {
+  async processViettelPostWebhook(payload: ViettelPostWebhookDto, storeId?: string | null) {
     const { ORDER_NUMBER, ORDER_STATUS, STATUS_NAME } = payload.DATA;
 
     this.logger.log(
       `🔍 Processing order ${ORDER_NUMBER} with status ${ORDER_STATUS} (${STATUS_NAME})`,
     );
 
-    await this.updateOrderFromWebhook(payload);
+    await this.updateOrderFromWebhook(payload, storeId);
 
     const userVoucher = await this.prisma.userVoucher.findUnique({
       where: { sourceOrderCode: ORDER_NUMBER },
@@ -166,7 +147,7 @@ export class WebhooksService {
     }
   }
 
-  private async updateOrderFromWebhook(payload: ViettelPostWebhookDto) {
+  private async updateOrderFromWebhook(payload: ViettelPostWebhookDto, storeId?: string | null) {
     const {
       ORDER_NUMBER,
       ORDER_STATUS,
@@ -229,21 +210,9 @@ export class WebhooksService {
 
     if (orders.length === 0) {
       this.logger.warn(
-        `⚠️ No order found for tracking code ${ORDER_NUMBER} after all sync attempts.`,
+        `⚠️ [VTP] Không khớp đơn cho tracking ${ORDER_NUMBER} → tạo đơn source=VIETTEL.`,
       );
-
-      await this.adminNotificationsService.createNotification({
-        type: 'VTP',
-        title: `Cập nhật vận chuyển: ${ORDER_NUMBER}`,
-        message: `${STATUS_NAME || `VTP-${ORDER_STATUS}`} (không tìm thấy đơn hàng liên kết)`,
-        link: '/admin/orders',
-        metadata: {
-          trackingCode: ORDER_NUMBER,
-          status: ORDER_STATUS,
-          statusName: STATUS_NAME,
-          reference: ORDER_REFERENCE,
-        },
-      });
+      await this.createOrderFromViettel(payload, storeId);
       return;
     }
 
