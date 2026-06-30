@@ -49,7 +49,15 @@ const navItems = [
         ],
       },
       { name: 'Nguồn đơn', href: '/admin/order-sources', roles: ADMIN_STAFF },
-      { name: 'Khách hàng Viettel', href: '/admin/viettel-customers', roles: ADMIN_STAFF },
+      {
+        name: 'Khách hàng Viettel', roles: ADMIN_STAFF, children: [
+          { name: 'Báo cáo vận hành', href: '/admin/viettel-customers/operations-report', roles: ADMIN_STAFF },
+          { name: 'Thống kê tiền hàng', href: '/admin/viettel-customers/revenue', roles: ADMIN_STAFF },
+          { name: 'Đơn cần xử lý', href: '/admin/viettel-customers/pending', roles: ADMIN_STAFF },
+          { name: 'Danh sách khách hàng', href: '/admin/viettel-customers/customers', roles: ADMIN_STAFF },
+          { name: 'Danh sách đơn', href: '/admin/viettel-customers', roles: ADMIN_STAFF },
+        ],
+      },
     ],
   },
   {
@@ -108,7 +116,7 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
   };
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 md:relative bg-white pt-6 text-black w-48 flex-shrink-0 overflow-y-auto transition-transform duration-300 border-r border-gray-200 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden md:border-none'}`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 md:relative bg-white pt-6 text-black w-64 flex-shrink-0 overflow-y-auto transition-transform duration-300 border-r border-gray-200 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:overflow-hidden md:border-none'}`}>
       
       <div className="md:hidden flex justify-end px-4 mb-2">
         <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700">
