@@ -90,6 +90,7 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
 
   const [loggingOut, setLoggingOut] = useState(false);
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -121,12 +122,23 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
           // Filter items by role
           const visibleItems = group.items.filter(item => item.roles.includes(user.role));
           if (visibleItems.length === 0) return null;
+          const groupActive = visibleItems.some((it) => {
+            const ch = (it as { children?: { href: string }[] }).children;
+            return ch ? ch.some(c => isActive(c.href)) : isActive((it as { href: string }).href);
+          });
+          const gOpen = openGroups[group.label] ?? groupActive;
 
           return (
-            <div key={group.label} className="mb-6">
-              <div className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {group.label}
-              </div>
+            <div key={group.label} className="mb-3">
+              <button
+                type="button"
+                onClick={() => setOpenGroups(g => ({ ...g, [group.label]: !gOpen }))}
+                className="flex items-center justify-between w-full px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600"
+              >
+                <span>{group.label}</span>
+                <span className={`transition-transform ${gOpen ? 'rotate-90' : ''}`}>▸</span>
+              </button>
+              {gOpen && (<div>
               {visibleItems.map((item) => {
                 const children = (item as { children?: { name: string; href: string; roles: string[] }[] }).children;
                 // Menu cha có submenu (vd "Kho") — click để sổ ra
@@ -188,6 +200,7 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
                   </Link>
                 );
               })}
+              </div>)}
             </div>
           );
         })}
