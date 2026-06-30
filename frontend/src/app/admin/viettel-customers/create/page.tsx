@@ -114,7 +114,7 @@ export default function CreateViettelOrderPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <button onClick={() => router.back()} className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm">←</button>
         <h1 className="text-xl font-bold text-gray-900">➕ Tạo đơn &amp; đẩy sang ViettelPost</h1>
@@ -122,6 +122,8 @@ export default function CreateViettelOrderPage() {
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
 
+      {/* Người nhận + Hàng hóa & COD cùng 1 hàng (2 cột) */}
+      <div className="grid md:grid-cols-2 gap-6 items-start">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <h2 className="font-bold text-gray-800">Người nhận</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -164,6 +166,7 @@ export default function CreateViettelOrderPage() {
           <div><label className={lbl}>COD (tiền thu hộ, đ)</label><input type="number" className={input} value={f.cod} onChange={e => set('cod', e.target.value)} /></div>
         </div>
         <div><label className={lbl}>Ghi chú</label><input className={input} value={f.orderNote} onChange={e => set('orderNote', e.target.value)} /></div>
+      </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
