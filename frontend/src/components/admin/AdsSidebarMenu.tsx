@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 
 interface AdAccountLite {
@@ -19,9 +19,10 @@ const ALLOWED = ['ADMIN', 'MODERATOR'];
  */
 export default function AdsSidebarMenu({ role }: { role: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const activeAccountId = searchParams.get('accountId') || '';
-  const onAdsPage = pathname.startsWith('/admin/ads');
+  const onAdsPage = pathname.startsWith('/admin/adsmeta') || pathname === '/admin/ads';
+  const onAllAccounts = pathname === '/admin/adsmeta/accall';
+  // /admin/adsmeta/<id> → id ở vị trí thứ 3; accall không tính là account.
+  const activeAccountId = pathname.startsWith('/admin/adsmeta/') && !onAllAccounts ? pathname.split('/')[3] || '' : '';
 
   const [openRoot, setOpenRoot] = useState(onAdsPage);
   const [openMeta, setOpenMeta] = useState(onAdsPage);
@@ -58,7 +59,7 @@ export default function AdsSidebarMenu({ role }: { role: string }) {
       <button
         type="button"
         onClick={() => setOpenRoot((v) => !v)}
-        className="flex items-center justify-between w-full px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600"
+        className="flex items-center justify-between w-full px-3 mb-2 text-sm font-bold text-[#2140da] uppercase tracking-wider hover:text-[#18309c]"
       >
         <span>Quảng cáo</span>
         {chev(openRoot)}
@@ -80,12 +81,22 @@ export default function AdsSidebarMenu({ role }: { role: string }) {
             <div className="ml-3 mt-1 mb-1 pl-2 border-l border-gray-200 space-y-1">
               {/* Tất cả tài khoản */}
               <Link
-                href="/admin/ads"
+                href="/admin/adsmeta/accall"
                 className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  onAdsPage && !activeAccountId ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'hover:bg-gray-100'
+                  onAllAccounts ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'hover:bg-gray-100'
                 }`}
               >
                 Tất cả tài khoản
+              </Link>
+
+              {/* Fanpage */}
+              <Link
+                href="/admin/adsmeta/pages"
+                className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  pathname === '/admin/adsmeta/pages' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'hover:bg-gray-100'
+                }`}
+              >
+                Fanpage
               </Link>
 
               {/* BM → list tài khoản */}
@@ -105,11 +116,11 @@ export default function AdsSidebarMenu({ role }: { role: string }) {
                     <div className="px-3 py-1.5 text-xs text-gray-400">Chưa có tài khoản. Đồng bộ trước.</div>
                   )}
                   {accounts?.map((a) => {
-                    const active = onAdsPage && activeAccountId === a.id;
+                    const active = activeAccountId === a.id;
                     return (
                       <Link
                         key={a.id}
-                        href={`/admin/ads?accountId=${a.id}`}
+                        href={`/admin/adsmeta/${a.id}`}
                         title={a.name || a.externalId}
                         className={`block px-3 py-1.5 rounded-lg text-sm truncate transition-colors ${
                           active ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'hover:bg-gray-100'

@@ -1,0 +1,93 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+const GRAPH = (process.env.META_GRAPH_URL || 'https://graph.facebook.com/v21.0').replace(/\/$/, '');
+
+export interface SendPayload {
+  text?: string;
+  attachmentUrl?: string;
+}
+
+/**
+ * Client mỏng cho Meta Messenger / Graph API. Chỉ lo HTTP; token truyền vào theo từng call.
+ * sendMessage/getProfile/subscribeApp/fetch* — page access token; fetchManagedPages — user/system token.
+ */
+@Injectable()
+export class MetaMessengerClient {
+  private readonly logger = new Logger(MetaMessengerClient.name);
+
+  private async call(path: string, init: RequestInit, token: string): Promise<any> {
+    const sep = path.includes('?') ? '&' : '?';
+    const res = await fetch(`${GRAPH}/${path}${sep}access_token=${encodeURIComponent(token)}`, {
+      ...init,
+      signal: AbortSignal.timeout(30_000),
+    });
+    const json: any = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(json?.error?.message || `HTTP ${res.status}`);
+    return json;
+  }
+
+  /** Gửi tin tới khách (PSID) bằng page token. */
+  async sendMessage(pageToken: string, recipientPsid: string, payload: SendPayload): Promise<{ message_id: string }> {
+    const message = payload.attachmentUrl
+      ? { attachment: { type: 'image', payload: { url: payload.attachmentUrl, is_reusable: true } } }
+      : { text: payload.text };
+    return this.call(
+      'me/messages',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ recipient: { id: recipientPsid }, message, messaging_type: 'RESPONSE' }),
+      },
+      pageToken,
+    );
+  }
+
+  /** Hồ sơ công khai của khách theo PSID (name, ảnh). Lỗi/thiếu quyền → {}. */
+  async getProfile(pageToken: string, psid: string): Promise<{ name?: string; profile_pic?: string }> {
+    return this.call(`${psid}?fields=name,profile_pic`, { method: 'GET' }, pageToken).catch(() => ({}));
+  }
+
+  /** Đăng ký app nhận webhook cho page. */
+  async subscribeApp(pageToken: string, pageId: string): Promise<boolean> {
+    const r = await this.call(
+      `${pageId}/subscribed_apps`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subscribed_fields: ['messages', 'messaging_postbacks', 'message_echoes'] }),
+      },
+      pageToken,
+    ).catch((e) => {
+      this.logger.warn(`subscribe ${pageId}: ${(e as Error).message}`);
+      return null;
+    });
+    return !!r?.success;
+  }
+
+  /** Page user/system token quản lý + page access token + tasks (để đăng ký MsgPage). */
+  async fetchManagedPages(userToken: string): Promise<any[]> {
+    return this.getEdge('me/accounts?fields=id,name,access_token,tasks,category&limit=100', userToken);
+  }
+
+  async fetchConversations(pageToken: string, pageId: string): Promise<any[]> {
+    return this.getEdge(`${pageId}/conversations?fields=id,participants,updated_time,unread_count&limit=50`, pageToken);
+  }
+
+  async fetchMessages(pageToken: string, conversationId: string): Promise<any[]> {
+    return this.getEdge(`${conversationId}/messages?fields=id,message,from,to,created_time&limit=50`, pageToken);
+  }
+
+  /** Lấy mọi trang của 1 edge theo paging.next. */
+  private async getEdge(path: string, token: string, max = 20): Promise<any[]> {
+    const out: any[] = [];
+    let url: string | null = `${GRAPH}/${path}${path.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(token)}`;
+    for (let i = 0; i < max && url; i++) {
+      const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+      const j: any = await res.json().catch(() => null);
+      if (!res.ok) break;
+      if (Array.isArray(j?.data)) out.push(...j.data);
+      url = j?.paging?.next || null;
+    }
+    return out;
+  }
+}

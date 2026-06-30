@@ -43,6 +43,9 @@ export class PermissionsGuard implements CanActivate {
     [Permission.INTEGRATIONS_VIEW]: [Permission.INTEGRATIONS_VIEW],
     [Permission.INTEGRATIONS_MANAGE]: [Permission.INTEGRATIONS_MANAGE],
     [Permission.STAFF_MANAGE]: [Permission.STAFF_MANAGE],
+    // Messenger inbox: SEND bao hàm VIEW.
+    [Permission.MESSENGER_VIEW]: [Permission.MESSENGER_VIEW, Permission.MESSENGER_SEND],
+    [Permission.MESSENGER_SEND]: [Permission.MESSENGER_SEND],
   };
 
   constructor(private reflector: Reflector) {}

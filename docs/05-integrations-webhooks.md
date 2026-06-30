@@ -44,6 +44,35 @@ Dùng **System User token** (token máy chủ, đặt được *không hết h�
 
 ---
 
+## 0b. Messenger Inbox — chat với khách của Page (`src/messenger`)
+Hộp thư Messenger 2 chiều (nhận + trả lời tin nhắn 1-1) ngay trong CRM, real-time. Trực tiếp qua Meta Messenger Platform (KHÔNG qua Pancake). Spec/plan: `docs/superpowers/specs/2026-06-30-messenger-inbox-design.md`, `docs/superpowers/plans/2026-06-30-messenger-inbox.md`.
+
+Bảng: `msg_pages` (page + page access token + subscribed) · `msg_contacts` (PSID) · `msg_conversations` (page+contact, unread, lastMessage) · `msg_messages` (IN/OUT, mid unique → idempotent).
+
+**Webhook (PUBLIC, Meta gọi vào):**
+- `GET /api/messenger/webhook` — verify challenge (so `hub.verify_token` == env `MESSENGER_VERIFY_TOKEN`).
+- `POST /api/messenger/webhook` — verify `X-Hub-Signature-256` = HMAC-SHA256(`META_APP_SECRET`, **raw body**) → ingest. Cần `rawBody:true` ở `main.ts` (đã bật).
+
+**Endpoint admin (guard JWT+Roles+Permissions, scope theo `effectiveStoreId` qua `page.storeId`):**
+- `POST /messenger/pages/register` — lấy page có quyền `MESSAGING` từ token META_ADS → tạo `MsgPage` (kèm page access token). `MESSENGER_SEND`.
+- `POST /messenger/pages/:externalId/subscribe` — gọi `/{page}/subscribed_apps` bật webhook. `MESSENGER_SEND`.
+- `POST /messenger/pages/:externalId/backfill` — kéo lịch sử hội thoại. `MESSENGER_SEND`.
+- `GET /messenger/pages` · `GET /messenger/conversations?pageId=&q=` · `GET /messenger/conversations/:id/messages` · `POST /messenger/conversations/:id/read` — `MESSENGER_VIEW`.
+- `POST /messenger/conversations/:id/reply` `{ text?, attachmentUrl? }` — Send API, **chặn ngoài cửa sổ 24h**. `MESSENGER_SEND`.
+
+**Real-time:** emit qua gateway `admin-notifications` (namespace `/admin`), event `messenger:message` → FE reload. UI: `/admin/messenger` (3 cột: hội thoại │ thread │ soạn).
+
+**ENV mới:** `MESSENGER_VERIFY_TOKEN` (chuỗi tự đặt, khai cùng trong Meta App) · `META_APP_SECRET` (App → Settings → Basic).
+
+**Thiết lập (ops):**
+1. Meta App → Messenger/Webhooks → **Callback URL** = `https://<domain-public>/api/messenger/webhook`, **Verify Token** = `MESSENGER_VERIFY_TOKEN`, subscribe field **`messages`** (+ `messaging_postbacks`, `message_echoes`).
+2. Quyền `pages_messaging` (+ `pages_manage_metadata`, `pages_read_engagement`) — cần App Review (Advanced Access) để nhắn người ngoài khi Live; page do mình quản trị test được ở Dev mode.
+3. Trong CRM: bấm **Đăng ký page** → **Bật webhook** → (tuỳ chọn) **Kéo lịch sử**.
+
+**Gotcha:** chữ ký webhook tính trên RAW body (không phải JSON.stringify); idempotent theo `mid`; cửa sổ 24h (ngoài 24h chặn gửi, không lách message tag ở v1); local proxy chặn TLS → call RA Meta (reply/subscribe/backfill) lỗi cert ở local, chạy ở prod (hoặc `NODE_EXTRA_CA_CERTS`). v1: 1 page test, chỉ inbox (chưa bình luận).
+
+---
+
 ## 1. Pancake POS (`src/integrations/pancake`)
 Đồng bộ đơn/khách/danh mục/sản phẩm từ Pancake + nhận webhook.
 

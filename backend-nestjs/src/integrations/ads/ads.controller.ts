@@ -39,6 +39,14 @@ export class AdsController {
     return this.adsService.listAccounts(effectiveStoreId);
   }
 
+  @Get('pages')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.INTEGRATIONS_VIEW)
+  @ApiOperation({ summary: 'Danh sách Fanpage + quyền (tasks) đã kết nối' })
+  pages(@GetEffectiveStoreId() effectiveStoreId: string | null) {
+    return this.adsService.listPages(effectiveStoreId);
+  }
+
   @Get('summary')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.INTEGRATIONS_VIEW)
@@ -61,6 +69,32 @@ export class AdsController {
     @Query('accountId') accountId?: string,
   ) {
     return this.adsService.campaigns(effectiveStoreId, from, to, accountId);
+  }
+
+  @Get('campaigns/:id/adsets')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.INTEGRATIONS_VIEW)
+  @ApiOperation({ summary: 'Nhóm quảng cáo (ad set) của 1 chiến dịch — drill-down' })
+  adSets(
+    @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.adsService.adSets(effectiveStoreId, id, from, to);
+  }
+
+  @Get('adsets/:id/ads')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.INTEGRATIONS_VIEW)
+  @ApiOperation({ summary: 'Quảng cáo (ad) của 1 nhóm quảng cáo — drill-down' })
+  ads(
+    @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.adsService.ads(effectiveStoreId, id, from, to);
   }
 
   @Get('campaigns/:id/insights')

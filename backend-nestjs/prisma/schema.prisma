@@ -261,6 +261,7 @@ model Product {
   description    String?          @db.Text
   isComboSet     Boolean          @default(false) @map("is_combo_set")
   originalPrice  Float            @map("original_price")
+  productionPrice Float?          @map("production_price")
   salePrice      Float?           @map("sale_price")
   stockQuantity  Int              @default(0) @map("stock_quantity")
   soldCount      Int              @default(0) @map("sold_count")
@@ -1318,6 +1319,10 @@ model ViettelCustomer {
   status               Int?
   statusName           String?   @map("status_name")
   statusDate           DateTime? @map("status_date")
+  sendDate             DateTime? @map("send_date") // ngày gửi (ORDER_SYSTEMDATE) — dùng cho thống kê tiền hàng
+  codPayStatus         String?   @map("cod_pay_status") // VTP: KHONG_CO_COD | CHUA_NHAN_COD | CHO_NHAN_COD | DA_NHAN_COD
+  codPayStatusName     String?   @map("cod_pay_status_name")
+  codPaySyncedAt       DateTime? @map("cod_pay_synced_at")
   receiverFullname     String?   @map("receiver_fullname")
   receiverPhone        String?   @map("receiver_phone")
   receiverAddress      String?   @map("receiver_address") @db.Text
@@ -1356,6 +1361,7 @@ model ViettelCustomer {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
+  @@index([sendDate])
   @@map("viettel_customers")
 }
 
@@ -1394,10 +1400,22 @@ model AdAccount {
   storeId      String?      @map("store_id") // coupling lỏng, không FK
   platform     String       @default("META")
   externalId   String       @map("external_id") // vd "act_123456"
-  name         String?
+  name         String?       @db.Text
   currency     String?
   timezoneName String?       @map("timezone_name")
   status       String?
+  accountStatus Int?         @map("account_status")
+  disableReason Int?         @map("disable_reason")
+  balance      Float?
+  amountSpent  Float?        @map("amount_spent")
+  spendCap     Float?        @map("spend_cap")
+  fundingSource String?      @map("funding_source")
+  fundingDetails Json?       @map("funding_details") // funding_source_details: { display_string, type, coupon... } → cột "Cách thanh toán"
+  businessExternalId String? @map("business_external_id")
+  businessName String?       @map("business_name") @db.Text
+  userCount    Int?          @map("user_count")
+  adminCount   Int?          @map("admin_count")
+  myRole       String?       @map("my_role")
   lastSyncedAt DateTime?     @map("last_synced_at")
   raw          Json?
   createdAt    DateTime      @default(now()) @map("created_at")
@@ -1416,7 +1434,7 @@ model AdCampaign {
   accountId      String      @map("account_id")
   platform       String      @default("META")
   externalId     String      @map("external_id")
-  name           String?
+  name           String?     @db.Text
   status         String?
   objective      String?
   dailyBudget    Float?      @map("daily_budget")
@@ -1442,7 +1460,7 @@ model AdSet {
   campaignId       String?     @map("campaign_id")
   platform         String      @default("META")
   externalId       String      @map("external_id")
-  name             String?
+  name             String?     @db.Text
   status           String?
   dailyBudget      Float?      @map("daily_budget")
   lifetimeBudget   Float?      @map("lifetime_budget")
@@ -1472,7 +1490,7 @@ model Ad {
   adSetId     String?     @map("ad_set_id")
   platform    String      @default("META")
   externalId  String      @map("external_id")
-  name        String?
+  name        String?        @db.Text
   status      String?
   creative    Json?
   raw         Json?
@@ -1525,4 +1543,113 @@ model AdInsight {
   @@index([accountId, date])
   @@index([campaignId, date])
   @@map("ad_insights")
+}
+
+model AdBusiness {
+  id                 String   @id @default(uuid())
+  platform           String   @default("META")
+  externalId         String   @map("external_id")
+  name               String?  @db.Text
+  verificationStatus String?  @map("verification_status")
+  raw                Json?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([platform, externalId])
+  @@map("ad_businesses")
+}
+
+model AdPage {
+  id                 String   @id @default(uuid())
+  storeId            String?  @map("store_id") // scope đa cửa hàng (coupling lỏng)
+  platform           String   @default("META")
+  externalId         String   @map("external_id")
+  name               String?  @db.Text
+  category           String?
+  tasks              Json?    // quyền token có trên page: ADVERTISE/ANALYZE/CREATE_CONTENT/MESSAGING/MODERATE/MANAGE/VIEW_MONETIZATION_INSIGHTS
+  fanCount           Int?     @map("fan_count")
+  followersCount     Int?     @map("followers_count")
+  link               String?  @db.Text
+  verificationStatus String?  @map("verification_status")
+  isPublished        Boolean? @map("is_published")
+  businessExternalId String?  @map("business_external_id")
+  lastSyncedAt       DateTime? @map("last_synced_at")
+  raw                Json?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([platform, externalId])
+  @@index([businessExternalId])
+  @@map("ad_pages")
+}
+
+// ===== Messenger inbox (chat với khách của Page) =====
+model MsgPage {
+  id            String            @id @default(uuid())
+  storeId       String?           @map("store_id")
+  platform      String            @default("META")
+  externalId    String            @map("external_id")
+  name          String?           @db.Text
+  accessToken   String?           @map("access_token") @db.Text
+  subscribed    Boolean           @default(false)
+  lastSyncedAt  DateTime?         @map("last_synced_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  contacts      MsgContact[]
+  conversations MsgConversation[]
+
+  @@unique([platform, externalId])
+  @@map("msg_pages")
+}
+
+model MsgContact {
+  id            String            @id @default(uuid())
+  pageId        String            @map("page_id")
+  psid          String
+  name          String?           @db.Text
+  avatarUrl     String?           @map("avatar_url") @db.Text
+  raw           Json?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  page          MsgPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  conversations MsgConversation[]
+
+  @@unique([pageId, psid])
+  @@map("msg_contacts")
+}
+
+model MsgConversation {
+  id              String       @id @default(uuid())
+  pageId          String       @map("page_id")
+  contactId       String       @map("contact_id")
+  lastMessageAt   DateTime?    @map("last_message_at")
+  lastMessageText String?      @map("last_message_text") @db.Text
+  lastMessageDir  String?      @map("last_message_dir")
+  unreadCount     Int          @default(0) @map("unread_count")
+  status          String       @default("OPEN")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  page            MsgPage      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  contact         MsgContact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages        MsgMessage[]
+
+  @@unique([pageId, contactId])
+  @@index([pageId, lastMessageAt])
+  @@map("msg_conversations")
+}
+
+model MsgMessage {
+  id             String          @id @default(uuid())
+  conversationId String          @map("conversation_id")
+  mid            String?         @unique
+  direction      String // IN | OUT
+  text           String?         @db.Text
+  attachments    Json?
+  status         String?
+  sentByUserId   String?         @map("sent_by_user_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  conversation   MsgConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("msg_messages")
 }

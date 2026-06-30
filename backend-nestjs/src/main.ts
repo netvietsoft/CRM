@@ -5,7 +5,7 @@ import cookieParser = require('cookie-parser');
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   const configuredOrigins = [process.env.CORS, process.env.FRONTEND_URL]
     .flatMap((value) => (value ? value.split(',') : []))
@@ -16,9 +16,9 @@ async function bootstrap(): Promise<void> {
     configuredOrigins.length > 0
       ? configuredOrigins
       : [
-          'http://localhost:3000',
+          'http://localhost:3900',
           'http://localhost:3002',
-          'http://127.0.0.1:3000',
+          'http://127.0.0.1:3900',
           'http://127.0.0.1:3002',
         ],
   );
@@ -62,7 +62,7 @@ async function bootstrap(): Promise<void> {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3001;
+  const port = process.env.PORT || 3901;
   await app.listen(port);
   console.log(`🚀 Application is running on: http://localhost:${port}`);
   console.log(`📚 Swagger docs available at: http://localhost:${port}/api/docs`);

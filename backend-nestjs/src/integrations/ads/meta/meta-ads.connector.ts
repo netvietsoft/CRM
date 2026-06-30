@@ -30,6 +30,7 @@ export interface NormAccount {
   amountSpent: number | null;
   spendCap: number | null;
   fundingSource: string | null;
+  fundingDetails: any;
   businessExternalId: string | null;
   businessName: string | null;
   raw: any;
@@ -82,6 +83,20 @@ export interface NormInsight {
   costPerResult: number | null;
   actions: any;
   actionValues: any;
+  raw: any;
+}
+
+export interface NormPage {
+  externalId: string;
+  name: string | null;
+  category: string | null;
+  tasks: string[] | null; // quyền token có trên page
+  fanCount: number | null;
+  followersCount: number | null;
+  link: string | null;
+  verificationStatus: string | null;
+  isPublished: boolean | null;
+  businessExternalId: string | null;
   raw: any;
 }
 
@@ -190,7 +205,7 @@ export class MetaAdsConnector {
    */
   async listAdAccounts(cfg: MetaConfig): Promise<NormAccount[]> {
     const fields =
-      'id,name,currency,timezone_name,account_status,disable_reason,balance,amount_spent,spend_cap,funding_source,business_name,business{id,name}';
+      'id,name,currency,timezone_name,account_status,disable_reason,balance,amount_spent,spend_cap,funding_source,funding_source_details,business_name,business{id,name}';
     let raws: any[] = [];
 
     if (cfg.accountIds.length) {
@@ -227,6 +242,7 @@ export class MetaAdsConnector {
         amountSpent: money(a.amount_spent, currency),
         spendCap: money(a.spend_cap, currency),
         fundingSource: a.funding_source != null ? String(a.funding_source) : null,
+        fundingDetails: a.funding_source_details ?? null,
         businessExternalId: a.business?.id ?? null,
         businessName: a.business?.name ?? a.business_name ?? null,
         raw: a,
@@ -250,6 +266,57 @@ export class MetaAdsConnector {
       verificationStatus: b.verification_status ?? null,
       raw: b,
     };
+  }
+
+  /**
+   * Liệt kê Fanpage + quyền (tasks): /me/accounts (có tasks) gộp với BM owned_pages
+   * (bổ sung page chưa cấp token; không có tasks). Dedup theo id, ưu tiên bản có tasks.
+   */
+  async fetchPages(cfg: MetaConfig): Promise<NormPage[]> {
+    const byId = new Map<string, NormPage>();
+    const mine = await this.client
+      .getEdge('me/accounts', { fields: 'id,name,category,tasks,fan_count,followers_count,link,verification_status,is_published' }, cfg.token)
+      .catch(() => []);
+    for (const pg of mine) {
+      if (!pg?.id) continue;
+      byId.set(pg.id, {
+        externalId: pg.id,
+        name: pg.name ?? null,
+        category: pg.category ?? null,
+        tasks: Array.isArray(pg.tasks) ? pg.tasks : null,
+        fanCount: int(pg.fan_count),
+        followersCount: int(pg.followers_count),
+        link: pg.link ?? null,
+        verificationStatus: pg.verification_status ?? null,
+        isPublished: typeof pg.is_published === 'boolean' ? pg.is_published : null,
+        businessExternalId: null,
+        raw: pg,
+      });
+    }
+    if (cfg.businessId) {
+      const owned = await this.client
+        .getEdge(`${cfg.businessId}/owned_pages`, { fields: 'id,name,category,verification_status,fan_count,link' }, cfg.token)
+        .catch(() => []);
+      for (const pg of owned) {
+        if (!pg?.id) continue;
+        const existing = byId.get(pg.id);
+        if (existing) { existing.businessExternalId = cfg.businessId; continue; }
+        byId.set(pg.id, {
+          externalId: pg.id,
+          name: pg.name ?? null,
+          category: pg.category ?? null,
+          tasks: null,
+          fanCount: int(pg.fan_count),
+          followersCount: null,
+          link: pg.link ?? null,
+          verificationStatus: pg.verification_status ?? null,
+          isPublished: null,
+          businessExternalId: cfg.businessId,
+          raw: pg,
+        });
+      }
+    }
+    return [...byId.values()];
   }
 
   async fetchCampaigns(token: string, accountId: string, currency: string | null): Promise<NormCampaign[]> {

@@ -3,7 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Cron } from '@nestjs/schedule';
 import type { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MetaAdsConnector, MetaConfig, NormAccount } from './meta/meta-ads.connector';
+import { MetaAdsConnector, MetaConfig, NormAccount, NormPage } from './meta/meta-ads.connector';
 import { ADS_SYNC_JOB, ADS_SYNC_QUEUE, AdsSyncJobData } from './ads.constants';
 
 export interface AdsAccountSyncResult {
@@ -17,6 +17,7 @@ export interface AdsAccountSyncResult {
 export interface AdsSyncResult {
   configured: boolean;
   accounts?: number;
+  pages?: number;
   campaigns?: number;
   adSets?: number;
   ads?: number;
@@ -78,8 +79,16 @@ export class AdsSyncService {
     const totals = { campaigns: 0, adSets: 0, ads: 0, insightRows: 0 };
     const perAccount: AdsAccountSyncResult[] = [];
     let accountCount = 0;
+    let pageCount = 0;
 
     for (const cfg of configs) {
+      // Fanpage sync trước (độc lập với ad account — config có thể chỉ có page).
+      try {
+        pageCount += await this.syncPages(cfg);
+      } catch (e) {
+        this.logger.error(`[Ads] Sync page (store ${cfg.storeId ?? 'env'}) lỗi: ${(e as Error).message}`);
+      }
+
       const accounts = await this.connector.listAdAccounts(cfg);
       if (!accounts.length) {
         this.logger.warn(`[Ads] Token (store ${cfg.storeId ?? 'env'}) hợp lệ nhưng không có ad account (kiểm Business ID / quyền ads_read).`);
@@ -102,9 +111,35 @@ export class AdsSyncService {
       }
     }
 
-    const result: AdsSyncResult = { configured: true, accounts: accountCount, ...totals, perAccount };
-    this.logger.log(`[Ads] Sync xong ${accountCount} tài khoản: ${JSON.stringify(totals)}`);
+    const result: AdsSyncResult = { configured: true, accounts: accountCount, pages: pageCount, ...totals, perAccount };
+    this.logger.log(`[Ads] Sync xong ${accountCount} tài khoản, ${pageCount} page: ${JSON.stringify(totals)}`);
     return result;
+  }
+
+  /** Upsert Fanpage + quyền (tasks) cho 1 config. Gắn storeId để scope đa cửa hàng. */
+  private async syncPages(cfg: MetaConfig): Promise<number> {
+    const pages: NormPage[] = await this.connector.fetchPages(cfg);
+    for (const pg of pages) {
+      const data = {
+        name: pg.name,
+        category: pg.category,
+        tasks: pg.tasks ?? undefined,
+        fanCount: pg.fanCount,
+        followersCount: pg.followersCount,
+        link: pg.link,
+        verificationStatus: pg.verificationStatus,
+        isPublished: pg.isPublished,
+        businessExternalId: pg.businessExternalId,
+        lastSyncedAt: new Date(),
+        raw: pg.raw,
+      };
+      await this.prisma.adPage.upsert({
+        where: { platform_externalId: { platform: 'META', externalId: pg.externalId } },
+        create: { platform: 'META', externalId: pg.externalId, storeId: cfg.storeId ?? undefined, ...data },
+        update: { ...(cfg.storeId ? { storeId: cfg.storeId } : {}), ...data },
+      });
+    }
+    return pages.length;
   }
 
   /** Upsert Business Manager (verification_status) từ các account đã liệt kê. Idempotent, không chặn sync. */
@@ -145,6 +180,7 @@ export class AdsSyncService {
       amountSpent: acc.amountSpent,
       spendCap: acc.spendCap,
       fundingSource: acc.fundingSource,
+      fundingDetails: acc.fundingDetails ?? undefined,
       businessExternalId: acc.businessExternalId,
       businessName: acc.businessName,
       raw: acc.raw,

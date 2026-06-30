@@ -32,12 +32,19 @@ const navItems = [
     ],
   },
   {
+    label: 'Phân tích',
+    items: [
+      { name: 'Tổng quan phân tích', href: '/admin/analytics', roles: ADMIN_MODERATOR },
+    ],
+  },
+  {
     label: 'Quản lý',
     items: [
       { name: 'Khách hàng', href: '/admin/customers', roles: ADMIN_STAFF },
       { name: 'Nhân viên', href: '/admin/staff', roles: ADMIN_MODERATOR },
       { name: 'Cửa hàng', href: '/admin/stores', roles: ADMIN_ONLY },
       { name: 'Đơn hàng', href: '/admin/orders', roles: ALL_ROLES },
+      { name: 'Tin nhắn', href: '/admin/messenger', roles: ALL_ROLES },
       {
         name: 'Kho', roles: ALL_ROLES, children: [
           { name: 'Sản phẩm', href: '/admin/products', roles: ALL_ROLES },
@@ -93,6 +100,14 @@ const navItems = [
   },
 ];
 
+// Tất cả href dạng phẳng — dùng để chọn "khớp dài nhất thắng" khi route cha là tiền tố của route con
+const ALL_HREFS: string[] = navItems.flatMap((g) =>
+  g.items.flatMap((it) => {
+    const ch = (it as { children?: { href: string }[] }).children;
+    return ch ? ch.map((c) => c.href) : [(it as { href: string }).href];
+  }),
+);
+
 export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pendingStoresCount = 0, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -112,7 +127,13 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
 
   const isActive = (href: string) => {
     if (href === '/admin') return pathname === '/admin';
-    return pathname.startsWith(href);
+    const matches = (h: string) => pathname === h || pathname.startsWith(h + '/');
+    if (!matches(href)) return false;
+    // Khớp dài nhất thắng: tránh route cha (tiền tố) sáng cùng route con
+    const best = ALL_HREFS
+      .filter((h) => h !== '/admin' && matches(h))
+      .reduce((a, b) => (b.length > a.length ? b : a), '');
+    return href === best;
   };
 
   return (
@@ -142,7 +163,7 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
               <button
                 type="button"
                 onClick={() => setOpenGroups(g => ({ ...g, [group.label]: !gOpen }))}
-                className="flex items-center justify-between w-full px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600"
+                className="flex items-center justify-between w-full px-3 mb-2 text-sm font-bold text-[#2140da] uppercase tracking-wider hover:text-[#18309c]"
               >
                 <span>{group.label}</span>
                 <span className={`transition-transform ${gOpen ? 'rotate-90' : ''}`}>▸</span>
