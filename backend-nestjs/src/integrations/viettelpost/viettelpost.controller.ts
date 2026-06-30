@@ -61,6 +61,13 @@ export class ViettelpostController {
     return this.viettelCustomerService.createOnVtp(dto);
   }
 
+  // Cập nhật trạng thái vận đơn (UpdateOrder) — TYPE: 1 Duyệt/2 Duyệt hoàn/3 Phát tiếp/4 Hủy/5 Gửi lại/11 Xóa.
+  @Post('customers/:code/update-status')
+  @Roles('ADMIN', 'STAFF')
+  async updateStatus(@Param('code') code: string, @Body() body: { type: number; note?: string }) {
+    return this.viettelCustomerService.updateStatus(decodeURIComponent(code), Number(body.type), body.note);
+  }
+
   // Đơn đã tải về từ ViettelPost (source='VIETTEL') — cho trang admin xem bảng.
   @Get('orders')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')

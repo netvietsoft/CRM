@@ -109,11 +109,42 @@ export default function ViettelCustomerDetailPage() {
     } finally { setSaving(false); }
   };
 
+  const doAction = async (type: number, label: string) => {
+    if (!window.confirm(`Xác nhận: "${label}" cho đơn ${code}?`)) return;
+    setSaving(true); setError('');
+    try {
+      const res = await apiClientClient.post<{ ok: boolean; message: string }>(
+        `/viettelpost/customers/${encodeURIComponent(code)}/update-status`,
+        { type },
+      );
+      await load();
+      setToast(`${label}: ${res.message}`);
+      window.setTimeout(() => setToast(''), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Thao tác thất bại');
+    } finally { setSaving(false); }
+  };
+
   if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>;
   if (error && !vc) return <div className="p-8 text-center text-red-500">{error}</div>;
   if (!vc) return null;
 
-  const editable = vc.status == null || vc.status < 200;
+  const st = vc.status;
+  const editable = st == null || st < 200;
+  // Hành động hợp lệ theo trạng thái (UpdateOrder TYPE)
+  const actions: Array<{ type: number; label: string; cls: string }> = [];
+  if (editable) {
+    actions.push({ type: 1, label: 'Duyệt đơn', cls: 'bg-indigo-600 hover:bg-indigo-700' });
+    actions.push({ type: 4, label: 'Hủy đơn', cls: 'bg-red-600 hover:bg-red-700' });
+  }
+  if (st === 505) {
+    actions.push({ type: 2, label: 'Duyệt hoàn', cls: 'bg-orange-600 hover:bg-orange-700' });
+    actions.push({ type: 3, label: 'Phát tiếp', cls: 'bg-emerald-600 hover:bg-emerald-700' });
+  }
+  if (st === 107) {
+    actions.push({ type: 5, label: 'Gửi lại đơn', cls: 'bg-indigo-600 hover:bg-indigo-700' });
+    actions.push({ type: 11, label: 'Xóa đơn đã hủy', cls: 'bg-gray-600 hover:bg-gray-700' });
+  }
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -131,6 +162,17 @@ export default function ViettelCustomerDetailPage() {
             </p>
           </div>
         </div>
+        {/* Hành động ViettelPost (UpdateOrder) — hiện theo trạng thái đơn */}
+        {actions.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {actions.map(a => (
+              <button key={a.type} onClick={() => void doAction(a.type, a.label)} disabled={saving}
+                className={`px-3 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 ${a.cls}`}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}

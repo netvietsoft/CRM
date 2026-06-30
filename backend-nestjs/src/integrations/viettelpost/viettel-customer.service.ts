@@ -307,6 +307,28 @@ export class ViettelCustomerService {
     return { trackingCode: String(trackingCode), fee: Number(data?.MONEY_TOTAL || 0) };
   }
 
+  /**
+   * Gọi order/UpdateOrder để cập nhật trạng thái vận đơn theo TYPE.
+   * TYPE: 1 Duyệt · 2 Duyệt hoàn (505) · 3 Phát tiếp (505) · 4 Hủy (status<200) · 5 Gửi lại · 11 Xóa đơn đã hủy (107).
+   */
+  async updateStatus(
+    trackingCode: string,
+    type: number,
+    note?: string,
+  ): Promise<{ ok: boolean; message: string }> {
+    await this.getOne(trackingCode); // đảm bảo đơn tồn tại
+    const res = await this.authService.post('order/UpdateOrder', {
+      ORDER_NUMBER: trackingCode,
+      TYPE: type,
+      NOTE: note || '',
+    });
+    const ok = !!res && (res.status === 200 || res.error === false);
+    return {
+      ok,
+      message: ok ? 'ViettelPost đã nhận yêu cầu.' : `VTP từ chối/không phản hồi: ${res?.message || 'lỗi không rõ'}`,
+    };
+  }
+
   /** Chi tiết 1 khách/đơn theo mã vận đơn. */
   async getOne(trackingCode: string) {
     const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } });
