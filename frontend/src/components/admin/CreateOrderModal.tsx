@@ -6,6 +6,7 @@ import { Plus, Search, Trash2, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import Select from '@/components/ui/Select';
+import { formatVndSymbol } from '@/lib/format';
 
 interface ProductVariant {
   id: string;
@@ -54,11 +55,7 @@ interface CreateOrderModalProps {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 function getAvailableSizes(product: Product) {

@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import RevenueStats from '@/components/admin/RevenueStats';
 export const dynamic = 'force-dynamic';
 import { apiClient } from '@/lib/apiClient';
+import { formatNumber, formatVndSymbol } from '@/lib/format';
 
 interface DashboardOrderUser {
   name: string | null;
@@ -41,11 +43,7 @@ interface DashboardStats {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 function getStatusBadge(status: string) {
@@ -99,7 +97,7 @@ export default async function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Tổng khách hàng</div>
-          <div className="text-3xl text-gray-800 mb-2">{stats.totalCustomers?.toLocaleString()}</div>
+          <div className="text-3xl text-gray-800 mb-2">{formatNumber(stats.totalCustomers)}</div>
           <div className="text-xs text-green-600">
             +{stats.newCustomersThisMonth} tháng này
           </div>
@@ -117,7 +115,7 @@ export default async function AdminDashboard() {
 
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Đơn hàng</div>
-          <div className="text-3xl text-gray-800 mb-2">{stats.totalOrders?.toLocaleString()}</div>
+          <div className="text-3xl text-gray-800 mb-2">{formatNumber(stats.totalOrders)}</div>
           <div className="text-xs text-green-600 ">
             {stats.completedOrders} hoàn thành
           </div>
@@ -135,6 +133,8 @@ export default async function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      <RevenueStats />
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
@@ -195,12 +195,12 @@ export default async function AdminDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  stats.recentOrders.map(order => {
+                  stats.recentOrders.map((order, idx) => {
                     const statusInfo = getStatusBadge(order.status);
                     const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                     const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                     return (
-                      <tr key={order.id} className="hover:bg-gray-50">
+                      <tr key={order.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
                         <td className="px-6 py-4">
                           <span className="font-mono text-xs text-gray-800">
                             {order.orderCode}
@@ -305,10 +305,10 @@ export default async function AdminDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  stats.topCustomers.map(customer => {
+                  stats.topCustomers.map((customer, idx) => {
                     const displayName = customer.name || customer.phone || 'Khách lạ';
                     return (
-                      <tr key={customer.id} className="hover:bg-gray-50">
+                      <tr key={customer.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <div>

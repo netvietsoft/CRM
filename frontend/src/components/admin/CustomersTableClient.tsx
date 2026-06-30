@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowUpDown } from 'lucide-react';
 import { MessageSquareShare } from 'lucide-react';
 import ZaloZnsModal from './ZaloZnsModal';
+import { formatVndSymbol } from '@/lib/format';
 
 interface CustomerSummary {
   id: string;
@@ -39,9 +40,7 @@ interface CustomersTableClientProps {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency', currency: 'VND', maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 function formatDate(date: string | Date | null | undefined) {
@@ -160,8 +159,8 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
                   </td>
                 </tr>
               ) : (
-                customers.map((customer) => (
-                  <tr key={customer.id} className={`hover:bg-gray-50/50 transition-colors ${selectedIds.has(customer.id) ? 'bg-blue-50/30' : ''}`}>
+                customers.map((customer, idx) => (
+                  <tr key={customer.id} className={`hover:bg-blue-50/40 transition-colors ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} ${selectedIds.has(customer.id) ? 'bg-blue-50/30' : ''}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <input
                         type="checkbox"

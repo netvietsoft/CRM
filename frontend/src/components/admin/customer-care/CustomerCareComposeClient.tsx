@@ -23,13 +23,14 @@ import {
   purchaseStateOptions,
   recipientSourceOptions,
 } from '@/lib/adminMessaging';
+import { formatNumber } from '@/lib/format';
 
 function formatCurrency(value?: number | null) {
   if (value === null || value === undefined) {
     return '—';
   }
 
-  return new Intl.NumberFormat('vi-VN').format(value);
+  return formatNumber(value);
 }
 
 function sanitizeNumericInput(value: string) {
@@ -41,7 +42,7 @@ function formatNumericInput(value: string) {
     return '';
   }
 
-  return new Intl.NumberFormat('vi-VN').format(Number(value));
+  return formatNumber(Number(value));
 }
 
 async function fetchComposeData() {

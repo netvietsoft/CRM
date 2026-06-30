@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { applyMembershipDiscount, getMembershipDiscountPercent } from '@/lib/membership';
+import { formatVndSymbol } from '@/lib/format';
 import type { UserProfile } from '@/types/commerce';
 
 interface ProductVariant {
@@ -45,11 +46,7 @@ interface CartClientProps {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 const getCartItemPrice = (item: CartItemData, discountPercent: number) => {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVndSymbol } from '@/lib/format';
 
 interface VC {
   id: string;
@@ -43,7 +44,7 @@ interface VC {
   updatedAt: string;
 }
 
-const money = (n: number | null) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
+const money = formatVndSymbol;
 const date = (s: string | null) => { if (!s) return '—'; const d = new Date(s); return Number.isNaN(d.getTime()) ? s : d.toLocaleString('vi-VN', { hour12: false }); };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

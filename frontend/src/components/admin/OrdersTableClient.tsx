@@ -8,9 +8,11 @@ import { apiClientClient } from '@/lib/apiClientClient';
 import { toast } from 'react-toastify';
 import ExportQRButton from './ExportQRButton';
 import CreateOrderButton from './CreateOrderButton';
-import OrderSearchInput from './OrderSearchInput';
 import OrderStatusFilter from './OrderStatusFilter';
 import OrderAdvancedFilter from './OrderAdvancedFilter';
+import OrderActiveFilters from './OrderActiveFilters';
+import RevenueStats from './RevenueStats';
+import { formatNumber, formatVndTight } from '@/lib/format';
 
 const statusMap: Record<string, { cls: string; label: string }> = {
   PENDING: { cls: 'bg-orange-100 text-orange-700 border border-orange-200', label: 'Chờ xác nhận' },
@@ -61,6 +63,8 @@ function OrderDateSortHeader({ field, label }: { field: 'createdAt' | 'updatedAt
 interface OrdersTableClientProps {
   orders: OrdersTableOrder[];
   statusCounts: Record<string, number>;
+  filteredRevenue?: number;
+  totalCount?: number;
 }
 
 interface OrderUserSummary {
@@ -125,7 +129,7 @@ function getFirstItemDisplay(order: OrdersTableOrder) {
   return 'Chưa có sản phẩm';
 }
 
-export default function OrdersTableClient({ orders, statusCounts }: OrdersTableClientProps) {
+export default function OrdersTableClient({ orders, statusCounts, filteredRevenue = 0, totalCount = 0 }: OrdersTableClientProps) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -233,16 +237,29 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
           <p className="text-gray-500 mt-1 text-sm font-medium">Quản lý và theo dõi hiệu quả kinh doanh</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="w-full md:w-80">
-            <OrderSearchInput />
-          </div>
-          <OrderAdvancedFilter />
           <ExportQRButton selectedOrders={selectedOrders} />
           <CreateOrderButton />
         </div>
       </div>
 
+      <RevenueStats defaultPeriod="today" periods={['today', 'yesterday', 'week', 'lastweek', 'month', 'lastmonth']} scope="all" dateField="updatedAt" />
+
+      <OrderAdvancedFilter />
+
       <OrderStatusFilter counts={statusCounts} />
+
+      <OrderActiveFilters />
+
+      {/* Tổng kết quả lọc */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
+        <span className="text-sm text-gray-600">
+          Kết quả: <b className="text-gray-900">{formatNumber(totalCount)}</b> đơn
+        </span>
+        <span className="text-sm text-gray-600">
+          Doanh thu (đã lọc):{' '}
+          <b className="text-base text-emerald-700">{formatVndTight(filteredRevenue)}</b>
+        </span>
+      </div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -252,17 +269,17 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
             <div className="text-center py-10 bg-white">
               <div className="text-lg font-bold text-gray-900">Không tìm thấy đơn hàng</div>
             </div>
-          ) : orders.map((order) => {
+          ) : orders.map((order, idx) => {
             const isUnread = !order.isRead;
             const isChecked = selectedIds.has(order.id);
             const firstItemDisplay = getFirstItemDisplay(order);
             const phone = order.shippingPhone || order.user?.phone || '';
 
             return (
-              <div 
-                key={`mob-${order.id}`} 
+              <div
+                key={`mob-${order.id}`}
                 onClick={() => router.push(`/admin/orders/${order.id}`)}
-                className={`p-4 flex flex-col gap-3 transition-all duration-200 cursor-pointer hover:bg-gray-50 ${isUnread ? 'bg-rose-50' : 'bg-white'} ${isChecked ? '!bg-indigo-50/60' : ''}`}
+                className={`p-4 flex flex-col gap-3 transition-all duration-200 cursor-pointer hover:bg-blue-50/40 ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} ${isChecked ? '!bg-indigo-50/60' : ''}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -293,25 +310,33 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                     {order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ'}
                   </div>
                   {phone && (
-                    <div 
-                      className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5 group cursor-pointer w-fit" 
+                    <div
+                      className="text-xs text-gray-700 font-semibold flex items-center gap-1.5 group cursor-pointer w-fit"
                       onClick={(e) => handleCopy(e, phone)}
                     >
                       <span>{phone}</span>
                       {copiedId === phone ? (
-                        <Check className="w-3 h-3 text-green-500" />
+                        <Check className="w-3.5 h-3.5 text-green-500" />
                       ) : (
-                        <Copy className="w-3 h-3 text-gray-400 group-hover:text-blue-600" />
+                        <Copy className="w-3.5 h-3.5 text-blue-500 group-hover:text-blue-700" />
                       )}
                     </div>
                   )}
                 </div>
 
-                <div className={`text-[13px] font-medium p-2 rounded-lg truncate ${firstItemDisplay === 'Nhiều sản phẩm' ? 'text-sky-500 font-bold bg-sky-50 border border-sky-100' : 'text-gray-600 bg-gray-50'}`}>
-                  {firstItemDisplay}
+                <div
+                  onClick={(e) => handleCopy(e, firstItemDisplay)}
+                  className={`text-[13px] font-medium p-2 rounded-lg flex items-center justify-between gap-2 cursor-pointer ${firstItemDisplay === 'Nhiều sản phẩm' ? 'text-sky-500 font-bold bg-sky-50 border border-sky-100' : 'text-gray-600 bg-gray-50'}`}
+                >
+                  <span className="truncate">{firstItemDisplay}</span>
+                  {copiedId === firstItemDisplay ? (
+                    <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  )}
                 </div>
 
-                <div className="flex justify-between items-center mt-1">
+                <div className="flex justify-between items-end mt-1">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[11px] font-medium text-gray-400">
                       Tạo: {fmtDate(order.createdAt)}
@@ -320,6 +345,9 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                       Sửa: {fmtDate(order.updatedAt)}
                     </span>
                   </div>
+                  <span className="text-base font-bold text-gray-900">
+                    {formatVndTight(order.totalAmount)}
+                  </span>
                 </div>
               </div>
             );
@@ -343,6 +371,7 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Khách hàng</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Nguồn</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Sản phẩm</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Tổng tiền</th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Trạng thái</th>
                 <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">
                   <OrderDateSortHeader field="createdAt" label="Ngày tạo" />
@@ -355,13 +384,13 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
             <tbody className="divide-y divide-gray-50">
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <div className="text-center py-10 bg-white">
                       <div className="text-xl font-bold text-gray-900">Không tìm thấy đơn hàng</div>
                     </div>
                   </td>
                 </tr>
-              ) : orders.map((order) => {
+              ) : orders.map((order, idx) => {
                 const isUnread = !order.isRead;
                 const isChecked = selectedIds.has(order.id);
                 const firstItemDisplay = getFirstItemDisplay(order);
@@ -371,7 +400,7 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                   <tr
                     key={order.id}
                     onClick={() => router.push(`/admin/orders/${order.id}`)}
-                    className={`transition-colors cursor-pointer hover:bg-gray-50/50 ${isUnread ? 'bg-rose-50' : ''} ${isChecked ? '!bg-indigo-50/60' : ''}`}
+                    className={`transition-colors cursor-pointer hover:bg-blue-50/40 ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} ${isChecked ? '!bg-indigo-50/60' : ''}`}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -401,15 +430,15 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                         {order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ'}
                       </div>
                       {phone && (
-                        <div 
-                          className="text-xs text-gray-500 flex items-center gap-1.5 group w-fit mt-0.5"
+                        <div
+                          className="text-xs text-gray-700 font-semibold flex items-center gap-1.5 group w-fit mt-0.5 cursor-pointer"
                           onClick={(e) => handleCopy(e, phone)}
                         >
                           <span className="hover:text-blue-600 transition-colors">{phone}</span>
                           {copiedId === phone ? (
-                            <Check className="w-3 h-3 text-green-500" />
+                            <Check className="w-3.5 h-3.5 text-green-500" />
                           ) : (
-                            <Copy className="w-3 h-3 text-gray-300 group-hover:text-blue-600 transition-colors" />
+                            <Copy className="w-3.5 h-3.5 text-blue-500 group-hover:text-blue-700 transition-colors" />
                           )}
                         </div>
                       )}
@@ -420,11 +449,22 @@ export default function OrdersTableClient({ orders, statusCounts }: OrdersTableC
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2 max-w-[200px]">
+                      <div
+                        className="flex items-center gap-1.5 max-w-[220px] group cursor-pointer w-fit"
+                        onClick={(e) => handleCopy(e, firstItemDisplay)}
+                      >
                         <span className={`truncate ${firstItemDisplay === 'Nhiều sản phẩm' ? 'text-sky-500 font-bold' : 'text-gray-800'}`} title={firstItemDisplay}>
                           {firstItemDisplay}
                         </span>
+                        {copiedId === firstItemDisplay ? (
+                          <Check className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 text-blue-500 group-hover:text-blue-700 transition-colors shrink-0" />
+                        )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap font-bold text-gray-900">
+                      {formatVndTight(order.totalAmount)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <QuickStatusUpdate orderId={order.id} orderCode={order.orderCode} currentStatus={order.status} />

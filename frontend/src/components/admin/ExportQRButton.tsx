@@ -6,6 +6,7 @@ import QRCode from 'qrcode';
 import { AlignmentType, BorderStyle, Document, ImageRun, Packer, PageBreak, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVnd } from '@/lib/format';
 
 interface SelectedOrder {
   id: string;
@@ -20,7 +21,7 @@ interface QrVoucherConfigResponse {
 }
 
 function fmtVND(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
+  return formatVnd(amount);
 }
 
 export default function ExportQRButton({ selectedOrders }: { selectedOrders: SelectedOrder[] }) {

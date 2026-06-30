@@ -7,6 +7,7 @@ import type {
   VoucherDefinition,
   VoucherStackTier,
 } from '@/types/commerce';
+import { formatVndSymbol } from '@/lib/format';
 
 interface VoucherGroup {
   name: string;
@@ -19,7 +20,7 @@ function getTopStackTier(tiers: VoucherStackTier[]) {
 }
 
 function fmt(n: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+  return formatVndSymbol(n);
 }
 
 function formatVnDate(date: string | Date | null) {

@@ -8,6 +8,8 @@ import CategoryFilter from './CategoryFilter';
 import Select from '@/components/ui/Select';
 import tinhData from '@/data/tinh_tp.json';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { apiClientClient } from '@/lib/apiClientClient';
+import { formatNumber, formatVndSymbol } from '@/lib/format';
 
 const provinces = Object.values(tinhData as Record<string, { code: string; name: string; type: string }>).map(p => ({
   id: p.code,
@@ -50,11 +52,7 @@ interface ProductsClientProps {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 /* ── Price Filter Accordion ─────────────────────────────── */
@@ -72,8 +70,7 @@ function PriceFilterAccordion({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const fmtShort = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(n);
+  const fmtShort = formatNumber;
 
   const range = maxPrice - minPrice || 1;
   const minPct = ((priceRange[0] - minPrice) / range) * 100;
@@ -430,29 +427,21 @@ export default function ProductsClient({
     setTogglingIds(prev => new Set(prev).add(productId));
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/wishlist`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ productId }),
-      });
-      const data = await res.json();
+      const data = await apiClientClient.post<{ action?: string }>('/wishlist', { productId });
 
-      if (res.ok) {
-        setWishlistIds(prev => {
-          const next = new Set(prev);
-          if (data.action === 'added') {
-            next.add(productId);
-          } else {
-            next.delete(productId);
-          }
-          return next;
-        });
-        showToast(
-          data.action === 'added' ? '💖 Đã thêm vào yêu thích!' : '💔 Đã bỏ yêu thích',
-          'success',
-        );
-      }
+      setWishlistIds(prev => {
+        const next = new Set(prev);
+        if (data.action === 'added') {
+          next.add(productId);
+        } else {
+          next.delete(productId);
+        }
+        return next;
+      });
+      showToast(
+        data.action === 'added' ? '💖 Đã thêm vào yêu thích!' : '💔 Đã bỏ yêu thích',
+        'success',
+      );
     } catch {
       showToast('Có lỗi xảy ra', 'error');
     } finally {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVnd } from '@/lib/format';
 import type {
   Integration,
   IntegrationMetadata,
@@ -243,7 +244,7 @@ export default function IntegrationDetailPage() {
         dates: selectedOrderDates,
       });
 
-      setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng từ ${data.total || 0} đơn Pancake. Tổng tiền: ${(data.totalAmount || 0).toLocaleString()}đ`);
+      setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng từ ${data.total || 0} đơn Pancake. Tổng tiền: ${formatVnd(data.totalAmount)}`);
       setTimeout(() => setSyncMessage(''), 8000);
     } catch (error) {
       console.error(error);
@@ -268,7 +269,7 @@ export default function IntegrationDetailPage() {
         syncAll: true,
       });
 
-      setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng mới. Tổng tiền: ${(data.totalAmount || 0).toLocaleString()}đ`);
+      setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng mới. Tổng tiền: ${formatVnd(data.totalAmount)}`);
       setTimeout(() => setSyncMessage(''), 8000);
     } catch (error) {
       console.error(error);

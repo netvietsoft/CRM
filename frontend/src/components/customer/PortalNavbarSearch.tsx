@@ -6,6 +6,8 @@ import { Search, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVndSymbol } from '@/lib/format';
 
 interface SearchResultProduct {
   id: string;
@@ -42,8 +44,7 @@ export default function PortalNavbarSearch() {
       }
       setIsSearching(true);
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/products/search?q=${encodeURIComponent(query)}`);
-        const data: unknown = await res.json();
+        const data: unknown = await apiClientClient.get('/products/search', { params: { q: query } });
         setResults(Array.isArray(data) ? data as SearchResultProduct[] : []);
       } catch (error) {
         console.error('Error searching products:', error);
@@ -115,7 +116,7 @@ export default function PortalNavbarSearch() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 truncate">{product.name}</div>
                     <div className="text-xs text-gray-500 font-semibold">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.salePrice || product.originalPrice)}
+                      {formatVndSymbol(product.salePrice || product.originalPrice)}
                     </div>
                   </div>
                 </Link>

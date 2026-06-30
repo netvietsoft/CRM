@@ -8,6 +8,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, SearchIcon 
 import { useDebounce } from '@/hooks/useDebounce';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { formatVndSymbol } from '@/lib/format';
 
 type Product = {
   id: string;
@@ -114,11 +115,7 @@ type SortDirection = 'asc' | 'desc';
 type StatusFilter = 'all' | 'active' | 'inactive';
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 function getCategoryLabel(product: Product) {
@@ -546,10 +543,10 @@ export default function ProductsClient({
                   </td>
                 </tr>
               ) : (
-                sortedProducts.map((product) => (
+                sortedProducts.map((product, idx) => (
                   <tr
                     key={product.id}
-                    className={`cursor-pointer transition-colors ${navigatingProductId === product.id ? 'bg-indigo-50' : 'hover:bg-gray-50'}`}
+                    className={`cursor-pointer transition-colors hover:bg-blue-50/40 ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} ${navigatingProductId === product.id ? 'bg-indigo-50' : ''}`}
                     onClick={() => handleOpenProduct(product)}
                   >
                     <td className="px-6 py-4">

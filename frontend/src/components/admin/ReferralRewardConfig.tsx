@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVndTight } from '@/lib/format';
 
 interface RewardTier {
   milestone: number;
@@ -101,8 +102,8 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
     const valStr = v.type === 'PERCENT'
       ? `${v.value}%`
       : v.type === 'FREESHIP'
-        ? `Freeship ${new Intl.NumberFormat('vi-VN').format(v.value)}đ`
-        : `${new Intl.NumberFormat('vi-VN').format(v.value)}đ`;
+        ? `Freeship ${formatVndTight(v.value)}`
+        : formatVndTight(v.value);
     return `${v.code} — ${v.name} (${valStr})`;
   };
 

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 import { apiClient } from '@/lib/apiClient';
 import { MembershipConfig, MembershipRank, normalizeMembershipConfigs } from '@/lib/membership';
+import { formatVndSymbol } from '@/lib/format';
 
 export const metadata: Metadata = {
   title: 'Phân hạng VIP | Customer CRM',
@@ -115,7 +116,7 @@ const rankVisuals: Record<
 };
 
 function fmt(n: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+  return formatVndSymbol(n);
 }
 
 async function getRankConfigs() {

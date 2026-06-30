@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type SVGProps } from 'react';
 import type { OrderItem, Product } from './createOrder.types';
+import { formatVnd, formatNumber } from '@/lib/format';
 
 export function fmtDate(value: string | Date) {
   return new Intl.DateTimeFormat('vi-VN', {
@@ -12,17 +13,11 @@ export function fmtDate(value: string | Date) {
 }
 
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  })
-    .format(amount)
-    .replace('₫', 'đ');
+  return formatVnd(amount);
 }
 
 export function formatNumberValue(value: number) {
-  return value ? new Intl.NumberFormat('vi-VN').format(value) : '';
+  return value ? formatNumber(value) : '';
 }
 
 export function formatDateInputValue(value?: string | null) {
@@ -66,7 +61,7 @@ export function NumberInput({
     }
 
     const nextValue = parseInt(raw, 10);
-    setDraft(new Intl.NumberFormat('vi-VN').format(nextValue));
+    setDraft(formatNumber(nextValue));
     onChange(nextValue);
   };
 

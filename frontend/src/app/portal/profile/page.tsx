@@ -4,6 +4,7 @@ import ProfileForm from './ProfileForm';
 import { apiClient } from '@/lib/apiClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { membershipBadgeClassMap, MembershipProgress } from '@/lib/membership';
+import { formatVndSymbol, formatNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,19 +123,19 @@ export default async function ProfilePage() {
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Tổng chi tiêu</div>
           <div className="text-2xl font-bold text-gray-800">
-            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(user.totalSpent)}
+            {formatVndSymbol(user.totalSpent)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Điểm tích lũy</div>
           <div className="text-2xl font-bold text-gray-800">
-            {new Intl.NumberFormat('vi-VN').format(user.points)}
+            {formatNumber(user.points)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Hoa hồng</div>
           <div className="text-2xl font-bold text-green-600">
-            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(user.commissionBalance)}
+            {formatVndSymbol(user.commissionBalance)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm">

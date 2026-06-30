@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import PortalNavbarSearch from './PortalNavbarSearch';
+import { formatVndSymbol, formatCompact } from '@/lib/format';
 interface Props {
   user: {
     name: string;
@@ -45,7 +46,7 @@ export default function PortalNavbar({ user }: Props) {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/auth/logout`, { method: 'POST' });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3901/api'}/auth/logout`, { method: 'POST', credentials: 'include' });
       router.push('/login');
       router.refresh();
     } catch {
@@ -119,7 +120,7 @@ export default function PortalNavbar({ user }: Props) {
             <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-lg">
               <span className="text-xs text-gray-600">Hoa hồng</span>
               <span className="text-sm font-semibold text-green-600">
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(user.commissionBalance)}
+                {formatVndSymbol(user.commissionBalance)}
               </span>
             </div>
 
@@ -189,13 +190,13 @@ export default function PortalNavbar({ user }: Props) {
                     <div>
                       <div className="text-xs text-gray-600">Đã chi tiêu</div>
                       <div className="text-sm font-semibold text-gray-800">
-                        {new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(user.totalSpent)}đ
+                        {formatCompact(user.totalSpent)}đ
                       </div>
                     </div>
                     <div>
                       <div className="text-xs text-gray-600">Hoa hồng</div>
                       <div className="text-sm font-semibold text-green-600">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(user.commissionBalance)}
+                        {formatVndSymbol(user.commissionBalance)}
                       </div>
                     </div>
                   </div>

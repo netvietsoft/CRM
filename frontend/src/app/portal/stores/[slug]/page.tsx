@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { ApiError, apiClient } from '@/lib/apiClient';
 import Link from 'next/link';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { formatVndSymbol } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,7 @@ interface StoreReview {
 }
 
 function fmt(n: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+  return formatVndSymbol(n);
 }
 
 function formatVnDate(date: string | Date | null) {

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { X, Package, Search, Phone, ArrowLeft } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { formatVnd } from '@/lib/format';
 
 interface TrackingModalProps {
   isOpen: boolean;
@@ -72,7 +73,7 @@ const statusMap: Record<string, { label: string; cls: string; step: number }> = 
 const progressSteps = ['Đặt hàng', 'Xác nhận', 'Đóng gói', 'Vận chuyển', 'Nhận hàng', 'Hoàn thành'];
 
 function fmt(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
+  return formatVnd(amount);
 }
 
 function fmtDate(d: string | Date) {

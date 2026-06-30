@@ -4,9 +4,10 @@ import Link from 'next/link';
 import TrackingButton from '@/components/customer/TrackingButton';
 import { apiClient } from '@/lib/apiClient';
 import { membershipBadgeClassMap, MembershipConfig, MembershipProgress, MembershipRank } from '@/lib/membership';
+import { formatVndSymbol } from '@/lib/format';
 
 function fmt(n: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+  return formatVndSymbol(n);
 }
 
 interface RecentOrder {

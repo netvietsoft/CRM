@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { MapPin, CreditCard, Ticket, CheckCircle2, Loader2, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { formatVndSymbol } from '@/lib/format';
 import VietQRPaymentClient from './vietqr/VietQRPaymentClient';
 import Select from '@/components/ui/Select';
 import type {
@@ -450,7 +451,7 @@ export default function CheckoutClient({ user, items, store, cartMode }: Checkou
   };
 
   function formatPrice(val: number) {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(val);
+    return formatVndSymbol(val);
   }
 
   return (

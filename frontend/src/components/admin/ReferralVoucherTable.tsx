@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import EditVoucherModal from './EditVoucherModal';
+import { formatVndSymbol } from '@/lib/format';
 
 interface VoucherStackTier {
   conditionType?: string | null;
@@ -39,9 +40,7 @@ interface ReferralVoucher {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency', currency: 'VND', maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 function getTypeBadge(type: string) {
@@ -104,12 +103,12 @@ export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralV
                     </div>
                   </td>
                 </tr>
-              ) : vouchers.map((voucher) => {
+              ) : vouchers.map((voucher, idx) => {
                 const typeInfo = getTypeBadge(voucher.type);
                 const isDeleting = deletingId === voucher.id;
 
                 return (
-                  <tr key={voucher.id} className={`hover:bg-gray-50/50 transition-colors ${isDeleting ? 'opacity-50' : ''}`}>
+                  <tr key={voucher.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50/50 transition-colors ${isDeleting ? 'opacity-50' : ''}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className="font-mono font-bold text-sm bg-gray-100 px-2 py-1 rounded">
                         {voucher.code}

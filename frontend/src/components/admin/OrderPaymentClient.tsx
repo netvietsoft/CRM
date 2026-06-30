@@ -3,14 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { useOrderSave } from '@/components/admin/OrderSaveProvider';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVnd, formatNumber } from '@/lib/format';
 
 function fmt(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
+  return formatVnd(amount);
 }
 
 function NumberInput({ value, onChange, placeholder = '0' }: { value: number; onChange: (val: number) => void; placeholder?: string }) {
   const { setHasChanges } = useOrderSave();
-  const [str, setStr] = useState(value ? new Intl.NumberFormat('vi-VN').format(value) : '');
+  const [str, setStr] = useState(value ? formatNumber(value) : '');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '');
@@ -21,7 +22,7 @@ function NumberInput({ value, onChange, placeholder = '0' }: { value: number; on
       return;
     }
     const num = parseInt(raw, 10);
-    setStr(new Intl.NumberFormat('vi-VN').format(num));
+    setStr(formatNumber(num));
     onChange(num);
     setHasChanges(true);
   };
@@ -168,7 +169,7 @@ export default function OrderPaymentClient({ order, metadata, isPancake }: Order
                 (sum: number, item) => sum + (item.weight ?? 0) * (item.quantity ?? 1),
                 0,
               );
-              return totalWeight > 0 ? `${new Intl.NumberFormat('vi-VN').format(totalWeight)} (g)` : '—';
+              return totalWeight > 0 ? `${formatNumber(totalWeight)} (g)` : '—';
             })()}
           </p>
         </div>

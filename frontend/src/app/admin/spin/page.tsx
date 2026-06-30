@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { apiClient } from '@/lib/apiClient';
 import SpinPrizeActions from '@/components/admin/SpinPrizeActions';
 import SpinPrizeRowActions from '@/components/admin/SpinPrizeRowActions';
+import { formatVndTight } from '@/lib/format';
 
 interface SpinVoucher {
   id: string;
@@ -121,8 +122,8 @@ export default async function SpinConfigPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {prizes.map(p => (
-                <tr key={p.id} className="hover:bg-gray-50">
+              {prizes.map((p, idx) => (
+                <tr key={p.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50`}>
                   <td className="px-6 py-4">
                     <div 
                       className="w-6 h-6 rounded-full border-2 border-gray-300"
@@ -147,7 +148,7 @@ export default async function SpinConfigPage() {
                         <div className="font-semibold text-gray-800">
                           {p.voucher.type === 'PERCENT' 
                             ? `${p.voucher.value}%` 
-                            : new Intl.NumberFormat('vi-VN').format(p.voucher.value) + 'đ'}
+                            : formatVndTight(p.voucher.value)}
                         </div>
                         <div className="text-xs text-gray-500 font-mono">{p.voucher.code}</div>
                       </div>

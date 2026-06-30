@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/apiClient';
 import { getSession } from '@/lib/auth';
 import DeleteStoreButton from '@/components/admin/DeleteStoreButton';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { formatVnd } from '@/lib/format';
 
 interface StoreOrder {
   id: string;
@@ -67,7 +68,7 @@ interface StoreDetail {
 }
 
 function fmt(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
+  return formatVnd(amount);
 }
 
 function fmtDate(d: string | Date) {
@@ -182,10 +183,10 @@ export default async function StoreDetailPage(props: { params: Promise<{ id: str
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {store.orders.map((order) => {
+                    {store.orders.map((order, idx) => {
                       const st = statusMap[order.status] || { cls: 'bg-gray-100 text-gray-700', label: order.status };
                       return (
-                        <tr key={order.id} className="hover:bg-gray-50">
+                        <tr key={order.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
                           <td className="px-4 py-3">
                             <Link href={`/admin/orders/${order.id}`} className="text-indigo-600 hover:underline font-semibold text-sm">{order.orderCode}</Link>
                           </td>

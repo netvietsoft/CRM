@@ -11,9 +11,10 @@ import OrderNotesClient from '@/components/admin/OrderNotesClient';
 import OrderInfoClient from '@/components/admin/OrderInfoClient';
 import { OrderSaveProvider } from '@/components/admin/OrderSaveProvider';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { formatVnd } from '@/lib/format';
 
 function fmt(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
+  return formatVnd(amount);
 }
 
 function fmtDate(d: string | Date) {

@@ -6,6 +6,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { claimQrRewardAction } from '@/actions/qrClaimActions';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { formatNumber } from '@/lib/format';
 
 interface QrOrderSummaryItem {
   name: string;
@@ -195,9 +196,9 @@ export default function QrClaimModal() {
   if (!isOpen) return null;
 
   // Format voucher amount based on order total or fallback
-  const voucherAmount = orderInfo ? new Intl.NumberFormat('vi-VN').format(orderInfo.totalAmount || orderInfo.discountAmount || 0) : '...';
+  const voucherAmount = orderInfo ? formatNumber(orderInfo.totalAmount || orderInfo.discountAmount || 0) : '...';
   const previewItem = orderInfo?.items[0] ?? null;
-  const orderAmountDisplay = new Intl.NumberFormat('vi-VN').format(orderInfo?.totalAmount ?? 0);
+  const orderAmountDisplay = formatNumber(orderInfo?.totalAmount ?? 0);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-fadeIn">

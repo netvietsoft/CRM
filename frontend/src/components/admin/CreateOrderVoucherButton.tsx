@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { Pencil, Trash2 } from 'lucide-react';
 import Select from '@/components/ui/Select';
+import { formatVnd } from '@/lib/format';
 
 interface Props {
   orderId: string;
@@ -11,7 +12,7 @@ interface Props {
 }
 
 function fmtVND(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' đ';
+  return formatVnd(amount);
 }
 
 type VoucherType = 'FIXED_AMOUNT' | 'PERCENT' | 'FREESHIP' | 'STACK';

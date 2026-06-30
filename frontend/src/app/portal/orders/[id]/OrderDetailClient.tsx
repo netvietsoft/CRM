@@ -7,9 +7,11 @@ import { useRouter } from 'next/navigation';
 import OrderReviewForm from '@/components/customer/OrderReviewForm';
 import { Copy } from 'lucide-react';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVnd } from '@/lib/format';
 
 function fmt(amount: number) {
-  return `${new Intl.NumberFormat('vi-VN').format(amount || 0)} đ`;
+  return formatVnd(amount);
 }
 
 function fmtDate(d: string | Date) {
@@ -269,26 +271,11 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
   const handleCancel = async () => {
     setCancelling(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/orders/${order.id}/cancel`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ reason: cancelReason }),
-        },
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.message || 'Không thể hủy đơn hàng');
-        return;
-      }
-
+      await apiClientClient.patch(`/orders/${order.id}/cancel`, { reason: cancelReason });
       setShowCancelModal(false);
       router.refresh();
-    } catch {
-      alert('Có lỗi xảy ra');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Không thể hủy đơn hàng');
     } finally {
       setCancelling(false);
     }
@@ -297,23 +284,10 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
   const handleConfirmReceived = async () => {
     setConfirmingReceived(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/orders/${order.id}/confirm-received`,
-        {
-          method: 'PATCH',
-          credentials: 'include',
-        },
-      );
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.message || 'Không thể xác nhận đã nhận hàng');
-        return;
-      }
-
+      await apiClientClient.patch(`/orders/${order.id}/confirm-received`, {});
       router.refresh();
-    } catch {
-      alert('Có lỗi xảy ra');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Không thể xác nhận đã nhận hàng');
     } finally {
       setConfirmingReceived(false);
     }

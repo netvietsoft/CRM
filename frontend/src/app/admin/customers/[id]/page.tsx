@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiClient } from '@/lib/apiClient';
 import CustomerActions from './CustomerActions';
+import { formatVndSymbol } from '@/lib/format';
 
 interface CustomerOrder {
   id: string;
@@ -90,11 +91,7 @@ interface CustomerDetail {
 }
 
 function formatMoney(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount || 0);
+  return formatVndSymbol(amount);
 }
 
 function formatDate(value: string | Date) {

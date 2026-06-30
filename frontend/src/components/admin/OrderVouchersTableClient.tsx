@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { Pencil, Trash2 } from 'lucide-react';
 import Select from '@/components/ui/Select';
+import { formatVndText } from '@/lib/format';
 
 interface OrderVoucher {
   id: string;
@@ -38,7 +39,7 @@ interface ApiErrorLike {
 }
 
 function fmtVND(amount: number) {
-  return new Intl.NumberFormat('vi-VN').format(amount || 0) + ' VND';
+  return formatVndText(amount);
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -212,12 +213,12 @@ export default function OrderVouchersTableClient() {
                     </div>
                   </td>
                 </tr>
-              ) : filtered.map((v) => {
+              ) : filtered.map((v, idx) => {
                 const status = getStatus(v);
                 const durationLabel = v.durationDays ? `${v.durationDays} ngày` : '—';
 
                 return (
-                  <tr key={v.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={v.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50/50 transition-colors`}>
                     <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap max-w-[180px] truncate" title={v.name}>
                       {v.name}
                     </td>

@@ -6,7 +6,9 @@ import { Heart, ShoppingBag, Truck, ShieldCheck, Undo2, Sparkles, Share2, X, Che
 import { useRouter, useSearchParams } from 'next/navigation';
 import { persistReferralCode } from '@/lib/referral-client';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { apiClientClient } from '@/lib/apiClientClient';
 import ProductReviews from './ProductReviews';
+import { formatVndSymbol } from '@/lib/format';
 
 interface Size {
   id: string;
@@ -59,11 +61,7 @@ interface ProductDetailClientProps {
 }
 
 function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatVndSymbol(amount);
 }
 
 export default function ProductDetailClient({ product, relatedProducts = [], initialWishlistIds, userReferralCode, userCompletedOrders }: ProductDetailClientProps) {
@@ -194,21 +192,14 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
 
   const toggleWishlist = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/wishlist`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ productId: product.id }),
+      const data = await apiClientClient.post<{ action?: string }>('/wishlist', {
+        productId: product.id,
       });
-      const data = await res.json();
-
-      if (res.ok) {
-        setIsWishlist(data.action === 'added');
-        showToast(
-          data.action === 'added' ? '💖 Đã thêm vào yêu thích!' : '💔 Đã bỏ yêu thích',
-          'success'
-        );
-      }
+      setIsWishlist(data.action === 'added');
+      showToast(
+        data.action === 'added' ? '💖 Đã thêm vào yêu thích!' : '💔 Đã bỏ yêu thích',
+        'success'
+      );
     } catch {
       showToast('Có lỗi xảy ra', 'error');
     }
@@ -254,26 +245,15 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
     setLoadingCart(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/cart`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          productId: product.id,
-          quantity,
-          size: availableSizes.find(s => s.id === selectedSizeId)?.name || null,
-          color: availableColors.find(c => c.id === selectedColorId)?.name || null,
-        }),
+      await apiClientClient.post('/cart', {
+        productId: product.id,
+        quantity,
+        size: availableSizes.find(s => s.id === selectedSizeId)?.name || null,
+        color: availableColors.find(c => c.id === selectedColorId)?.name || null,
       });
-
-      if (res.ok) {
-        showToast('🛒 Đã thêm vào giỏ hàng!', 'success');
-      } else {
-        const d = await res.json();
-        showToast(d.error || 'Có lỗi xảy ra', 'error');
-      }
-    } catch {
-      showToast('Không thể kết nối', 'error');
+      showToast('🛒 Đã thêm vào giỏ hàng!', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Có lỗi xảy ra', 'error');
     } finally {
       setLoadingCart(false);
     }
@@ -681,13 +661,12 @@ export default function ProductDetailClient({ product, relatedProducts = [], ini
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/wishlist`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ productId: rp.id }),
-                            }).then(() => {
-                              showToast('💖 Đã cập nhật yêu thích!', 'success');
-                            });
+                            apiClientClient
+                              .post('/wishlist', { productId: rp.id })
+                              .then(() => {
+                                showToast('💖 Đã cập nhật yêu thích!', 'success');
+                              })
+                              .catch(() => {});
                           }}
                           className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 backdrop-blur-sm ${isWishlisted
                               ? 'bg-rose-500 text-white shadow-md'

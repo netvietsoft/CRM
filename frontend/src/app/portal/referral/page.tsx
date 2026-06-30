@@ -3,6 +3,7 @@ import ReferralCard from './ReferralCard';
 import { apiClient } from '@/lib/apiClient';
 import { headers } from 'next/headers';
 import type { UserProfile } from '@/types/commerce';
+import { formatVndSymbol } from '@/lib/format';
 
 interface ReferralUser extends UserProfile {
   referralCode?: string | null;
@@ -75,10 +76,10 @@ export default async function PortalReferralPage() {
   const configMap = new Map(commissionConfigs.map(c => [c.level, c.percentage]));
   const getRate = (level: number) => configMap.get(level) || 0;
 
-  const fmt = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+  const fmt = formatVndSymbol;
   
   const headersList = await headers();
-  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
+  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3900';
   const protocol = headersList.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
   const referralLink = `${protocol}://${host}/login?ref=${user?.referralCode}`;
 

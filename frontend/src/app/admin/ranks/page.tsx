@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import RankConfigEditor from '@/components/admin/RankConfigEditor';
 import { apiClient } from '@/lib/apiClient';
+import { formatVndSymbol } from '@/lib/format';
 
 interface RankConfig {
   id: string;
@@ -33,11 +34,7 @@ const rankTextClassMap: Record<string, string> = {
 };
 
 function fmt(n: number) {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatVndSymbol(n);
 }
 
 export default async function AdminRanksPage() {

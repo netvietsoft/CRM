@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVndSymbol } from '@/lib/format';
 
 interface PulledOrder {
   id: string;
@@ -36,7 +37,7 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
 };
 
 function fmtMoney(n: number) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
+  return formatVndSymbol(n);
 }
 function fmtDate(s: string | null) {
   if (!s) return '—';

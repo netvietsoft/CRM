@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { ShoppingCart, ChevronDown, ChevronUp, Star } from 'lucide-react';
 import OrderReviewForm from '@/components/customer/OrderReviewForm';
 import { passthroughImageLoader } from '@/lib/imageLoader';
+import { apiClientClient } from '@/lib/apiClientClient';
+import { formatVndSymbol } from '@/lib/format';
 
 type OrderItem = {
   id: string;
@@ -117,19 +119,17 @@ export default function OrderList({ orders }: { orders: Order[] }) {
 
     setReordering(order.id);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'}/orders/check-stock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await apiClientClient.post<{ success?: boolean; error?: string }>(
+        '/orders/check-stock',
+        {
           productId: mainItem.product.id,
           size: mainItem.size,
           color: mainItem.color,
           quantity: mainItem.quantity,
-        }),
-      });
-      const data = await res.json();
+        },
+      );
 
-      if (res.ok && data.success) {
+      if (data.success) {
         // Build checkout query
         const query = new URLSearchParams({
           productId: mainItem.product.id,
@@ -142,15 +142,14 @@ export default function OrderList({ orders }: { orders: Order[] }) {
       } else {
         alert(data.error || 'Sản phẩm này đã hết hàng!');
       }
-    } catch {
-      alert('Có lỗi xảy ra khi kiểm tra tồn kho');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Có lỗi xảy ra khi kiểm tra tồn kho');
     } finally {
       setReordering(null);
     }
   };
 
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+  const fmt = formatVndSymbol;
 
   const handleReviewSuccess = () => {
     setReviewingOrder(null);
