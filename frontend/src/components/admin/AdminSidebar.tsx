@@ -34,7 +34,8 @@ const navItems = [
   {
     label: 'Phân tích',
     items: [
-      { name: 'Tổng quan phân tích', href: '/admin/analytics', roles: ADMIN_MODERATOR },
+      { name: 'Lãi/Lỗ sản phẩm', href: '/admin/analytics', roles: ADMIN_MODERATOR },
+      { name: 'Gán quảng cáo ↔ SP', href: '/admin/analytics/ad-mapping', roles: ADMIN_MODERATOR },
     ],
   },
   {
