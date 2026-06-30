@@ -65,6 +65,26 @@ export class ViettelpostAuthService {
     }
   }
 
+  /** POST một endpoint VTP có kèm token (dùng cho order/edit, UpdateOrder...). Trả JSON hoặc null. */
+  async post(path: string, body: any): Promise<any | null> {
+    const token = await this.getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${this.apiUrl}/${path.replace(/^\//, '')}`, {
+        method: 'POST',
+        headers: { Token: token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) this.logger.warn(`[VTP] POST ${path} → HTTP ${res.status} ${JSON.stringify(json)?.slice(0, 200)}`);
+      return json;
+    } catch (e: any) {
+      this.logger.warn(`[VTP] POST ${path} lỗi: ${e?.message || e}`);
+      return null;
+    }
+  }
+
   /** GET một endpoint VTP có kèm token (dùng cho detail-v2, list...). Trả JSON hoặc null. */
   async get(pathWithQuery: string): Promise<any | null> {
     const token = await this.getToken();

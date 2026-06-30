@@ -1,13 +1,13 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 
 interface ViettelCustomer {
   id: string;
   trackingCode: string;
-  orderReference: string | null;
   status: number | null;
   statusName: string | null;
   statusDate: string | null;
@@ -15,27 +15,7 @@ interface ViettelCustomer {
   receiverPhone: string | null;
   receiverAddress: string | null;
   productName: string | null;
-  detailEnrichedAt: string | null;
   cod: number;
-  moneyTotal: number | null;
-  moneyTotalFee: number | null;
-  moneyTotalVat: number | null;
-  moneyFeeCod: number | null;
-  productWeight: number | null;
-  orderService: string | null;
-  orderServiceAdd: string | null;
-  orderPayment: number | null;
-  expectedDeliveryDate: string | null;
-  note: string | null;
-  orderNote: string | null;
-  locationCurrently: string | null;
-  employeeName: string | null;
-  employeePhone: string | null;
-  isReturning: boolean;
-  reasonCode: string | null;
-  courierHistory: Array<{ status: number | null; statusName: string | null; note: string | null; location: string | null; at: string | null }> | null;
-  rawPayload: unknown;
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -48,12 +28,21 @@ function fmtDate(s: string | null) {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('vi-VN', { hour12: false });
 }
 
+const STATUS_CLS = (st: number | null) => {
+  if (st == null) return 'bg-gray-100 text-gray-700';
+  if ([501, 515, 500, 505].includes(st)) return 'bg-green-100 text-green-700';
+  if ([502, 503, 504, 510, 107].includes(st)) return 'bg-red-100 text-red-700';
+  if ([102, 200, 201, 300, 301].includes(st)) return 'bg-blue-100 text-blue-700';
+  return 'bg-yellow-100 text-yellow-700';
+};
+
 export default function ViettelCustomersPage() {
+  const router = useRouter();
   const [rows, setRows] = useState<ViettelCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openId, setOpenId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [toast, setToast] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,13 +59,21 @@ export default function ViettelCustomersPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  const copy = useCallback((label: string, value: string | null) => {
+    if (!value) return;
+    void navigator.clipboard.writeText(value);
+    setToast(`Đã copy ${label}: ${value}`);
+    window.setTimeout(() => setToast(''), 2200);
+  }, []);
+
   const syncNow = useCallback(async () => {
     setSyncing(true);
     setError('');
     try {
       const r = await apiClientClient.post<{ candidates: number; updated: number; skipped: number }>('/viettelpost/reconcile', {});
       await load();
-      alert(`Đồng bộ xong: ${r.updated}/${r.candidates} đơn được cập nhật/enrich.`);
+      setToast(`Đồng bộ xong: ${r.updated}/${r.candidates} đơn`);
+      window.setTimeout(() => setToast(''), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đồng bộ thất bại');
     } finally {
@@ -86,15 +83,31 @@ export default function ViettelCustomersPage() {
 
   const totalCod = rows.reduce((s, r) => s + (r.cod || 0), 0);
 
+  // Ô copy: hover hiện "Copy ‹value›", click copy (chặn nổi bọt để không mở chi tiết).
+  const CopyCell = ({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) =>
+    value ? (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); copy(label, value); }}
+        title={`📋 Copy ${label}: ${value}`}
+        className={`group inline-flex items-center gap-1 text-left hover:text-indigo-600 ${mono ? 'font-mono font-semibold text-gray-900' : 'text-gray-800'}`}
+      >
+        <span>{value}</span>
+        <span className="opacity-0 group-hover:opacity-100 text-[11px] text-indigo-500 transition-opacity">📋 Copy</span>
+      </button>
+    ) : (
+      <span className="text-gray-300 italic">—</span>
+    );
+
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">📦 Khách hàng Viettel</h1>
-          <p className="text-sm text-gray-500 mt-1">Toàn bộ thông tin đơn/khách tải về từ ViettelPost (1 dòng / mã vận đơn, cập nhật theo webhook).</p>
+          <p className="text-sm text-gray-500 mt-1">Trỏ vào mã vận đơn/SĐT để copy · click vào dòng để xem chi tiết &amp; sửa.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => void syncNow()} disabled={syncing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50" title="Gọi ViettelPost lấy SĐT/địa chỉ/SP + cập nhật trạng thái cho đơn chưa hoàn tất">
+          <button onClick={() => void syncNow()} disabled={syncing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50" title="Gọi ViettelPost lấy SĐT/địa chỉ/SP + cập nhật trạng thái">
             {syncing ? 'Đang đồng bộ...' : '⟳ Đồng bộ ViettelPost'}
           </button>
           <button onClick={() => void load()} disabled={loading} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
@@ -118,90 +131,52 @@ export default function ViettelCustomersPage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm whitespace-nowrap">
+          <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="text-left text-gray-600 border-b border-gray-100">
-                <th className="px-3 py-3 font-semibold">Mã vận đơn</th>
-                <th className="px-3 py-3 font-semibold">Người nhận</th>
-                <th className="px-3 py-3 font-semibold">SĐT</th>
-                <th className="px-3 py-3 font-semibold">Địa chỉ</th>
-                <th className="px-3 py-3 font-semibold">Sản phẩm</th>
-                <th className="px-3 py-3 font-semibold">Trạng thái</th>
-                <th className="px-3 py-3 font-semibold text-right">COD</th>
-                <th className="px-3 py-3 font-semibold">Dịch vụ</th>
-                <th className="px-3 py-3 font-semibold text-right">Cân (g)</th>
-                <th className="px-3 py-3 font-semibold">Bưu tá</th>
-                <th className="px-3 py-3 font-semibold">Ghi chú đơn</th>
-                <th className="px-3 py-3 font-semibold">Vị trí hiện tại</th>
-                <th className="px-3 py-3 font-semibold">Cập nhật</th>
-                <th className="px-3 py-3 font-semibold"></th>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Mã vận đơn</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Người nhận</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">SĐT</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Địa chỉ</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Sản phẩm</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Trạng thái</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right whitespace-nowrap">COD</th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">Cập nhật</th>
               </tr>
             </thead>
             <tbody>
               {loading && rows.length === 0 ? (
-                <tr><td colSpan={14} className="px-4 py-10 text-center text-gray-400">Đang tải...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">Đang tải...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={14} className="px-4 py-10 text-center text-gray-400">Chưa có khách Viettel nào. Dữ liệu sẽ tự về khi ViettelPost đẩy webhook.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-gray-400">Chưa có khách Viettel nào.</td></tr>
               ) : (
                 rows.map((r, i) => (
-                  <Fragment key={r.id}>
-                    <tr className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-50/40 border-b border-gray-50`}>
-                      <td className="px-3 py-3 font-mono font-semibold text-gray-900">{r.trackingCode}</td>
-                      <td className="px-3 py-3 text-gray-800">{r.receiverFullname || '—'}</td>
-                      <td className="px-3 py-3 text-gray-700">{r.receiverPhone || <span className="text-gray-300 italic">chưa đồng bộ</span>}</td>
-                      <td className="px-3 py-3 text-gray-500 max-w-[200px] truncate" title={r.receiverAddress || ''}>{r.receiverAddress || '—'}</td>
-                      <td className="px-3 py-3 text-gray-600 max-w-[220px] truncate" title={r.productName || ''}>{r.productName || '—'}</td>
-                      <td className="px-3 py-3"><span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{r.status ?? '—'} {r.statusName || ''}</span></td>
-                      <td className="px-3 py-3 text-right font-semibold">{fmtMoney(r.cod)}</td>
-                      <td className="px-3 py-3 text-gray-600">{r.orderService || '—'}</td>
-                      <td className="px-3 py-3 text-right text-gray-600">{r.productWeight ?? '—'}</td>
-                      <td className="px-3 py-3 text-gray-600">{r.employeeName ? `${r.employeeName}${r.employeePhone ? ' · ' + r.employeePhone : ''}` : '—'}</td>
-                      <td className="px-3 py-3 text-gray-500 max-w-[200px] truncate" title={r.orderNote || ''}>{r.orderNote || '—'}</td>
-                      <td className="px-3 py-3 text-gray-500 max-w-[220px] truncate" title={r.locationCurrently || ''}>{r.locationCurrently || '—'}</td>
-                      <td className="px-3 py-3 text-gray-500">{fmtDate(r.statusDate)}</td>
-                      <td className="px-3 py-3">
-                        <button onClick={() => setOpenId(openId === r.id ? null : r.id)} className="text-indigo-600 hover:text-indigo-800 text-xs font-semibold">
-                          {openId === r.id ? 'Ẩn' : 'Chi tiết'}
-                        </button>
-                      </td>
-                    </tr>
-                    {openId === r.id && (
-                      <tr className="bg-indigo-50/30 border-b border-gray-100">
-                        <td colSpan={14} className="px-4 py-4">
-                          <div className="grid md:grid-cols-2 gap-4">
-                            <div>
-                              <div className="text-xs font-semibold text-gray-700 mb-2">Hành trình ({r.courierHistory?.length || 0})</div>
-                              <ol className="space-y-1 text-xs text-gray-600">
-                                {(r.courierHistory || []).map((h, k) => (
-                                  <li key={k} className="flex gap-2">
-                                    <span className="text-gray-400">{fmtDate(h.at)}</span>
-                                    <span className="font-medium">{h.status ?? ''} {h.statusName || ''}</span>
-                                    {h.note && <span className="text-gray-400">— {h.note}</span>}
-                                  </li>
-                                ))}
-                                {(!r.courierHistory || r.courierHistory.length === 0) && <li className="text-gray-400">—</li>}
-                              </ol>
-                              <div className="mt-3 text-xs text-gray-600 space-y-1">
-                                <div>Tham chiếu: <span className="font-mono">{r.orderReference || '—'}</span></div>
-                                <div>Tổng cước: {fmtMoney((r.moneyTotalFee || 0) + (r.moneyTotalVat || 0))} · Phí COD: {fmtMoney(r.moneyFeeCod)}</div>
-                                <div>Giao dự kiến: {r.expectedDeliveryDate || '—'} · Hoàn: {r.isReturning ? 'Có' : 'Không'} · Lý do lỗi: {r.reasonCode || '—'}</div>
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-gray-700 mb-2">Payload gốc</div>
-                              <pre className="text-[11px] bg-white border border-gray-200 rounded-lg p-3 max-h-64 overflow-auto">{JSON.stringify(r.rawPayload, null, 1)}</pre>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                  <tr
+                    key={r.id}
+                    onClick={() => router.push(`/admin/viettel-customers/${encodeURIComponent(r.trackingCode)}`)}
+                    className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-100'} hover:bg-blue-50/60 border-b border-gray-50 cursor-pointer`}
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap"><CopyCell label="mã vận đơn" value={r.trackingCode} mono /></td>
+                    <td className="px-4 py-3 text-gray-800 whitespace-nowrap">{r.receiverFullname || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap"><CopyCell label="SĐT" value={r.receiverPhone} /></td>
+                    <td className="px-4 py-3 text-gray-500 max-w-[240px] truncate" title={r.receiverAddress || ''}>{r.receiverAddress || '—'}</td>
+                    <td className="px-4 py-3 text-gray-600 max-w-[240px] truncate" title={r.productName || ''}>{r.productName || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_CLS(r.status)}`}>{r.status ?? '—'} {r.statusName || ''}</span></td>
+                    <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">{fmtMoney(r.cod)}</td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(r.statusDate || r.updatedAt)}</td>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm shadow-lg animate-in fade-in slide-in-from-bottom-2">
+          ✓ {toast}
+        </div>
+      )}
     </div>
   );
 }

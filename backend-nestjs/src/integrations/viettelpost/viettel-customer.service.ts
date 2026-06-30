@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ViettelpostAuthService } from './viettelpost-auth.service';
 
 /**
  * Ghi nhận đơn/khách ViettelPost vào bảng riêng `viettel_customers` (1 dòng / mã vận đơn).
@@ -10,7 +11,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class ViettelCustomerService {
   private readonly logger = new Logger(ViettelCustomerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authService: ViettelpostAuthService,
+  ) {}
 
   /** Parse ngày VTP "dd/MM/yyyy HH:mm:ss" (hoặc ISO) → Date; null nếu không parse được. */
   private parseDate(value?: string | null): Date | null {
@@ -139,5 +143,72 @@ export class ViettelCustomerService {
   /** Liệt kê cho trang admin "Khách hàng Viettel". */
   async listCustomers() {
     return this.prisma.viettelCustomer.findMany({ orderBy: { updatedAt: 'desc' } });
+  }
+
+  /** Chi tiết 1 khách/đơn theo mã vận đơn. */
+  async getOne(trackingCode: string) {
+    const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } });
+    if (!row) throw new NotFoundException('Không tìm thấy đơn ViettelPost');
+    return row;
+  }
+
+  /**
+   * Sửa thông tin + đẩy lên ViettelPost (order/edit). Luôn lưu CRM; chỉ đẩy VTP khi đơn CHƯA lấy hàng
+   * (ORDER_STATUS < 200) — VTP không cho sửa đơn đã vào khai thác. Trả kết quả cả 2 phía.
+   */
+  async editAndPush(
+    trackingCode: string,
+    dto: {
+      receiverFullname?: string;
+      receiverPhone?: string;
+      receiverAddress?: string;
+      orderNote?: string;
+      cod?: number;
+    },
+  ): Promise<{ local: 'updated'; vtp: { pushed: boolean; message: string } }> {
+    const row = await this.getOne(trackingCode);
+
+    // Lưu CRM trước (luôn thành công).
+    await this.prisma.viettelCustomer.update({
+      where: { trackingCode },
+      data: {
+        receiverFullname: dto.receiverFullname ?? undefined,
+        receiverPhone: dto.receiverPhone ?? undefined,
+        receiverAddress: dto.receiverAddress ?? undefined,
+        orderNote: dto.orderNote ?? undefined,
+        cod: dto.cod ?? undefined,
+      },
+    });
+
+    // Đẩy VTP chỉ khi status < 200 (chưa lấy hàng).
+    if (row.status != null && row.status >= 200) {
+      return {
+        local: 'updated',
+        vtp: { pushed: false, message: `Đơn đã vào khai thác (status ${row.status}) — ViettelPost không cho sửa.` },
+      };
+    }
+
+    const payload: Record<string, any> = {
+      ORDER_NUMBER: trackingCode,
+      RECEIVER_FULLNAME: dto.receiverFullname ?? row.receiverFullname,
+      RECEIVER_PHONE: dto.receiverPhone ?? row.receiverPhone,
+      RECEIVER_ADDRESS: dto.receiverAddress ?? row.receiverAddress,
+      RECEIVER_PROVINCE: row.receiverProvinceId,
+      RECEIVER_DISTRICT: row.receiverDistrictId,
+      RECEIVER_WARD: row.receiverWardId,
+      ORDER_NOTE: dto.orderNote ?? row.orderNote,
+      MONEY_COLLECTION: dto.cod ?? row.cod,
+      PRODUCT_NAME: row.productName,
+      PRODUCT_WEIGHT: row.productWeight,
+    };
+    const res = await this.authService.post('order/edit', payload);
+    const ok = res && (res.status === 200 || res.error === false);
+    return {
+      local: 'updated',
+      vtp: {
+        pushed: !!ok,
+        message: ok ? 'Đã đẩy cập nhật lên ViettelPost.' : `VTP từ chối/không phản hồi: ${res?.message || 'lỗi không rõ'}`,
+      },
+    };
   }
 }
