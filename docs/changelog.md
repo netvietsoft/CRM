@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-06-30 (phiên 3) — Meta Ads nâng cấp · Messenger Inbox · Pancake UI templates
+
+> ⚠️ **Vị trí code:** các thay đổi backend + FE (trừ template Pancake) đã commit trên nhánh **`fix/meta-ads-module`** (`439fff2`, `e55dd8f`, `ae601ba`), **chưa merge vào `main`**. Template Pancake (`/pancake/*`) hiện còn **untracked** trong working tree. → Cần merge/đồng bộ nhánh.
+
+### A. Meta Ads — nâng cấp (commit 439fff2)
+- **Scope đa cửa hàng** (quy tắc #4): `AdsController` thêm `PermissionsGuard` + `@Permissions(INTEGRATIONS_*)` + `@GetEffectiveStoreId()`; service scope qua `account.storeId`. `getConfig`→`getConfigs()` (mỗi store 1 credentials); sync gắn `store_id` cho account.
+- **Queue**: `POST /ads/sync` đẩy job vào BullMQ `ads-sync` (Redis trống → fallback inline). Processor `ads-sync.processor.ts`.
+- **Tiền tệ**: quy đổi minor-unit theo currency (`minorFactor`: USD ÷100, VND ÷1, BHD ÷1000) cho budget/balance/amount_spent/spend_cap; spend insights giữ nguyên.
+- **Cột giàu dữ liệu** AdAccount (accountStatus/balance/amountSpent/spendCap/fundingSource/business…) + model **AdBusiness** (BM). Migration `20260630140000_ad_rich_pages_bm`, `20260630180000_ad_funding_details`.
+
+### B. Meta Ads — restructure URL + danh sách tài khoản + Fanpage (commit e55dd8f)
+- URL mới: **`/admin/adsmeta/accall`** (bảng danh sách tài khoản) + **`/admin/adsmeta/[accountId]`** (dashboard); **`/admin/ads`** → redirect. Sidebar `AdsSidebarMenu` cập nhật.
+- Bảng tài khoản (`AdsAccountsList`): Status · Cách thanh toán (`funding_source_details.display_string`) · Tiền tệ · Dư nợ · Limit · Đã tiêu · Loại TK (BM/CN) — header tối + sort. Cột `fundingDetails Json` trên AdAccount.
+- **Menu Fanpage** (`/admin/adsmeta/pages`, `AdsPagesList`): list page + **7 quyền (tasks)** ADVERTISE/ANALYZE/CREATE_CONTENT/MESSAGING/MODERATE/MANAGE/VIEW_MONETIZATION_INSIGHTS. Endpoint `GET /ads/pages`; model `AdPage` mở rộng (tasks/fanCount/link/verification…). Migration `20260630190000_ad_page_fields`. Sync page gộp vào `/ads/sync`.
+
+### C. Messenger Inbox — chat với khách của Page (commit e55dd8f + ae601ba)
+- Module `src/messenger`: model `msg_pages/contacts/conversations/messages` (migration `20260701090000_messenger_inbox`, `20260701100000_messenger_assign_labels`). Quyền `MESSENGER_VIEW/SEND`.
+- Webhook (PUBLIC) verify chữ ký `X-Hub-Signature-256` (raw body, `rawBody:true` ở main.ts) → ingest idempotent theo `mid`. Realtime qua gateway `admin-notifications` (`messenger:message`).
+- REST scope đa cửa hàng; **reply** Send API (chặn ngoài cửa sổ 24h, gửi ảnh URL); subscribe/backfill/register page. **GĐ3**: tìm kiếm, gán nhân viên (assignedUserId), nhãn (labels).
+- FE `/admin/messenger` (3 cột). Spec/plan: `docs/superpowers/specs|plans/2026-06-30-messenger-inbox*`.
+
+### D. Pancake UI templates (chưa commit — `/pancake/*`)
+- Workspace full-screen kiểu Pancake (top-nav riêng, auth như admin): **Hội thoại · Đơn hàng · Bài viết · Thống kê (9 trang) · Cài đặt (11 trang)**. Toàn bộ là **template mock** (UI kit `components/pancake/ui.tsx`, biểu đồ SVG tự vẽ) — sẽ ghép logic từng phần sau. Chi tiết: `docs/09-pancake-workspace.md`.
+
+---
+
 ## 2026-06-30 — Tính năng: Phân tích Lãi/Lỗ sản phẩm (Phase 1)
 - Module mới `src/analytics`: `GET /analytics/product-pnl`, `GET/PUT /analytics/ad-map`. Bảng mới `AdProductMap` (map campaign Meta → sản phẩm, migration `20260630200000_add_ad_product_map`, áp DB thủ công như các lần trước).
 - Công thức: doanh thu = đơn COD đã thu (PAYMENT_COLLECTED/COMPLETED), ngày = paidAt??updatedAt (gom theo ngày UTC); cost = `productionPrice`×qty; quảng cáo = AdInsight.spend của campaign đã map; vận hành = 0 (Phase 2). Hàm thuần `buildPnlReport` (`src/analytics/pnl.util.ts`) + unit test PASS.
