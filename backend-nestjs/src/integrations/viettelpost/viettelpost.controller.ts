@@ -72,9 +72,24 @@ export class ViettelpostController {
   // Bảng "Khách hàng Viettel" — toàn bộ field VTP, 1 dòng / mã vận đơn.
   @Get('customers')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
-  @ApiOperation({ summary: 'List ViettelPost customers (full captured fields)' })
-  async listCustomers() {
-    return this.viettelCustomerService.listCustomers();
+  @ApiOperation({ summary: 'List ViettelPost customers (filterable)' })
+  async listCustomers(
+    @Query('search') search?: string,
+    @Query('productName') productName?: string,
+    @Query('status') status?: string,
+    @Query('codMin') codMin?: string,
+    @Query('codMax') codMax?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.viettelCustomerService.listCustomers({ search, productName, status, codMin, codMax, dateFrom, dateTo });
+  }
+
+  // Danh sách trạng thái đang có (cho dropdown lọc). Đặt trước customers/:code để không bị nuốt route.
+  @Get('statuses')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  async statuses() {
+    return this.viettelCustomerService.listStatuses();
   }
 
   // Chi tiết 1 khách/đơn theo mã vận đơn.

@@ -140,9 +140,55 @@ export class ViettelCustomerService {
     }
   }
 
-  /** Liệt kê cho trang admin "Khách hàng Viettel". */
-  async listCustomers() {
-    return this.prisma.viettelCustomer.findMany({ orderBy: { updatedAt: 'desc' } });
+  /** Liệt kê cho trang admin "Khách hàng Viettel" — có bộ lọc. */
+  async listCustomers(q: {
+    search?: string; // người nhận / mã vận đơn / SĐT
+    productName?: string;
+    status?: string | number;
+    codMin?: string | number;
+    codMax?: string | number;
+    dateFrom?: string;
+    dateTo?: string;
+  } = {}) {
+    const where: any = {};
+    const search = (q.search || '').trim();
+    if (search) {
+      where.OR = [
+        { receiverFullname: { contains: search } },
+        { trackingCode: { contains: search } },
+        { receiverPhone: { contains: search } },
+      ];
+    }
+    if (q.productName?.trim()) where.productName = { contains: q.productName.trim() };
+    if (q.status !== undefined && q.status !== '' && q.status !== null) {
+      const st = Number(q.status);
+      if (!Number.isNaN(st)) where.status = st;
+    }
+    const codMin = q.codMin !== undefined && q.codMin !== '' ? Number(q.codMin) : undefined;
+    const codMax = q.codMax !== undefined && q.codMax !== '' ? Number(q.codMax) : undefined;
+    if (codMin !== undefined || codMax !== undefined) {
+      where.cod = {};
+      if (codMin !== undefined && !Number.isNaN(codMin)) where.cod.gte = codMin;
+      if (codMax !== undefined && !Number.isNaN(codMax)) where.cod.lte = codMax;
+    }
+    if (q.dateFrom || q.dateTo) {
+      where.createdAt = {};
+      if (q.dateFrom) where.createdAt.gte = new Date(`${q.dateFrom}T00:00:00`);
+      if (q.dateTo) where.createdAt.lte = new Date(`${q.dateTo}T23:59:59.999`);
+    }
+    return this.prisma.viettelCustomer.findMany({ where, orderBy: { updatedAt: 'desc' }, take: 1000 });
+  }
+
+  /** Danh sách trạng thái (mã + tên) đang có trong bảng — cho dropdown lọc. */
+  async listStatuses() {
+    const rows = await this.prisma.viettelCustomer.groupBy({
+      by: ['status', 'statusName'],
+      _count: { _all: true },
+    });
+    return rows
+      .filter((r) => r.status != null)
+      .map((r) => ({ status: r.status, statusName: r.statusName, count: r._count._all }))
+      .sort((a, b) => (a.status || 0) - (b.status || 0));
   }
 
   /**
