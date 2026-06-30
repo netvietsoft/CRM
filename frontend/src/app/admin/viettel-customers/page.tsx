@@ -86,12 +86,12 @@ export default function ViettelCustomersPage() {
 
   const totalCod = rows.reduce((s, r) => s + (r.cod || 0), 0);
 
-  const CopyCell = ({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) =>
+  const CopyCell = ({ label, value, mono, clamp }: { label: string; value: string | null; mono?: boolean; clamp?: boolean }) =>
     value ? (
       <button type="button" onClick={(e) => { e.stopPropagation(); copy(label, value); }} title={`📋 Copy ${label}: ${value}`}
-        className={`group inline-flex items-center gap-1 text-left hover:text-indigo-600 ${mono ? 'font-mono font-semibold text-gray-900' : 'text-gray-800'}`}>
-        <span>{value}</span>
-        <span className="opacity-0 group-hover:opacity-100 text-[11px] text-indigo-500 transition-opacity">📋 Copy</span>
+        className={`group inline-flex items-center gap-1 text-left hover:text-indigo-600 ${clamp ? 'max-w-[240px]' : ''} ${mono ? 'font-mono font-semibold text-gray-900' : 'text-gray-700'}`}>
+        <span className={clamp ? 'truncate' : ''}>{value}</span>
+        <span className="opacity-0 group-hover:opacity-100 text-[11px] text-indigo-500 transition-opacity shrink-0">📋 Copy</span>
       </button>
     ) : <span className="text-gray-300 italic">—</span>;
 
@@ -115,8 +115,8 @@ export default function ViettelCustomersPage() {
       {/* Thanh lọc — 1 dòng */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3">
         <div className="flex items-center gap-2 overflow-x-auto">
-          <input className={`${inputCls} flex-1 min-w-[180px]`} placeholder="Người nhận / Mã VĐ / SĐT" value={filters.search} onChange={e => setF('search', e.target.value)} onKeyDown={e => e.key === 'Enter' && load(filters)} />
-          <input className={`${inputCls} flex-1 min-w-[140px]`} placeholder="Tên sản phẩm" value={filters.productName} onChange={e => setF('productName', e.target.value)} onKeyDown={e => e.key === 'Enter' && load(filters)} />
+          <input className={`${inputCls} w-[200px] shrink-0`} placeholder="Người nhận / Mã VĐ / SĐT" value={filters.search} onChange={e => setF('search', e.target.value)} onKeyDown={e => e.key === 'Enter' && load(filters)} />
+          <input className={`${inputCls} w-[150px] shrink-0`} placeholder="Tên sản phẩm" value={filters.productName} onChange={e => setF('productName', e.target.value)} onKeyDown={e => e.key === 'Enter' && load(filters)} />
           <select className={`${inputCls} w-[170px] shrink-0`} value={filters.status} onChange={e => setF('status', e.target.value)}>
             <option value="">Tất cả trạng thái</option>
             {statusOpts.map(s => <option key={s.status} value={s.status}>{s.status} · {s.statusName || ''} ({s.count})</option>)}
@@ -171,7 +171,7 @@ export default function ViettelCustomersPage() {
                     <td className="px-4 py-3 text-gray-800 whitespace-nowrap">{r.receiverFullname || '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap"><CopyCell label="SĐT" value={r.receiverPhone} /></td>
                     <td className="px-4 py-3 text-gray-500 max-w-[240px] truncate" title={r.receiverAddress || ''}>{r.receiverAddress || '—'}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[240px] truncate" title={r.productName || ''}>{r.productName || '—'}</td>
+                    <td className="px-4 py-3"><CopyCell label="sản phẩm" value={r.productName} clamp /></td>
                     <td className="px-4 py-3 whitespace-nowrap"><span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_CLS(r.status)}`}>{r.status ?? '—'} {r.statusName || ''}</span></td>
                     <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">{fmtMoney(r.cod)}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(r.statusDate || r.updatedAt)}</td>
