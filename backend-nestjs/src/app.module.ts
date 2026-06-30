@@ -15,6 +15,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { StoresModule } from './stores/stores.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { ViettelpostModule } from './integrations/viettelpost/viettelpost.module';
+import { AdsModule } from './integrations/ads/ads.module';
 import { CartModule } from './cart/cart.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -101,6 +102,7 @@ function getQueueModules(): any[] {
     StoresModule,
     IntegrationsModule,
     ViettelpostModule,
+    AdsModule,
     CartModule,
     WishlistModule,
     ReviewsModule,

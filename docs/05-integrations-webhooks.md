@@ -5,11 +5,29 @@
 |---|---|---|---|---|
 | Pancake POS | Sync + Webhook | 2 chiều | apiKey(DB) + header signature | dedup theo order ID |
 | ViettelPost | Webhook vận chuyển | Vào | secret per-store (timingSafeEqual) | orderCode unique |
+| Meta Ads | Sync (pull) | Vào | access token + ad_account_id (StoreIntegration/env) | upsert theo (platform,level,entity,date) |
 | Casso (VietQR) | Webhook thanh toán | Vào | HMAC-SHA512 | match mã đơn + số tiền |
 | SMS (NetViet) | Service | Ra | env/DB config | không |
 | Mail (SMTP) | Service | Ra | env config | không |
 | Zalo ZNS | Service | Ra | OAuth token (systemConfig) | — |
 | Address | Tiện ích | Vào | public, JSON tĩnh | — |
+
+---
+
+## 0. Meta Ads — Quảng cáo (`src/integrations/ads`)
+Kéo TOÀN BỘ chiến dịch + chỉ số tài khoản quảng cáo Meta (Facebook/Instagram) về CRM. Chuẩn hoá để cắm thêm nền tảng sau. Chi tiết: spec `docs/superpowers/specs/2026-06-30-meta-ads-ingestion-design.md`.
+
+Bảng: `ad_accounts` / `ad_campaigns` / `ad_sets` / `ads` / `ad_insights` (chỉ số theo NGÀY mọi cấp; mỗi bảng có `raw Json` = payload gốc đầy đủ).
+
+Endpoint (prefix /api, guard ADMIN/MODERATOR):
+- **POST /ads/sync** `{days?}` — đồng bộ ngay (mặc định 90 ngày). `@Cron` 3h/lần (tắt: env `ADS_SYNC_ENABLED=false`).
+- GET /ads/accounts — danh sách tài khoản + lastSyncedAt.
+- GET /ads/summary?from&to&accountId — KPI gộp (spend/impressions/reach/clicks/results + CTR/CPC/CPM/cost-per-result).
+- GET /ads/campaigns?from&to&accountId — chỉ số cộng dồn theo campaign.
+- GET /ads/campaigns/:id/insights?from&to — chuỗi theo ngày.
+
+Config: **Hệ thống → Kết nối → thẻ Meta Ads** → Access Token (`ads_read`) + Ad Account ID (`act_...`) + bật Active → lưu `StoreIntegration(platform='META_ADS')` (`accessToken`, `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_ACCOUNT_ID`.
+**Gotcha**: API Graph v21 (`META_GRAPH_URL` đổi được); `results`/`cost-per-result` suy từ `actions` theo độ ưu tiên (giữ `actions` đầy đủ cho AI); ngân sách Meta theo đơn vị nhỏ nhất của tiền tệ (VND 0 chữ số thập phân nên giữ nguyên); thiếu credentials → sync trả `configured:false`, không crash. UI: `/admin/ads`.
 
 ---
 
@@ -66,8 +84,24 @@ Nhận webhook từ ViettelPost để cập nhật trạng thái vận chuyển 
 - Hoàn hàng (502/510) hoặc huỷ (503/504/107) → reject voucher. Giao 1 phần → tính lại discount theo tỷ lệ.
 - Bắn `messagingAutomationService.handleOrderStateChange()` + tạo AdminNotification.
 
+### Reconcile / enrich (`ViettelpostSyncService`)
+- VTP là PUSH (không có API "list đơn"). Cron mỗi 10 phút (`VIETTELPOST_SYNC_CRON`, tắt bằng `VIETTELPOST_RECONCILE=false`) + nút `POST /api/viettelpost/reconcile` duyệt các đơn `source='VIETTEL'` chưa ở trạng thái cuối → gọi `order/detail-v2?o=<trackingCode>` (GET, kèm token) → cập nhật `Order.status` (phòng webhook miss) + **enrich** bảng `viettel_customers` (SĐT/địa chỉ/tên SP mà webhook không gửi).
+- **Gotcha địa chỉ** (đã sửa 2026-06-30): `enrichFromDetail` PHẢI lấy `receiverAddress = RECEIVER_ADDRESS || RECEIVER_HOME_NO`. VTP trả CẢ HAI — `RECEIVER_ADDRESS` là địa chỉ ĐẦY ĐỦ (số nhà + đường + phường + quận + tỉnh), `RECEIVER_HOME_NO` chỉ là số nhà (`"57"`, `"."`). Lấy home_no trước = địa chỉ cụt trên trang danh sách. Tỉnh/quận/phường còn lưu riêng dạng ID số (`receiverProvinceId/DistrictId/WardId`). Full detail lưu ở `detailPayload` → backfill được khi cần, không phải gọi lại VTP.
+- Nhánh webhook upsert KHÔNG set `receiverAddress` → địa chỉ chỉ có SAU khi reconcile/enrich chạy (thiết kế, không phải bug).
+
+### Outbound: tạo đơn / địa chỉ / nháp (`integrations/viettelpost`)
+Controller `viettelpost.controller.ts` + `ViettelCustomerService.createOnVtp` (host outbound: `partner.viettelpost.vn/v2`, token qua `ViettelpostAuthService`).
+- **Địa chỉ hệ cũ (3 cấp)**: `GET /api/viettelpost/address/provinces | districts?provinceId | wards?districtId` → `listProvince/listDistrict/listWards`.
+- **Địa chỉ hệ mới (2 cấp, sau 1/7/2025)**: `GET /api/viettelpost/address/provinces-new | wards-new?provinceId` → v3 `categories/listProvinceNew` (34 tỉnh, `{PROVINCE_ID,PROVINCE_CODE,PROVINCE_NAME}`) + `categories/listWardsNew?provinceId=` (xã gắn thẳng vào tỉnh, `{WARDS_ID,WARDS_NAME,PROVINCE_ID}`). ĐÃ xác minh với API thật. Dùng `authService.getV3()` (đổi `/v2`→`/v3`). ⚠ Tên đúng `listWardsNew` (KHÔNG phải listWardNew); xã hệ mới có WARDS_ID riêng (vd 49827) khác hệ cũ.
+- **Tạo đơn**: `POST /api/viettelpost/orders` (ADMIN/STAFF) → `createOnVtp(dto)` (`order/createOrder`). Cờ `useNewAddress` → `RECEIVER_DISTRICT:0`. `draftCode` → tự xoá nháp sau khi tạo thành công.
+- **Nháp**: `POST /api/viettelpost/drafts` (lưu/cập nhật) + `DELETE /api/viettelpost/drafts/:code`. Nháp = dòng `viettel_customers` với `trackingCode='DRAFT-...'`, `status=null`, `statusName='Nháp'`, form đầy đủ trong `detailPayload._draft.dto`. KHÔNG đẩy VTP; reconcile (chạy trên `prisma.order`) không đụng tới.
+- **Hủy/cập nhật trạng thái**: `POST /api/viettelpost/customers/:code/update-status {type}` → `order/UpdateOrder` (TYPE 4 = Hủy khi status<200).
+- **Mã đơn gợi ý**: `GET /api/viettelpost/next-order-ref` → `{ orderReference: 'CHYSHOP'+(số đơn VTP thật + 1) }` (đếm `viettel_customers` loại trừ `DRAFT-`). ⚠ Đếm-tổng → có thể trùng nếu xoá đơn cũ; chấp nhận theo yêu cầu nghiệp vụ.
+- FE: `admin/viettel-customers/create` (toggle địa danh mới; ghi chú mặc định "không cho thử hàng…"; mã đơn prefill `CHYSHOP<n>` sửa được; **COD tự bám = Tổng giá trị hàng** đến khi user sửa tay, hiển thị **đậm đỏ**; 3 nút Tạo đơn/Lưu nháp/Xoá-Hủy; nạp `?draft=`), `[code]` (chi tiết+sửa+hành động), `page.tsx` (danh sách, dòng `DRAFT-` mở form sửa).
+
 ### ENV (inbound VTP)
 - `VIETTELPOST_WEBHOOK_TOKEN` + `VIETTELPOST_WEBHOOK_SECRET` — **lỗi thời** (legacy), không còn dùng cho xác thực inbound. Secret inbound nay lưu tại `StoreIntegration.metadata.webhookSecret` (per-store, cấu hình qua admin UI).
+- Outbound: `VIETTELPOST_API_URL` (mặc định `https://partner.viettelpost.vn/v2`), `VIETTELPOST_USERNAME/PASSWORD`, `VIETTELPOST_SENDER_*` (NAME/PHONE/ADDRESS/PROVINCE/DISTRICT/WARD).
 
 ## 3. Casso / VietQR (`src/webhooks/casso.*`)
 Đối soát chuyển khoản ngân hàng → đánh dấu đơn PAID.

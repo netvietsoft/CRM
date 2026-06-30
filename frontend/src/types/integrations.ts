@@ -2,6 +2,7 @@ export interface IntegrationMetadata {
   senderProvince?: string;
   senderWard?: string;
   senderAddress?: string;
+  adAccountId?: string; // Meta Ads: act_<id>
   [key: string]: string | undefined;
 }
 

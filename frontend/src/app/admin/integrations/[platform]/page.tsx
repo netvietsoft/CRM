@@ -18,6 +18,7 @@ const PLATFORMS = [
   { id: 'TIKTOK', name: 'TikTok Shop', icon: '🎵', color: 'bg-black', desc: 'Kết nối kho vận TikTok Shop' },
   { id: 'ZALO', name: 'Zalo OA', icon: '💬', color: 'bg-blue-500', desc: 'Gửi tin nhắn chăm sóc tự động' },
   { id: 'VIETTELPOST', name: 'ViettelPost', icon: '📦', color: 'bg-red-600', desc: 'Tính phí vận chuyển & đẩy đơn' },
+  { id: 'META_ADS', name: 'Meta Ads', icon: '📣', color: 'bg-blue-600', desc: 'Kéo chiến dịch & chỉ số quảng cáo Facebook/Instagram' },
 ];
 
 export default function IntegrationDetailPage() {

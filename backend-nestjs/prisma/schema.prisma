@@ -1384,3 +1384,145 @@ model OtpRecord {
   @@index([phone, isUsed, expiresAt])
   @@map("otp_records")
 }
+
+// ===== Quảng cáo (Ads) — kéo toàn bộ chiến dịch + chỉ số về CRM =====
+// Chuẩn hoá theo nền tảng (v1: META). Mỗi bảng giữ thêm `raw Json` = payload gốc
+// đầy đủ để AI phân tích sau, không bỏ sót field nào.
+
+model AdAccount {
+  id           String       @id @default(uuid())
+  storeId      String?      @map("store_id") // coupling lỏng, không FK
+  platform     String       @default("META")
+  externalId   String       @map("external_id") // vd "act_123456"
+  name         String?
+  currency     String?
+  timezoneName String?       @map("timezone_name")
+  status       String?
+  lastSyncedAt DateTime?     @map("last_synced_at")
+  raw          Json?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  campaigns    AdCampaign[]
+  adSets       AdSet[]
+  ads          Ad[]
+  insights     AdInsight[]
+
+  @@unique([platform, externalId])
+  @@map("ad_accounts")
+}
+
+model AdCampaign {
+  id             String      @id @default(uuid())
+  accountId      String      @map("account_id")
+  platform       String      @default("META")
+  externalId     String      @map("external_id")
+  name           String?
+  status         String?
+  objective      String?
+  dailyBudget    Float?      @map("daily_budget")
+  lifetimeBudget Float?      @map("lifetime_budget")
+  startTime      DateTime?   @map("start_time")
+  stopTime       DateTime?   @map("stop_time")
+  raw            Json?
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  account        AdAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  adSets         AdSet[]
+  ads            Ad[]
+  insights       AdInsight[]
+
+  @@unique([platform, externalId])
+  @@index([accountId])
+  @@map("ad_campaigns")
+}
+
+model AdSet {
+  id               String      @id @default(uuid())
+  accountId        String      @map("account_id")
+  campaignId       String?     @map("campaign_id")
+  platform         String      @default("META")
+  externalId       String      @map("external_id")
+  name             String?
+  status           String?
+  dailyBudget      Float?      @map("daily_budget")
+  lifetimeBudget   Float?      @map("lifetime_budget")
+  optimizationGoal String?     @map("optimization_goal")
+  billingEvent     String?     @map("billing_event")
+  targeting        Json?
+  startTime        DateTime?   @map("start_time")
+  stopTime         DateTime?   @map("stop_time")
+  raw              Json?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  account          AdAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  campaign         AdCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  ads              Ad[]
+  insights         AdInsight[]
+
+  @@unique([platform, externalId])
+  @@index([accountId])
+  @@index([campaignId])
+  @@map("ad_sets")
+}
+
+model Ad {
+  id          String      @id @default(uuid())
+  accountId   String      @map("account_id")
+  campaignId  String?     @map("campaign_id")
+  adSetId     String?     @map("ad_set_id")
+  platform    String      @default("META")
+  externalId  String      @map("external_id")
+  name        String?
+  status      String?
+  creative    Json?
+  raw         Json?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  account     AdAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  campaign    AdCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  adSet       AdSet?      @relation(fields: [adSetId], references: [id], onDelete: SetNull)
+  insights    AdInsight[]
+
+  @@unique([platform, externalId])
+  @@index([accountId])
+  @@index([campaignId])
+  @@index([adSetId])
+  @@map("ads")
+}
+
+model AdInsight {
+  id               String      @id @default(uuid())
+  platform         String      @default("META")
+  level            String // 'account' | 'campaign' | 'adset' | 'ad'
+  entityExternalId String      @map("entity_external_id")
+  accountId        String      @map("account_id")
+  campaignId       String?     @map("campaign_id")
+  adSetId          String?     @map("ad_set_id")
+  adId             String?     @map("ad_id")
+  date             DateTime    @db.Date
+  spend            Float?
+  impressions      Int?
+  reach            Int?
+  clicks           Int?
+  uniqueClicks     Int?        @map("unique_clicks")
+  ctr              Float?
+  cpc              Float?
+  cpm              Float?
+  frequency        Float?
+  results          Int?
+  costPerResult    Float?      @map("cost_per_result")
+  actions          Json?
+  actionValues     Json?       @map("action_values")
+  raw              Json?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  account          AdAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  campaign         AdCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  adSet            AdSet?      @relation(fields: [adSetId], references: [id], onDelete: SetNull)
+  ad               Ad?         @relation(fields: [adId], references: [id], onDelete: SetNull)
+
+  @@unique([platform, level, entityExternalId, date])
+  @@index([accountId, date])
+  @@index([campaignId, date])
+  @@map("ad_insights")
+}

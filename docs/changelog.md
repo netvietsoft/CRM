@@ -5,6 +5,50 @@
 
 ---
 
+## 2026-06-30 — Tính năng mới: kéo TOÀN BỘ Meta (Facebook) Ads về CRM
+
+### Mục tiêu
+Đồng bộ tất cả chiến dịch + chỉ số tài khoản quảng cáo Meta về CRM, lưu kèm JSON gốc đầy đủ để AI phân tích sau (không bỏ sót field). Thiết kế chuẩn hoá để cắm thêm nền tảng (Google/TikTok/Zalo) sau. Spec: `docs/superpowers/specs/2026-06-30-meta-ads-ingestion-design.md`.
+
+### DB (5 bảng mới — migration `20260630120000_add_ad_tables`, chỉ thêm bảng)
+- `ad_accounts`, `ad_campaigns`, `ad_sets`, `ads`, `ad_insights`. Mỗi bảng có cột `raw Json` = payload gốc. `ad_insights` lưu chỉ số **theo NGÀY** mọi cấp (campaign/adset/ad), unique `(platform, level, entity_external_id, date)`. Tiền dùng `Float`, lượt dùng `Int` (theo convention dự án).
+
+### Backend (`src/integrations/ads/`)
+- `meta/meta-ads.client.ts` — Graph API v21 + tự phân trang. `meta/meta-ads.connector.ts` — kéo account/campaign/adset/ad + insights theo ngày, map chuẩn hoá, suy `results`/`cost-per-result` từ `actions`.
+- `ads-sync.service.ts` — `syncAll(90 ngày)` upsert idempotent; `@Cron` mỗi 3h (tắt bằng env `ADS_SYNC_ENABLED=false`).
+- `ads.service.ts` + `ads.controller.ts` (`/api/ads`, guard ADMIN/MODERATOR): `POST /sync`, `GET /accounts|summary|campaigns|campaigns/:id/insights`.
+- `AdsModule` đăng ký trong `app.module.ts`.
+
+### Credentials (qua trang Kết nối)
+- Cấu hình ở **Hệ thống → Kết nối → thẻ Meta Ads**: Access Token (`ads_read`) + Ad Account ID (`act_...`) + bật Active. Lưu vào `StoreIntegration(platform='META_ADS')` (`accessToken` + `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_ACCOUNT_ID`. Connector tự đọc; thiếu → sync trả `configured:false`, không crash.
+
+### Frontend
+- Trang **`/admin/ads`** ("Quảng cáo", nhóm Chiến dịch trên sidebar): thẻ KPI + lọc tài khoản/khoảng ngày + nút Đồng bộ ngay + bảng campaign (dùng `lib/format.ts`).
+- Trang Kết nối + `[platform]` thêm nhận diện `META_ADS`. Type `IntegrationMetadata.adAccountId`.
+
+### Verify
+- Backend + Frontend `tsc --noEmit` sạch. Migration apply OK (5 bảng hiện trong DB). ⚠ Sync dữ liệu THẬT cần Access Token Meta + ad account id (chưa nhập → khung chạy, chưa có dữ liệu). ROAS (ghép spend↔doanh thu) ngoài phạm vi v1.
+
+## 2026-06-30 — Admin UX: click dòng vào chi tiết/sửa + copy SĐT
+
+### Khách hàng (`/admin/customers`)
+- [CustomersTableClient.tsx](../frontend/src/components/admin/CustomersTableClient.tsx): click khoảng trống của dòng → `router.push('/admin/customers/{id}')` (cursor-pointer).
+- Cột SĐT thành nút copy (icon `Copy` hiện khi hover) → bấm số tự copy + toast góc phải "✓ Đã copy Số: xxx".
+- `stopPropagation` ở ô checkbox, nút copy SĐT, link "Chi tiết" → thao tác riêng, không kích hoạt mở chi tiết.
+
+### Danh mục (`/admin/categories`)
+- Categories KHÔNG có trang chi tiết riêng → sửa qua modal trong `CategoryRowActions`. Nâng state mở-modal lên [CategoryTree.tsx](../frontend/src/components/admin/CategoryTree.tsx) (`editId`), truyền xuống [CategoryRowActions.tsx](../frontend/src/components/admin/CategoryRowActions.tsx) dạng controlled (`editOpen`/`onEditOpenChange`, fallback nội bộ nếu không truyền).
+- Click khoảng trống của dòng → mở modal "Sửa Danh mục". Ô hành động (Sửa/Xóa/mở rộng) `stopPropagation` để không kích hoạt 2 lần.
+
+### Click dòng → sửa cho 7 trang quản trị khác
+Cùng pattern (click khoảng trống dòng → mở sửa; `stopPropagation` ở ô nút/Select/link), gom theo component dùng chung:
+- [MasterDataManager.tsx](../frontend/src/components/admin/MasterDataManager.tsx) → click dòng `openEditModal(item)`. Phủ **4 trang**: `/admin/order-sources`, `/admin/units`, `/admin/materials`, `/admin/suppliers`.
+- [VoucherTableClient.tsx](../frontend/src/components/admin/VoucherTableClient.tsx) (`/admin/vouchers`) + [ReferralVoucherTable.tsx](../frontend/src/components/admin/ReferralVoucherTable.tsx) (`/admin/referral-vouchers`) → click dòng `setEditVoucher(voucher)` (modal `EditVoucherModal`).
+- [OrderVouchersTableClient.tsx](../frontend/src/components/admin/OrderVouchersTableClient.tsx) (`/admin/order-vouchers`) → KHÔNG có modal; click dòng `router.push('/admin/orders/{orderId}?from=order-vouchers')` (chỉ khi có `orderId`). Chặn lan ở ô `Select` trạng thái + ô hành động + link mã đơn.
+
+### Verify
+- Frontend `tsc --noEmit`: sạch. Thuần đổi hành vi UI (không đụng endpoint/model).
+
 ## 2026-06-30 — Refactor: gom định dạng số về `lib/format.ts` (1 nguồn duy nhất)
 
 ### Vấn đề
@@ -53,6 +97,9 @@
 ### Mã đơn hàng tự sinh
 - Ô "Mã đơn hàng" prefill `CHYSHOP<n>`, `n = tổng đơn VTP thật (không tính DRAFT-) + 1`. Backend `GET /api/viettelpost/next-order-ref` → `ViettelCustomerService.nextOrderRef`. FE prefill khi mở form đơn mới + sau "Tạo đơn khác"; mở nháp thì giữ mã đã lưu. Vẫn sửa tay được. ⚠ Đếm-tổng nên có thể trùng nếu xoá đơn cũ — chấp nhận theo yêu cầu.
 
+### COD tự bám tổng giá trị + style
+- Ô COD (Tiền thu hộ) tự điền = **Tổng giá trị hàng** (`totalValue`) qua effect; cờ `codTouched` ngừng tự đồng bộ khi user sửa tay. Hydrate nháp → `codTouched=true` (giữ COD đã lưu); "Tạo đơn khác" → `false` (bám lại). Ô COD hiển thị **đậm + đỏ** (`font-bold text-red-600`).
+
 ### Nháp + 3 nút hành động
 - **Lưu nháp**: `POST /api/viettelpost/drafts` (ADMIN/STAFF) → lưu vào `viettel_customers` với `trackingCode='DRAFT-<ts>-<rand>'`, `status=null`, `statusName='Nháp'`, **toàn bộ form** lưu vào `detailPayload._draft.dto` (mở lại sửa được). KHÔNG đẩy VTP. Reconcile chạy trên `prisma.order` nên không đụng nháp.
 - **Xoá nháp**: `DELETE /api/viettelpost/drafts/:code` (chỉ xoá dòng tiền tố `DRAFT-`).
@@ -64,7 +111,8 @@
 
 ### Verify
 - Backend `tsc --noEmit`: sạch. Frontend `tsc --noEmit`: sạch.
-- ⚠ Chưa chạy thật với VTP (token/host outbound chưa xác nhận — xem `docs/viettelpost-api-spec.md`). Endpoint địa danh mới chưa kiểm chứng tên chính xác.
+- Endpoint địa danh mới ĐÃ xác minh với API thật (token Login OK): `listProvinceNew` (34 tỉnh) + `listWardsNew?provinceId=` (vd Hà Nội 126 xã).
+- ⚠ Tạo đơn thật (`order/createOrder`) với ward hệ mới CHƯA test end-to-end (mới dừng ở tra cứu địa chỉ).
 
 ## 2026-06-29 (đêm) — Dọn lỗi 🟡: cookie NODE_ENV + Google referralCode + FE apiClientClient
 

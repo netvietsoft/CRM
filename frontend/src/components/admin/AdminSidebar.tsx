@@ -59,6 +59,7 @@ const navItems = [
       { name: 'Referral', href: '/admin/referrals', roles: ADMIN_MODERATOR },
       { name: 'Vòng quay', href: '/admin/spin', roles: ADMIN_MODERATOR },
       { name: 'Voucher Mã Mời', href: '/admin/referral-vouchers', roles: ADMIN_MODERATOR },
+      { name: 'Quảng cáo', href: '/admin/ads', roles: ADMIN_MODERATOR },
     ],
   },
   {

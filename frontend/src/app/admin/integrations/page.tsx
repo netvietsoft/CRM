@@ -17,6 +17,7 @@ const PLATFORMS = [
   { id: 'TIKTOK', name: 'TikTok Shop', icon: '🎵', color: 'bg-black', desc: 'Kết nối kho vận TikTok Shop' },
   { id: 'ZALO', name: 'Zalo OA', icon: '💬', color: 'bg-blue-500', desc: 'Gửi tin nhắn chăm sóc tự động' },
   { id: 'VIETTELPOST', name: 'ViettelPost', icon: '📦', color: 'bg-red-600', desc: 'Tính phí vận chuyển & đẩy đơn' },
+  { id: 'META_ADS', name: 'Meta Ads', icon: '📣', color: 'bg-blue-600', desc: 'Kéo chiến dịch & chỉ số quảng cáo Facebook/Instagram' },
 ];
 
 export default function IntegrationsPage() {
@@ -304,6 +305,25 @@ export default function IntegrationsPage() {
                       </div>
                     </div>
                   </div>
+                </>
+              )}
+
+              {['META_ADS'].includes(activePlatform) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Access Token (Meta)</label>
+                    <div className="relative">
+                      <input type={showFields['accessToken'] ? 'text' : 'password'} className="w-full border border-gray-300 rounded-lg pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formAccessToken} onChange={e => setFormAccessToken(e.target.value)} required />
+                      <button type="button" onClick={() => toggleField('accessToken')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showFields['accessToken'] ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ad Account ID</label>
+                    <input type="text" placeholder="act_1234567890" className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formMetadata?.adAccountId || ''} onChange={e => setFormMetadata({ ...formMetadata, adAccountId: e.target.value })} required />
+                  </div>
+                  <p className="text-xs text-gray-500">Token cần quyền <span className="font-mono">ads_read</span>. Lấy ở Business Settings → System Users → Generate Token. Bật “Active” rồi vào trang Quảng cáo bấm “Đồng bộ ngay”.</p>
                 </>
               )}
 
