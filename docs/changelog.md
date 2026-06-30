@@ -24,7 +24,8 @@
 - **Liệt kê tài khoản** (connector `listAdAccounts`): danh sách `act_id` tường minh (ngăn cách phẩy) → nếu trống + có Business ID thì `{bm}/owned_ad_accounts` + `client_ad_accounts` → nếu trống thì `/me/adaccounts`. Sync **loop qua MỌI account**, kết quả trả `accounts` + `perAccount[]`. Thiếu token → `configured:false`, không crash.
 
 ### Frontend
-- Trang **`/admin/ads`** ("Quảng cáo", nhóm Chiến dịch trên sidebar): thẻ KPI + lọc tài khoản/khoảng ngày + nút Đồng bộ ngay + bảng campaign (dùng `lib/format.ts`).
+- Trang **`/admin/ads`** ("Quảng cáo"): thẻ KPI + lọc tài khoản/khoảng ngày + nút Đồng bộ ngay + bảng campaign (dùng `lib/format.ts`). Đọc `?accountId=` để lọc theo tài khoản.
+- **Sidebar menu cây** (`AdsSidebarMenu`): Quảng cáo → Meta Ads → BM → danh sách tài khoản (động từ `/ads/accounts`); click tài khoản → `/admin/ads?accountId=<id>`; "Tất cả tài khoản" → `/admin/ads`.
 - Trang Kết nối + `[platform]` thêm nhận diện `META_ADS`. Type `IntegrationMetadata.adAccountId`.
 
 ### Verify

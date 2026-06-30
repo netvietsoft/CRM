@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { LogOut } from 'lucide-react';
+import AdsSidebarMenu from './AdsSidebarMenu';
 
 interface AdminSidebarProps {
   user: {
@@ -59,7 +60,6 @@ const navItems = [
       { name: 'Referral', href: '/admin/referrals', roles: ADMIN_MODERATOR },
       { name: 'Vòng quay', href: '/admin/spin', roles: ADMIN_MODERATOR },
       { name: 'Voucher Mã Mời', href: '/admin/referral-vouchers', roles: ADMIN_MODERATOR },
-      { name: 'Quảng cáo', href: '/admin/ads', roles: ADMIN_MODERATOR },
     ],
   },
   {
@@ -205,6 +205,8 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
             </div>
           );
         })}
+
+        <AdsSidebarMenu role={user.role} />
 
         <div className="mt-6 pt-6 border-t border-gray-100">
           <button

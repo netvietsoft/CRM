@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { formatNumber, formatVnd } from '@/lib/format';
 
@@ -42,8 +43,12 @@ const STATUS_CLS: Record<string, string> = {
 };
 
 export default function AdsPage() {
+  const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
-  const [accountId, setAccountId] = useState('');
+  const [accountId, setAccountId] = useState(searchParams.get('accountId') || '');
+
+  // Đồng bộ accountId khi điều hướng từ sidebar (Quảng cáo → Meta Ads → BM → tài khoản).
+  useEffect(() => { setAccountId(searchParams.get('accountId') || ''); }, [searchParams]);
   const [from, setFrom] = useState(isoDaysAgo(30));
   const [to, setTo] = useState(today());
   const [summary, setSummary] = useState<AdSummary | null>(null);
