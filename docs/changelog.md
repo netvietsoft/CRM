@@ -5,6 +5,84 @@
 
 ---
 
+## 2026-06-30 — Tính năng: Phân tích Lãi/Lỗ sản phẩm (Phase 1)
+- Module mới `src/analytics`: `GET /analytics/product-pnl`, `GET/PUT /analytics/ad-map`. Bảng mới `AdProductMap` (map campaign Meta → sản phẩm, migration `20260630200000_add_ad_product_map`, áp DB thủ công như các lần trước).
+- Công thức: doanh thu = đơn COD đã thu (PAYMENT_COLLECTED/COMPLETED), ngày = paidAt??updatedAt (gom theo ngày UTC); cost = `productionPrice`×qty; quảng cáo = AdInsight.spend của campaign đã map; vận hành = 0 (Phase 2). Hàm thuần `buildPnlReport` (`src/analytics/pnl.util.ts`) + unit test PASS.
+- Đơn item không có productId (Pancake/Viettel) → khớp theo tên SP chuẩn hoá; không khớp → nhóm "Chưa khớp". Sản phẩm thiếu Giá sản xuất → cảnh báo ⚠.
+- FE: nhóm "Phân tích" → 2 màn `/admin/analytics` (Lãi/Lỗ, lọc kỳ/nguồn + bung theo ngày) + `/admin/analytics/ad-mapping` (gán campaign→SP). Spec/plan: `docs/superpowers/{specs,plans}/2026-06-30-product-pnl-analytics*`.
+- ✅ Đã chạy `prisma generate` (dừng BE → generate → khởi động lại nest watch) — giải quyết luôn việc treo của `productionPrice` ở mục dưới.
+- Phase 2 (sau): Google Ads, chi phí vận hành (bảng riêng), map adset/ad, precompute hằng đêm.
+
+## 2026-06-30 — Meta Ads Dashboard UI (drill-down, cột động, kéo–thả) + nền tảng Thống kê tiền hàng Viettel
+
+> Chi tiết tính năng: `docs/08-ads-dashboard-ui.md`.
+
+### Frontend — `components/admin/AdsDashboard.tsx` (trang `/admin/adsmeta/*`)
+- **Dashboard KPI**: lưới 7 cột; mặc định Chi tiêu · Kết quả · Tổng giá trị lượt mua · Avg ROAS ·
+  Avg Ads Cost · Avg CP/kết quả · Hiển thị · Click · CTR. Popup **⚙ Chỉ số** (13 loại) tích chọn +
+  **kéo–thả** thẻ để sắp xếp. Lưu `localStorage` (`adsDash.kpis.v1`).
+- **Bộ lọc**: thêm nút nhanh **Hôm nay/Hôm qua/Tuần này/Tuần trước/Tháng này/Quý này/Tất cả**
+  (active tô xanh `#375DED`); **mặc định = Hôm nay**.
+- **Bảng chiến dịch**: header nền `#375DED` chữ trắng đậm, sọc `#F5F9FC`, hover `#EBEBEB`.
+  - **Drill-down 3 cấp**: chiến dịch → nhóm QC → quảng cáo (lazy-load, thụt lề).
+  - **Sort** mọi cột (▲/▼). **Kéo–thả cột** đổi vị trí ("Chiến dịch" ghim đầu).
+  - **Ẩn/hiện cột** qua popup ⚙ Cột (nhóm Cơ bản / Chỉ số FB). Lưu `localStorage` (`adsDash.cols.v1`).
+  - **Cột động**: 1 cột cho mỗi `action_type` FB; **cột Giá trị mua / ROAS / % Ads Cost**;
+    cột "Kết quả" hiện **nhãn loại** (Lượt mua/Tin nhắn…).
+  - **Menu thao tác dòng** (⋯): Sao chép ID · Mở Meta Ads Manager.
+
+### Backend — `src/integrations/ads`
+- `ads.service`: gộp `actions`/`actionValues` (JSON) theo từng `action_type` (`aggregateByKey` +
+  `sumActions`/`sumActionValues`); suy `resultType`; tính `purchaseValue` (dedup ưu tiên
+  `omni_purchase`→pixel→purchase…), `roas`, `adsCostPct`. `/ads/summary` bổ sung 3 chỉ số này.
+- Endpoint mới: `GET /ads/campaigns/:id/adsets`, `GET /ads/adsets/:id/ads` (cùng shape `/ads/campaigns`).
+
+### Backend — Viettel Thống kê tiền hàng (FE chưa làm)
+- DB: cột `send_date` (từ `ORDER_SYSTEMDATE`) + index trên `viettel_customers`
+  (migration `20260630150000_add_viettel_send_date`). Gán khi sync (webhook + enrich).
+- Script backfill `scripts/backfill-viettel-send-date.ts` (19 dòng cập nhật, dùng Prisma + parseDate
+  để đồng nhất timezone với truy vấn).
+- Endpoint `GET /viettelpost/revenue-stats?from&to` → gộp count/cod/fee theo trạng thái + tổng
+  (lọc theo ngày gửi, bỏ DRAFT). Test `viettel-customer.revenue.spec.ts`. Spec:
+  `docs/superpowers/specs/2026-06-30-viettel-revenue-stats-design.md`.
+
+### Khác
+- Sidebar (`AdminSidebar.tsx`): rộng `w-64`; nhãn nhóm màu `#2140da` in đậm; `isActive` khớp tiền tố
+  dài nhất (route cha không sáng cùng route con).
+- Viettel modal "Sửa KH" (`viettel-customers/customers/page.tsx`): không đóng khi click nền.
+
+### ⚙ Vận hành
+- `corepack yarn@stable` **lỗi offline** (TLS) → chạy binary local `node_modules/.bin/nest.cmd` /
+  `next.cmd`. CRM backend chạy `nest start` (không `--watch`) cho ổn định; sửa BE xong restart tay.
+
+## 2026-06-30 — Sửa form sản phẩm: giá sản xuất + định dạng số + thu gọn slug
+
+### Backend
+- **DB**: thêm cột `production_price DOUBLE NULL` trên `products` (Prisma: `productionPrice Float? @map("production_price")`).
+  - ⚠ KHÔNG dùng được `prisma migrate dev`: 2 migration trùng timestamp `20260630140000` (`add_viettel_cod_pay_status` + `ad_rich_pages_bm`) → shadow DB replay sai thứ tự (P3006/`viettel_customers` not found). DB **thật** vẫn "up to date".
+  - Cách đã làm: tạo file `prisma/migrations/20260630190000_add_production_price/migration.sql` (ALTER thủ công) → `prisma db execute` áp vào DB thật → `prisma migrate resolve --applied` ghi nhận. Cột đã tồn tại trong DB.
+- **DTO**: `CreateProductDto` thêm `productionPrice?` (`@IsOptional @IsNumber @Min(0)`); `UpdateProductDto` kế thừa qua PartialType. Service `create`/`update` spread `...productData` nên field tự lưu, không sửa thêm.
+
+### ✅ ĐÃ XONG `prisma generate` (cập nhật cùng ngày)
+- Đã dừng BE → `npx prisma generate` → khởi động lại nest watch (kèm Phase 1 Phân tích Lãi/Lỗ ở mục trên). Prisma client đã nhận `productionPrice` (và `AdProductMap`). PATCH/POST `/products` kèm `productionPrice` chạy bình thường.
+
+### Frontend — `components/admin/ProductForm.tsx` (dùng chung tạo + sửa SP)
+- **Định dạng số (giá)**: 3 ô giá (gốc/sản xuất/sale) + ô giá biến thể đổi `type=number` → `type=text inputMode=numeric`, hiển thị **ngăn nghìn dấu chấm kiểu VN, KHÔNG thập phân** (helper `formatPriceInput`/`onlyDigits`, `Intl.NumberFormat('vi-VN')`), căn phải. State lưu chuỗi chữ số thô; `parseFloat` lúc submit. Trọng lượng/Tồn kho giữ `type=number`.
+- **Ô Giá sản xuất (MỚI)**: nằm giữa Giá gốc và Giá sale. Khối giá tách lại: hàng tiền `md:grid-cols-3` (gốc/sản xuất/sale), hàng kho vận `grid-cols-2` (trọng lượng/tồn kho).
+- **Slug thu gọn**: `max-w-xs`, `text-xs`, padding nhỏ, label xám nhạt (đỡ chiếm chỗ).
+- Types thêm `productionPrice` ở: `ProductForm` (3 interface + state init + payload submit), `[id]/EditProductClient.tsx` (`ProductFormProduct` + `ProductSubmitPayload`), `create-product/CreateProductClient.tsx` (`ProductSubmitPayload`). Trang `[id]/page.tsx` fetch `/products/:id` typed `ProductFormProduct` → tự nhận field.
+
+## 2026-06-30 — ViettelPost: đồng bộ trạng thái thanh toán COD (đối soát)
+
+### Vấn đề
+- Trạng thái đối soát COD (đã nhận tiền hay chưa) KHÔNG có trên API partner `partner.viettelpost.vn/v2`, chỉ có ở portal `viettelpost.vn`.
+
+### Giải pháp (`ViettelpostCodService`)
+- Gọi `POST https://api.viettelpost.vn/api/supperapp/get-list-order-by-status-v2` (`SOURCE:'WEB'`) bằng **token WEB/SSO** — backend không tự mint được (login USER/PASS chỉ ra token MOBILE bị từ chối) → **admin dán token** từ DevTools portal, lưu `SystemConfig.VIETTEL_WEB_TOKEN`. Đọc hạn từ claim `exp` của JWT.
+- `syncCodStatuses(180 ngày)`: map `ORDER_NUMBER`↔`trackingCode` (bỏ `DRAFT-`) → ghi `codPayStatus`/`codPayStatusName`/`codPaySyncedAt` vào `viettel_customers`. COD_STATUS: `KHONG_CO_COD|CHUA_NHAN_COD|CHO_NHAN_COD|DA_NHAN_COD`. Token hết hạn → `{tokenExpired:true}`.
+- Endpoints (controller): `GET /api/viettelpost/cod-token` · `POST /api/viettelpost/cod-token {token}` (ADMIN) · `POST /api/viettelpost/cod-sync`. Cron mỗi giờ (`VIETTEL_COD_SYNC=false` để tắt; `VIETTEL_COD_SYNC_CRON` đổi lịch) — chỉ chạy khi có token & chưa hết hạn.
+- DB: thêm cột `codPayStatus`/`codPayStatusName`/`codPaySyncedAt` trên `viettel_customers`.
+
 ## 2026-06-30 — Tính năng mới: kéo TOÀN BỘ Meta (Facebook) Ads về CRM
 
 ### Mục tiêu
