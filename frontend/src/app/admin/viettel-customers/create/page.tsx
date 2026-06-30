@@ -28,6 +28,7 @@ export default function CreateViettelOrderPage() {
     receiverProvince: '', receiverDistrict: '', receiverWard: '',
     productName: '', productPrice: '', productWeight: '500', productQuantity: '1',
     cod: '', orderService: '', orderNote: '',
+    orderPayment: '3', xemHang: true,
   });
   const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }));
 
@@ -86,6 +87,8 @@ export default function CreateViettelOrderPage() {
         productQuantity: Number(f.productQuantity) || 1,
         cod: Number(f.cod) || 0,
         orderService: f.orderService,
+        orderServiceAdd: f.xemHang ? 'XMG' : '',
+        orderPayment: Number(f.orderPayment) || 3,
         orderNote: f.orderNote,
       });
       if (res.error) { setError('ViettelPost: ' + res.error); return; }
@@ -164,6 +167,19 @@ export default function CreateViettelOrderPage() {
           <div><label className={lbl}>Cân nặng (g) *</label><input type="number" className={input} value={f.productWeight} onChange={e => set('productWeight', e.target.value)} /></div>
           <div><label className={lbl}>Số lượng</label><input type="number" className={input} value={f.productQuantity} onChange={e => set('productQuantity', e.target.value)} /></div>
           <div><label className={lbl}>COD (tiền thu hộ, đ)</label><input type="number" className={input} value={f.cod} onChange={e => set('cod', e.target.value)} /></div>
+        </div>
+        <div className="flex items-center gap-6 flex-wrap">
+          <div>
+            <span className={lbl}>Người trả cước</span>
+            <div className="flex items-center gap-4 mt-1 text-sm">
+              <label className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="pay" checked={f.orderPayment === '3'} onChange={() => set('orderPayment', '3')} /> Người gửi</label>
+              <label className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="pay" checked={f.orderPayment === '2'} onChange={() => set('orderPayment', '2')} /> Người nhận</label>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer text-sm mt-4">
+            <input type="checkbox" checked={f.xemHang} onChange={e => setF(p => ({ ...p, xemHang: e.target.checked }))} />
+            Cho khách xem hàng (XMG)
+          </label>
         </div>
         <div><label className={lbl}>Ghi chú</label><input className={input} value={f.orderNote} onChange={e => set('orderNote', e.target.value)} /></div>
       </div>
