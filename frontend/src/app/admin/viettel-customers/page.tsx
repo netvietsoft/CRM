@@ -107,8 +107,11 @@ export default function ViettelCustomersPage() {
           <p className="text-sm text-gray-500 mt-1">Trỏ vào mã vận đơn/SĐT để copy · click vào dòng để xem chi tiết &amp; sửa.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => void syncNow()} disabled={syncing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold disabled:opacity-50" title="Gọi ViettelPost lấy SĐT/địa chỉ/SP + cập nhật trạng thái">
-            {syncing ? 'Đang đồng bộ...' : '⟳ Đồng bộ ViettelPost'}
+          <button onClick={() => router.push('/admin/viettel-customers/create')} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">
+            ➕ Tạo đơn
+          </button>
+          <button onClick={() => void syncNow()} disabled={syncing} className="px-4 py-2 rounded-xl bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold disabled:opacity-50" title="Gọi ViettelPost lấy SĐT/địa chỉ/SP + cập nhật trạng thái">
+            {syncing ? 'Đang đồng bộ...' : '⟳ Đồng bộ'}
           </button>
           <button onClick={() => void load()} disabled={loading} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50">
             {loading ? 'Đang tải...' : '↻ Làm mới'}

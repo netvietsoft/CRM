@@ -145,6 +145,122 @@ export class ViettelCustomerService {
     return this.prisma.viettelCustomer.findMany({ orderBy: { updatedAt: 'desc' } });
   }
 
+  /**
+   * Tạo vận đơn MỚI trên ViettelPost (order/createOrder, theo ID địa chỉ) rồi lưu vào viettel_customers.
+   * Người gửi lấy từ env VIETTELPOST_SENDER_*. Trả { trackingCode, fee } hoặc { error }.
+   */
+  async createOnVtp(dto: {
+    receiverFullname: string;
+    receiverPhone: string;
+    receiverAddress: string;
+    receiverProvince: number;
+    receiverDistrict: number;
+    receiverWard?: number;
+    productName: string;
+    productPrice: number;
+    productWeight: number;
+    productQuantity?: number;
+    cod: number;
+    orderService: string;
+    orderServiceAdd?: string;
+    orderPayment?: number;
+    orderNote?: string;
+  }): Promise<{ trackingCode?: string; fee?: number; error?: string }> {
+    const payload: Record<string, any> = {
+      ORDER_NUMBER: '',
+      GROUPADDRESS_ID: 0,
+      CUS_ID: 0,
+      SENDER_FULLNAME: process.env.VIETTELPOST_SENDER_NAME || 'Shop',
+      SENDER_PHONE: process.env.VIETTELPOST_SENDER_PHONE || '',
+      SENDER_ADDRESS: process.env.VIETTELPOST_SENDER_ADDRESS || '',
+      SENDER_PROVINCE: Number(process.env.VIETTELPOST_SENDER_PROVINCE) || 1,
+      SENDER_DISTRICT: Number(process.env.VIETTELPOST_SENDER_DISTRICT) || 14,
+      SENDER_WARD: Number(process.env.VIETTELPOST_SENDER_WARD) || 0,
+      RECEIVER_FULLNAME: dto.receiverFullname,
+      RECEIVER_PHONE: dto.receiverPhone,
+      RECEIVER_ADDRESS: dto.receiverAddress,
+      RECEIVER_PROVINCE: dto.receiverProvince,
+      RECEIVER_DISTRICT: dto.receiverDistrict,
+      RECEIVER_WARD: dto.receiverWard ?? 0,
+      PRODUCT_NAME: dto.productName,
+      PRODUCT_DESCRIPTION: dto.productName,
+      PRODUCT_QUANTITY: dto.productQuantity || 1,
+      PRODUCT_PRICE: dto.productPrice,
+      PRODUCT_WEIGHT: dto.productWeight,
+      PRODUCT_TYPE: 'HH',
+      ORDER_PAYMENT: dto.orderPayment ?? 3,
+      ORDER_SERVICE: dto.orderService,
+      ORDER_SERVICE_ADD: dto.orderServiceAdd || '',
+      ORDER_VOUCHER: '',
+      ORDER_NOTE: dto.orderNote || '',
+      MONEY_COLLECTION: dto.cod || 0,
+      MONEY_TOTALFEE: 0,
+      MONEY_FEECOD: 0,
+      MONEY_OTHERFEE: 0,
+      MONEY_VAS: 0,
+      MONEY_VAT: 0,
+      MONEY_TOTAL: 0,
+      MONEY_TOTALVAT: 0,
+      LIST_ITEM: [
+        {
+          PRODUCT_NAME: dto.productName,
+          PRODUCT_PRICE: dto.productPrice,
+          PRODUCT_WEIGHT: dto.productWeight,
+          PRODUCT_QUANTITY: dto.productQuantity || 1,
+        },
+      ],
+    };
+
+    const res = await this.authService.post('order/createOrder', payload);
+    const data = res?.data;
+    const trackingCode = data?.ORDER_NUMBER;
+    if (!res || res.error === true || !trackingCode) {
+      return { error: res?.message || 'ViettelPost từ chối tạo đơn (kiểm tra địa chỉ/dịch vụ).' };
+    }
+
+    // Lưu vào viettel_customers để hiển thị + theo dõi (webhook sẽ cập nhật trạng thái sau).
+    try {
+      await this.prisma.viettelCustomer.upsert({
+        where: { trackingCode: String(trackingCode) },
+        update: {
+          receiverFullname: dto.receiverFullname,
+          receiverPhone: dto.receiverPhone,
+          receiverAddress: dto.receiverAddress,
+          receiverProvinceId: dto.receiverProvince,
+          receiverDistrictId: dto.receiverDistrict,
+          receiverWardId: dto.receiverWard ?? null,
+          productName: dto.productName,
+          cod: dto.cod || 0,
+          orderNote: dto.orderNote || null,
+          orderService: dto.orderService,
+          status: 100,
+          statusName: 'Tạo đơn',
+          detailPayload: data,
+        },
+        create: {
+          trackingCode: String(trackingCode),
+          receiverFullname: dto.receiverFullname,
+          receiverPhone: dto.receiverPhone,
+          receiverAddress: dto.receiverAddress,
+          receiverProvinceId: dto.receiverProvince,
+          receiverDistrictId: dto.receiverDistrict,
+          receiverWardId: dto.receiverWard ?? null,
+          productName: dto.productName,
+          cod: dto.cod || 0,
+          orderNote: dto.orderNote || null,
+          orderService: dto.orderService,
+          status: 100,
+          statusName: 'Tạo đơn',
+          detailPayload: data,
+        },
+      });
+    } catch (e: any) {
+      this.logger.warn(`[VTP] tạo đơn OK nhưng lưu DB lỗi: ${e?.message || e}`);
+    }
+
+    return { trackingCode: String(trackingCode), fee: Number(data?.MONEY_TOTAL || 0) };
+  }
+
   /** Chi tiết 1 khách/đơn theo mã vận đơn. */
   async getOne(trackingCode: string) {
     const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } });
