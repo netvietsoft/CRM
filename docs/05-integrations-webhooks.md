@@ -29,6 +29,17 @@ Endpoint (prefix /api, guard ADMIN/MODERATOR):
 Config: **Hệ thống → Kết nối → thẻ Meta Ads** → Access Token (`ads_read`) + (tuỳ chọn) Business ID + (tuỳ chọn) Ad Account ID + bật Active → lưu `StoreIntegration(platform='META_ADS')` (`accessToken`, `metadata.businessId`, `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_BUSINESS_ID` / `META_ADS_ACCOUNT_ID`. **Nhiều tài khoản**: trống `act_id` + có Business ID → tự lấy mọi ad account trong BM (owned+client); trống cả hai → `/me/adaccounts`; hoặc liệt kê nhiều `act_id` ngăn cách phẩy. Sync loop mọi account.
 **Gotcha**: API Graph v21 (`META_GRAPH_URL` đổi được); `results`/`cost-per-result` suy từ `actions` theo độ ưu tiên (giữ `actions` đầy đủ cho AI); ngân sách Meta theo đơn vị nhỏ nhất của tiền tệ (VND 0 chữ số thập phân nên giữ nguyên); thiếu credentials → sync trả `configured:false`, không crash. UI: `/admin/ads`.
 
+**Sidebar**: menu cây `AdsSidebarMenu` — Quảng cáo → Meta Ads → BM → danh sách tài khoản (động từ `/ads/accounts`); click tài khoản → `/admin/ads?accountId=<id>`.
+
+### Lấy Access Token trong Business Manager (System User token)
+Dùng **System User token** (token máy chủ, đặt được *không hết hạn*) — KHÔNG dùng token cá nhân. Tại **business.facebook.com/settings**:
+1. **Người dùng → Người dùng hệ thống (System Users)** → **Add** → đặt tên (vd "CRM Sync"), vai trò Admin/Employee.
+2. Cần 1 **Meta App** gắn vào BM (mục **Tài khoản → Ứng dụng**; chưa có thì tạo app loại Business ở developers.facebook.com rồi thêm vào BM). Token phải gắn 1 app.
+3. Chọn System User → **Gán tài sản (Assign Assets)** → chọn **Tài khoản quảng cáo** cần kéo → cấp quyền (tối thiểu *Xem hiệu suất*). ⚠ Không gán account → token không thấy tài khoản nào.
+4. **Generate New Token** → chọn App → scopes: **`ads_read`** (bắt buộc) + `read_insights` + **`business_management`** (để liệt kê `/{business_id}/owned_ad_accounts`) → Copy (chỉ hiện 1 lần). Token expiration nên đặt **Never**.
+
+**ID**: *Business ID* ở Business Settings → **Business Info**; *Ad Account ID* dạng `act_<số>` trong mục Tài khoản quảng cáo (để trống nếu đã nhập Business ID → lấy tất cả).
+
 ---
 
 ## 1. Pancake POS (`src/integrations/pancake`)
