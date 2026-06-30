@@ -17,17 +17,19 @@
 ## 0. Meta Ads — Quảng cáo (`src/integrations/ads`)
 Kéo TOÀN BỘ chiến dịch + chỉ số tài khoản quảng cáo Meta (Facebook/Instagram) về CRM. Chuẩn hoá để cắm thêm nền tảng sau. Chi tiết: spec `docs/superpowers/specs/2026-06-30-meta-ads-ingestion-design.md`.
 
-Bảng: `ad_accounts` / `ad_campaigns` / `ad_sets` / `ads` / `ad_insights` (chỉ số theo NGÀY mọi cấp; mỗi bảng có `raw Json` = payload gốc đầy đủ).
+Bảng: `ad_accounts` / `ad_campaigns` / `ad_sets` / `ads` / `ad_insights` (chỉ số theo NGÀY mọi cấp; mỗi bảng có `raw Json` = payload gốc đầy đủ) + `ad_businesses` (Business Manager, kèm `verification_status`). `ad_accounts.store_id` gắn account với cửa hàng để **scope đa cửa hàng**.
 
-Endpoint (prefix /api, guard ADMIN/MODERATOR):
-- **POST /ads/sync** `{days?}` — đồng bộ ngay (mặc định 90 ngày). `@Cron` 3h/lần (tắt: env `ADS_SYNC_ENABLED=false`).
-- GET /ads/accounts — danh sách tài khoản + lastSyncedAt.
+Endpoint (prefix /api, guard `JwtAuthGuard + RolesGuard + PermissionsGuard`, role ADMIN/MODERATOR/STAFF):
+- **POST /ads/sync** `{days?}` — quyền `INTEGRATIONS_MANAGE`. Có Redis → đẩy job vào queue `ads-sync`, trả `{queued:true, configured:true}` (chạy nền); Redis trống → chạy **inline** trả luôn kết quả đầy đủ. `@Cron` 3h/lần (tắt: env `ADS_SYNC_ENABLED=false`).
+- GET /ads/accounts — quyền `INTEGRATIONS_VIEW`. Danh sách tài khoản + lastSyncedAt.
 - GET /ads/summary?from&to&accountId — KPI gộp (spend/impressions/reach/clicks/results + CTR/CPC/CPM/cost-per-result).
 - GET /ads/campaigns?from&to&accountId — chỉ số cộng dồn theo campaign.
 - GET /ads/campaigns/:id/insights?from&to — chuỗi theo ngày.
 
-Config: **Hệ thống → Kết nối → thẻ Meta Ads** → Access Token (`ads_read`) + (tuỳ chọn) Business ID + (tuỳ chọn) Ad Account ID + bật Active → lưu `StoreIntegration(platform='META_ADS')` (`accessToken`, `metadata.businessId`, `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_BUSINESS_ID` / `META_ADS_ACCOUNT_ID`. **Nhiều tài khoản**: trống `act_id` + có Business ID → tự lấy mọi ad account trong BM (owned+client); trống cả hai → `/me/adaccounts`; hoặc liệt kê nhiều `act_id` ngăn cách phẩy. Sync loop mọi account.
-**Gotcha**: API Graph v21 (`META_GRAPH_URL` đổi được); `results`/`cost-per-result` suy từ `actions` theo độ ưu tiên (giữ `actions` đầy đủ cho AI); ngân sách Meta theo đơn vị nhỏ nhất của tiền tệ (VND 0 chữ số thập phân nên giữ nguyên); thiếu credentials → sync trả `configured:false`, không crash. UI: `/admin/ads`.
+**Scope đa cửa hàng** (quy tắc #4): mọi endpoint lấy `@GetEffectiveStoreId()`. ADMIN (`null`) thấy tất cả; MODERATOR/STAFF chỉ thấy account có `store_id = effectiveStoreId` (insight scope qua quan hệ `account.storeId`). Sync gắn `store_id` cho account theo `StoreIntegration` của store đó; cấu hình env → `store_id=null` (chỉ ADMIN thấy). Non-admin bấm sync chỉ đồng bộ credentials của store mình.
+
+Config: **Hệ thống → Kết nối → thẻ Meta Ads** → Access Token (`ads_read`) + (tuỳ chọn) Business ID + (tuỳ chọn) Ad Account ID + bật Active → lưu `StoreIntegration(platform='META_ADS')` (`accessToken`, `metadata.businessId`, `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_BUSINESS_ID` / `META_ADS_ACCOUNT_ID` **chỉ khi không có integration active nào** (tránh sync trùng). **Nhiều store**: mỗi store 1 `StoreIntegration` riêng → `getConfigs()` loop tất cả. **Nhiều tài khoản/1 token**: trống `act_id` + có Business ID → tự lấy mọi ad account trong BM (owned+client); trống cả hai → `/me/adaccounts`; hoặc liệt kê nhiều `act_id` ngăn cách phẩy.
+**Gotcha**: API Graph v21 (`META_GRAPH_URL` đổi được); `results`/`cost-per-result` suy từ `actions` theo độ ưu tiên (giữ `actions` đầy đủ cho AI). **Tiền tệ**: ngân sách + balance/amount_spent/spend_cap Meta trả theo *minor unit* → quy đổi qua `minorFactor(currency)` (USD ÷100, VND/JPY/KRW… ÷1, BHD/KWD… ÷1000); riêng `spend` trong insights đã là major-unit nên GIỮ NGUYÊN. Cột `user_count/admin_count/my_role` của account hiện chưa điền (cần Graph call riêng). Thiếu credentials → sync trả `configured:false`, không crash. UI: `/admin/ads`.
 
 **Sidebar**: menu cây `AdsSidebarMenu` — Quảng cáo → Meta Ads → BM → danh sách tài khoản (động từ `/ads/accounts`); click tài khoản → `/admin/ads?accountId=<id>`.
 
@@ -110,9 +112,17 @@ Controller `viettelpost.controller.ts` + `ViettelCustomerService.createOnVtp` (h
 - **Mã đơn gợi ý**: `GET /api/viettelpost/next-order-ref` → `{ orderReference: 'CHYSHOP'+(số đơn VTP thật + 1) }` (đếm `viettel_customers` loại trừ `DRAFT-`). ⚠ Đếm-tổng → có thể trùng nếu xoá đơn cũ; chấp nhận theo yêu cầu nghiệp vụ.
 - FE: `admin/viettel-customers/create` (toggle địa danh mới; ghi chú mặc định "không cho thử hàng…"; mã đơn prefill `CHYSHOP<n>` sửa được; **COD tự bám = Tổng giá trị hàng** đến khi user sửa tay, hiển thị **đậm đỏ**; 3 nút Tạo đơn/Lưu nháp/Xoá-Hủy; nạp `?draft=`), `[code]` (chi tiết+sửa+hành động), `page.tsx` (danh sách, dòng `DRAFT-` mở form sửa).
 
+### Đồng bộ trạng thái thanh toán COD / đối soát (`ViettelpostCodService`)
+- VTP **KHÔNG** đưa trạng thái đối soát COD qua API partner (`partner.viettelpost.vn/v2`). Chỉ có ở portal `viettelpost.vn` → gọi `POST https://api.viettelpost.vn/api/supperapp/get-list-order-by-status-v2` (header `token`, `SOURCE:'WEB'`).
+- Token là **token WEB/SSO** sinh từ phiên đăng nhập trình duyệt — backend KHÔNG tự mint được (login USER/PASS chỉ ra token MOBILE bị từ chối). **Admin DÁN token** (lấy từ DevTools portal) → lưu `SystemConfig.VIETTEL_WEB_TOKEN`. Token hết hạn ~vài ngày → dán lại. Hạn đọc từ claim `exp` của JWT (không verify chữ ký).
+- Endpoints: `GET /api/viettelpost/cod-token` (trạng thái: hasToken/expiresAt/expired, ADMIN/STAFF) · `POST /api/viettelpost/cod-token {token}` (lưu, ADMIN) · `POST /api/viettelpost/cod-sync` (đồng bộ ngay, ADMIN/STAFF).
+- `syncCodStatuses(windowDays=180)`: lấy trackingCode CRM (bỏ `DRAFT-`), phân trang đơn VTP trong cửa sổ ngày, map `ORDER_NUMBER`↔`trackingCode` → ghi `codPayStatus` + `codPayStatusName` + `codPaySyncedAt` vào `viettel_customers`. COD_STATUS: `KHONG_CO_COD | CHUA_NHAN_COD | CHO_NHAN_COD | DA_NHAN_COD`. Token hết hạn → trả `{tokenExpired:true}`.
+- **Cron mỗi giờ** (`VIETTEL_COD_SYNC_CRON`, tắt bằng `VIETTEL_COD_SYNC=false`) — chỉ chạy khi có token & chưa hết hạn.
+
 ### ENV (inbound VTP)
 - `VIETTELPOST_WEBHOOK_TOKEN` + `VIETTELPOST_WEBHOOK_SECRET` — **lỗi thời** (legacy), không còn dùng cho xác thực inbound. Secret inbound nay lưu tại `StoreIntegration.metadata.webhookSecret` (per-store, cấu hình qua admin UI).
 - Outbound: `VIETTELPOST_API_URL` (mặc định `https://partner.viettelpost.vn/v2`), `VIETTELPOST_USERNAME/PASSWORD`, `VIETTELPOST_SENDER_*` (NAME/PHONE/ADDRESS/PROVINCE/DISTRICT/WARD).
+- COD reconcile: `VIETTEL_COD_SYNC` (=`false` để tắt cron), `VIETTEL_COD_SYNC_CRON` (mặc định mỗi giờ). Token WEB lưu DB `SystemConfig.VIETTEL_WEB_TOKEN` (admin dán, KHÔNG phải env).
 
 ## 3. Casso / VietQR (`src/webhooks/casso.*`)
 Đối soát chuyển khoản ngân hàng → đánh dấu đơn PAID.

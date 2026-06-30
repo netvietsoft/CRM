@@ -3,9 +3,18 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { MetaAdsClient } from './meta-ads.client';
 
 export interface MetaConfig {
+  /** Store sở hữu credentials. null = cấu hình env (toàn hệ thống, chỉ ADMIN thấy). */
+  storeId: string | null;
   token: string;
   businessId: string | null;
   accountIds: string[]; // danh sách act_<id> tường minh; RỖNG = tự phát hiện qua BM / /me/adaccounts
+}
+
+export interface NormBusiness {
+  externalId: string;
+  name: string | null;
+  verificationStatus: string | null;
+  raw: any;
 }
 
 // ===== Shape chuẩn hoá (connector trả về, sync persist) =====
@@ -15,6 +24,14 @@ export interface NormAccount {
   currency: string | null;
   timezoneName: string | null;
   status: string | null;
+  accountStatus: number | null;
+  disableReason: number | null;
+  balance: number | null;
+  amountSpent: number | null;
+  spendCap: number | null;
+  fundingSource: string | null;
+  businessExternalId: string | null;
+  businessName: string | null;
   raw: any;
 }
 export interface NormEntity {
@@ -82,8 +99,27 @@ const RESULT_ACTION_PRIORITY = [
   'landing_page_view',
 ];
 
+// Tiền tệ KHÔNG có phần thập phân (Meta trả minor unit = major unit, factor 1).
+const ZERO_DECIMAL = new Set(['VND', 'JPY', 'KRW', 'CLP', 'ISK', 'HUF', 'TWD', 'UGX', 'VUV', 'XAF', 'XOF', 'XPF', 'BIF', 'DJF', 'GNF', 'KMF', 'MGA', 'PYG', 'RWF']);
+// Tiền tệ có 3 chữ số thập phân (factor 1000).
+const THREE_DECIMAL = new Set(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND']);
+
+/** Hệ số quy đổi minor unit → major unit theo tiền tệ tài khoản (Meta trả tiền dạng minor unit). */
+const minorFactor = (currency: string | null): number => {
+  if (!currency) return 100;
+  const c = currency.toUpperCase();
+  if (ZERO_DECIMAL.has(c)) return 1;
+  if (THREE_DECIMAL.has(c)) return 1000;
+  return 100;
+};
+
 const num = (v: any): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
 const int = (v: any): number | null => (v === null || v === undefined || v === '' ? null : parseInt(String(v), 10));
+/** Số tiền minor-unit → major-unit theo tiền tệ (vd USD "1234" → 12.34; VND giữ nguyên). */
+const money = (v: any, currency: string | null): number | null => {
+  const raw = num(v);
+  return raw === null ? null : raw / minorFactor(currency);
+};
 const dt = (v: any): Date | null => {
   if (!v) return null;
   const d = new Date(v);
@@ -104,22 +140,48 @@ export class MetaAdsConnector {
     private readonly client: MetaAdsClient,
   ) {}
 
-  /** Cấu hình từ StoreIntegration(META_ADS) hoặc env. Null nếu thiếu token. */
-  async getConfig(): Promise<MetaConfig | null> {
-    const integ = await this.prisma.storeIntegration.findFirst({
+  /**
+   * TẤT CẢ cấu hình credentials Meta: mỗi StoreIntegration(META_ADS, active) → 1 config (kèm storeId).
+   * Nếu KHÔNG có integration nào → fallback env (storeId = null). Rỗng nếu thiếu token hoàn toàn.
+   */
+  async getConfigs(): Promise<MetaConfig[]> {
+    const integs = await this.prisma.storeIntegration.findMany({
       where: { platform: 'META_ADS', isActive: true },
     });
-    const meta: any = integ?.metadata || {};
-    const token = integ?.accessToken || process.env.META_ADS_ACCESS_TOKEN || null;
-    if (!token) return null;
-    const businessId = meta.businessId || process.env.META_ADS_BUSINESS_ID || null;
-    const rawIds = meta.adAccountId || process.env.META_ADS_ACCOUNT_ID || '';
-    const accountIds = String(rawIds)
+
+    const configs: MetaConfig[] = [];
+    for (const integ of integs) {
+      if (!integ.accessToken) continue;
+      const meta: any = integ.metadata || {};
+      configs.push({
+        storeId: integ.storeId,
+        token: integ.accessToken,
+        businessId: meta.businessId ? String(meta.businessId) : null,
+        accountIds: this.parseAccountIds(meta.adAccountId),
+      });
+    }
+
+    // Fallback env CHỈ khi chưa có integration nào (tránh sync trùng).
+    if (!configs.length) {
+      const token = process.env.META_ADS_ACCESS_TOKEN || null;
+      if (token) {
+        configs.push({
+          storeId: null,
+          token,
+          businessId: process.env.META_ADS_BUSINESS_ID || null,
+          accountIds: this.parseAccountIds(process.env.META_ADS_ACCOUNT_ID),
+        });
+      }
+    }
+    return configs;
+  }
+
+  private parseAccountIds(raw: unknown): string[] {
+    return String(raw || '')
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
       .map(actId);
-    return { token, businessId: businessId ? String(businessId) : null, accountIds };
   }
 
   /**
@@ -127,7 +189,8 @@ export class MetaAdsConnector {
    * → fallback /me/adaccounts. Dedup theo id.
    */
   async listAdAccounts(cfg: MetaConfig): Promise<NormAccount[]> {
-    const fields = 'id,name,currency,timezone_name,account_status';
+    const fields =
+      'id,name,currency,timezone_name,account_status,disable_reason,balance,amount_spent,spend_cap,funding_source,business_name,business{id,name}';
     let raws: any[] = [];
 
     if (cfg.accountIds.length) {
@@ -151,19 +214,45 @@ export class MetaAdsConnector {
     for (const a of raws) {
       if (!a?.id || seen.has(a.id)) continue;
       seen.add(a.id);
+      const currency = a.currency ?? null;
       out.push({
         externalId: a.id,
         name: a.name ?? null,
-        currency: a.currency ?? null,
+        currency,
         timezoneName: a.timezone_name ?? null,
         status: a.account_status != null ? String(a.account_status) : null,
+        accountStatus: int(a.account_status),
+        disableReason: int(a.disable_reason),
+        balance: money(a.balance, currency),
+        amountSpent: money(a.amount_spent, currency),
+        spendCap: money(a.spend_cap, currency),
+        fundingSource: a.funding_source != null ? String(a.funding_source) : null,
+        businessExternalId: a.business?.id ?? null,
+        businessName: a.business?.name ?? a.business_name ?? null,
         raw: a,
       });
     }
     return out;
   }
 
-  async fetchCampaigns(token: string, accountId: string): Promise<NormCampaign[]> {
+  /** Chi tiết Business (verification_status) cho 1 BM id. Lỗi/thiếu quyền → trả null an toàn. */
+  async fetchBusiness(token: string, businessExternalId: string): Promise<NormBusiness | null> {
+    const b = await this.client
+      .getNode(businessExternalId, 'id,name,verification_status', token)
+      .catch((e) => {
+        this.logger.warn(`[MetaAds] Không lấy được business ${businessExternalId}: ${(e as Error).message}`);
+        return null;
+      });
+    if (!b?.id) return null;
+    return {
+      externalId: b.id,
+      name: b.name ?? null,
+      verificationStatus: b.verification_status ?? null,
+      raw: b,
+    };
+  }
+
+  async fetchCampaigns(token: string, accountId: string, currency: string | null): Promise<NormCampaign[]> {
     const rows = await this.client.getEdge(
       `${accountId}/campaigns`,
       { fields: 'id,name,status,effective_status,objective,daily_budget,lifetime_budget,start_time,stop_time' },
@@ -174,15 +263,15 @@ export class MetaAdsConnector {
       name: c.name ?? null,
       status: c.effective_status ?? c.status ?? null,
       objective: c.objective ?? null,
-      dailyBudget: num(c.daily_budget),
-      lifetimeBudget: num(c.lifetime_budget),
+      dailyBudget: money(c.daily_budget, currency),
+      lifetimeBudget: money(c.lifetime_budget, currency),
       startTime: dt(c.start_time),
       stopTime: dt(c.stop_time),
       raw: c,
     }));
   }
 
-  async fetchAdSets(token: string, accountId: string): Promise<NormAdSet[]> {
+  async fetchAdSets(token: string, accountId: string, currency: string | null): Promise<NormAdSet[]> {
     const rows = await this.client.getEdge(
       `${accountId}/adsets`,
       {
@@ -196,8 +285,8 @@ export class MetaAdsConnector {
       name: s.name ?? null,
       status: s.effective_status ?? s.status ?? null,
       campaignExternalId: s.campaign_id ?? null,
-      dailyBudget: num(s.daily_budget),
-      lifetimeBudget: num(s.lifetime_budget),
+      dailyBudget: money(s.daily_budget, currency),
+      lifetimeBudget: money(s.lifetime_budget, currency),
       optimizationGoal: s.optimization_goal ?? null,
       billingEvent: s.billing_event ?? null,
       targeting: s.targeting ?? null,

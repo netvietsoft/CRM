@@ -15,6 +15,11 @@ export class AdsService {
     return w.gte || w.lte ? w : undefined;
   }
 
+  /** Điều kiện scope đa cửa hàng: non-admin (effectiveStoreId != null) chỉ thấy account của store mình. */
+  private accountScope(effectiveStoreId: string | null) {
+    return effectiveStoreId ? { account: { storeId: effectiveStoreId } } : {};
+  }
+
   private derive(spend: number, impressions: number, clicks: number, results: number) {
     return {
       ctr: impressions ? (clicks / impressions) * 100 : 0,
@@ -24,15 +29,16 @@ export class AdsService {
     };
   }
 
-  async listAccounts() {
+  async listAccounts(effectiveStoreId: string | null) {
     return this.prisma.adAccount.findMany({
+      where: effectiveStoreId ? { storeId: effectiveStoreId } : {},
       orderBy: { createdAt: 'asc' },
       select: { id: true, externalId: true, platform: true, name: true, currency: true, status: true, lastSyncedAt: true },
     });
   }
 
-  async summary(from?: string, to?: string, accountId?: string) {
-    const where: Record<string, unknown> = { level: 'campaign' };
+  async summary(effectiveStoreId: string | null, from?: string, to?: string, accountId?: string) {
+    const where: Record<string, unknown> = { level: 'campaign', ...this.accountScope(effectiveStoreId) };
     const dr = this.dateWhere(from, to);
     if (dr) where.date = dr;
     if (accountId) where.accountId = accountId;
@@ -53,8 +59,8 @@ export class AdsService {
     };
   }
 
-  async campaigns(from?: string, to?: string, accountId?: string) {
-    const where: Record<string, unknown> = { level: 'campaign' };
+  async campaigns(effectiveStoreId: string | null, from?: string, to?: string, accountId?: string) {
+    const where: Record<string, unknown> = { level: 'campaign', ...this.accountScope(effectiveStoreId) };
     const dr = this.dateWhere(from, to);
     if (dr) where.date = dr;
     if (accountId) where.accountId = accountId;
@@ -95,8 +101,8 @@ export class AdsService {
       .sort((a, b) => b.spend - a.spend);
   }
 
-  async campaignInsights(campaignId: string, from?: string, to?: string) {
-    const where: Record<string, unknown> = { level: 'campaign', campaignId };
+  async campaignInsights(effectiveStoreId: string | null, campaignId: string, from?: string, to?: string) {
+    const where: Record<string, unknown> = { level: 'campaign', campaignId, ...this.accountScope(effectiveStoreId) };
     const dr = this.dateWhere(from, to);
     if (dr) where.date = dr;
     return this.prisma.adInsight.findMany({
