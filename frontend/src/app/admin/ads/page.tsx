@@ -86,11 +86,11 @@ export default function AdsPage() {
     setSyncing(true);
     flash('Đang đồng bộ từ Meta Ads…', 60_000);
     try {
-      const r = await apiClientClient.post<{ configured: boolean; campaigns?: number; adSets?: number; ads?: number; insightRows?: number }>('/ads/sync', {});
+      const r = await apiClientClient.post<{ configured: boolean; accounts?: number; campaigns?: number; adSets?: number; ads?: number; insightRows?: number }>('/ads/sync', {});
       if (!r?.configured) {
-        flash('Chưa cấu hình credentials Meta (token + ad account id). Vào Kết nối hoặc đặt env META_ADS_*.', 8000);
+        flash('Chưa cấu hình credentials Meta (token). Vào Hệ thống → Kết nối → thẻ Meta Ads.', 8000);
       } else {
-        flash(`Đồng bộ xong: ${r.campaigns ?? 0} chiến dịch, ${r.adSets ?? 0} nhóm QC, ${r.ads ?? 0} quảng cáo, ${formatNumber(r.insightRows ?? 0)} dòng chỉ số.`, 8000);
+        flash(`Đồng bộ xong: ${r.accounts ?? 0} tài khoản, ${r.campaigns ?? 0} chiến dịch, ${r.adSets ?? 0} nhóm QC, ${r.ads ?? 0} quảng cáo, ${formatNumber(r.insightRows ?? 0)} dòng chỉ số.`, 8000);
         await loadAccounts();
         await loadData();
       }

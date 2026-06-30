@@ -26,7 +26,7 @@ Endpoint (prefix /api, guard ADMIN/MODERATOR):
 - GET /ads/campaigns?from&to&accountId — chỉ số cộng dồn theo campaign.
 - GET /ads/campaigns/:id/insights?from&to — chuỗi theo ngày.
 
-Config: **Hệ thống → Kết nối → thẻ Meta Ads** → Access Token (`ads_read`) + Ad Account ID (`act_...`) + bật Active → lưu `StoreIntegration(platform='META_ADS')` (`accessToken`, `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_ACCOUNT_ID`.
+Config: **Hệ thống → Kết nối → thẻ Meta Ads** → Access Token (`ads_read`) + (tuỳ chọn) Business ID + (tuỳ chọn) Ad Account ID + bật Active → lưu `StoreIntegration(platform='META_ADS')` (`accessToken`, `metadata.businessId`, `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_BUSINESS_ID` / `META_ADS_ACCOUNT_ID`. **Nhiều tài khoản**: trống `act_id` + có Business ID → tự lấy mọi ad account trong BM (owned+client); trống cả hai → `/me/adaccounts`; hoặc liệt kê nhiều `act_id` ngăn cách phẩy. Sync loop mọi account.
 **Gotcha**: API Graph v21 (`META_GRAPH_URL` đổi được); `results`/`cost-per-result` suy từ `actions` theo độ ưu tiên (giữ `actions` đầy đủ cho AI); ngân sách Meta theo đơn vị nhỏ nhất của tiền tệ (VND 0 chữ số thập phân nên giữ nguyên); thiếu credentials → sync trả `configured:false`, không crash. UI: `/admin/ads`.
 
 ---

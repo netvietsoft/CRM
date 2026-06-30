@@ -1,20 +1,29 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
-import { MetaAdsConnector } from './meta/meta-ads.connector';
+import { MetaAdsConnector, NormAccount } from './meta/meta-ads.connector';
 
+export interface AdsAccountSyncResult {
+  account: string;
+  name: string | null;
+  campaigns: number;
+  adSets: number;
+  ads: number;
+  insightRows: number;
+}
 export interface AdsSyncResult {
   configured: boolean;
-  accountExternalId?: string;
+  accounts?: number;
   campaigns?: number;
   adSets?: number;
   ads?: number;
   insightRows?: number;
+  perAccount?: AdsAccountSyncResult[];
 }
 
 /**
- * Đồng bộ TOÀN BỘ dữ liệu Meta Ads về CRM: account → campaign → adset → ad → insights (4 cấp, theo ngày).
- * Upsert idempotent theo unique key. Mặc định 90 ngày gần nhất.
+ * Đồng bộ TOÀN BỘ dữ liệu Meta Ads về CRM cho MỌI ad account (BM owned+client / danh sách / /me/adaccounts):
+ * account → campaign → adset → ad → insights (4 cấp, theo ngày). Upsert idempotent. Mặc định 90 ngày.
  */
 @Injectable()
 export class AdsSyncService {
@@ -30,14 +39,45 @@ export class AdsSyncService {
   }
 
   async syncAll(days = 90): Promise<AdsSyncResult> {
-    const creds = await this.connector.getCredentials();
-    if (!creds) {
+    const cfg = await this.connector.getConfig();
+    if (!cfg) {
       this.logger.warn('[Ads] Chưa cấu hình credentials Meta (StoreIntegration META_ADS hoặc env) — bỏ qua sync.');
       return { configured: false };
     }
 
+    const accounts = await this.connector.listAdAccounts(cfg);
+    if (!accounts.length) {
+      this.logger.warn('[Ads] Token hợp lệ nhưng không tìm thấy ad account nào (kiểm Business ID / quyền ads_read).');
+      return { configured: true, accounts: 0, campaigns: 0, adSets: 0, ads: 0, insightRows: 0, perAccount: [] };
+    }
+
+    const totals = { campaigns: 0, adSets: 0, ads: 0, insightRows: 0 };
+    const perAccount: AdsAccountSyncResult[] = [];
+    for (const acc of accounts) {
+      try {
+        const r = await this.syncAccount(cfg.token, acc, days);
+        totals.campaigns += r.campaigns;
+        totals.adSets += r.adSets;
+        totals.ads += r.ads;
+        totals.insightRows += r.insightRows;
+        perAccount.push({ account: acc.externalId, name: acc.name, ...r });
+      } catch (e) {
+        this.logger.error(`[Ads] Account ${acc.externalId} sync lỗi: ${(e as Error).message}`);
+      }
+    }
+
+    const result: AdsSyncResult = { configured: true, accounts: accounts.length, ...totals, perAccount };
+    this.logger.log(`[Ads] Sync xong ${accounts.length} tài khoản: ${JSON.stringify(totals)}`);
+    return result;
+  }
+
+  /** Đồng bộ 1 ad account: account → campaigns → adsets → ads → insights. */
+  private async syncAccount(
+    token: string,
+    acc: NormAccount,
+    days: number,
+  ): Promise<{ campaigns: number; adSets: number; ads: number; insightRows: number }> {
     // 1) Account
-    const acc = await this.connector.fetchAccount(creds);
     const account = await this.prisma.adAccount.upsert({
       where: { platform_externalId: { platform: 'META', externalId: acc.externalId } },
       create: {
@@ -54,7 +94,7 @@ export class AdsSyncService {
     const accountId = account.id;
 
     // 2) Campaigns
-    const campaigns = await this.connector.fetchCampaigns(creds);
+    const campaigns = await this.connector.fetchCampaigns(token, acc.externalId);
     const campMap = new Map<string, string>();
     for (const c of campaigns) {
       const data = {
@@ -77,7 +117,7 @@ export class AdsSyncService {
     }
 
     // 3) Ad sets
-    const adSets = await this.connector.fetchAdSets(creds);
+    const adSets = await this.connector.fetchAdSets(token, acc.externalId);
     const setMap = new Map<string, string>();
     for (const s of adSets) {
       const data = {
@@ -103,7 +143,7 @@ export class AdsSyncService {
     }
 
     // 4) Ads
-    const ads = await this.connector.fetchAds(creds);
+    const ads = await this.connector.fetchAds(token, acc.externalId);
     const adMap = new Map<string, string>();
     for (const a of ads) {
       const data = {
@@ -128,7 +168,7 @@ export class AdsSyncService {
     const since = this.iso(new Date(Date.now() - days * 86_400_000));
     let insightRows = 0;
     for (const level of ['campaign', 'adset', 'ad'] as const) {
-      const insights = await this.connector.fetchInsights(creds, level, since, until);
+      const insights = await this.connector.fetchInsights(token, acc.externalId, level, since, until);
       for (const ins of insights) {
         if (!ins.date || !ins.entityExternalId || ins.entityExternalId === 'undefined') continue;
         const data = {
@@ -168,25 +208,15 @@ export class AdsSyncService {
     }
 
     await this.prisma.adAccount.update({ where: { id: accountId }, data: { lastSyncedAt: new Date() } });
-
-    const result: AdsSyncResult = {
-      configured: true,
-      accountExternalId: acc.externalId,
-      campaigns: campaigns.length,
-      adSets: adSets.length,
-      ads: ads.length,
-      insightRows,
-    };
-    this.logger.log(`[Ads] Sync xong: ${JSON.stringify(result)}`);
-    return result;
+    return { campaigns: campaigns.length, adSets: adSets.length, ads: ads.length, insightRows };
   }
 
   /** Cron 3h/lần. Tắt bằng env ADS_SYNC_ENABLED=false. Bỏ qua im lặng nếu chưa cấu hình. */
   @Cron('0 */3 * * *')
   async scheduledSync(): Promise<void> {
     if (process.env.ADS_SYNC_ENABLED === 'false') return;
-    const creds = await this.connector.getCredentials();
-    if (!creds) return;
+    const cfg = await this.connector.getConfig();
+    if (!cfg) return;
     try {
       await this.syncAll(90);
     } catch (e) {

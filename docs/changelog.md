@@ -19,8 +19,9 @@
 - `ads.service.ts` + `ads.controller.ts` (`/api/ads`, guard ADMIN/MODERATOR): `POST /sync`, `GET /accounts|summary|campaigns|campaigns/:id/insights`.
 - `AdsModule` đăng ký trong `app.module.ts`.
 
-### Credentials (qua trang Kết nối)
-- Cấu hình ở **Hệ thống → Kết nối → thẻ Meta Ads**: Access Token (`ads_read`) + Ad Account ID (`act_...`) + bật Active. Lưu vào `StoreIntegration(platform='META_ADS')` (`accessToken` + `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_ACCOUNT_ID`. Connector tự đọc; thiếu → sync trả `configured:false`, không crash.
+### Credentials (qua trang Kết nối) — hỗ trợ NHIỀU tài khoản / Business Manager
+- Cấu hình ở **Hệ thống → Kết nối → thẻ Meta Ads**: Access Token (`ads_read`) + (tuỳ chọn) **Business ID** + (tuỳ chọn) **Ad Account ID** + bật Active. Lưu vào `StoreIntegration(platform='META_ADS')` (`accessToken` + `metadata.businessId` + `metadata.adAccountId`). Fallback env `META_ADS_ACCESS_TOKEN` / `META_ADS_BUSINESS_ID` / `META_ADS_ACCOUNT_ID`.
+- **Liệt kê tài khoản** (connector `listAdAccounts`): danh sách `act_id` tường minh (ngăn cách phẩy) → nếu trống + có Business ID thì `{bm}/owned_ad_accounts` + `client_ad_accounts` → nếu trống thì `/me/adaccounts`. Sync **loop qua MỌI account**, kết quả trả `accounts` + `perAccount[]`. Thiếu token → `configured:false`, không crash.
 
 ### Frontend
 - Trang **`/admin/ads`** ("Quảng cáo", nhóm Chiến dịch trên sidebar): thẻ KPI + lọc tài khoản/khoảng ngày + nút Đồng bộ ngay + bảng campaign (dùng `lib/format.ts`).

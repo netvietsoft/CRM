@@ -320,8 +320,14 @@ export default function IntegrationsPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Ad Account ID</label>
-                    <input type="text" placeholder="act_1234567890" className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formMetadata?.adAccountId || ''} onChange={e => setFormMetadata({ ...formMetadata, adAccountId: e.target.value })} required />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Business ID (BM) <span className="text-gray-400 font-normal">— tuỳ chọn</span></label>
+                    <input type="text" placeholder="VD: 123456789012345" className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formMetadata?.businessId || ''} onChange={e => setFormMetadata({ ...formMetadata, businessId: e.target.value })} />
+                    <p className="text-xs text-gray-500 mt-1">Có Business ID → tự lấy <b>tất cả</b> ad account trong BM (owned + client).</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ad Account ID <span className="text-gray-400 font-normal">— tuỳ chọn</span></label>
+                    <input type="text" placeholder="act_123, act_456 (để trống = lấy tất cả)" className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formMetadata?.adAccountId || ''} onChange={e => setFormMetadata({ ...formMetadata, adAccountId: e.target.value })} />
+                    <p className="text-xs text-gray-500 mt-1">Để trống = lấy tất cả tài khoản token truy cập được. Nhiều tài khoản: ngăn cách dấu phẩy.</p>
                   </div>
                   <p className="text-xs text-gray-500">Token cần quyền <span className="font-mono">ads_read</span>. Lấy ở Business Settings → System Users → Generate Token. Bật “Active” rồi vào trang Quảng cáo bấm “Đồng bộ ngay”.</p>
                 </>

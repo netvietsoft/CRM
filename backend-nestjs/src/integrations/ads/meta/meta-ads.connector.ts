@@ -2,12 +2,21 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { MetaAdsClient } from './meta-ads.client';
 
-export interface MetaCredentials {
+export interface MetaConfig {
   token: string;
-  accountId: string; // luôn dạng act_<id>
+  businessId: string | null;
+  accountIds: string[]; // danh sách act_<id> tường minh; RỖNG = tự phát hiện qua BM / /me/adaccounts
 }
 
 // ===== Shape chuẩn hoá (connector trả về, sync persist) =====
+export interface NormAccount {
+  externalId: string;
+  name: string | null;
+  currency: string | null;
+  timezoneName: string | null;
+  status: string | null;
+  raw: any;
+}
 export interface NormEntity {
   externalId: string;
   name: string | null;
@@ -80,10 +89,11 @@ const dt = (v: any): Date | null => {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 };
+const actId = (id: string): string => (/^act_/.test(id) ? id : `act_${id}`);
 
 /**
- * Connector Meta: lấy account/campaign/adset/ad + insights theo ngày, map sang shape chuẩn hoá.
- * Mọi bản ghi giữ `raw` = payload gốc → không bỏ sót field.
+ * Connector Meta: liệt kê NHIỀU ad account (BM/owned+client hoặc /me/adaccounts), rồi với mỗi account
+ * lấy campaign/adset/ad + insights theo ngày, map sang shape chuẩn hoá. Mọi bản ghi giữ `raw`.
  */
 @Injectable()
 export class MetaAdsConnector {
@@ -94,41 +104,70 @@ export class MetaAdsConnector {
     private readonly client: MetaAdsClient,
   ) {}
 
-  /** Lấy credentials từ StoreIntegration(META_ADS) hoặc env. Null nếu chưa cấu hình. */
-  async getCredentials(): Promise<MetaCredentials | null> {
+  /** Cấu hình từ StoreIntegration(META_ADS) hoặc env. Null nếu thiếu token. */
+  async getConfig(): Promise<MetaConfig | null> {
     const integ = await this.prisma.storeIntegration.findFirst({
       where: { platform: 'META_ADS', isActive: true },
     });
     const meta: any = integ?.metadata || {};
     const token = integ?.accessToken || process.env.META_ADS_ACCESS_TOKEN || null;
-    let accountId = meta.adAccountId || process.env.META_ADS_ACCOUNT_ID || null;
-    if (!token || !accountId) return null;
-    accountId = String(accountId);
-    if (!/^act_/.test(accountId)) accountId = `act_${accountId}`;
-    return { token, accountId };
+    if (!token) return null;
+    const businessId = meta.businessId || process.env.META_ADS_BUSINESS_ID || null;
+    const rawIds = meta.adAccountId || process.env.META_ADS_ACCOUNT_ID || '';
+    const accountIds = String(rawIds)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map(actId);
+    return { token, businessId: businessId ? String(businessId) : null, accountIds };
   }
 
-  async fetchAccount(creds: MetaCredentials): Promise<NormEntity & { currency: string | null; timezoneName: string | null }> {
-    const a = await this.client.getNode(
-      creds.accountId,
-      'id,account_id,name,currency,timezone_name,account_status',
-      creds.token,
-    );
-    return {
-      externalId: a?.id || creds.accountId,
-      name: a?.name ?? null,
-      status: a?.account_status != null ? String(a.account_status) : null,
-      currency: a?.currency ?? null,
-      timezoneName: a?.timezone_name ?? null,
-      raw: a,
-    };
+  /**
+   * Liệt kê TẤT CẢ ad account: ưu tiên danh sách tường minh → Business Manager (owned + client)
+   * → fallback /me/adaccounts. Dedup theo id.
+   */
+  async listAdAccounts(cfg: MetaConfig): Promise<NormAccount[]> {
+    const fields = 'id,name,currency,timezone_name,account_status';
+    let raws: any[] = [];
+
+    if (cfg.accountIds.length) {
+      for (const id of cfg.accountIds) {
+        const a = await this.client.getNode(id, fields, cfg.token).catch((e) => {
+          this.logger.warn(`[MetaAds] Không lấy được account ${id}: ${(e as Error).message}`);
+          return null;
+        });
+        if (a) raws.push(a);
+      }
+    } else if (cfg.businessId) {
+      const owned = await this.client.getEdge(`${cfg.businessId}/owned_ad_accounts`, { fields }, cfg.token).catch(() => []);
+      const client = await this.client.getEdge(`${cfg.businessId}/client_ad_accounts`, { fields }, cfg.token).catch(() => []);
+      raws = [...owned, ...client];
+    } else {
+      raws = await this.client.getEdge('me/adaccounts', { fields }, cfg.token).catch(() => []);
+    }
+
+    const seen = new Set<string>();
+    const out: NormAccount[] = [];
+    for (const a of raws) {
+      if (!a?.id || seen.has(a.id)) continue;
+      seen.add(a.id);
+      out.push({
+        externalId: a.id,
+        name: a.name ?? null,
+        currency: a.currency ?? null,
+        timezoneName: a.timezone_name ?? null,
+        status: a.account_status != null ? String(a.account_status) : null,
+        raw: a,
+      });
+    }
+    return out;
   }
 
-  async fetchCampaigns(creds: MetaCredentials): Promise<NormCampaign[]> {
+  async fetchCampaigns(token: string, accountId: string): Promise<NormCampaign[]> {
     const rows = await this.client.getEdge(
-      `${creds.accountId}/campaigns`,
+      `${accountId}/campaigns`,
       { fields: 'id,name,status,effective_status,objective,daily_budget,lifetime_budget,start_time,stop_time' },
-      creds.token,
+      token,
     );
     return rows.map((c) => ({
       externalId: c.id,
@@ -143,14 +182,14 @@ export class MetaAdsConnector {
     }));
   }
 
-  async fetchAdSets(creds: MetaCredentials): Promise<NormAdSet[]> {
+  async fetchAdSets(token: string, accountId: string): Promise<NormAdSet[]> {
     const rows = await this.client.getEdge(
-      `${creds.accountId}/adsets`,
+      `${accountId}/adsets`,
       {
         fields:
           'id,name,status,effective_status,campaign_id,daily_budget,lifetime_budget,optimization_goal,billing_event,targeting,start_time,end_time',
       },
-      creds.token,
+      token,
     );
     return rows.map((s) => ({
       externalId: s.id,
@@ -168,11 +207,11 @@ export class MetaAdsConnector {
     }));
   }
 
-  async fetchAds(creds: MetaCredentials): Promise<NormAd[]> {
+  async fetchAds(token: string, accountId: string): Promise<NormAd[]> {
     const rows = await this.client.getEdge(
-      `${creds.accountId}/ads`,
+      `${accountId}/ads`,
       { fields: 'id,name,status,effective_status,campaign_id,adset_id,creative' },
-      creds.token,
+      token,
     );
     return rows.map((a) => ({
       externalId: a.id,
@@ -185,10 +224,16 @@ export class MetaAdsConnector {
     }));
   }
 
-  /** Insights theo NGÀY (time_increment=1) cho 1 cấp. since/until: 'YYYY-MM-DD'. */
-  async fetchInsights(creds: MetaCredentials, level: 'campaign' | 'adset' | 'ad', since: string, until: string): Promise<NormInsight[]> {
+  /** Insights theo NGÀY (time_increment=1) cho 1 cấp của 1 account. since/until: 'YYYY-MM-DD'. */
+  async fetchInsights(
+    token: string,
+    accountId: string,
+    level: 'campaign' | 'adset' | 'ad',
+    since: string,
+    until: string,
+  ): Promise<NormInsight[]> {
     const rows = await this.client.getEdge(
-      `${creds.accountId}/insights`,
+      `${accountId}/insights`,
       {
         level,
         time_increment: '1',
@@ -196,7 +241,7 @@ export class MetaAdsConnector {
         fields:
           'date_start,campaign_id,adset_id,ad_id,spend,impressions,reach,clicks,unique_clicks,ctr,cpc,cpm,frequency,actions,action_values',
       },
-      creds.token,
+      token,
     );
     return rows.map((r) => {
       const entityExternalId = level === 'campaign' ? r.campaign_id : level === 'adset' ? r.adset_id : r.ad_id;
