@@ -5,6 +5,67 @@
 
 ---
 
+## 2026-06-30 — Refactor: gom định dạng số về `lib/format.ts` (1 nguồn duy nhất)
+
+### Vấn đề
+- ~40 file FE tự viết `new Intl.NumberFormat('vi-VN', …)` cục bộ → trùng lặp, lệch kiểu (`đ` / `₫` / `VND`).
+- 4 chỗ `toLocaleString()` THIẾU locale (`admin/page.tsx` ×2, `integrations/[platform]/page.tsx` ×2) → SSR (Node) có thể ra dấu phẩy `1,234,567` thay vì `1.234.567`.
+
+### Fix
+- Tạo `frontend/src/lib/format.ts` — nguồn duy nhất, 6 hàm (giữ NGUYÊN 6 kiểu output đang dùng): `formatNumber` (`1.234.567`), `formatVnd` (`… đ`), `formatVndTight` (`…đ`), `formatVndText` (`… VND`), `formatVndSymbol` (`… ₫`), `formatCompact` (`1,2 N`). Tất cả locale `vi-VN`, dấu CHẤM ngăn nghìn.
+- ~40 file bỏ formatter cục bộ → import/delegate util; giữ nguyên tên helper & call-site (vd `const money = formatVnd`, hoặc wrapper 1 dòng) nên KHÔNG đổi output, KHÔNG đụng call-site.
+- Sửa 4 chỗ `toLocaleString()` thiếu locale.
+- Bổ sung quy tắc vào `docs/07-quy-tac-code.md` C.8 + `frontend/src/lib/README.md`.
+
+### Verify
+- `tsc --noEmit` sạch. Grep: không còn `new Intl.NumberFormat` ngoài `format.ts`; không còn `toLocaleString()` thiếu locale (date `toLocaleString('vi-VN')` giữ nguyên). Commit `b9492e0` (42 files).
+
+## 2026-06-30 — Fix: địa chỉ người nhận VTP "lấy về" bị cụt (chỉ số nhà)
+
+### Triệu chứng
+- Trang `/admin/viettel-customers` cột **Địa chỉ** hiện cụt: `"57"`, `"."`, `"g21, Phước Tân Tổ 13"` — thiếu phường/quận/tỉnh.
+
+### Root cause
+- `viettel-customer.service.ts → enrichFromDetail()` (nhánh reconcile/enrich từ `order/detail-v2`) ưu tiên SAI:
+  `RECEIVER_HOME_NO || RECEIVER_ADDRESS`. VTP trả CẢ HAI: `RECEIVER_HOME_NO` = số nhà (`"57"`),
+  `RECEIVER_ADDRESS` = địa chỉ ĐẦY ĐỦ (`"57 Đường Đào Tấn, P.Bình Thuận, Q.Hải Châu, TP.Đà Nẵng"`).
+  Vì home_no truthy nên luôn chọn số nhà, bỏ địa chỉ đầy đủ → lưu cụt.
+
+### Fix
+- Đảo thứ tự: `receiverAddress = RECEIVER_ADDRESS || RECEIVER_HOME_NO` (đầy đủ trước, số nhà chỉ là fallback).
+- **Backfill** 16 dòng cũ từ `detailPayload.RECEIVER_ADDRESS` (mọi dòng enriched đều đã lưu sẵn full detail) — không cần gọi lại VTP.
+
+### Verify
+- Backend `tsc --noEmit`: sạch. Query DB sau fix: 6/6 dòng mẫu hiện địa chỉ đầy đủ. Xác minh `detail-v2?o=` trả `RECEIVER_ADDRESS` đầy đủ bằng token thật.
+
+## 2026-06-30 — Form tạo đơn ViettelPost: địa danh mới + ghi chú mặc định + nháp/hủy
+
+### Người nhận — toggle "Địa danh mới" (2 cấp, sau sáp nhập 1/7/2025)
+- Công tắc trong card Người nhận: TẮT = hệ cũ 3 cấp (Tỉnh→Huyện→Xã, API cũ); BẬT = hệ mới 2 cấp **Tỉnh→Phường/Xã** (ẩn Quận/Huyện).
+- Backend mới (v3, host `partner.viettelpost.vn/v3` qua `authService.getV3`):
+  - `GET /api/viettelpost/address/provinces-new` → `categories/listProvinceNew`.
+  - `GET /api/viettelpost/address/wards-new?provinceId=` → **`categories/listWardsNew?provinceId=`** (đã XÁC MINH với API thật: trả `{WARDS_ID, WARDS_NAME, PROVINCE_ID}`, xã gắn thẳng vào tỉnh). Lưu ý tên đúng là `listWardsNew` (Wards số nhiều + New), KHÔNG phải listWardNew/listWardByProvince.
+- `createOnVtp` thêm cờ `useNewAddress` → gửi `RECEIVER_DISTRICT: 0`, giữ `RECEIVER_WARD`. FE chuẩn hoá key tỉnh/xã linh hoạt (`normProvince/normWard`).
+
+### Ghi chú mặc định
+- `orderNote` mặc định = "Tuyệt đối không cho thử hàng… Bưu tá quay video khi khách mở hàng…" + nút "↺ Ghi chú mặc định".
+
+### Mã đơn hàng tự sinh
+- Ô "Mã đơn hàng" prefill `CHYSHOP<n>`, `n = tổng đơn VTP thật (không tính DRAFT-) + 1`. Backend `GET /api/viettelpost/next-order-ref` → `ViettelCustomerService.nextOrderRef`. FE prefill khi mở form đơn mới + sau "Tạo đơn khác"; mở nháp thì giữ mã đã lưu. Vẫn sửa tay được. ⚠ Đếm-tổng nên có thể trùng nếu xoá đơn cũ — chấp nhận theo yêu cầu.
+
+### Nháp + 3 nút hành động
+- **Lưu nháp**: `POST /api/viettelpost/drafts` (ADMIN/STAFF) → lưu vào `viettel_customers` với `trackingCode='DRAFT-<ts>-<rand>'`, `status=null`, `statusName='Nháp'`, **toàn bộ form** lưu vào `detailPayload._draft.dto` (mở lại sửa được). KHÔNG đẩy VTP. Reconcile chạy trên `prisma.order` nên không đụng nháp.
+- **Xoá nháp**: `DELETE /api/viettelpost/drafts/:code` (chỉ xoá dòng tiền tố `DRAFT-`).
+- Form `create/page.tsx` nhận `?draft=DRAFT-...` → GET customer, hydrate từ `detailPayload.dto`, nạp lại dropdown địa chỉ theo chế độ.
+- Đẩy đơn từ nháp: `createOnVtp` nhận `draftCode` → tạo đơn thật xong tự `deleteDraft` (nuốt lỗi).
+- **Bộ nút**: `🚀 Tạo đơn & đẩy VTP` · `💾 Lưu nháp` · `🗑 Xoá nháp` (khi đang sửa nháp) / `✖ Hủy` (đơn mới).
+- **Hủy đơn đã đẩy VTP**: màn hình kết quả sau khi tạo có nút `🚫 Hủy đơn` → `update-status {type:4}` (UpdateOrder TYPE=4). (Trang chi tiết `[code]` vẫn có sẵn hành động này.)
+- Danh sách `viettel-customers`: dòng `DRAFT-` hiện badge "📝 Nháp", click mở `create?draft=...` thay vì trang chi tiết.
+
+### Verify
+- Backend `tsc --noEmit`: sạch. Frontend `tsc --noEmit`: sạch.
+- ⚠ Chưa chạy thật với VTP (token/host outbound chưa xác nhận — xem `docs/viettelpost-api-spec.md`). Endpoint địa danh mới chưa kiểm chứng tên chính xác.
+
 ## 2026-06-29 (đêm) — Dọn lỗi 🟡: cookie NODE_ENV + Google referralCode + FE apiClientClient
 
 ### Cookie auth theo môi trường (auth.controller.ts)
