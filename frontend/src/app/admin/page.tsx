@@ -155,7 +155,7 @@ export default async function AdminDashboard() {
                 const statusInfo = getStatusBadge(order.status);
                 const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                 return (
-                  <div key={`mob-order-${order.id}`} className="p-4 flex flex-col gap-2">
+                  <Link key={`mob-order-${order.id}`} href={`/admin/orders/${order.id}`} className="flex flex-col gap-2 p-4 active:bg-blue-50/40">
                     <div className="flex justify-between items-center">
                       <span className="font-mono text-sm font-bold text-gray-800">{order.orderCode}</span>
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${statusInfo.class === 'badge-success' ? 'bg-green-100 text-green-700' :
@@ -170,7 +170,7 @@ export default async function AdminDashboard() {
                       <span className="text-gray-600">{displayName}</span>
                       <span className="font-bold text-rose-600">{formatCurrency(order.totalAmount)}</span>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             )}
@@ -200,8 +200,9 @@ export default async function AdminDashboard() {
                     const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                     const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                     return (
-                      <tr key={order.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
+                      <tr key={order.id} className={`relative cursor-pointer ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
                         <td className="px-6 py-4">
+                          <Link href={`/admin/orders/${order.id}`} className="absolute inset-0" aria-label={`Xem chi tiết đơn ${order.orderCode}`} />
                           <span className="font-mono text-xs text-gray-800">
                             {order.orderCode}
                           </span>
@@ -250,7 +251,7 @@ export default async function AdminDashboard() {
                 const displayName = customer.name || customer.phone || 'Khách lạ';
                 const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                 return (
-                  <div key={`mob-cust-${customer.id}`} className="p-4 flex flex-col gap-3">
+                  <Link key={`mob-cust-${customer.id}`} href={`/admin/customers/${customer.id}`} className="flex flex-col gap-3 p-4 active:bg-blue-50/40">
                     <div className="flex items-center gap-3 mb-1">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
                         {displayChar}
@@ -280,7 +281,7 @@ export default async function AdminDashboard() {
                         <span className="font-bold text-indigo-600">{customer._count?.orders || 0} đơn</span>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             )}
@@ -308,8 +309,9 @@ export default async function AdminDashboard() {
                   stats.topCustomers.map((customer, idx) => {
                     const displayName = customer.name || customer.phone || 'Khách lạ';
                     return (
-                      <tr key={customer.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
+                      <tr key={customer.id} className={`relative cursor-pointer ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
                         <td className="px-6 py-4">
+                          <Link href={`/admin/customers/${customer.id}`} className="absolute inset-0" aria-label={`Xem chi tiết khách hàng ${displayName}`} />
                           <div className="flex items-center gap-2">
                             <div>
                               <div className="text-sm">{displayName}</div>

@@ -93,6 +93,12 @@ export class CreateProductDto {
   @Min(0)
   originalPrice: number;
 
+  @ApiPropertyOptional({ example: 150000, description: 'Giá sản xuất / giá vốn' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  productionPrice?: number;
+
   @ApiPropertyOptional({ example: 199000 })
   @IsOptional()
   @IsNumber()

@@ -31,6 +31,7 @@ interface ProductSubmitPayload {
   description?: string;
   imageUrl: string | null;
   originalPrice: number;
+  productionPrice?: number;
   salePrice?: number;
   stockQuantity: number;
   weight: number;

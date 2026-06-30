@@ -31,6 +31,7 @@ interface ProductSubmitPayload {
   description?: string;
   imageUrl: string | null;
   originalPrice: number;
+  productionPrice?: number;
   salePrice?: number;
   stockQuantity: number;
   weight: number;
@@ -53,6 +54,7 @@ export interface ProductFormProduct {
   sku?: string | null;
   description?: string | null;
   originalPrice?: number | null;
+  productionPrice?: number | null;
   salePrice?: number | null;
   stockQuantity?: number | null;
   weight?: number | null;

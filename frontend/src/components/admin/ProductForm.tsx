@@ -109,6 +109,7 @@ interface ProductFormInitialData {
   sku?: string | null;
   description?: string | null;
   originalPrice?: number | null;
+  productionPrice?: number | null;
   salePrice?: number | null;
   stockQuantity?: number | null;
   weight?: number | null;
@@ -145,6 +146,7 @@ interface ProductSubmitPayload {
   description?: string;
   imageUrl: string | null;
   originalPrice: number;
+  productionPrice?: number;
   salePrice?: number;
   stockQuantity: number;
   weight: number;
@@ -166,6 +168,7 @@ interface ProductFormState {
   sku: string;
   description: string;
   originalPrice: string;
+  productionPrice: string;
   salePrice: string;
   stockQuantity: string;
   weight: string;
@@ -208,6 +211,13 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
+
+// Giá tiền VNĐ: chỉ giữ chữ số, hiển thị ngăn nghìn bằng dấu chấm (không thập phân).
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+const formatPriceInput = (rawDigits: string) => {
+  const digits = onlyDigits(rawDigits);
+  return digits ? new Intl.NumberFormat('vi-VN').format(Number(digits)) : '';
+};
 
 export default function ProductForm({
   categories = [],
@@ -262,6 +272,7 @@ export default function ProductForm({
     sku: initialData?.sku || '',
     description: initialData?.description || '',
     originalPrice: initialData?.originalPrice?.toString() || '',
+    productionPrice: initialData?.productionPrice?.toString() || '',
     salePrice: initialData?.salePrice?.toString() || '',
     stockQuantity: initialData?.stockQuantity?.toString() || '0',
     weight: initialData?.weight?.toString() || '500',
@@ -345,6 +356,7 @@ export default function ProductForm({
       description: form.description || undefined,
       imageUrl: form.imageUrl || null,
       originalPrice: parseFloat(form.originalPrice),
+      productionPrice: form.productionPrice ? parseFloat(form.productionPrice) : undefined,
       salePrice: form.salePrice ? parseFloat(form.salePrice) : undefined,
       stockQuantity: parseInt(form.stockQuantity, 10) || 0,
       weight: parseInt(form.weight, 10) || 500,
@@ -537,12 +549,12 @@ export default function ProductForm({
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-slug">
+                <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="prod-slug">
                   Slug *
                 </label>
                 <input
                   id="prod-slug"
-                  className="w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 font-mono text-sm transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="w-full max-w-xs rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-600 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
                   required
                   value={form.slug}
                   onChange={(e) => update('slug', e.target.value)}
@@ -550,19 +562,34 @@ export default function ProductForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-production">
+                    Giá sản xuất (VNĐ)
+                  </label>
+                  <input
+                    id="prod-production"
+                    type="text"
+                    inputMode="numeric"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-right transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    value={formatPriceInput(form.productionPrice)}
+                    onChange={(e) => update('productionPrice', onlyDigits(e.target.value))}
+                    placeholder="150.000"
+                  />
+                </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-price">
                     Giá gốc (VNĐ) *
                   </label>
                   <input
                     id="prod-price"
-                    type="number"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    type="text"
+                    inputMode="numeric"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-right transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     required
-                    value={form.originalPrice}
-                    onChange={(e) => update('originalPrice', e.target.value)}
-                    placeholder="299000"
+                    value={formatPriceInput(form.originalPrice)}
+                    onChange={(e) => update('originalPrice', onlyDigits(e.target.value))}
+                    placeholder="299.000"
                   />
                 </div>
                 <div>
@@ -571,13 +598,17 @@ export default function ProductForm({
                   </label>
                   <input
                     id="prod-sale"
-                    type="number"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
-                    value={form.salePrice}
-                    onChange={(e) => update('salePrice', e.target.value)}
-                    placeholder="249000"
+                    type="text"
+                    inputMode="numeric"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-right transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    value={formatPriceInput(form.salePrice)}
+                    onChange={(e) => update('salePrice', onlyDigits(e.target.value))}
+                    placeholder="249.000"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-weight">
                     Trọng lượng (g)
@@ -799,11 +830,12 @@ export default function ProductForm({
                           </td>
                           <td className="p-3">
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               placeholder="Bỏ trống -> Giá gốc"
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 transition-all focus:ring-2 focus:ring-blue-500"
-                              value={variant.price}
-                              onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right transition-all focus:ring-2 focus:ring-blue-500"
+                              value={formatPriceInput(variant.price)}
+                              onChange={(e) => updateVariant(variant.id, 'price', onlyDigits(e.target.value))}
                             />
                           </td>
                           <td className="p-3">
