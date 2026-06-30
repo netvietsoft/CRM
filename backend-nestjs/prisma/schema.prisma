@@ -290,6 +290,7 @@ model Product {
   tagMaps        ProductTagMap[]
   comboItems     ProductComboItem[] @relation("ComboProductItems")
   usedInCombos   ProductComboItem[] @relation("ComboChildProduct")
+  adProductMaps  AdProductMap[]
 
   @@index([storeId])
   @@index([sku])
@@ -1581,6 +1582,23 @@ model AdPage {
   @@unique([platform, externalId])
   @@index([businessExternalId])
   @@map("ad_pages")
+}
+
+model AdProductMap {
+  id                 String   @id @default(uuid())
+  storeId            String?  @map("store_id")
+  platform           String   @default("META")
+  level              String // 'campaign' (v1); để sẵn 'adset' | 'ad'
+  adEntityExternalId String   @map("ad_entity_external_id")
+  productId          String   @map("product_id")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([platform, level, adEntityExternalId])
+  @@index([productId])
+  @@index([storeId])
+  @@map("ad_product_maps")
 }
 
 // ===== Messenger inbox (chat với khách của Page) =====
