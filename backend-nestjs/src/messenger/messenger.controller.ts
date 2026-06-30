@@ -73,6 +73,31 @@ export class MessengerController {
     return this.service.markRead(storeId, id);
   }
 
+  @Post('conversations/:id/assign')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Nhận xử lý (gán mình) / bỏ gán hội thoại' })
+  assign(
+    @GetEffectiveStoreId() storeId: string | null,
+    @GetUser() user: { id: string; name?: string | null; email?: string | null },
+    @Param('id') id: string,
+    @Body() body: { assign?: boolean },
+  ) {
+    return this.service.assign(storeId, id, body?.assign === false ? null : user);
+  }
+
+  @Post('conversations/:id/labels')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Đặt nhãn cho hội thoại' })
+  labels(
+    @GetEffectiveStoreId() storeId: string | null,
+    @Param('id') id: string,
+    @Body() body: { labels?: string[] },
+  ) {
+    return this.service.setLabels(storeId, id, body?.labels);
+  }
+
   @Post('conversations/:id/reply')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_SEND)

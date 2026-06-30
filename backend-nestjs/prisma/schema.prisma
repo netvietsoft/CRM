@@ -1627,6 +1627,9 @@ model MsgConversation {
   lastMessageDir  String?      @map("last_message_dir")
   unreadCount     Int          @default(0) @map("unread_count")
   status          String       @default("OPEN")
+  assignedUserId   String?     @map("assigned_user_id")
+  assignedUserName String?     @map("assigned_user_name")
+  labels           Json?       // nhãn tự do (mảng chuỗi) cho hội thoại
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
   page            MsgPage      @relation(fields: [pageId], references: [id], onDelete: Cascade)

@@ -111,10 +111,35 @@ export class MessengerService {
         lastMessageAt: true,
         lastMessageText: true,
         lastMessageDir: true,
+        assignedUserId: true,
+        assignedUserName: true,
+        labels: true,
         contact: { select: { psid: true, name: true, avatarUrl: true } },
         page: { select: { name: true, externalId: true } },
       },
     });
+  }
+
+  /** Gán/bỏ gán nhân viên xử lý. user=null → bỏ gán. */
+  async assign(effectiveStoreId: string | null, convId: string, user: { id: string; name?: string | null; email?: string | null } | null) {
+    await this.getScopedConversation(effectiveStoreId, convId);
+    return this.prisma.msgConversation.update({
+      where: { id: convId },
+      data: {
+        assignedUserId: user?.id ?? null,
+        assignedUserName: user ? user.name || user.email || user.id : null,
+      },
+      select: { id: true, assignedUserId: true, assignedUserName: true },
+    });
+  }
+
+  /** Đặt nhãn (mảng chuỗi) cho hội thoại. */
+  async setLabels(effectiveStoreId: string | null, convId: string, labels: unknown) {
+    await this.getScopedConversation(effectiveStoreId, convId);
+    const clean = Array.isArray(labels)
+      ? [...new Set(labels.map((s) => String(s).trim()).filter(Boolean))].slice(0, 20)
+      : [];
+    return this.prisma.msgConversation.update({ where: { id: convId }, data: { labels: clean }, select: { id: true, labels: true } });
   }
 
   async listMessages(effectiveStoreId: string | null, convId: string) {
