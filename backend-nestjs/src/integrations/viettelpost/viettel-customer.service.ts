@@ -196,29 +196,56 @@ export class ViettelCustomerService {
    * Người gửi lấy từ env VIETTELPOST_SENDER_*. Trả { trackingCode, fee } hoặc { error }.
    */
   async createOnVtp(dto: {
+    // Người gửi (override; mặc định lấy env VIETTELPOST_SENDER_*; địa điểm ID luôn từ env)
+    senderFullname?: string;
+    senderPhone?: string;
+    senderAddress?: string;
+    // Người nhận
     receiverFullname: string;
     receiverPhone: string;
     receiverAddress: string;
     receiverProvince: number;
     receiverDistrict: number;
     receiverWard?: number;
-    productName: string;
-    productPrice: number;
-    productWeight: number;
-    productQuantity?: number;
+    // Hàng hóa
+    productType?: string; // 'HH' bưu kiện | 'TaiLieu' tài liệu
+    items?: Array<{ name?: string; quantity?: number; weight?: number; price?: number }>;
+    productLength?: number;
+    productWidth?: number;
+    productHeight?: number;
+    orderReference?: string; // mã đơn tự tạo
+    // Tiền / dịch vụ
     cod: number;
-    orderService: string;
-    orderServiceAdd?: string;
     orderPayment?: number;
+    orderService: string;
+    serviceAdd?: string[] | string; // mã dịch vụ cộng thêm (XMG, HDV, HGC...)
     orderNote?: string;
   }): Promise<{ trackingCode?: string; fee?: number; error?: string }> {
+    const items =
+      dto.items && dto.items.length
+        ? dto.items
+        : [{ name: 'Hàng hóa', quantity: 1, weight: 500, price: 0 }];
+    const listItem = items.map((it) => ({
+      PRODUCT_NAME: it.name || 'Hàng hóa',
+      PRODUCT_PRICE: Number(it.price) || 0,
+      PRODUCT_WEIGHT: Number(it.weight) || 0,
+      PRODUCT_QUANTITY: Number(it.quantity) || 1,
+    }));
+    const totalWeight = listItem.reduce((s, i) => s + i.PRODUCT_WEIGHT * (i.PRODUCT_QUANTITY || 1), 0);
+    const totalPrice = listItem.reduce((s, i) => s + i.PRODUCT_PRICE * (i.PRODUCT_QUANTITY || 1), 0);
+    const totalQty = listItem.reduce((s, i) => s + i.PRODUCT_QUANTITY, 0);
+    const productName = items.map((i) => i.name).filter(Boolean).join(', ') || 'Hàng hóa';
+    const serviceAdd = Array.isArray(dto.serviceAdd)
+      ? dto.serviceAdd.filter(Boolean).join(',')
+      : dto.serviceAdd || '';
+
     const payload: Record<string, any> = {
-      ORDER_NUMBER: '',
+      ORDER_NUMBER: dto.orderReference || '',
       GROUPADDRESS_ID: 0,
       CUS_ID: 0,
-      SENDER_FULLNAME: process.env.VIETTELPOST_SENDER_NAME || 'Shop',
-      SENDER_PHONE: process.env.VIETTELPOST_SENDER_PHONE || '',
-      SENDER_ADDRESS: process.env.VIETTELPOST_SENDER_ADDRESS || '',
+      SENDER_FULLNAME: dto.senderFullname || process.env.VIETTELPOST_SENDER_NAME || 'Shop',
+      SENDER_PHONE: dto.senderPhone || process.env.VIETTELPOST_SENDER_PHONE || '',
+      SENDER_ADDRESS: dto.senderAddress || process.env.VIETTELPOST_SENDER_ADDRESS || '',
       SENDER_PROVINCE: Number(process.env.VIETTELPOST_SENDER_PROVINCE) || 1,
       SENDER_DISTRICT: Number(process.env.VIETTELPOST_SENDER_DISTRICT) || 14,
       SENDER_WARD: Number(process.env.VIETTELPOST_SENDER_WARD) || 0,
@@ -228,15 +255,18 @@ export class ViettelCustomerService {
       RECEIVER_PROVINCE: dto.receiverProvince,
       RECEIVER_DISTRICT: dto.receiverDistrict,
       RECEIVER_WARD: dto.receiverWard ?? 0,
-      PRODUCT_NAME: dto.productName,
-      PRODUCT_DESCRIPTION: dto.productName,
-      PRODUCT_QUANTITY: dto.productQuantity || 1,
-      PRODUCT_PRICE: dto.productPrice,
-      PRODUCT_WEIGHT: dto.productWeight,
-      PRODUCT_TYPE: 'HH',
+      PRODUCT_NAME: productName,
+      PRODUCT_DESCRIPTION: productName,
+      PRODUCT_QUANTITY: totalQty,
+      PRODUCT_PRICE: totalPrice,
+      PRODUCT_WEIGHT: totalWeight,
+      PRODUCT_TYPE: dto.productType || 'HH',
+      PRODUCT_LENGTH: Number(dto.productLength) || 0,
+      PRODUCT_WIDTH: Number(dto.productWidth) || 0,
+      PRODUCT_HEIGHT: Number(dto.productHeight) || 0,
       ORDER_PAYMENT: dto.orderPayment ?? 3,
       ORDER_SERVICE: dto.orderService,
-      ORDER_SERVICE_ADD: dto.orderServiceAdd || '',
+      ORDER_SERVICE_ADD: serviceAdd,
       ORDER_VOUCHER: '',
       ORDER_NOTE: dto.orderNote || '',
       MONEY_COLLECTION: dto.cod || 0,
@@ -247,14 +277,7 @@ export class ViettelCustomerService {
       MONEY_VAT: 0,
       MONEY_TOTAL: 0,
       MONEY_TOTALVAT: 0,
-      LIST_ITEM: [
-        {
-          PRODUCT_NAME: dto.productName,
-          PRODUCT_PRICE: dto.productPrice,
-          PRODUCT_WEIGHT: dto.productWeight,
-          PRODUCT_QUANTITY: dto.productQuantity || 1,
-        },
-      ],
+      LIST_ITEM: listItem,
     };
 
     const res = await this.authService.post('order/createOrder', payload);
@@ -264,41 +287,28 @@ export class ViettelCustomerService {
       return { error: res?.message || 'ViettelPost từ chối tạo đơn (kiểm tra địa chỉ/dịch vụ).' };
     }
 
-    // Lưu vào viettel_customers để hiển thị + theo dõi (webhook sẽ cập nhật trạng thái sau).
+    const saveData = {
+      receiverFullname: dto.receiverFullname,
+      receiverPhone: dto.receiverPhone,
+      receiverAddress: dto.receiverAddress,
+      receiverProvinceId: dto.receiverProvince,
+      receiverDistrictId: dto.receiverDistrict,
+      receiverWardId: dto.receiverWard ?? null,
+      productName,
+      cod: dto.cod || 0,
+      orderNote: dto.orderNote || null,
+      orderService: dto.orderService,
+      orderReference: dto.orderReference || null,
+      productWeight: totalWeight,
+      status: 100,
+      statusName: 'Tạo đơn',
+      detailPayload: data,
+    };
     try {
       await this.prisma.viettelCustomer.upsert({
         where: { trackingCode: String(trackingCode) },
-        update: {
-          receiverFullname: dto.receiverFullname,
-          receiverPhone: dto.receiverPhone,
-          receiverAddress: dto.receiverAddress,
-          receiverProvinceId: dto.receiverProvince,
-          receiverDistrictId: dto.receiverDistrict,
-          receiverWardId: dto.receiverWard ?? null,
-          productName: dto.productName,
-          cod: dto.cod || 0,
-          orderNote: dto.orderNote || null,
-          orderService: dto.orderService,
-          status: 100,
-          statusName: 'Tạo đơn',
-          detailPayload: data,
-        },
-        create: {
-          trackingCode: String(trackingCode),
-          receiverFullname: dto.receiverFullname,
-          receiverPhone: dto.receiverPhone,
-          receiverAddress: dto.receiverAddress,
-          receiverProvinceId: dto.receiverProvince,
-          receiverDistrictId: dto.receiverDistrict,
-          receiverWardId: dto.receiverWard ?? null,
-          productName: dto.productName,
-          cod: dto.cod || 0,
-          orderNote: dto.orderNote || null,
-          orderService: dto.orderService,
-          status: 100,
-          statusName: 'Tạo đơn',
-          detailPayload: data,
-        },
+        update: saveData,
+        create: { trackingCode: String(trackingCode), ...saveData },
       });
     } catch (e: any) {
       this.logger.warn(`[VTP] tạo đơn OK nhưng lưu DB lỗi: ${e?.message || e}`);
