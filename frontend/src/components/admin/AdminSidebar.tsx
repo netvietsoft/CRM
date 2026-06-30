@@ -37,12 +37,16 @@ const navItems = [
       { name: 'Nhân viên', href: '/admin/staff', roles: ADMIN_MODERATOR },
       { name: 'Cửa hàng', href: '/admin/stores', roles: ADMIN_ONLY },
       { name: 'Đơn hàng', href: '/admin/orders', roles: ALL_ROLES },
-      { name: 'Sản phẩm', href: '/admin/products', roles: ALL_ROLES },
-      { name: 'Danh mục', href: '/admin/categories', roles: ALL_ROLES },
-      { name: 'Nhà cung cấp', href: '/admin/suppliers', roles: ALL_ROLES },
-      { name: 'Chất liệu', href: '/admin/materials', roles: ALL_ROLES },
-      { name: 'Đơn vị tính', href: '/admin/units', roles: ALL_ROLES },
-      { name: 'Tag sản phẩm', href: '/admin/product-tags', roles: ALL_ROLES },
+      {
+        name: 'Kho', roles: ALL_ROLES, children: [
+          { name: 'Sản phẩm', href: '/admin/products', roles: ALL_ROLES },
+          { name: 'Danh mục', href: '/admin/categories', roles: ALL_ROLES },
+          { name: 'Nhà cung cấp', href: '/admin/suppliers', roles: ALL_ROLES },
+          { name: 'Chất liệu', href: '/admin/materials', roles: ALL_ROLES },
+          { name: 'Đơn vị tính', href: '/admin/units', roles: ALL_ROLES },
+          { name: 'Tag sản phẩm', href: '/admin/product-tags', roles: ALL_ROLES },
+        ],
+      },
       { name: 'Nguồn đơn', href: '/admin/order-sources', roles: ADMIN_STAFF },
       { name: 'Khách hàng Viettel', href: '/admin/viettel-customers', roles: ADMIN_STAFF },
     ],
@@ -85,6 +89,7 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
   const router = useRouter();
 
   const [loggingOut, setLoggingOut] = useState(false);
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -122,30 +127,67 @@ export default function AdminSidebar({ user, isOpen = true, unreadCount = 0, pen
               <div className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 {group.label}
               </div>
-              {visibleItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-1 ${isActive(item.href)
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                    : ' hover:bg-gray-100'
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span>{item.name}</span>
-                  </div>
-                  {item.name === 'Đơn hàng' && unreadCount > 0 && (
-                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                  {item.name === 'Cửa hàng' && pendingStoresCount > 0 && (
-                    <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                      {pendingStoresCount > 99 ? '99+' : pendingStoresCount}
-                    </span>
-                  )}
-                </Link>
-              ))}
+              {visibleItems.map((item) => {
+                const children = (item as { children?: { name: string; href: string; roles: string[] }[] }).children;
+                // Menu cha có submenu (vd "Kho") — click để sổ ra
+                if (children) {
+                  const kids = children.filter(c => c.roles.includes(user.role));
+                  if (kids.length === 0) return null;
+                  const childActive = kids.some(c => isActive(c.href));
+                  const open = openMenus[item.name] ?? childActive;
+                  return (
+                    <div key={item.name} className="mb-1">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenus(m => ({ ...m, [item.name]: !open }))}
+                        className={`flex items-center justify-between w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${childActive ? 'text-blue-600' : 'hover:bg-gray-100'}`}
+                      >
+                        <span>{item.name}</span>
+                        <span className={`text-gray-400 transition-transform ${open ? 'rotate-90' : ''}`}>▸</span>
+                      </button>
+                      {open && (
+                        <div className="ml-3 mt-1 mb-1 pl-2 border-l border-gray-200 space-y-1">
+                          {kids.map(c => (
+                            <Link
+                              key={c.href}
+                              href={c.href}
+                              className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${isActive(c.href) ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'hover:bg-gray-100'}`}
+                            >
+                              {c.name}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                // Menu thường (có href)
+                const href = (item as { href: string }).href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-1 ${isActive(href)
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                      : ' hover:bg-gray-100'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span>{item.name}</span>
+                    </div>
+                    {item.name === 'Đơn hàng' && unreadCount > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                    {item.name === 'Cửa hàng' && pendingStoresCount > 0 && (
+                      <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                        {pendingStoresCount > 99 ? '99+' : pendingStoresCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           );
         })}
