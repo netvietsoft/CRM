@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import type { Integration, IntegrationMetadata } from '@/types/integrations';
+import FacebookConnectCard from '@/components/admin/FacebookConnectCard';
 
 interface CurrentUser {
   role?: string;
@@ -178,6 +179,8 @@ export default function IntegrationsPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      <FacebookConnectCard />
+
       {/* Connected Platforms */}
       {connectedPlatforms.length > 0 && (
         <div className="space-y-4">

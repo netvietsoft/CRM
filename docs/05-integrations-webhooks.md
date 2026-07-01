@@ -73,6 +73,26 @@ Bảng: `msg_pages` (page + page access token + subscribed) · `msg_contacts` (P
 
 ---
 
+## 0c. Facebook OAuth (đa BM) + Token Vault (`src/integrations/facebook`)
+Admin **đăng nhập Facebook** → app tự lấy **long-lived user token** (mã hoá AES-256-GCM) → khám phá & connect **tất cả** BM/ad account/page. **Bổ sung** song song cách dán System User token (giữ fallback). Spec/plan: `docs/superpowers/specs|plans/2026-07-01-facebook-oauth-token-vault*`.
+
+Bảng: `fb_connections` (fb_user_id, token mã hoá 3 cột `token_enc/iv/tag`, expiresAt, status, storeId). Discovery upsert vào bảng sẵn có `ad_businesses/ad_accounts/ad_pages/msg_pages` (page token lưu **plaintext** trong `msg_pages.access_token` — không đổi messenger).
+
+**Endpoint** (prefix /api):
+- `GET /integrations/facebook/oauth/start` — guard `INTEGRATIONS_MANAGE`; trả `{ url }` (FE mở dialog). State ký HMAC (TTL 10 phút).
+- `GET /integrations/facebook/oauth/callback` — **@Public** (FB gọi); đổi code→long-lived→discovery→redirect `FRONTEND_URL/admin/integrations?fb=ok|error`.
+- `GET /integrations/facebook/connections` (VIEW) · `DELETE .../connections/:id` · `POST .../connections/:id/refresh` (MANAGE).
+
+**Nối Ads/Messenger:** `MetaAdsConnector.getConfigs()` đọc thêm mọi `FbConnection(ACTIVE)` (giải mã token) → sync Ads/Messenger chạy nguyên si. **Refresh:** `@Cron('0 */6 * * *')` gia hạn token < 7 ngày (tắt `FB_REFRESH_ENABLED=false`).
+
+**ENV mới:** `META_APP_ID`, `META_APP_SECRET`, `META_OAUTH_REDIRECT_URI` (HTTPS, whitelist trong App), `TOKEN_ENC_KEY` (32 byte — hex 64 ký tự hoặc base64 44), `FRONTEND_URL`.
+
+**Scope:** `public_profile,email,pages_show_list,pages_read_engagement,pages_manage_metadata,pages_read_user_content,pages_manage_posts,pages_messaging,ads_read,ads_management,business_management` — cần **App Review (Advanced Access)** để dùng ở Live với tài khoản ngoài; admin/test chạy được ở Dev mode.
+
+**Gotcha:** token user KHÔNG bao giờ trả FE (list đã mask). State HMAC + TTL chống CSRF. Local proxy chặn TLS → exchange/discovery lỗi cert ở local (chạy prod hoặc `NODE_EXTRA_CA_CERTS`); callback (FB→ta) inbound không ảnh hưởng. Page token plaintext (v1). UI: nút "Kết nối Facebook" ở `/admin/integrations` (`FacebookConnectCard`).
+
+---
+
 ## 1. Pancake POS (`src/integrations/pancake`)
 Đồng bộ đơn/khách/danh mục/sản phẩm từ Pancake + nhận webhook.
 

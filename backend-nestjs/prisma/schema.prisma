@@ -1674,3 +1674,24 @@ model MsgMessage {
   @@index([conversationId, createdAt])
   @@map("msg_messages")
 }
+
+// Kết nối Facebook qua OAuth (long-lived user token, mã hoá). Bổ sung cho StoreIntegration(META_ADS) dán tay.
+model FbConnection {
+  id             String    @id @default(uuid())
+  storeId        String?   @map("store_id")
+  fbUserId       String    @map("fb_user_id")
+  fbName         String?   @map("fb_name") @db.Text
+  tokenEnc       String    @map("token_enc") @db.Text // user token mã hoá AES-256-GCM
+  tokenIv        String    @map("token_iv")
+  tokenTag       String    @map("token_tag")
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  scopes         String?   @db.Text
+  status         String    @default("ACTIVE") // ACTIVE | EXPIRED
+  lastRefreshAt  DateTime? @map("last_refresh_at")
+  raw            Json?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([storeId, fbUserId])
+  @@map("fb_connections")
+}

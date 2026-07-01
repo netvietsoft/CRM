@@ -46,7 +46,7 @@ const navItems = [
       { name: 'Cửa hàng', href: '/admin/stores', roles: ADMIN_ONLY },
       { name: 'Đơn hàng', href: '/admin/orders', roles: ALL_ROLES },
       { name: 'Tin nhắn', href: '/admin/messenger', roles: ALL_ROLES },
-      { name: 'Pancake (Chat)', href: '/pancake/conversations', roles: ALL_ROLES },
+      { name: 'CCM', href: '/ccm/conversations', roles: ALL_ROLES },
       {
         name: 'Kho', roles: ALL_ROLES, children: [
           { name: 'Sản phẩm', href: '/admin/products', roles: ALL_ROLES },

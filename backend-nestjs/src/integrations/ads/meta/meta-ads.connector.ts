@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { MetaAdsClient } from './meta-ads.client';
+import { decryptToken } from '../../facebook/token-vault';
 
 export interface MetaConfig {
   /** Store sở hữu credentials. null = cấu hình env (toàn hệ thống, chỉ ADMIN thấy). */
@@ -186,6 +187,16 @@ export class MetaAdsConnector {
           businessId: process.env.META_ADS_BUSINESS_ID || null,
           accountIds: this.parseAccountIds(process.env.META_ADS_ACCOUNT_ID),
         });
+      }
+    }
+    // Bổ sung: mọi kết nối OAuth (FbConnection ACTIVE) → 1 config (token giải mã).
+    const fbConns = await this.prisma.fbConnection.findMany({ where: { status: 'ACTIVE' } });
+    for (const c of fbConns) {
+      try {
+        const token = decryptToken({ enc: c.tokenEnc, iv: c.tokenIv, tag: c.tokenTag });
+        configs.push({ storeId: c.storeId ?? null, token, businessId: null, accountIds: [] });
+      } catch (e) {
+        this.logger.warn(`[MetaAds] Giải mã token FbConnection ${c.id} lỗi: ${(e as Error).message}`);
       }
     }
     return configs;

@@ -17,6 +17,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { ViettelpostModule } from './integrations/viettelpost/viettelpost.module';
 import { AdsModule } from './integrations/ads/ads.module';
 import { MessengerModule } from './messenger/messenger.module';
+import { FacebookModule } from './integrations/facebook/facebook.module';
 import { CartModule } from './cart/cart.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -106,6 +107,7 @@ function getQueueModules(): any[] {
     ViettelpostModule,
     AdsModule,
     MessengerModule,
+    FacebookModule,
     CartModule,
     WishlistModule,
     ReviewsModule,
