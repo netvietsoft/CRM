@@ -47,8 +47,6 @@ const ACTION_LABEL: Record<string, string> = {
 };
 const actionLabel = (t: string) => ACTION_LABEL[t] || t.replace(/^onsite_conversion\./, '').replace(/_/g, ' ');
 
-const isoDaysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
-const today = () => new Date().toISOString().slice(0, 10);
 const pct = (n: number) => `${(n || 0).toFixed(2)}%`;
 
 // 'YYYY-MM-DD' theo giờ local (tránh lệch ngày do toISOString về UTC).
@@ -88,6 +86,24 @@ const fmtDateTime = (s: string | null) => {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('vi-VN', { hour12: false });
 };
 
+// Catalog KPI (khối thẻ dashboard): định nghĩa tách khỏi thứ tự/hiển thị/số cột.
+// Người dùng bật–tắt, kéo–thả sắp xếp và chọn số cột — tất cả lưu localStorage.
+const KPI_CATALOG: Array<{ key: string; label: string; value: (s: AdSummary) => string }> = [
+  { key: 'spend', label: 'Chi tiêu', value: (s) => formatVnd(s.spend) },
+  { key: 'results', label: 'Kết quả', value: (s) => formatNumber(s.results) },
+  { key: 'purchaseValue', label: 'Tổng giá trị lượt mua', value: (s) => formatVnd(s.purchaseValue) },
+  { key: 'roas', label: 'Avg ROAS', value: (s) => `${(s.roas || 0).toFixed(2)}x` },
+  { key: 'adsCost', label: 'Avg Ads Cost', value: (s) => `${(s.adsCostPct || 0).toFixed(1)}%` },
+  { key: 'costPerResult', label: 'Avg CP/kết quả', value: (s) => formatVnd(s.costPerResult) },
+  { key: 'impressions', label: 'Hiển thị', value: (s) => formatNumber(s.impressions) },
+  { key: 'clicks', label: 'Click', value: (s) => formatNumber(s.clicks) },
+  { key: 'ctr', label: 'CTR', value: (s) => pct(s.ctr) },
+];
+const KPI_ALL_KEYS = KPI_CATALOG.map((k) => k.key);
+const KPI_STORAGE_KEY = 'adsDash.kpis.v1';
+// Số cột hợp lệ cho ghi đè; null = auto responsive.
+const KPI_COL_OPTIONS = [2, 3, 4, 5, 6];
+
 const STATUS_CLS: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700',
   PAUSED: 'bg-yellow-100 text-yellow-700',
@@ -105,8 +121,13 @@ const accountHref = (id: string) => (id ? `/admin/adsmeta/${id}` : '/admin/adsme
 export default function AdsDashboard({ accountId }: { accountId: string }) {
   const router = useRouter();
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
-  const [from, setFrom] = useState(isoDaysAgo(30));
-  const [to, setTo] = useState(today());
+  // Mặc định lọc "Hôm nay" — khởi tạo từ presetRange('today') để khớp format ngày local.
+  const [from, setFrom] = useState(() => presetRange('today')[0]);
+  const [to, setTo] = useState(() => presetRange('today')[1]);
+  // Preset đang chọn (theo key, không suy từ range) — vì nhiều preset có thể trùng range
+  // (vd 1/7 vừa là đầu tháng vừa là đầu quý ⇒ today/thisMonth/thisQuarter cùng [1/7, 1/7]).
+  // null = khoảng ngày tuỳ chỉnh (người dùng tự nhập).
+  const [preset, setPreset] = useState<string | null>('today');
   const [summary, setSummary] = useState<AdSummary | null>(null);
   const [campaigns, setCampaigns] = useState<AdCampaignRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -166,20 +187,6 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
 
   const lastSync = accounts.find((a) => a.id === accountId)?.lastSyncedAt ?? accounts[0]?.lastSyncedAt ?? null;
   const currentAccountExtId = accounts.find((a) => a.id === accountId)?.externalId ?? null;
-
-  const kpis: Array<{ label: string; value: string }> = summary
-    ? [
-        { label: 'Chi tiêu', value: formatVnd(summary.spend) },
-        { label: 'Kết quả', value: formatNumber(summary.results) },
-        { label: 'Tổng giá trị lượt mua', value: formatVnd(summary.purchaseValue) },
-        { label: 'Avg ROAS', value: `${(summary.roas || 0).toFixed(2)}x` },
-        { label: 'Avg Ads Cost', value: `${(summary.adsCostPct || 0).toFixed(1)}%` },
-        { label: 'Avg CP/kết quả', value: formatVnd(summary.costPerResult) },
-        { label: 'Hiển thị', value: formatNumber(summary.impressions) },
-        { label: 'Click', value: formatNumber(summary.clicks) },
-        { label: 'CTR', value: pct(summary.ctr) },
-      ]
-    : [];
 
   // ----- Cấu hình cột: base (cố định) + động (sinh từ FB action_type) -----
   type Column = { key: string; label: string; align: 'left' | 'right'; fmt?: (v: number) => string; accessor?: (r: AdCampaignRow) => number; dynamic?: boolean };
@@ -257,6 +264,63 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
     if (typeof window === 'undefined') return;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ order: colOrder, visible: [...visibleKeys] })); } catch { /* ignore */ }
   }, [colOrder, visibleKeys]);
+
+  // ===== Khối KPI: bật/tắt hiển thị + kéo–thả sắp xếp + số cột (lưu localStorage) =====
+  const readKpiStore = () => {
+    if (typeof window === 'undefined') return null;
+    try { return JSON.parse(localStorage.getItem(KPI_STORAGE_KEY) || 'null'); } catch { return null; }
+  };
+  const [kpiVisible, setKpiVisible] = useState<Set<string>>(() => {
+    const s = readKpiStore();
+    return Array.isArray(s?.visible) ? new Set<string>(s.visible) : new Set(KPI_ALL_KEYS);
+  });
+  const [kpiOrder, setKpiOrder] = useState<string[]>(() => {
+    const s = readKpiStore();
+    return Array.isArray(s?.order) ? (s.order as string[]) : [];
+  });
+  const [kpiCols, setKpiCols] = useState<number | null>(() => {
+    const s = readKpiStore();
+    return typeof s?.cols === 'number' && KPI_COL_OPTIONS.includes(s.cols) ? s.cols : null; // null = auto responsive
+  });
+  const [kpiMenuOpen, setKpiMenuOpen] = useState(false);
+  const [kpiDragKey, setKpiDragKey] = useState<string | null>(null);
+
+  // Đồng bộ kpiOrder với catalog (giữ thứ tự user, nối thêm key mới nếu catalog đổi).
+  useEffect(() => {
+    setKpiOrder((prev) => {
+      const kept = prev.filter((k) => KPI_ALL_KEYS.includes(k));
+      const added = KPI_ALL_KEYS.filter((k) => !kept.includes(k));
+      if (added.length === 0 && kept.length === prev.length) return prev;
+      return [...kept, ...added];
+    });
+  }, []);
+
+  // Lưu cấu hình KPI.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(KPI_STORAGE_KEY, JSON.stringify({ order: kpiOrder, visible: [...kpiVisible], cols: kpiCols })); } catch { /* ignore */ }
+  }, [kpiOrder, kpiVisible, kpiCols]);
+
+  const toggleKpi = (key: string) => setKpiVisible((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  const moveKpi = (from: string | null, to: string) => {
+    if (!from || from === to) return;
+    setKpiOrder((prev) => {
+      const base = prev.length ? [...prev] : [...KPI_ALL_KEYS];
+      const fi = base.indexOf(from); const ti = base.indexOf(to);
+      if (fi < 0 || ti < 0) return prev;
+      base.splice(fi, 1);
+      base.splice(base.indexOf(to), 0, from);
+      return base;
+    });
+  };
+  const kpiByKey = new Map(KPI_CATALOG.map((k) => [k.key, k]));
+  const orderedKpiKeys = kpiOrder.length ? kpiOrder : KPI_ALL_KEYS;
+  const visibleKpis = summary
+    ? orderedKpiKeys
+        .map((k) => kpiByKey.get(k))
+        .filter((k): k is (typeof KPI_CATALOG)[number] => !!k && kpiVisible.has(k.key))
+        .map((k) => ({ key: k.key, label: k.label, value: k.value(summary) }))
+    : [];
 
   const colByKey = new Map(allColumns.map((c) => [c.key, c]));
   const orderedKeys = colOrder.length ? colOrder : allColumns.map((c) => c.key);
@@ -392,21 +456,21 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
         </label>
         <label className="text-sm">
           <span className="block text-xs text-gray-500 mb-1">Từ ngày</span>
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPreset(null); }} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
         </label>
         <label className="text-sm">
           <span className="block text-xs text-gray-500 mb-1">Đến ngày</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPreset(null); }} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
         </label>
         {/* Tìm kiếm nhanh theo khoảng ngày */}
         <div className="w-full flex flex-wrap items-center gap-2 pt-1">
           {DATE_PRESETS.map((p) => {
             const [pf, pe] = presetRange(p.key);
-            const active = pf === from && pe === to;
+            const active = preset === p.key;
             return (
               <button
                 key={p.key}
-                onClick={() => { setFrom(pf); setTo(pe); }}
+                onClick={() => { setFrom(pf); setTo(pe); setPreset(p.key); }}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? 'bg-[#375DED] text-white border-[#375DED]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
               >{p.label}</button>
             );
@@ -414,14 +478,34 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
         </div>
       </div>
 
-      {/* KPI */}
-      <div className="mb-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {kpis.map((k) => (
-          <div key={k.label} className="rounded-lg border border-gray-100 bg-white px-3 py-2">
-            <div className="text-[11px] text-gray-500 truncate" title={k.label}>{k.label}</div>
-            <div className="mt-0.5 text-base font-bold text-gray-800 truncate" title={k.value}>{k.value}</div>
-          </div>
-        ))}
+      {/* KPI — kéo–thả card để sắp xếp; nút ⚙ để chọn chỉ số hiển thị & số cột */}
+      <div className="mb-5">
+        <div className="mb-2 flex items-center justify-end">
+          <button onClick={() => setKpiMenuOpen(true)} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">⚙ Chỉ số ({visibleKpis.length}/{KPI_CATALOG.length})</button>
+        </div>
+        <div
+          className={`grid gap-3 ${kpiCols ? '' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'}`}
+          style={kpiCols ? { gridTemplateColumns: `repeat(${kpiCols}, minmax(0, 1fr))` } : undefined}
+        >
+          {visibleKpis.map((k) => (
+            <div
+              key={k.key}
+              draggable
+              onDragStart={() => setKpiDragKey(k.key)}
+              onDragEnd={() => setKpiDragKey(null)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => { moveKpi(kpiDragKey, k.key); setKpiDragKey(null); }}
+              className={`group relative rounded-lg border bg-white px-3 py-2 cursor-move transition-colors ${kpiDragKey === k.key ? 'border-indigo-400 ring-2 ring-indigo-200 opacity-60' : 'border-gray-100 hover:border-gray-200'}`}
+              title="Kéo để sắp xếp"
+            >
+              <div className="flex items-center justify-between gap-1">
+                <div className="text-[11px] text-gray-500 truncate" title={k.label}>{k.label}</div>
+                <span className="text-gray-300 group-hover:text-gray-400 text-xs leading-none select-none">⠿</span>
+              </div>
+              <div className="mt-0.5 text-base font-bold text-gray-800 truncate" title={k.value}>{k.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Thanh công cụ: nút mở popup chọn cột */}
@@ -473,6 +557,62 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
 
             <div className="flex justify-end border-t border-gray-200 p-4">
               <button onClick={() => setColMenuOpen(false)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Xong</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Popup thiết lập KPI: hiển thị chỉ số + số cột */}
+      {kpiMenuOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setKpiMenuOpen(false); }}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-gray-200 p-5">
+              <h2 className="text-lg font-bold text-gray-800">Thiết lập chỉ số <span className="text-sm font-normal text-gray-400">({visibleKpis.length}/{KPI_CATALOG.length})</span></h2>
+              <button className="text-2xl leading-none text-gray-400 hover:text-gray-600" onClick={() => setKpiMenuOpen(false)}>✕</button>
+            </div>
+
+            <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-2 text-sm">
+              <button onClick={() => setKpiVisible(new Set(KPI_ALL_KEYS))} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Chọn tất cả</button>
+              <button onClick={() => { setKpiVisible(new Set(KPI_ALL_KEYS)); setKpiOrder([...KPI_ALL_KEYS]); setKpiCols(null); }} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Mặc định</button>
+            </div>
+
+            <div className="overflow-y-auto p-5 space-y-5">
+              {/* Số cột */}
+              <div>
+                <div className="mb-2 text-xs font-semibold text-gray-400 uppercase">Số cột</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setKpiCols(null)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${kpiCols === null ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                  >Auto</button>
+                  {KPI_COL_OPTIONS.map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setKpiCols(n)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${kpiCols === n ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                    >{n}</button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400">Auto: tự co theo màn hình (2 → 3 → 5 cột). Chọn số để cố định.</p>
+              </div>
+
+              {/* Chọn chỉ số hiển thị */}
+              <div>
+                <div className="mb-2 text-xs font-semibold text-gray-400 uppercase">Hiển thị chỉ số</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
+                  {KPI_CATALOG.map((k) => (
+                    <label key={k.key} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 rounded cursor-pointer">
+                      <input type="checkbox" checked={kpiVisible.has(k.key)} onChange={() => toggleKpi(k.key)} />
+                      <span className="truncate" title={k.label}>{k.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] text-gray-400">Kéo–thả trực tiếp các thẻ trên dashboard để đổi thứ tự.</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t border-gray-200 p-4">
+              <button onClick={() => setKpiMenuOpen(false)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Xong</button>
             </div>
           </div>
         </div>
