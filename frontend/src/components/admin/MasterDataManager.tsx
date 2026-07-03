@@ -25,6 +25,8 @@ interface ColumnConfig {
   key: string;
   label: string;
   render?: (item: MasterRecord & Record<string, unknown>) => string;
+  // Định dạng cột theo tên (serializable) — dùng khi truyền từ Server Component (không truyền được hàm `render`).
+  format?: 'activeStatus';
 }
 
 interface MasterDataManagerProps {
@@ -297,7 +299,9 @@ export default function MasterDataManager({
                     <td key={column.key} className="px-6 py-4 text-sm text-gray-700">
                       {column.render
                         ? column.render(item as MasterRecord & Record<string, unknown>)
-                        : String(getItemValue(item, column.key) ?? '—')}
+                        : column.format === 'activeStatus'
+                          ? ((item as Record<string, unknown>).isActive === false ? 'Tắt' : 'Hoạt động')
+                          : String(getItemValue(item, column.key) ?? '—')}
                     </td>
                   ))}
                   <td className="px-6 py-4">

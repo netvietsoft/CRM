@@ -1,30 +1,72 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { Card, Sparkline, StatCard, MockTable, MockBadge } from '@/components/ccm/ui';
+/* /ccm/stats/pages — THỐNG KÊ THEO TRANG (thật, từ GET /messenger/stats → byPage). */
 
-const ROWS = [
-  ['30/6/2026', '217', '10', '9', '25', '720', '141', '2960', '208', '115'],
-  ['29/6/2026', '257', '11', '11', '24', '858', '143', '3256', '243', '108'],
-  ['28/6/2026', '200', '11', '10', '22', '672', '170', '2742', '193', '116'],
-  ['27/6/2026', '234', '18', '17', '36', '746', '196', '3278', '221', '125'],
-  ['26/6/2026', '202', '8', '8', '24', '654', '71', '2082', '202', '111'],
-];
+import { useCallback, useEffect, useState } from 'react';
+import { apiClientClient } from '@/lib/apiClientClient';
+
+interface PageStat { pageId: string; name: string; externalId: string; subscribed: boolean; conversations: number; in: number; out: number; unreplied: number; unread: number }
+interface Stats { byPage: PageStat[] }
 
 export default function StatsPages() {
+  const [days, setDays] = useState(7);
+  const [rows, setRows] = useState<PageStat[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try { const r = await apiClientClient.get<Stats>(`/messenger/stats?days=${days}`); setRows(r.byPage || []); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Lỗi tải thống kê'); }
+    finally { setLoading(false); }
+  }, [days]);
+  useEffect(() => { void load(); }, [load]);
+
+  const rate = (p: PageStat) => (p.in ? Math.round((p.out / p.in) * 100) : 0); // % tin đến đã có phản hồi
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3"><h1 className="text-2xl font-bold text-gray-800">Trang</h1><MockBadge /><span className="ml-auto text-sm text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 bg-white">📅 31/5/2026 → 30/6/2026</span></div>
-      <Card title="Tổng quan về trang" subtitle="Thống kê tin nhắn và bình luận của trang"><Sparkline /></Card>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon="📱" label="SĐT mới" value="520" delta="8.79%" />
-        <StatCard icon="📣" label="KH cũ TT qua tin nhắn" value="4.914" delta="23.65%" />
-        <StatCard icon="🧩" label="Khách mới" value="9.299" delta="17.57%" />
-        <StatCard icon="📚" label="H.thoại tin nhắn mới" value="8.909" delta="17.18%" />
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold text-gray-800">Thống kê theo trang</h1>
+        <span className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-[#3b5bdb]">số liệu thật</span>
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="ml-auto border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white">
+          <option value={1}>Hôm nay</option><option value={7}>7 ngày</option><option value={30}>30 ngày</option>
+        </select>
       </div>
-      <Card title="Thống kê chi tiết" subtitle="Lượt tương tác đến trang của bạn">
-        <MockTable headers={['Thời gian', 'Khách mới', 'SĐT/ngày', 'SĐT mới', 'BL bởi KH', 'TN bởi KH', 'BL bởi trang', 'TN bởi trang', 'H.thoại TN mới', 'KH cũ nhắn lại']} rows={ROWS} />
-      </Card>
+
+      {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-lg">{error}</div>}
+
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-500 text-left">
+              <tr>
+                {['Trang', 'Hội thoại', 'Tin đến', 'Tin trả lời', '% phản hồi', 'Chưa trả lời', 'Chưa đọc', 'Webhook'].map((h) => (
+                  <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading && <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">Đang tải…</td></tr>}
+              {!loading && rows.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-gray-400">Chưa có trang nào (đăng ký page ở khung chat).</td></tr>}
+              {rows.map((p) => (
+                <tr key={p.pageId} className="hover:bg-gray-50">
+                  <td className="px-3 py-2"><div className="font-medium text-gray-800">{p.name}</div><div className="text-[11px] text-gray-400">{p.externalId}</div></td>
+                  <td className="px-3 py-2">{p.conversations}</td>
+                  <td className="px-3 py-2 text-[#3b5bdb] font-medium">{p.in}</td>
+                  <td className="px-3 py-2 text-green-600 font-medium">{p.out}</td>
+                  <td className="px-3 py-2">{rate(p)}%</td>
+                  <td className="px-3 py-2 text-amber-600">{p.unreplied}</td>
+                  <td className="px-3 py-2 text-red-500">{p.unread}</td>
+                  <td className="px-3 py-2">{p.subscribed ? <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">● Bật</span> : <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">tắt</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400">Số liệu tin nhắn/hội thoại theo trang trong {days} ngày. Fan/reach theo trang cần Graph API (chưa theo dõi).</p>
     </div>
   );
 }

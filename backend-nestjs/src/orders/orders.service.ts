@@ -1437,6 +1437,7 @@ export class OrdersService {
       reasonValue?: string;
       delayValue?: string;
       tags?: string[];
+      customerTags?: string[];
     },
     userId: string,
     role: string,
@@ -1486,6 +1487,7 @@ export class OrdersService {
     if (body.reasonValue !== undefined) existingMeta.reasonValue = body.reasonValue;
     if (body.delayValue !== undefined) existingMeta.delayValue = body.delayValue;
     if (body.tags !== undefined) existingMeta.tags = body.tags;
+    if (body.customerTags !== undefined) existingMeta.customerTags = body.customerTags;
 
     if (body.surcharge !== undefined) {
       if (!existingMeta.financial) existingMeta.financial = {};
@@ -1509,6 +1511,46 @@ export class OrdersService {
     });
 
     return { success: true };
+  }
+
+  // Ghi thông tin đơn vị vận chuyển (mã vận đơn…) vào metadata.carrier — gọi sau khi đẩy sang ĐVVC (VD Viettel Post).
+  async setCarrierInfo(
+    orderId: string,
+    body: { carrier?: string; trackingCode?: string; carrierStatus?: string },
+    userId: string,
+    role: string,
+    effectiveStoreId?: string | null,
+  ) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (role !== 'ADMIN' && effectiveStoreId && order.storeId !== effectiveStoreId) {
+      throw new ForbiddenException('You can only update orders for your own store');
+    }
+    const meta =
+      order.metadata && typeof order.metadata === 'object' && !Array.isArray(order.metadata)
+        ? (order.metadata as Record<string, any>)
+        : {};
+    meta.carrier = {
+      provider: body.carrier || 'VTP',
+      trackingCode: body.trackingCode || null,
+      status: body.carrierStatus || null,
+      pushedAt: new Date().toISOString(),
+    };
+    await this.prisma.order.update({ where: { id: orderId }, data: { metadata: meta } });
+    return { success: true };
+  }
+
+  // Đơn tạo từ 1 hội thoại CCM — tra theo metadata.conversationId (không phụ thuộc SĐT, vì khách
+  // Messenger thường không có SĐT). Trả về mảng đơn kèm items để card hiển thị.
+  async findByConversation(conversationId: string, effectiveStoreId?: string | null) {
+    const where: any = { metadata: { path: '$.conversationId', equals: conversationId } };
+    if (effectiveStoreId) where.storeId = effectiveStoreId;
+    return this.prisma.order.findMany({
+      where,
+      include: { items: { include: { product: { select: { name: true, imageUrl: true } } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
   }
 
   async findAdminOrders(params: {

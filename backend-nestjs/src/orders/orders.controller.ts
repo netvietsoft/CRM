@@ -95,6 +95,18 @@ export class OrdersController {
     });
   }
 
+  @Get('by-conversation/:conversationId')
+  @UseGuards(RolesGuard, PermissionsGuard)
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  @Permissions(Permission.ORDERS_VIEW)
+  @ApiOperation({ summary: 'List orders created from a CCM conversation' })
+  findByConversation(
+    @Param('conversationId') conversationId: string,
+    @GetEffectiveStoreId() effectiveStoreId: string | null,
+  ) {
+    return this.ordersService.findByConversation(conversationId, effectiveStoreId);
+  }
+
   @Get(':id')
   @UseGuards(RolesGuard, PermissionsGuard)
   @ApiOperation({ summary: 'Get order detail' })
@@ -261,6 +273,21 @@ export class OrdersController {
     @Body() body: { assigningSellerId?: string; assigningCareId?: string },
   ) {
     return this.ordersService.updateStaffAssignment(id, body, userId, role, effectiveStoreId);
+  }
+
+  @Patch(':id/carrier-info')
+  @UseGuards(RolesGuard, PermissionsGuard)
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  @Permissions(Permission.ORDERS_MANAGE)
+  @ApiOperation({ summary: 'Save carrier/tracking info on order (after pushing to ĐVVC)' })
+  setCarrierInfo(
+    @Param('id') id: string,
+    @GetUser('id') userId: string,
+    @GetUser('role') role: string,
+    @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @Body() body: { carrier?: string; trackingCode?: string; carrierStatus?: string },
+  ) {
+    return this.ordersService.setCarrierInfo(id, body, userId, role, effectiveStoreId);
   }
 
   @Patch(':id/admin-update')

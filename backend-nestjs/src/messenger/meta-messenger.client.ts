@@ -77,6 +77,15 @@ export class MetaMessengerClient {
     return this.getEdge(`${conversationId}/messages?fields=id,message,from,to,created_time&limit=50`, pageToken);
   }
 
+  /** Bài viết đã đăng của page (cần quyền pages_read_engagement). */
+  async fetchPagePosts(pageToken: string, pageId: string): Promise<any[]> {
+    return this.getEdge(
+      `${pageId}/published_posts?fields=id,message,created_time,full_picture,permalink_url,shares,likes.summary(true),comments.summary(true)&limit=25`,
+      pageToken,
+      3,
+    );
+  }
+
   /** Lấy mọi trang của 1 edge theo paging.next. */
   private async getEdge(path: string, token: string, max = 20): Promise<any[]> {
     const out: any[] = [];

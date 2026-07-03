@@ -18,6 +18,26 @@ export class ViettelpostController {
     private readonly authService: ViettelpostAuthService,
   ) {}
 
+  // Cấu hình ĐVVC (read-only) cho trang Cài đặt CCM — KHÔNG lộ username/password/token.
+  @Get('config')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  config() {
+    const maskPhone = (s?: string) => (s && s.length >= 4 ? s.slice(0, 2) + '***' + s.slice(-2) : s || '');
+    return {
+      provider: 'VIETTEL_POST',
+      connected: !!(process.env.VIETTELPOST_USERNAME && process.env.VIETTELPOST_PASSWORD),
+      apiUrl: process.env.VIETTELPOST_API_URL || null,
+      sender: {
+        name: process.env.VIETTELPOST_SENDER_NAME || '',
+        phone: maskPhone(process.env.VIETTELPOST_SENDER_PHONE),
+        address: process.env.VIETTELPOST_SENDER_ADDRESS || '',
+        provinceId: Number(process.env.VIETTELPOST_SENDER_PROVINCE) || null,
+        districtId: Number(process.env.VIETTELPOST_SENDER_DISTRICT) || null,
+        wardId: Number(process.env.VIETTELPOST_SENDER_WARD) || null,
+      },
+    };
+  }
+
   // ===== Danh mục địa chỉ VTP (cho dropdown tạo đơn) =====
   @Get('address/provinces')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')

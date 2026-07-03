@@ -1625,6 +1625,8 @@ model MsgContact {
   pageId        String            @map("page_id")
   psid          String
   name          String?           @db.Text
+  phone         String?           // SĐT khách tự cung cấp trong chat (trích từ nội dung tin)
+  dob           DateTime?         // ngày sinh khách (set từ 3A); đồng bộ sang User.dob nếu khớp SĐT
   avatarUrl     String?           @map("avatar_url") @db.Text
   raw           Json?
   createdAt     DateTime          @default(now()) @map("created_at")
@@ -1645,9 +1647,11 @@ model MsgConversation {
   lastMessageDir  String?      @map("last_message_dir")
   unreadCount     Int          @default(0) @map("unread_count")
   status          String       @default("OPEN")
-  assignedUserId   String?     @map("assigned_user_id")
-  assignedUserName String?     @map("assigned_user_name")
-  labels           Json?       // nhãn tự do (mảng chuỗi) cho hội thoại
+  assignedUserId     String?   @map("assigned_user_id")
+  assignedUserName   String?   @map("assigned_user_name")
+  assignedUserAvatar String?   @map("assigned_user_avatar") @db.Text
+  labels             Json?     // nhãn tự do (mảng chuỗi) cho hội thoại
+  star               String?   // sao ưu tiên: yellow | green | red | null
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
   page            MsgPage      @relation(fields: [pageId], references: [id], onDelete: Cascade)
@@ -1694,4 +1698,59 @@ model FbConnection {
 
   @@unique([storeId, fbUserId])
   @@map("fb_connections")
+}
+
+// Thư viện media dùng chung (ảnh/tệp/video đã upload lên R2) — cho picker chat CCM.
+model MediaAsset {
+  id         String   @id @default(uuid())
+  url        String   @db.Text
+  name       String?
+  type       String   @default("image") // image | video | file
+  folder     String?
+  size       Int?
+  uploaderId String?  @map("uploader_id")
+  storeId    String?  @map("store_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([storeId])
+  @@index([type])
+  @@map("media_assets")
+}
+
+// ===== AI chốt đơn qua chat (CCM) =====
+model AiAgentConfig {
+  id            String   @id @default(uuid())
+  pageId        String   @unique @map("page_id")
+  enabled       Boolean  @default(false)
+  mode          String   @default("SHADOW") // OFF | SHADOW | AUTO
+  persona       String?  @db.Text
+  productScope  Json?    @map("product_scope")
+  dailyTokenCap Int?     @map("daily_token_cap")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  @@map("ai_agent_configs")
+}
+
+model AiConversationState {
+  id             String    @id @default(uuid())
+  conversationId String    @unique @map("conversation_id")
+  status         String    @default("ACTIVE") // ACTIVE | HANDOFF | PAUSED
+  slots          Json?
+  lastAiAt       DateTime? @map("last_ai_at")
+  tokensToday    Int       @default(0) @map("tokens_today")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  @@map("ai_conversation_states")
+}
+
+model AiSuggestion {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  replyText      String?  @db.Text @map("reply_text")
+  toolCalls      Json?    @map("tool_calls")
+  orderDraft     Json?    @map("order_draft")
+  status         String   @default("PENDING") // PENDING | SENT | REJECTED
+  createdAt      DateTime @default(now()) @map("created_at")
+  @@index([conversationId, status])
+  @@map("ai_suggestions")
 }

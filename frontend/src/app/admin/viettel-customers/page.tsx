@@ -124,7 +124,7 @@ export default function ViettelCustomersPage() {
           {/* Ô 3 — Trạng thái · rộng: w-[170px] */}
           <select className={`${inputCls} w-[170px] shrink-0`} value={filters.status} onChange={e => setF('status', e.target.value)}>
             <option value="">Tất cả trạng thái</option>
-            {statusOpts.map(s => <option key={s.status} value={s.status}>{s.status} · {s.statusName || ''} ({s.count})</option>)}
+            {statusOpts.map((s, i) => <option key={`${s.status}-${i}`} value={s.status}>{s.status} · {s.statusName || ''} ({s.count})</option>)}
           </select>
           {/* Ô 4a — COD từ · rộng: w-[100px] */}
           <input className={`${inputCls} w-[170px] shrink-0`} type="number" placeholder="COD từ" title="COD từ" value={filters.codMin} onChange={e => setF('codMin', e.target.value)} />

@@ -15,7 +15,7 @@ interface AdminHeaderProps {
 
 export default function AdminHeader({ onToggleSidebar }: AdminHeaderProps) {
   return (
-    <header className="bg-white border-b border-gray-200 px-2 py-2 flex items-center justify-between">
+    <header className="bg-[#f0f2f5] border-b border-gray-200 px-2 py-2 flex items-center justify-between">
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors shrink-0"

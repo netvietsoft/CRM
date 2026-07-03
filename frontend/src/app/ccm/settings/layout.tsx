@@ -5,6 +5,7 @@ const ITEMS = [
   { href: '/ccm/settings/tags', label: 'Thẻ hội thoại', icon: '🏷️' },
   { href: '/ccm/settings/ai', label: 'Trợ lý AI', icon: '✨' },
   { href: '/ccm/settings/quick-reply', label: 'Hỗ trợ trả lời', icon: '💬' },
+  { href: '/ccm/settings/shipping', label: 'Vận chuyển (ĐVVC)', icon: '🚚' },
   { href: '/ccm/settings/interface', label: 'Giao diện', icon: '🖥️' },
   { href: '/ccm/settings/calls', label: 'Cuộc gọi', icon: '📞' },
   { href: '/ccm/settings/rotation', label: 'Chế độ xoay vòng', icon: '🔄' },

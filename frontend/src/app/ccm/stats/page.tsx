@@ -1,57 +1,126 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { Card, MockChart, Sparkline, StatCard, MockBadge } from '@/components/ccm/ui';
+/* /ccm/stats — TỔNG QUAN. Số liệu TIN NHẮN/HỘI THOẠI lấy THẬT từ GET /messenger/stats.
+ * Bình luận trang + thông số trang (fan/reach) cần Graph API → hiện đánh dấu "cần Graph API". */
+
+import { useCallback, useEffect, useState } from 'react';
+import { apiClientClient } from '@/lib/apiClientClient';
+
+interface Stats {
+  days: number;
+  totals: { messagesIn: number; messagesOut: number; conversations: number; newContacts: number; unreplied: number; unread: number };
+  byDay: { date: string; in: number; out: number }[];
+  byStaff: { name: string; replies: number }[];
+}
+
+function StatCard({ icon, label, value, tone = 'gray' }: { icon: string; label: string; value: number | string; tone?: string }) {
+  const tones: Record<string, string> = { blue: 'text-[#3b5bdb]', green: 'text-green-600', amber: 'text-amber-600', red: 'text-red-500', gray: 'text-gray-800' };
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 p-4">
+      <div className="text-sm text-gray-500 flex items-center gap-1.5"><span>{icon}</span>{label}</div>
+      <div className={`text-2xl font-bold mt-1 ${tones[tone]}`}>{value}</div>
+    </div>
+  );
+}
+
+// Biểu đồ cột IN/OUT theo ngày (SVG tự vẽ).
+function DayChart({ data }: { data: Stats['byDay'] }) {
+  if (!data.length) return <div className="text-sm text-gray-400 py-8 text-center">Chưa có dữ liệu trong kỳ.</div>;
+  const max = Math.max(1, ...data.map((d) => Math.max(d.in, d.out)));
+  const bw = 100 / data.length;
+  return (
+    <div className="overflow-x-auto">
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-40">
+        {data.map((d, i) => {
+          const x = i * bw;
+          const hIn = (d.in / max) * 36, hOut = (d.out / max) * 36;
+          return (
+            <g key={d.date}>
+              <rect x={x + bw * 0.15} y={38 - hIn} width={bw * 0.32} height={hIn} fill="#3b5bdb" />
+              <rect x={x + bw * 0.52} y={38 - hOut} width={bw * 0.32} height={hOut} fill="#9be7d8" />
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+        {data.map((d) => <span key={d.date}>{d.date.slice(5)}</span>)}
+      </div>
+    </div>
+  );
+}
 
 export default function StatsOverview() {
+  const [days, setDays] = useState(7);
+  const [data, setData] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try { setData(await apiClientClient.get<Stats>(`/messenger/stats?days=${days}`)); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Lỗi tải thống kê'); }
+    finally { setLoading(false); }
+  }, [days]);
+  useEffect(() => { void load(); }, [load]);
+
+  const t = data?.totals;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Tổng quan</h1>
-        <MockBadge />
-        <select className="ml-auto border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white"><option>30 ngày</option><option>7 ngày</option><option>Hôm nay</option></select>
+        <span className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-[#3b5bdb]">số liệu thật</span>
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="ml-auto border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white">
+          <option value={1}>Hôm nay</option><option value={7}>7 ngày</option><option value={30}>30 ngày</option>
+        </select>
       </div>
 
-      <Card title="Tổng quan về hoạt động" subtitle="Thống kê tổng quan">
-        <MockChart />
-        <div className="flex items-center justify-center gap-6 text-sm text-gray-500 mt-2">
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-[#9be7d8]" /> Tổng tương tác</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-pink-500" /> Khách hàng mới</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500" /> Số đơn chốt</span>
+      {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-lg">{error}</div>}
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard icon="📩" label="Tin nhắn đến" value={loading ? '…' : t?.messagesIn ?? 0} tone="blue" />
+        <StatCard icon="↩️" label="Tin đã trả lời" value={loading ? '…' : t?.messagesOut ?? 0} tone="green" />
+        <StatCard icon="💬" label="Hội thoại" value={loading ? '…' : t?.conversations ?? 0} />
+        <StatCard icon="🧑" label="Khách mới" value={loading ? '…' : t?.newContacts ?? 0} />
+        <StatCard icon="⏳" label="Chưa trả lời" value={loading ? '…' : t?.unreplied ?? 0} tone="amber" />
+        <StatCard icon="🔴" label="Chưa đọc" value={loading ? '…' : t?.unread ?? 0} tone="red" />
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+        <div className="font-semibold text-gray-800 mb-1">Tin nhắn theo ngày</div>
+        <div className="flex items-center gap-6 text-xs text-gray-500 mb-2">
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-[#3b5bdb]" /> Tin đến</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-[#9be7d8]" /> Tin trả lời</span>
         </div>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card title="Tổng quan về trang" subtitle="Một số thông tin về trang của bạn">
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard icon="✉️" label="Tin nhắn tới trang" value="31.128" />
-            <StatCard icon="💬" label="Bình luận tới trang" value="1.053" />
-          </div>
-        </Card>
-        <Card title="Tương tác" subtitle="Tương tác giữa khách hàng và nhân viên">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[['Tổng tương tác', '31.742', '#a78bfa'], ['Tin nhắn', '29.609', '#3b82f6'], ['Bình luận', '2.192', '#f59e0b'], ['HT tin nhắn mới', '8.891', '#10b981']].map(([l, v, c]) => (
-              <div key={l}><div className="text-lg font-bold text-gray-900">{v}</div><div className="text-xs text-gray-500 mb-1">{l}</div><Sparkline color={c as string} /></div>
-            ))}
-          </div>
-        </Card>
+        {loading ? <div className="text-sm text-gray-400 py-8 text-center">Đang tải…</div> : <DayChart data={data?.byDay || []} />}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card title="Top thẻ hội thoại" subtitle="Các thẻ đang được gắn nhiều nhất">
-          <div className="space-y-2 text-sm">
-            {[['🏷️', 'Kiểm hàng'], ['🏷️', 'Câu hỏi'], ['🏷️', 'Mua hàng'], ['🏷️', 'Đã gửi'], ['🏷️', 'Hết hàng']].map(([i, l]) => (
-              <div key={l} className="flex items-center justify-between"><span className="flex items-center gap-2 text-gray-600">{i} {l}</span><span className="text-orange-500 font-semibold">0</span></div>
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="font-semibold text-gray-800 mb-3">Nhân viên trả lời nhiều nhất</div>
+          {!loading && !data?.byStaff.length && <div className="text-sm text-gray-400">Chưa có dữ liệu.</div>}
+          <div className="space-y-2">
+            {(data?.byStaff || []).map((s, i) => (
+              <div key={s.name + i} className="flex items-center gap-2 text-sm">
+                <span className="w-5 text-gray-400">{i + 1}.</span>
+                <span className="flex-1 text-gray-700">{s.name}</span>
+                <span className="font-medium text-[#3b5bdb]">{s.replies} tin</span>
+              </div>
             ))}
           </div>
-        </Card>
-        <Card title="Nhân viên" subtitle="Top nhân viên có lượt tương tác nhiều nhất">
-          <div className="space-y-3 text-sm">
-            {[['🥇', 'Nguyễn Ngọc Ánhh', '25589 lượt'], ['', 'Phạm Tony', '2 lượt']].map(([m, n, v]) => (
-              <div key={n} className="flex items-center gap-3"><span>{m || '👤'}</span><span className="w-8 h-8 rounded-full bg-gray-100 grid place-items-center">👤</span><span className="text-gray-700">{n}</span><span className="ml-auto text-gray-400">{v}</span></div>
-            ))}
+        </div>
+
+        {/* Cần Graph API — chưa theo dõi */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-3"><span className="font-semibold text-gray-800">Bình luận & thông số trang</span><span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200">cần Graph API</span></div>
+          <div className="space-y-2 text-sm text-gray-400">
+            <div className="flex justify-between"><span>💬 Bình luận trang</span><span>— chưa theo dõi</span></div>
+            <div className="flex justify-between"><span>👍 Người theo dõi (fan)</span><span>— cần Graph API</span></div>
+            <div className="flex justify-between"><span>👀 Tiếp cận (reach)</span><span>— cần Graph API</span></div>
           </div>
-        </Card>
+          <p className="text-xs text-gray-400 mt-3">Các chỉ số này cần gọi Graph API của Page (comments/insights) — sẽ bổ sung khi nối module đó.</p>
+        </div>
       </div>
     </div>
   );

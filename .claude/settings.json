@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node -e 'const j=require\\(\"./vtp-vi.json\"\\);console.log\\(\\(j.faq?.a1||\"\"\\).replace\\(/<[^>]+>/g,\" \"\\).replace\\(/\\\\s+/g,\" \"\\)\\)')",
+      "Bash(grep -ohiE \"curl[^\\\\\"'\\\\\\\\\\\\`]{0,200}\" vtpchunks/*.js)",
+      "Bash(curl -s --max-time 25 -X POST https://partner.viettelpost.vn/v2/order/getPriceNlp -H 'Token: 5964783EFC895F4C2F16DA067DC3A96B' -H 'Content-Type: application/json' -d '{\"SENDER_ADDRESS\":\"72 Trần Đăng Ninh, Cầu Giấy, Hà Nội\",\"RECEIVER_ADDRESS\":\"1 Lê Lợi, Quận 1, Hồ Chí Minh\",\"PRODUCT_WEIGHT\":500,\"PRODUCT_PRICE\":0,\"MONEY_COLLECTION\":0,\"ORDER_SERVICE\":\"VHT\",\"PRODUCT_TYPE\":\"HH\",\"NATIONAL_TYPE\":1}' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(curl -s --max-time 25 -X POST https://partner.viettelpost.vn/v2/user/Login -H 'Content-Type: application/json' -d '{\"USERNAME\":\"0966500911\",\"PASSWORD\":\"Minhchau1920@\"}' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(node -e 'let s=\"\";process.stdin.on\\(\"data\",d=>s+=d\\).on\\(\"end\",\\(\\)=>{const d=JSON.parse\\(s\\).data||{};const pick=[\"RECEIVER_FULLNAME\",\"RECEIVER_PHONE\",\"RECEIVER_HOME_NO\",\"RECEIVER_PROVINCE\",\"RECEIVER_DISTRICT\",\"RECEIVER_WARD\",\"PRODUCT_NAME\",\"PRODUCT_QUANTITY\",\"MONEY_COLLECTION\",\"ORDER_STATUS\",\"STATUS_NAME\"];pick.forEach\\(k=>console.log\\(`  ${k} = ${d[k]}`\\)\\)}\\)')",
+      "Bash(curl -s --max-time 25 -X POST https://id.viettelpost.vn/connect/token -H 'Content-Type: application/x-www-form-urlencoded' --data-urlencode grant_type=password --data-urlencode client_id=vtp.partner.v1 --data-urlencode 'scope=openid profile se-public-api offline_access' --data-urlencode username=0966500911 --data-urlencode password=Minhchau1920@ -w '\\\\nHTTP %{http_code}\\\\n')"
+    ]
+  }
+}

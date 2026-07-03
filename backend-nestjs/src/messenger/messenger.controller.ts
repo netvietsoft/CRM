@@ -24,6 +24,14 @@ export class MessengerController {
     return this.service.listPages(storeId);
   }
 
+  @Get('stats')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Thống kê tin nhắn/hội thoại thật (days ngày gần đây)' })
+  stats(@GetEffectiveStoreId() storeId: string | null, @Query('days') days?: string) {
+    return this.service.stats(storeId, days ? Math.min(90, Math.max(1, Number(days))) : 7);
+  }
+
   @Post('pages/register')
   @Roles('ADMIN', 'MODERATOR')
   @Permissions(Permission.MESSENGER_SEND)
@@ -46,6 +54,14 @@ export class MessengerController {
   @ApiOperation({ summary: 'Kéo lịch sử hội thoại gần đây của page' })
   backfill(@GetEffectiveStoreId() storeId: string | null, @Param('externalId') externalId: string) {
     return this.service.backfill(storeId, externalId);
+  }
+
+  @Get('pages/:externalId/posts')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Kéo bài viết đã đăng của page (Graph API)' })
+  posts(@GetEffectiveStoreId() storeId: string | null, @Param('externalId') externalId: string) {
+    return this.service.listPagePosts(storeId, externalId);
   }
 
   @Get('conversations')
@@ -84,6 +100,34 @@ export class MessengerController {
     @Body() body: { assign?: boolean },
   ) {
     return this.service.assign(storeId, id, body?.assign === false ? null : user);
+  }
+
+  @Post('conversations/:id/assign-user')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Phân công hội thoại cho 1 nhân viên cụ thể (userId rỗng = bỏ gán)' })
+  assignUser(
+    @GetEffectiveStoreId() storeId: string | null,
+    @Param('id') id: string,
+    @Body() body: { userId?: string | null },
+  ) {
+    return this.service.assignToUser(storeId, id, body?.userId || null);
+  }
+
+  @Post('conversations/:id/star')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Đặt sao ưu tiên hội thoại (yellow|green|red|null)' })
+  star(@GetEffectiveStoreId() storeId: string | null, @Param('id') id: string, @Body() body: { color?: string | null }) {
+    return this.service.setStar(storeId, id, body?.color ?? null);
+  }
+
+  @Post('conversations/:id/contact-dob')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Đặt ngày sinh khách (YYYY-MM-DD hoặc null) — đồng bộ User.dob nếu khớp SĐT' })
+  contactDob(@GetEffectiveStoreId() storeId: string | null, @Param('id') id: string, @Body() body: { dob?: string | null }) {
+    return this.service.setContactDob(storeId, id, body?.dob ?? null);
   }
 
   @Post('conversations/:id/labels')

@@ -41,7 +41,7 @@ export default async function SuppliersPage() {
         {
           key: 'isActive',
           label: 'Trạng thái',
-          render: (item) => (item.isActive === false ? 'Tắt' : 'Hoạt động'),
+          format: 'activeStatus',
         },
       ]}
     />

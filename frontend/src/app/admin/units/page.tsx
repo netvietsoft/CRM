@@ -31,7 +31,7 @@ export default async function UnitsPage() {
         {
           key: 'isActive',
           label: 'Trạng thái',
-          render: (item) => (item.isActive === false ? 'Tắt' : 'Hoạt động'),
+          format: 'activeStatus',
         },
       ]}
     />

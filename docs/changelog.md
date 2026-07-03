@@ -5,6 +5,121 @@
 
 ---
 
+## 2026-07-02 → 07-03 (phiên CCM tiếp) — Sao ưu tiên · Sinh nhật · Icon Pancake · Bài viết/Thống kê thật · Biến #{} · Ảnh R2 · Polish
+
+> ⚠️ **CHƯA COMMIT** — nối tiếp working tree trên `main`. Chi tiết feature-map: `docs/09-ccm-workspace.md`.
+
+### A. Sao ưu tiên (star) trên avatar — list + 3A
+- List hội thoại + avatar 3A: **ngôi sao** trên avatar, nhân viên bấm để đánh dấu ưu tiên, xoay vòng **trắng → vàng → xanh → đỏ → tắt** (`nextStar()`, `STAR_COLORS`). Sao trắng = opacity 50%; cỡ **25px** cả 2 nơi. Rail thêm bộ lọc ★ (chỉ hiện hội thoại có sao).
+- BE: `POST /messenger/conversations/:id/star` + `messenger.service.setStar`; cột `MsgConversation.star` (migration `20260702090000_conversation_star`). `setStar` optimistic ở `useMessengerChat`.
+
+### B. Sinh nhật khách (🎂) trên 3A
+- Icon 🎂 ở hàng icon 3A → mở date-picker (dd/mm/yyyy), chữ đen; lưu ngày sinh khách, **đồng bộ vào hồ sơ/ds khách** (User.dob) khi khớp SĐT.
+- BE: `POST /messenger/conversations/:id/contact-dob` + `setContactDob` (ghi `MsgContact.dob`, sync `User.dob`); cột `MsgContact.dob` (migration `20260702100000_contact_dob`).
+
+### C. Thay icon header bằng SVG Pancake thật
+- Copy 16 SVG Pancake vào `frontend/public/ccm-icons/`; thay các icon emoji ở header 3A khớp sạch (🔗 share, giới tính, 🎂 cake, phân công user_circle_plus, toggle panel apps-list-detail). Rail giữ emoji (SVG màu chọi nền xanh).
+
+### D. Bài viết `/ccm/posts` — lấy THẬT (Graph API)
+- Bỏ mock; `GET /messenger/pages/:externalId/posts` (`meta-messenger.client.fetchPagePosts` dùng `published_posts` + page token) → `messenger.service.listPagePosts`.
+- Giữ layout template (panel lọc trái) + chọn page + **ô tìm 250px** + lọc **Từ ngày → Đến ngày** (client theo `createdTime`).
+- Mỗi bài: ảnh + text **bấm mở URL bài viết** (permalink, tab mới); hàng **`ID: …` + icon ⧉ copy**.
+
+### E. Thống kê `/ccm/stats` + `/stats/pages` — số liệu thật
+- `GET /messenger/stats?days=` (`messenger.service.stats`) — đếm tin/hội thoại thật N ngày gần đây thay số mock.
+
+### F. Composer — chèn sản phẩm thật (3C) + biến #{}
+- Icon 🛍️ mở popup có **ô search sản phẩm** → `GET /products/search` (debounce), hiện ảnh+tên+giá, click chèn `Tên - Giá đ`.
+- **Trả lời nhanh (⚡)**: editor đa nội dung (chủ đề → phím tắt → nhiều nội dung: ảnh/file/emoji/sản phẩm/biến) + ô search chủ đề. Khi gửi **resolve biến `#{...}`** (`lib/resolveVars.ts`): tên khách/nhân viên/ngày, `#SEX{a|b|c}`, spin `#{a|b}`, `#{TODAY(DD/MM/YYYY)}`.
+
+### G. Ảnh/tài liệu đẩy R2 (thay UploadThing)
+- `lib/uploadR2.ts` `uploadToR2(file, folder)` → `POST /upload/media` (module `src/upload/` ký AWS SigV4 tay, không SDK) + `GET /upload/media/list`. Cấu hình R2 lấy từ NovelApp. `CcmImagePicker` = thư viện media dùng chung (list từ BE, yêu thích ở localStorage). Model `MediaAsset` (migration `20260701130000_media_assets`).
+
+### H. Polish khác
+- Popup 📅 rail (Lọc theo ngày + nội dung): 3 ô **Từ ngày / Đến ngày / Nội dung-tên-SĐT** để **chữ đen** (`text-gray-900`).
+- `/admin/*`: nền menu phải + top bar → `#f0f2f5` (AdminHeader/AdminSidebar).
+- `/admin/viettel-customers/customers`: **Xuất Excel ⬇** (icon ở thẻ "Số khách") + chân trang phân trang (chọn 10/20/50/100/200, mặc định **50**). Sửa lỗi key trùng `${status}-${i}`.
+
+### Verify
+- Typecheck FE+BE sạch từng bước; BE restart boot sạch (routes `/messenger/*`, `/upload/*` live). Migration đã `migrate deploy`.
+
+---
+
+## 2026-07-01 (phiên AI) — AI chốt đơn qua chat CCM (khung, chạy mock)
+
+> ⚠️ **CHƯA COMMIT** (working tree, trên main). Spec: `docs/superpowers/specs/2026-07-01-ai-chot-don-chat-design.md`; plan: `docs/superpowers/plans/2026-07-01-ai-chot-don-chat.md`. Thực thi kiểu subagent-driven (implementer/task).
+> Cần **`ANTHROPIC_API_KEY`** để chạy thật (đã thêm placeholder rỗng vào `.env`); thiếu key → AI tắt êm, chat tay vẫn chạy.
+
+### Module BE mới `src/ai-agent/` (không cài SDK — dùng fetch)
+- **`anthropic.client.ts`** — gọi Anthropic Messages API bằng `fetch` (`x-api-key`, `anthropic-version`), parse text + tool_use; `isEnabled()`; tắt êm khi thiếu key.
+- **`ai-tools.ts`** — `AI_TOOLS` (search_products / create_order / request_handoff / add_labels) + `AiToolsService.handle`. `create_order` chỉ chạy khi `input.customerConfirmed===true`; hỗ trợ `dryRun` (SHADOW không tạo đơn thật, chỉ trả orderDraft).
+- **`ai-agent.service.ts`** — `onIncoming` (guard: enabled/mode, state ACTIVE, tin cuối IN, cửa sổ 24h) + `orchestrate` (vòng lặp Claude+tools, AUTO gửi reply thật + tạo đơn PENDING, SHADOW lưu `AiSuggestion`). `DEFAULT_PERSONA` ép quy tắc "nhắc lại đơn + xin xác nhận trước khi chốt". Lỗi Claude → `markError` (gắn nhãn "AI lỗi" + HANDOFF).
+- **`ai-agent.controller.ts`** — `GET/PUT /ai-agent/config` (theo page + cờ `configured`), `GET /ai-agent/suggestions`, `POST /ai-agent/suggestions/:id/approve` (gửi reply + tạo đơn từ draft), `POST /ai-agent/conversations/:id/pause`.
+- **DI**: cắt vòng Messenger↔AiAgent — MessengerService lấy `AiAgentService` qua `ModuleRef` lúc chạy (không inject constructor); AiAgentModule import MessengerModule một chiều.
+- **Hook**: `messenger.service.handleMessaging` sau emit realtime → `if (IN) moduleRef.get(AiAgentService).onIncoming(conv.id)` (fire-and-forget).
+
+### DB
+- Model + migration `20260701140000_ai_agent`: `ai_agent_configs` (per page: enabled/mode/persona/dailyTokenCap), `ai_conversation_states` (status ACTIVE|HANDOFF|PAUSED, slots, tokensToday), `ai_suggestions` (shadow/audit). Đơn AI = Order PENDING + `metadata.aiGenerated/source=CCM_AI` (không đổi schema Order).
+
+### FE
+- **`/ccm/settings/ai`**: chọn page + bật/tắt + mode (OFF/SHADOW/AUTO) + persona + trần token; cảnh báo khi thiếu key.
+- **Khu chat**: thẻ **Gợi ý AI (shadow)** trên composer (Gửi/Sửa/Bỏ) + nút **🤖⏸ Tiếp quản** (tạm dừng AI).
+
+### Test/verify
+- Jest ai-agent: 13 pass (client/tools/orchestrator, mock Claude). Typecheck BE+FE sạch. BE boot sạch, routes `/ai-agent/*` live.
+
+### Chưa làm / follow-up
+- Chạy thật (cần key) + rollout Shadow→Auto (Task 11).
+- Token cap accounting theo ngày (mới có guard cơ bản), size chart nguồn dữ liệu, đẩy Viettel (v2).
+
+---
+
+## 2026-07-01 (phiên CCM) — Đơn hàng/Viettel · Thẻ · Header · Rail lọc · Cài đặt (nối chat) · Âm báo · Thư mục ảnh
+
+> ⚠️ **CHƯA COMMIT** — toàn bộ thay đổi phiên này còn trong working tree. Chi tiết feature-map: `docs/09-ccm-workspace.md`.
+> Nguyên tắc: **tái dùng backend có sẵn**, chỉ thêm vài endpoint nhỏ; phần chưa có model → **template hoặc lưu localStorage**.
+
+### A. CCM Tạo đơn + Danh sách đơn (nối orders CRM thật)
+- **Form "Tạo đơn"** (`components/ccm/CcmCustomerPanel.tsx` FRAME 4C): picker sản phẩm `GET /products/search` + thanh toán + `POST /orders/admin` (guest order, `metadata.source=CCM`, `conversationId`, `psid`). Tab **Thông tin** hiện đơn THẬT của khách.
+- **`/ccm/orders`**: bảng `GET /orders/admin` (lọc trạng thái/tìm/phân trang) + nút 🚚 Đẩy VTP mỗi dòng.
+- **Thẻ đơn chi tiết** (FRAME 4B): mã/luồng trạng thái/người nhận/địa chỉ/SP/tổng/giờ/ghi chú + badge VTP + mã vận đơn (kiểu Pancake).
+- **BE thêm** (`orders.controller`+`orders.service`): `GET /orders/by-conversation/:id` (lọc `metadata.conversationId`); `PATCH /orders/:id/carrier-info` (ghi `metadata.carrier`); `updateAdminFields` nhận thêm `customerTags`.
+- Sửa lỗi: đơn tạo xong không hiện (do tra theo SĐT contact rỗng) → nay tra theo **conversationId** + gộp theo SĐT thật của contact (không dùng số gõ tay → hết kéo nhầm đơn khách khác trùng số).
+
+### B. Đẩy Viettel Post (`components/ccm/CcmViettelPushDialog.tsx`)
+- Dialog: chọn tỉnh/huyện/xã VTP (`/viettelpost/address/*`, có toggle "địa danh mới") → tra cước `POST /viettelpost/price` → chọn dịch vụ → **đẩy** `POST /viettelpost/orders`. Liên kết CRM↔VTP qua `orderReference = orderCode`; đẩy xong ghi mã vận đơn về `metadata.carrier`.
+- Thẻ đơn hiện **trạng thái giao hàng LIVE** từ `GET /viettelpost/customers/:code` (statusName, chấm đỏ).
+
+### C. Cài đặt ĐVVC (`app/ccm/settings/shipping/page.tsx`)
+- Viettel Post = read-only từ **`GET /viettelpost/config`** (BE mới, che SĐT sender, không lộ user/pass); 17 hãng khác = template "chưa tích hợp".
+
+### D. Hệ thống Thẻ (order/customer tags)
+- `CcmCustomerPanel`: catalog `ORDER_TAGS`/`CUSTOMER_TAGS` + `TagPicker`; lưu `metadata.tags`/`metadata.customerTags` qua `PATCH /orders/:id/admin-update`.
+
+### E. Chat header (FRAME 3A) dựng lại kiểu Pancake
+- [3A-L] avatar+tên+👁 phụ trách+📞+nhãn, hàng icon nhỏ 🔗🕐👤🎂 (có tooltip).
+- [3A-R] 4 icon: **👤⁺ Phân công NV** (dropdown chọn NV thật — BE mới `POST /messenger/conversations/:id/assign-user` + `messenger.service.assignToUser`, hook `useMessengerChat.assignTo`+`staff` từ `/admin/staff/members`) · ☷ Tất cả HT khách · 🏷️ Nhãn (picker từ catalog thẻ) · ▭ Thông tin (bật/tắt Cột 4).
+
+### F. Cột 1 = RAIL LỌC danh sách hội thoại (client-side)
+- 💬 Tất cả · 💭 Chưa đọc · ✉️ Lọc tin nhắn(AI template) · ★(template) · 📞 Có SĐT · 📵 Không SĐT · 🕐 Chưa trả lời(+3 sort) · 📅/🗂️(template) · 👥 Lọc nhân viên(multi-select). Áp qua `visibleConversations` + chip lọc + Xoá lọc.
+
+### G. Cài đặt NỐI THẲNG vào chat (`lib/useCcmSettings.ts` — store localStorage + pub/sub)
+- **Hỗ trợ trả lời** (`settings/quick-reply`): CRUD mẫu → composer ⚡ đọc trực tiếp.
+- **Thẻ hội thoại** (`settings/tags`): CRUD catalog (name+màu) → picker 🏷️ + màu chip ở list.
+- **Giao diện** (`settings/interface`): prefs (hiện NV phụ trách / SĐT / tên thẻ đầy đủ) → list đọc live.
+- **Cài đặt chung** (`settings/page`): **âm báo THẬT** (`lib/ccmSounds.ts` — Web Audio, 6 âm, nghe thử) + bật/tắt; `useMessengerChat` phát âm khi có tin realtime.
+
+### H. Thư mục ảnh (`components/ccm/CcmImagePicker.tsx`)
+- Nút 🖼️ mở popup kiểu Pancake: upload nhiều ảnh qua **UploadThing** (`productImage`), "gần đây"/"yêu thích" (localStorage), chọn nhiều (badge số) → gửi từng ảnh qua `reply({attachmentUrl})`.
+
+### CÒN LẠI (chưa làm — cần backend)
+- **Phân quyền**: wire được (có `User.staffPermissions` + `/admin/staff/members`) — cần thêm `PATCH /admin/staff/:id/permissions`.
+- **Chế độ xoay vòng**: cần model config + engine auto-assign.
+- **Lịch sử**: có model `MessageAuditLog` nhưng chưa có endpoint + chưa ghi log.
+- Dữ liệu quick-reply/thẻ/prefs/ảnh đang lưu **localStorage** (theo trình duyệt) — chuyển sang bảng backend khi cần dùng chung team.
+
+---
+
 ## 2026-06-30 (phiên 3) — Meta Ads nâng cấp · Messenger Inbox · Pancake UI templates
 
 > ⚠️ **Vị trí code:** các thay đổi backend + FE (trừ template Pancake) đã commit trên nhánh **`fix/meta-ads-module`** (`439fff2`, `e55dd8f`, `ae601ba`), **chưa merge vào `main`**. Template Pancake (`/pancake/*`) hiện còn **untracked** trong working tree. → Cần merge/đồng bộ nhánh.
