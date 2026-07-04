@@ -102,6 +102,9 @@ DESC="server reset precedes env scp"; { [[ -n "$b_reset" && -n "$b_scp" && "$b_r
 DESC="env scp precedes install"; { [[ -n "$b_scp" && -n "$b_install" && "$b_scp" -lt "$b_install" ]]; } && ok "$DESC" || fail "$DESC"
 DESC="health check present in plan"; [[ -n "$b_health" ]] && ok "$DESC" || fail "$DESC"
 DESC="no secret VALUE leaked in plan"; ! printf '%s' "$plan" | grep -qE 'mysql://x|JWT_SECRET=s' && ok "$DESC" || fail "$DESC"
+# Regression: builds must run under production — NODE_ENV=development breaks `next build`
+# (React prerender "useContext of null"). Yarn Berry installs devDeps regardless of NODE_ENV.
+DESC="build session exports NODE_ENV=production, not development"; { printf '%s' "$plan" | grep -q 'export NODE_ENV=production' && ! printf '%s' "$plan" | grep -q 'export NODE_ENV=development'; } && ok "$DESC" || fail "$DESC"
 
 echo "== dry-run aborts on bad env =="
 : >"$TMP/empty.prod"

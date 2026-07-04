@@ -56,7 +56,7 @@ Prompt lần lượt: env file cho BE (mặc định `.env.prod`), env file cho 
 ## Ghi chú kỹ thuật
 
 - **BE fork/1 bắt buộc:** cron `@nestjs/schedule` + processor BullMQ + socket.io chạy in-process; cluster N>1 sẽ nhân đôi cron và phân mảnh socket.
-- **devDeps cần trên server:** `@nestjs/cli` (build), `prisma` (migrate/generate), `ts-node` (seed) đều là devDependencies → install phải gồm devDeps (`NODE_ENV=development` cho bước install; Yarn Berry cài full mặc định).
+- **devDeps + NODE_ENV:** `@nestjs/cli` (build), `prisma` (migrate/generate), `ts-node` (seed) là devDependencies. **Yarn Berry (4.x) cài đầy đủ dev+prod bất kể `NODE_ENV`** → không cần ép `NODE_ENV=development`. Build chạy dưới **`NODE_ENV=production`**: `next build` sẽ HỎNG nếu `NODE_ENV=development` (lỗi React prerender `Cannot read properties of null (reading 'useContext')`). Yarn lockfile là v10 (Yarn 4).
 - **FE prisma là dead dependency:** `frontend/package.json` khai báo `prisma`/`@prisma/client` v7 nhưng không có schema, không import runtime, không có postinstall → install không kích hoạt lifecycle prisma. Cân nhắc gỡ deps này (thay đổi riêng).
 - **Test:** `bash tests/deploy.test.sh` (36 case: helper thuần + config PM2 + thứ tự dry-run). `bash -n deploy.sh` để check cú pháp.
 

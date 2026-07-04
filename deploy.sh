@@ -188,7 +188,11 @@ remote_build_script() {
 set -euo pipefail
 $(fnm_preamble)
 corepack enable
-export NODE_ENV=development   # ensure devDeps (@nestjs/cli, prisma, ts-node) install (red-team C3)
+# Yarn Berry installs devDeps by default regardless of NODE_ENV, so @nestjs/cli,
+# prisma, and ts-node are present for build/generate/seed (red-team C3). Build
+# under production: `next build` breaks under NODE_ENV=development (React
+# prerender "Cannot read properties of null (reading 'useContext')").
+export NODE_ENV=production
 # ---- build FIRST; DB is touched only after both artifacts exist (C1) ----
 cd "${SERVER_DIR}/${BE_DIR}" && mkdir -p logs
 corepack yarn install --immutable
