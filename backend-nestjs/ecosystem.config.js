@@ -5,20 +5,20 @@
 module.exports = {
   apps: [
     {
-      name: "chy_crm_backend",
+      name: 'chy_crm_backend',
       cwd: __dirname,
-      script: "dist/src/main.js",
-      exec_mode: "fork",
+      script: 'dist/src/main.js',
+      exec_mode: 'fork',
       instances: 1,
       autorestart: true,
       watch: false,
-      max_memory_restart: "1G",
+      max_memory_restart: '1G',
       env: {
-        NODE_ENV: "production",
-        PORT: 3070,
+        NODE_ENV: 'production',
+        PORT: 8070,
       },
-      error_file: "./logs/err.log",
-      out_file: "./logs/out.log",
+      error_file: './logs/err.log',
+      out_file: './logs/out.log',
       time: true,
     },
   ],
