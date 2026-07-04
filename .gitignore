@@ -1,14 +1,14 @@
 # Workspace-level build artifacts
-/.next/
-/dist/
-/coverage/
+.next/
+dist/
+coverage/
 
 # Database dumps and local export archives
 /*.sql
-/*.sql.gz
-/*.dump
-/*.tar
-/*.tar.gz
+*.sql.gz
+*.dump
+*.tar
+*.tar.gz
 
 # Logs
 *.log
