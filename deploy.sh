@@ -221,7 +221,7 @@ for i in \$(seq 1 15); do
     && curl -fsS "http://127.0.0.1:${FE_PORT}/" >/dev/null 2>&1; then healthy=1; break; fi
   sleep 2
 done
-[ "\$healthy" = 1 ] || { echo "HEALTH CHECK FAILED"; pm2 logs --lines 50 --nostream || true; exit 1; }
+[ "\$healthy" = 1 ] || { echo "HEALTH CHECK FAILED"; pm2 logs chy_crm_backend chy_crm_fe --lines 50 --nostream || true; exit 1; }
 pm2 list
 BUILD
 }
