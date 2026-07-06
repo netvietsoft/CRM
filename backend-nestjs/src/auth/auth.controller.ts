@@ -40,6 +40,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 45 * 60 * 1000, // 45 minutes
     });
 
@@ -47,6 +48,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
@@ -77,6 +79,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
@@ -84,6 +87,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
@@ -111,6 +115,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 15 * 60 * 1000,
     });
 
@@ -118,6 +123,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
@@ -131,9 +137,10 @@ export class AuthController {
   async logout(@GetUser('userId') userId: string, @Res({ passthrough: true }) response: Response) {
     await this.authService.logout(userId);
 
-    // Clear cookies
-    response.clearCookie('crm_access_token');
-    response.clearCookie('crm_refresh_token');
+    // Clear cookies — phải khớp domain/flags đã set thì mới xoá đúng cookie
+    const clearOpts = { domain: process.env.COOKIE_DOMAIN, httpOnly: true, secure: true, sameSite: 'none' as const };
+    response.clearCookie('crm_access_token', clearOpts);
+    response.clearCookie('crm_refresh_token', clearOpts);
 
     return { success: true, message: 'Đăng xuất thành công' };
   }
@@ -156,6 +163,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 15 * 60 * 1000,
     });
 
@@ -163,6 +171,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN, // prod: .lestgoai.com → cookie dùng chung mọi subdomain; local undefined = host-only
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
