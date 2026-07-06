@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
 
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const apiKey = process.env.PANCAKE_API_KEY;
 
     if (!apiKey) {
@@ -24,7 +30,7 @@ export async function GET() {
       const errorText = await response.text();
       console.error('[Pancake] Failed to fetch shops:', errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch shops from Pancake', details: errorText },
+        { error: 'Failed to fetch shops from Pancake' },
         { status: response.status }
       );
     }

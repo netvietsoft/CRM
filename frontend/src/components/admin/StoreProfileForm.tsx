@@ -168,39 +168,39 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
   return (
     <div className="space-y-8">
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+        <div className="bg-[#d1fae5] border border-[#6ee7b7] text-[#047857] px-4 py-3 rounded-[14px] flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
           <span className="text-xl">✅</span>
           <p className="font-medium">Cập nhật thông tin cửa hàng thành công!</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Basic Info & Address */}
-        <div className="lg:col-span-2 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm">🏪</span>
+        <div className="lg:col-span-2 space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="bg-white p-[22px] rounded-[14px] border border-[#eceef2]">
+              <h3 className="text-[15px] font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-[9px] bg-[#eff6ff] text-[#2563eb] flex items-center justify-center text-sm">🏪</span>
                 Thông tin cơ bản
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên cửa hàng</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Tên cửa hàng</label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all"
                     placeholder="Ví dụ: Shop Quần Áo XYZ"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <div className="flex justify-between items-end mb-1">
-                    <label className="block text-sm font-medium text-gray-700">Mô tả ngắn</label>
-                    <span className={`text-[10px] font-medium ${description.length > 750 ? 'text-red-500' : 'text-gray-400'}`}>
+                  <div className="flex justify-between items-end mb-1.5">
+                    <label className="block text-[12.5px] font-semibold text-[#4b5563]">Mô tả ngắn</label>
+                    <span className={`text-[10px] font-medium ${description.length > 750 ? 'text-[#dc2626]' : 'text-[#9ca3af]'}`}>
                       {description.length}/800
                     </span>
                   </div>
@@ -208,42 +208,42 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
                     value={description}
                     maxLength={800}
                     onChange={e => setDescription(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-24"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all h-24 resize-y"
                     placeholder="Giới thiệu ngắn về cửa hàng của bạn..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại liên hệ</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Số điện thoại liên hệ</label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email liên hệ</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Email liên hệ</label>
                   <input
                     type="email"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center text-sm">📍</span>
+            <div className="bg-white p-[22px] rounded-[14px] border border-[#eceef2]">
+              <h3 className="text-[15px] font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-[9px] bg-[#ffedd5] text-[#c2410c] flex items-center justify-center text-sm">📍</span>
                 Địa chỉ lấy hàng
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/Thành phố</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Tỉnh/Thành phố</label>
                   <Select
                     value={province}
                     onChange={(val) => {
@@ -257,7 +257,7 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quận/Huyện/Xã</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Quận/Huyện/Xã</label>
                   <Select
                     value={ward}
                     onChange={(val) => setWard(val)}
@@ -268,68 +268,68 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ chi tiết (Số nhà, tên đường...)</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Địa chỉ chi tiết (Số nhà, tên đường...)</label>
                   <input
                     type="text"
                     required
                     value={street}
                     onChange={e => setStreet(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center text-sm">💳</span>
+            <div className="bg-white p-[22px] rounded-[14px] border border-[#eceef2]">
+              <h3 className="text-[15px] font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-[9px] bg-[#d1fae5] text-[#047857] flex items-center justify-center text-sm">💳</span>
                 Thông tin thanh toán
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ngân hàng</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Ngân hàng</label>
                   <input
                     type="text"
                     required
                     value={bankName}
                     onChange={e => setBankName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
                     placeholder="Ví dụ: Vietcombank"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số tài khoản</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Số tài khoản</label>
                   <input
                     type="text"
                     required
                     value={bankAccountNo}
                     onChange={e => setBankAccountNo(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 text-[13px] font-mono border border-[#e5e7eb] rounded-[10px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tên chủ tài khoản</label>
+                  <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Tên chủ tài khoản</label>
                   <input
                     type="text"
                     required
                     value={bankOwnerName}
                     onChange={e => setBankOwnerName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 transition-all"
                   />
                 </div>
 
                 <div className="flex items-end">
-                  <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors w-full">
+                  <label className="flex items-center gap-3 p-3 bg-[#f9fafb] rounded-[10px] cursor-pointer hover:bg-[#f3f4f6] transition-colors w-full">
                     <input
                       type="checkbox"
                       checked={allowCOD}
                       onChange={e => setAllowCOD(e.target.checked)}
-                      className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-5 h-5 text-[#2563eb] rounded focus:ring-[#2563eb]"
                     />
-                    <span className="text-sm font-medium text-gray-700">Thanh toán khi nhận hàng (COD)</span>
+                    <span className="text-[13px] font-medium text-[#374151]">Thanh toán khi nhận hàng (COD)</span>
                   </label>
                 </div>
               </div>
@@ -338,7 +338,7 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#2563eb] text-white rounded-[11px] font-bold text-[13px] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -351,10 +351,10 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
         </div>
 
         {/* Logo & Password */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center text-sm">📸</span>
+        <div className="space-y-4">
+          <div className="bg-white p-[22px] rounded-[14px] border border-[#eceef2]">
+            <h3 className="text-[15px] font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-[9px] bg-[#f3e8ff] text-[#9333ea] flex items-center justify-center text-sm">📸</span>
               Ảnh đại diện cửa hàng
             </h3>
             <ImageUpload
@@ -364,16 +364,16 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
             />
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-sm">🔒</span>
+          <div className="bg-white p-[22px] rounded-[14px] border border-[#eceef2]">
+            <h3 className="text-[15px] font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-[9px] bg-[#fee2e2] text-[#dc2626] flex items-center justify-center text-sm">🔒</span>
               Đổi mật khẩu
             </h3>
 
             {passwordMsg && (
-              <div className={`p-3 rounded-lg mb-4 text-sm ${passwordMsg.type === 'success'
-                ? 'bg-green-50 text-green-700 border border-green-200'
-                : 'bg-red-50 text-red-700 border border-red-200'
+              <div className={`p-3 rounded-[10px] mb-4 text-[13px] ${passwordMsg.type === 'success'
+                ? 'bg-[#d1fae5] text-[#047857] border border-[#6ee7b7]'
+                : 'bg-[#fee2e2] text-[#dc2626] border border-[#fca5a5]'
                 }`}>
                 {passwordMsg.text}
               </div>
@@ -381,48 +381,48 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
 
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu hiện tại</label>
+                <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Mật khẩu hiện tại</label>
                 <input
                   type="password"
                   required
                   value={passwordForm.currentPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
+                <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Mật khẩu mới</label>
                 <input
                   type="password"
                   required
                   minLength={6}
                   value={passwordForm.newPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu mới</label>
+                <label className="block text-[12.5px] font-semibold text-[#4b5563] mb-1.5">Xác nhận mật khẩu mới</label>
                 <input
                   type="password"
                   required
                   minLength={6}
                   value={passwordForm.confirmPassword}
                   onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2.5 text-[13px] border border-[#e5e7eb] rounded-[10px] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 outline-none transition-all"
                 />
               </div>
               <button
                 type="submit"
                 disabled={passwordLoading}
-                className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 disabled:opacity-50 transition-all"
+                className="w-full py-2.5 bg-[#1f2937] text-white rounded-[11px] font-bold text-[13px] hover:bg-[#111827] disabled:opacity-50 transition-colors"
               >
                 {passwordLoading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
               </button>
             </form>
           </div>
 
-          <div className="p-4 bg-amber-50 rounded-2xl text-amber-700 text-xs leading-relaxed border border-amber-100">
+          <div className="p-4 bg-[#fef3c7] rounded-[14px] text-[#92400e] text-[11.5px] leading-relaxed border border-[#fcd34d]">
             <p><strong>Bảo mật:</strong> Nên thay đổi mật khẩu định kỳ và không chia sẻ tài khoản Moderator cho người khác.</p>
           </div>
         </div>

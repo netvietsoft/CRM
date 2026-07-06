@@ -36,7 +36,7 @@ export default function DeleteOrderButton({ orderId, orderCode }: DeleteOrderBut
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+        className="flex items-center gap-2 px-3.5 py-2.5 bg-white border border-[#fecaca] text-[#dc2626] text-[13px] font-semibold rounded-[10px] hover:bg-[#fef2f2] transition-colors"
       >
         <Trash2 className="w-4 h-4" />
         Xóa đơn hàng

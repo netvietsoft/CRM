@@ -209,8 +209,8 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
 
   if (!isExpanded) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-4 flex justify-between items-center cursor-pointer" onClick={() => setIsExpanded(true)}>
-        <h2 className="text-lg font-bold text-gray-800">Thông tin</h2>
+      <div className="bg-white border border-[#eceef2] rounded-[14px] p-4 flex justify-between items-center cursor-pointer" onClick={() => setIsExpanded(true)}>
+        <h2 className="text-[15px] font-bold text-gray-900">Thông tin</h2>
         <ChevronUp className="w-5 h-5 text-gray-500 rotate-180 transition-transform" />
       </div>
     );
@@ -229,9 +229,9 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 space-y-4 overflow-visible">
+    <div className="bg-white border border-[#eceef2] rounded-[14px] p-5 space-y-4 overflow-visible">
       <div className="flex justify-between items-center cursor-pointer" onClick={() => setIsExpanded(false)}>
-        <h2 className="text-lg font-bold text-gray-800">Thông tin</h2>
+        <h2 className="text-[15px] font-bold text-gray-900">Thông tin</h2>
         <ChevronUp className="w-5 h-5 text-gray-500 transition-transform" />
       </div>
 

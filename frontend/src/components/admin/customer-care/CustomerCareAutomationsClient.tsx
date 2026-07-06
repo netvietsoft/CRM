@@ -24,10 +24,10 @@ function getTriggerLabel(value: string) {
 
 function getTriggerClassName(value: string) {
   if (value === 'BIRTHDAY' || value === 'BIRTHDAY_TODAY') {
-    return 'bg-pink-50 text-pink-700 ring-pink-200';
+    return 'bg-[#fce7f3] text-[#be185d]';
   }
   if (value === 'ORDER_SHIPPING_STATUS' || value === 'ORDER_SHIPPED') {
-    return 'bg-blue-50 text-blue-700 ring-blue-200';
+    return 'bg-[#dbeafe] text-[#1d4ed8]';
   }
   if (
     value === 'ORDER_DELIVERED_PAID' ||
@@ -35,18 +35,18 @@ function getTriggerClassName(value: string) {
     value === 'PAYMENT_SUCCESS' ||
     value === 'VOUCHER_ACTIVATED'
   ) {
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    return 'bg-[#d1fae5] text-[#047857]';
   }
   if (value.startsWith('ORDER_') || value === 'PAYMENT_FAILED') {
-    return 'bg-amber-50 text-amber-700 ring-amber-200';
+    return 'bg-[#fef3c7] text-[#92400e]';
   }
   if (value.startsWith('VOUCHER_')) {
-    return 'bg-violet-50 text-violet-700 ring-violet-200';
+    return 'bg-[#ede9fe] text-[#6d28d9]';
   }
   if (value.startsWith('CUSTOMER_')) {
-    return 'bg-cyan-50 text-cyan-700 ring-cyan-200';
+    return 'bg-[#cffafe] text-[#0e7490]';
   }
-  return 'bg-gray-100 text-gray-700 ring-gray-200';
+  return 'bg-[#f3f4f6] text-[#4b5563]';
 }
 
 export default function CustomerCareAutomationsClient({
@@ -131,104 +131,102 @@ export default function CustomerCareAutomationsClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900">Tin tự động</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <h1 className="text-lg font-extrabold text-gray-900">Tin tự động</h1>
+        <p className="mt-1 text-[12.5px] text-[#9ca3af]">
           Quản lý rule SMS cho sinh nhật khách hàng, vận chuyển và hoàn tất đơn hàng.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="grid w-full gap-3 md:grid-cols-2 xl:max-w-4xl xl:grid-cols-4">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm theo tên rule hoặc template"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            />
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Tìm theo tên rule hoặc template"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] md:w-64"
+          />
 
-            <select
-              value={triggerType}
-              onChange={(event) => setTriggerType(event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            >
-              <option value="">Tất cả trigger</option>
-              {triggerTypeOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <select
+            value={triggerType}
+            onChange={(event) => setTriggerType(event.target.value)}
+            className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] md:w-56"
+          >
+            <option value="">Tất cả trigger</option>
+            {triggerTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
 
-            <select
-              value={activeFilter}
-              onChange={(event) => setActiveFilter(event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="active">Đang bật</option>
-              <option value="inactive">Đã tắt</option>
-            </select>
+          <select
+            value={activeFilter}
+            onChange={(event) => setActiveFilter(event.target.value)}
+            className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] md:w-44"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Đang bật</option>
+            <option value="inactive">Đã tắt</option>
+          </select>
 
-            <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
-              {filteredRules.length} rule phù hợp
-            </div>
+          <div className="rounded-[10px] bg-[#eff6ff] px-3.5 py-2 text-[12.5px] font-bold text-[#2563eb]">
+            {filteredRules.length} rule phù hợp
           </div>
 
           <button
             type="button"
             onClick={() => router.push('/admin/customer-care/automations/create')}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            className="ml-auto rounded-[10px] bg-[#2563eb] px-[18px] py-2.5 text-[13px] font-bold text-white hover:bg-[#1d4ed8]"
           >
             Tạo rule
           </button>
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full">
             <thead>
-              <tr className="text-left text-sm text-gray-500">
-                <th className="px-4 py-3">Tên rule</th>
-                <th className="px-4 py-3">Trigger</th>
-                <th className="px-4 py-3">Template</th>
-                <th className="px-4 py-3">Lần chạy gần nhất</th>
-                <th className="px-4 py-3">Trạng thái</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
+              <tr className="border-b border-[#f1f5f9] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                <th className="px-4 py-2.5">Tên rule</th>
+                <th className="px-4 py-2.5">Trigger</th>
+                <th className="px-4 py-2.5">Template</th>
+                <th className="px-4 py-2.5">Lần chạy gần nhất</th>
+                <th className="px-4 py-2.5">Trạng thái</th>
+                <th className="px-4 py-2.5 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                     Đang tải rule tự động...
                   </td>
                 </tr>
               ) : filteredRules.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                     Chưa có rule phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
                 filteredRules.map((rule) => (
-                  <tr key={rule.id} className="align-top">
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-gray-900">{rule.name}</div>
-                      <div className="mt-1 text-gray-500">{rule.channel.code}</div>
+                  <tr key={rule.id} className="border-b border-[#f1f5f9] align-top hover:bg-[#eff6ff]">
+                    <td className="px-4 py-3.5 text-[13px]">
+                      <div className="font-bold text-gray-900">{rule.name}</div>
+                      <div className="mt-1 text-[12px] text-[#9ca3af]">{rule.channel.code}</div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5 text-[13px]">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getTriggerClassName(rule.triggerType)}`}
+                        className={`inline-flex rounded-md px-2 py-[3px] text-[11px] font-bold ${getTriggerClassName(rule.triggerType)}`}
                       >
                         {getTriggerLabel(rule.triggerType)}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5 text-[13px]">
                       <div className="font-medium text-gray-900">{rule.template?.name || 'Tự soạn'}</div>
                     </td>
-                    <td className="px-4 py-4 text-gray-500">
+                    <td className="px-4 py-3.5 text-[13px] text-[#2563eb]">
                       {rule.lastRunAt ? (
                         <div>{new Intl.DateTimeFormat('vi-VN', {
                           day: '2-digit',
@@ -238,37 +236,37 @@ export default function CustomerCareAutomationsClient({
                           minute: '2-digit',
                         }).format(new Date(rule.lastRunAt))}</div>
                       ) : (
-                        'Chưa chạy lần nào'
+                        <span className="text-[#9ca3af]">Chưa chạy lần nào</span>
                       )}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5 text-[13px]">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          rule.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                        className={`inline-flex rounded-full px-2.5 py-[3px] text-[11px] font-bold ${
+                          rule.isActive ? 'bg-[#d1fae5] text-[#047857]' : 'bg-[#f1f5f9] text-[#64748b]'
                         }`}
                       >
                         {rule.isActive ? 'Đang bật' : 'Đã tắt'}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5 text-[13px]">
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => router.push(`/admin/customer-care/automations/${rule.id}/edit`)}
-                          className="rounded-lg bg-gray-100 px-3 py-1.5 font-semibold text-gray-700 hover:bg-gray-200"
+                          className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
                         >
                           Sửa
                         </button>
                         <Link
                           href={`/admin/customer-care/automations/${rule.id}`}
-                          className="rounded-lg bg-blue-50 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-100"
+                          className="rounded-lg border border-[#bfdbfe] bg-white px-3 py-1.5 text-[12px] font-bold text-[#2563eb] hover:bg-[#eff6ff]"
                         >
                           Xem log
                         </Link>
                         <button
                           type="button"
                           onClick={() => handleDelete(rule.id)}
-                          className="rounded-lg bg-red-50 px-3 py-1.5 font-semibold text-red-600 hover:bg-red-100"
+                          className="rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-[12px] font-bold text-[#dc2626] hover:bg-[#fef2f2]"
                         >
                           Xóa
                         </button>

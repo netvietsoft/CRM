@@ -130,7 +130,7 @@ export default function VietQRPaymentClient({ orderId }: { orderId: string }) {
       setTimeout(() => setCopied(null), 2000);
     } catch (error) {
       console.error('Failed to download image:', error);
-      window.open(vietqrData.qrImageUrl, '_blank');
+      window.open(vietqrData.qrImageUrl, '_blank', 'noopener,noreferrer');
     }
   };
 

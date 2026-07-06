@@ -43,8 +43,8 @@ export default function OrderNotesClient({ order }: { order: OrderNotesData }) {
   }, [note, customerNote, setHasChanges]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 h-full flex flex-col">
-      <h2 className="text-xl font-bold text-gray-800 mb-5">Ghi chú</h2>
+    <div className="bg-white border border-[#eceef2] rounded-[14px] p-5 h-full flex flex-col">
+      <h2 className="text-[15px] font-bold text-gray-900 mb-5">Ghi chú</h2>
 
       {/* Tabs */}
       <div className="flex bg-gray-100 rounded-lg p-1 mb-4">

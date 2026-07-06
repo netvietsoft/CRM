@@ -15,7 +15,7 @@ export interface Conversation {
   id: string; pageId: string; unreadCount: number;
   lastMessageAt: string | null; lastMessageText: string | null; lastMessageDir: string | null;
   assignedUserId: string | null; assignedUserName: string | null; assignedUserAvatar: string | null; labels: string[] | null; star: string | null;
-  contact: { psid: string; name: string | null; phone: string | null; avatarUrl: string | null; dob: string | null };
+  contact: { psid: string; name: string | null; phone: string | null; avatarUrl: string | null; dob: string | null; gender: string | null };
   page: { name: string | null; externalId: string };
 }
 export interface Message {
@@ -134,6 +134,13 @@ export function useMessengerChat() {
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi lưu ngày sinh'); void loadConversations(); }
   }, [flash, loadConversations]);
 
+  // Đặt giới tính khách (MALE|FEMALE|OTHER|null) — optimistic + đồng bộ backend.
+  const setContactGender = useCallback(async (conv: Conversation, gender: string | null) => {
+    setConversations((prev) => prev.map((x) => (x.id === conv.id ? { ...x, contact: { ...x.contact, gender } } : x)));
+    try { await apiClientClient.post(`/messenger/conversations/${conv.id}/contact-gender`, { gender }); }
+    catch (e) { flash(e instanceof Error ? e.message : 'Lỗi lưu giới tính'); void loadConversations(); }
+  }, [flash, loadConversations]);
+
   const register = useCallback(async () => {
     try { const r = await apiClientClient.post<{ registered: number }>('/messenger/pages/register', {}); flash(`Đã đăng ký ${r.registered} page có quyền nhắn tin.`); await loadPages(); }
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi đăng ký page'); }
@@ -152,6 +159,6 @@ export function useMessengerChat() {
 
   return {
     pages, pageId, setPageId, conversations, activeId, messages, search, setSearch, sending, loadingMsgs, msg,
-    active, selectedPage, staff, open, reply, toggleAssign, assignTo, setLabels, setStar, setContactDob, register, subscribe, backfill, loadConversations,
+    active, selectedPage, staff, open, reply, toggleAssign, assignTo, setLabels, setStar, setContactDob, setContactGender, register, subscribe, backfill, loadConversations,
   };
 }

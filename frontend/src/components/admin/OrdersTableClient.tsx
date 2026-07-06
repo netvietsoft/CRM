@@ -14,20 +14,22 @@ import OrderActiveFilters from './OrderActiveFilters';
 import RevenueStats from './RevenueStats';
 import { formatNumber, formatVndTight } from '@/lib/format';
 
+// Design palette (handoff): green #047857/#d1fae5, orange #c2410c/#ffedd5,
+// yellow #92400e/#fef3c7, red #dc2626/#fee2e2. Mapped to statuses by semantics.
 const statusMap: Record<string, { cls: string; label: string }> = {
-  PENDING: { cls: 'bg-orange-100 text-orange-700 border border-orange-200', label: 'Chờ xác nhận' },
-  WAITING_FOR_GOODS: { cls: 'bg-purple-100 text-purple-700 border border-purple-200', label: 'Chờ hàng' },
-  CONFIRMED: { cls: 'bg-cyan-100 text-cyan-700 border border-cyan-200', label: 'Đã xác nhận' },
-  PACKAGING: { cls: 'bg-blue-100 text-blue-700 border border-blue-200', label: 'Đang đóng hàng' },
-  WAITING_FOR_SHIPPING: { cls: 'bg-gray-100 text-gray-700 border border-gray-200', label: 'Chờ vận chuyển' },
-  SHIPPED: { cls: 'bg-sky-100 text-sky-700 border border-sky-200', label: 'Đã gửi hàng' },
-  DELIVERED: { cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200', label: 'Đã nhận' },
-  PAYMENT_COLLECTED: { cls: 'bg-green-100 text-green-700 border border-green-200', label: 'Đã thu tiền' },
-  RETURNING: { cls: 'bg-red-100 text-red-700 border border-red-200', label: 'Đang hoàn' },
-  EXCHANGING: { cls: 'bg-yellow-100 text-yellow-700 border border-yellow-200', label: 'Đang đổi' },
-  COMPLETED: { cls: 'bg-teal-100 text-teal-700 border border-teal-200', label: 'Hoàn thành' },
-  CANCELLED: { cls: 'bg-rose-100 text-rose-700 border border-rose-200', label: 'Đã hủy' },
-  REFUNDED: { cls: 'bg-slate-100 text-slate-700 border border-slate-200', label: 'Hoàn trả' },
+  PENDING: { cls: 'bg-[#ffedd5] text-[#c2410c]', label: 'Chờ xác nhận' },
+  WAITING_FOR_GOODS: { cls: 'bg-[#fef3c7] text-[#92400e]', label: 'Chờ hàng' },
+  CONFIRMED: { cls: 'bg-[#dbeafe] text-[#1d4ed8]', label: 'Đã xác nhận' },
+  PACKAGING: { cls: 'bg-[#dbeafe] text-[#1d4ed8]', label: 'Đang đóng hàng' },
+  WAITING_FOR_SHIPPING: { cls: 'bg-[#fef3c7] text-[#92400e]', label: 'Chờ vận chuyển' },
+  SHIPPED: { cls: 'bg-[#dbeafe] text-[#1d4ed8]', label: 'Đã gửi hàng' },
+  DELIVERED: { cls: 'bg-[#d1fae5] text-[#047857]', label: 'Đã nhận' },
+  PAYMENT_COLLECTED: { cls: 'bg-[#d1fae5] text-[#047857]', label: 'Đã thu tiền' },
+  RETURNING: { cls: 'bg-[#fee2e2] text-[#dc2626]', label: 'Đang hoàn' },
+  EXCHANGING: { cls: 'bg-[#fef3c7] text-[#92400e]', label: 'Đang đổi' },
+  COMPLETED: { cls: 'bg-[#d1fae5] text-[#047857]', label: 'Hoàn thành' },
+  CANCELLED: { cls: 'bg-[#fee2e2] text-[#dc2626]', label: 'Đã hủy' },
+  REFUNDED: { cls: 'bg-[#fee2e2] text-[#dc2626]', label: 'Hoàn trả' },
 };
 
 function fmtDate(d: string | Date) {
@@ -205,19 +207,19 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
         <button
           onClick={() => setIsOpen(!isOpen)}
           disabled={isUpdating}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold shadow-sm transition-all hover:brightness-95 disabled:opacity-70 ${st.cls}`}
+          className={`inline-flex items-center gap-1.5 px-[11px] py-1 rounded-full text-[11.5px] font-bold transition-all hover:brightness-95 disabled:opacity-70 ${st.cls}`}
         >
           {isUpdating ? <Loader2 className="w-3 h-3 animate-spin" /> : st.label}
           <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 mt-1 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-[60] py-1 max-h-64 overflow-y-auto">
+          <div className="absolute left-0 mt-1 w-[190px] bg-white border border-[#eceef2] rounded-xl shadow-[0_16px_40px_rgba(15,23,42,0.16)] z-[60] p-1.5 max-h-64 overflow-y-auto">
             {Object.entries(statusMap).map(([code, info]) => (
               <button
                 key={code}
                 onClick={() => handleUpdate(code)}
-                className={`w-full text-left px-4 py-2 text-xs font-semibold flex items-center justify-between hover:bg-gray-50 transition-colors ${code === currentStatus ? 'text-blue-600 bg-blue-50/50' : 'text-gray-700'}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between hover:bg-[#f3f4f6] transition-colors ${code === currentStatus ? 'text-[#2563eb] bg-[#eff6ff]' : 'text-[#374151]'}`}
               >
                 <span>{info.label}</span>
                 {code === currentStatus && <Check className="w-3 h-3" />}
@@ -233,8 +235,8 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
     <>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Đơn hàng</h1>
-          <p className="text-gray-500 mt-1 text-sm font-medium">Quản lý và theo dõi hiệu quả kinh doanh</p>
+          <h1 className="text-2xl font-extrabold text-[#111827] tracking-[-0.4px]">Đơn hàng</h1>
+          <p className="text-[#6b7280] mt-1 text-[13px]">Quản lý và theo dõi hiệu quả kinh doanh</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <ExportQRButton selectedOrders={selectedOrders} />
@@ -251,18 +253,18 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
       <OrderActiveFilters />
 
       {/* Tổng kết quả lọc */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
-        <span className="text-sm text-gray-600">
-          Kết quả: <b className="text-gray-900">{formatNumber(totalCount)}</b> đơn
+      <div className="mb-3.5 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[#d1fae5] bg-[#ecfdf5] px-4 py-2.5">
+        <span className="text-[13px] text-[#4b5563]">
+          Kết quả: <b className="text-[#111827]">{formatNumber(totalCount)}</b> đơn
         </span>
-        <span className="text-sm text-gray-600">
+        <span className="text-[13px] text-[#4b5563]">
           Doanh thu (đã lọc):{' '}
-          <b className="text-base text-emerald-700">{formatVndTight(filteredRevenue)}</b>
+          <b className="text-[14.5px] text-[#047857]">{formatVndTight(filteredRevenue)}</b>
         </span>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-[#eceef2] overflow-hidden">
         {/* Mobile View */}
         <div className="md:hidden flex flex-col divide-y divide-gray-50">
           {orders.length === 0 ? (
@@ -356,10 +358,10 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
 
         {/* Desktop View */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse text-[13px] min-w-[880px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap w-12">
+              <tr className="bg-[#f9fafb]">
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap w-12">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -367,21 +369,21 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
                     className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                   />
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Mã đơn</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Khách hàng</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Nguồn</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Sản phẩm</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Tổng tiền</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Trạng thái</th>
-                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">Mã đơn</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">Khách hàng</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">Nguồn</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">Sản phẩm</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">Tổng tiền</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">Trạng thái</th>
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">
                   <OrderDateSortHeader field="createdAt" label="Ngày tạo" />
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold whitespace-nowrap">
+                <th className="px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] whitespace-nowrap">
                   <OrderDateSortHeader field="updatedAt" label="Cập nhật" />
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {orders.length === 0 ? (
                 <tr>
                   <td colSpan={9}>
@@ -400,7 +402,7 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
                   <tr
                     key={order.id}
                     onClick={() => router.push(`/admin/orders/${order.id}`)}
-                    className={`transition-colors cursor-pointer hover:bg-blue-50/40 ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} ${isChecked ? '!bg-indigo-50/60' : ''}`}
+                    className={`border-t border-[#f3f4f6] transition-colors cursor-pointer hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} ${isChecked ? '!bg-indigo-50/60' : ''}`}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -414,8 +416,8 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
                       <div className="flex items-center gap-2">
                         {isUnread && <span className="w-2 h-2 rounded-full bg-indigo-500 flex-shrink-0" title="Đơn hàng chưa đọc" />}
                         <div className="flex items-center gap-2 group" onClick={(e) => handleCopy(e, order.orderCode)}>
-                          <span className={`font-mono font-bold text-blue-600 hover:text-blue-800`}>
-                            {order.orderCode}
+                          <span className={`font-mono text-xs font-bold text-[#2563eb] hover:text-blue-800`}>
+                            #{order.orderCode}
                           </span>
                           {copiedId === order.orderCode ? (
                             <Check className="w-3.5 h-3.5 text-green-500" />
@@ -444,7 +446,7 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-gray-700">
+                      <span className="inline-block px-2.5 py-[3px] rounded-lg text-[11px] font-semibold bg-[#f3f4f6] text-[#4b5563]">
                         {order.source === 'PORTAL_DIRECT' || !order.source ? 'WEBSITE' : order.source}
                       </span>
                     </td>
@@ -469,8 +471,8 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
                     <td className="px-4 py-3 whitespace-nowrap">
                       <QuickStatusUpdate orderId={order.id} orderCode={order.orderCode} currentStatus={order.status} />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700">{fmtDate(order.createdAt)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700">{fmtDate(order.updatedAt)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-[12px] text-[#6b7280]">{fmtDate(order.createdAt)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-[12px] text-[#6b7280]">{fmtDate(order.updatedAt)}</td>
                   </tr>
                 );
               })}

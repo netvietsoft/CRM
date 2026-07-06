@@ -74,21 +74,22 @@ function getTypeBadge(type: string) {
 }
 
 function getCampaignBadge(cat: string) {
-  const map: Record<string, { class: string; label: string }> = {
-    WELCOME: { class: 'badge-success', label: '🎉 Welcome' },
-    VIP: { class: 'badge-gold', label: '👑 VIP' },
-    BUNDLE: { class: 'badge-primary', label: '📦 Bundle' },
-    FREESHIP: { class: 'badge-info', label: '🚚 Freeship' },
-    GAMIFICATION: { class: 'badge-warning', label: '🎰 Vòng quay' },
-    REFERRAL: { class: 'badge-diamond', label: '🔗 Referral' },
-    BIRTHDAY: { class: 'badge-danger', label: '🎂 Sinh nhật' },
+  const map: Record<string, { class: string; label: string; bg: string; fg: string }> = {
+    WELCOME: { class: 'badge-success', label: '🎉 Welcome', bg: '#d1fae5', fg: '#047857' },
+    VIP: { class: 'badge-gold', label: '👑 VIP', bg: '#fef3c7', fg: '#92400e' },
+    BUNDLE: { class: 'badge-primary', label: '📦 Bundle', bg: '#dbeafe', fg: '#1d4ed8' },
+    FREESHIP: { class: 'badge-info', label: '🚚 Freeship', bg: '#cffafe', fg: '#0e7490' },
+    GAMIFICATION: { class: 'badge-warning', label: '🎰 Vòng quay', bg: '#ffedd5', fg: '#c2410c' },
+    REFERRAL: { class: 'badge-diamond', label: '🔗 Referral', bg: '#e0e7ff', fg: '#4338ca' },
+    BIRTHDAY: { class: 'badge-danger', label: '🎂 Sinh nhật', bg: '#fee2e2', fg: '#dc2626' },
   };
-  return map[cat] || { class: 'badge-member', label: cat };
+  return map[cat] || { class: 'badge-member', label: cat, bg: '#f1f5f9', fg: '#475569' };
 }
 
 export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTableRow[] }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [editVoucher, setEditVoucher] = useState<VoucherTableRow | null>(null);
 
   const handleDelete = async (id: string, code: string) => {
@@ -105,29 +106,40 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
     }
   };
 
+  const handleToggleActive = async (id: string, current: boolean) => {
+    setTogglingId(id);
+    try {
+      await apiClientClient.patch(`/vouchers/${id}`, { isActive: !current });
+      router.refresh();
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : 'Lỗi cập nhật trạng thái');
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full min-w-[860px] border-collapse text-left text-[13px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Code</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Tên</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Chiến dịch</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Loại</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Giá trị</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Đơn tối thiểu</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Đã dùng</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Hạn dùng</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Trạng thái</th>
-              <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap text-right">Thao tác</th>
+              <tr className="bg-[#f9fafb]">
+              <th className="px-4 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Mã voucher</th>
+              <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Chiến dịch</th>
+              <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Loại</th>
+              <th className="px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Giá trị</th>
+              <th className="px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Đơn tối thiểu</th>
+              <th className="min-w-[150px] px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Đã dùng</th>
+              <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">HSD</th>
+              <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Kích hoạt</th>
+              <th className="px-4 py-[10px]"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody>
             {vouchers.length === 0 ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={9}>
                   <div className="text-center py-12">
                     <div className="text-6xl mb-3">🎫</div>
                     <div className="text-xl font-semibold text-gray-800 mb-2">Chưa có voucher nào</div>
@@ -136,42 +148,33 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
                 </td>
               </tr>
             ) : vouchers.map((voucher, idx) => {
-              const typeInfo = getTypeBadge(voucher.type);
               const campInfo = getCampaignBadge(voucher.campaignCategory);
               const isDeleting = deletingId === voucher.id;
+              const isToggling = togglingId === voucher.id;
+
+              const usedPct = voucher.totalUsageLimit
+                ? Math.min(100, Math.round((voucher.usedCount / voucher.totalUsageLimit) * 100))
+                : voucher.usedCount > 0 ? 100 : 0;
+              const barColor = usedPct >= 90 ? '#dc2626' : usedPct >= 60 ? '#c2410c' : '#2563eb';
 
               return (
-                <tr key={voucher.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50/50 transition-colors ${isDeleting ? 'opacity-50' : ''}`}>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="font-mono font-bold text-sm bg-gray-100 px-2 py-1 rounded">
-                      {voucher.code}
-                    </span>
+                <tr
+                  key={voucher.id}
+                  className={`border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} ${isDeleting ? 'opacity-50' : ''}`}
+                >
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-[12.5px] font-bold text-[#2140da]">
+                    {voucher.code}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-800">{voucher.name}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      campInfo.class === 'badge-success' ? 'bg-green-100 text-green-700' :
-                      campInfo.class === 'badge-gold' ? 'bg-yellow-100 text-yellow-700' :
-                      campInfo.class === 'badge-primary' ? 'bg-blue-100 text-blue-700' :
-                      campInfo.class === 'badge-info' ? 'bg-cyan-100 text-cyan-700' :
-                      campInfo.class === 'badge-warning' ? 'bg-orange-100 text-orange-700' :
-                      campInfo.class === 'badge-diamond' ? 'bg-indigo-100 text-indigo-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                  <td className="whitespace-nowrap px-3 py-3">
+                    <span
+                      className="whitespace-nowrap rounded-full px-[10px] py-[3px] text-[11px] font-bold"
+                      style={{ background: campInfo.bg, color: campInfo.fg }}
+                    >
                       {campInfo.label}
                     </span>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      typeInfo.class === 'badge-primary' ? 'bg-blue-100 text-blue-700' :
-                      typeInfo.class === 'badge-success' ? 'bg-green-100 text-green-700' :
-                      typeInfo.class === 'badge-warning' ? 'bg-orange-100 text-orange-700' :
-                      'bg-cyan-100 text-cyan-700'
-                    }`}>
-                      {typeInfo.label}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-800">
+                  <td className="whitespace-nowrap px-3 py-3 text-[#4b5563]">{getTypeBadge(voucher.type).label}</td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right font-bold text-slate-900">
                     {voucher.type === 'STACK'
                       ? (() => {
                           const tiers = voucher.stackTiers;
@@ -181,9 +184,9 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
                             const isPercent = maxTier.type === 'PERCENT';
                             const condition = tiers[0].conditionType === 'amount' ? 'giá trị' : 'số SP';
                             return (
-                              <div className="flex flex-col">
+                              <div className="flex flex-col items-end">
                                 <span className="text-indigo-600">Theo {condition}</span>
-                                <span className="text-[11px] text-gray-500">
+                                <span className="text-[11px] font-normal text-gray-500">
                                   {isPercent ? `${minTier.discount}% - ${maxTier.discount}%` : `${formatCurrency(minTier.discount)} - ${formatCurrency(maxTier.discount)}`}
                                 </span>
                               </div>
@@ -195,35 +198,44 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
                         ? `${voucher.value}%`
                         : formatCurrency(voucher.value)}
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700">{formatCurrency(voucher.minOrderValue)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700">
-                    {voucher.usedCount}
-                    {voucher.totalUsageLimit ? `/${voucher.totalUsageLimit}` : ''}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{formatDateRange(voucher.validFrom, voucher.validTo)}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                      voucher.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {voucher.isActive ? 'Hoạt động' : 'Tắt'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => setEditVoucher(voucher)}
-                        className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
-                      >
-                        ✏️ Sửa
-                      </button>
-                      <button
-                        onClick={() => handleDelete(voucher.id, voucher.code)}
-                        disabled={isDeleting}
-                        className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
-                      >
-                        {isDeleting ? '...' : '🗑️ Xoá'}
-                      </button>
+                  <td className="whitespace-nowrap px-3 py-3 text-right text-[#4b5563]">{formatCurrency(voucher.minOrderValue)}</td>
+                  <td className="px-3 py-3">
+                    <div className="mb-1 whitespace-nowrap text-[12px] font-semibold text-slate-900">
+                      {voucher.usedCount}
+                      {voucher.totalUsageLimit ? `/${voucher.totalUsageLimit}` : ''}
                     </div>
+                    <div className="h-[5px] overflow-hidden rounded-full bg-[#f3f4f6]">
+                      <div className="h-full rounded-full" style={{ width: `${usedPct}%`, background: barColor }} />
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-[#6b7280]">{formatDateRange(voucher.validFrom, voucher.validTo)}</td>
+                  <td className="px-3 py-3">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActive(voucher.id, voucher.isActive)}
+                      disabled={isToggling}
+                      aria-pressed={voucher.isActive}
+                      className={`inline-flex h-5 w-[34px] items-center rounded-full p-[2px] transition-colors disabled:opacity-50 ${voucher.isActive ? 'bg-[#2563eb]' : 'bg-[#cbd5e1]'}`}
+                    >
+                      <span
+                        className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${voucher.isActive ? 'translate-x-[14px]' : 'translate-x-0'}`}
+                      />
+                    </button>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <button
+                      onClick={() => setEditVoucher(voucher)}
+                      className="mr-3 cursor-pointer text-[12.5px] font-semibold text-[#2563eb] hover:underline"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      onClick={() => handleDelete(voucher.id, voucher.code)}
+                      disabled={isDeleting}
+                      className="cursor-pointer text-[12.5px] font-semibold text-[#dc2626] hover:underline disabled:opacity-50"
+                    >
+                      {isDeleting ? '...' : 'Xoá'}
+                    </button>
                   </td>
                 </tr>
               );

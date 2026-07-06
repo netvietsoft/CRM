@@ -60,68 +60,84 @@ export default async function StoresPage() {
 
   const pendingCount = stores.filter(s => !s.isActive && !s.isBanned).length;
   const bannedCount = stores.filter(s => s.isBanned).length;
+  const activeCount = stores.filter(s => s.isActive && !s.isBanned).length;
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-[18px] flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">Quản lý Cửa hàng</h1>
-          <p className="text-gray-600 text-sm">
-            {stores.length} cửa hàng
-            {pendingCount > 0 && <> · <span className="text-amber-600 font-semibold">{pendingCount} đang chờ duyệt</span></>}
-            {bannedCount > 0 && <> · <span className="text-red-600 font-semibold">{bannedCount} đã bị cấm</span></>}
-          </p>
+          <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px] text-gray-900">Cửa hàng</h1>
+          <p className="mt-1 mb-0 text-[13px] text-[#6b7280]">Cửa hàng trên hệ thống và yêu cầu chờ duyệt</p>
         </div>
         <StoreActions />
       </div>
 
+      {/* KPI cards */}
+      <div className="grid grid-cols-3 gap-[14px] mb-4">
+        <div className="bg-white border border-[#eceef2] rounded-[14px] px-4 py-[15px]">
+          <div className="text-xs text-[#6b7280] mb-[5px]">Tổng cửa hàng</div>
+          <div className="text-[22px] font-extrabold tracking-[-0.3px] text-gray-900">{stores.length}</div>
+          <div className="text-[11.5px] font-semibold mt-[3px] text-[#047857]">{activeCount} đang hoạt động</div>
+        </div>
+        <div className="bg-white border border-[#eceef2] rounded-[14px] px-4 py-[15px]">
+          <div className="text-xs text-[#6b7280] mb-[5px]">Chờ duyệt</div>
+          <div className="text-[22px] font-extrabold tracking-[-0.3px] text-gray-900">{pendingCount}</div>
+          <div className="text-[11.5px] font-semibold mt-[3px] text-[#92400e]">Yêu cầu cần xử lý</div>
+        </div>
+        <div className="bg-white border border-[#eceef2] rounded-[14px] px-4 py-[15px]">
+          <div className="text-xs text-[#6b7280] mb-[5px]">Đã bị cấm</div>
+          <div className="text-[22px] font-extrabold tracking-[-0.3px] text-gray-900">{bannedCount}</div>
+          <div className="text-[11.5px] font-semibold mt-[3px] text-[#dc2626]">Bị vô hiệu hoá</div>
+        </div>
+      </div>
+
       {/* Pending Stores */}
       {pendingCount > 0 && (
-        <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-[14px]">
             {stores.filter(s => !s.isActive && !s.isBanned).map(store => (
-              <div key={store.id} className="bg-white rounded-xl shadow-sm border-2 border-amber-200 p-5">
+              <div key={store.id} className="bg-white rounded-[14px] border border-[#fcd34d] p-5">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-lg">
+                  <div className="flex items-center gap-[10px]">
+                    <div className="w-8 h-8 rounded-[9px] bg-[#f59e0b] flex items-center justify-center text-white font-bold text-[13px]">
                       {store.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h4 className="font-bold text-gray-800">{store.name}</h4>
-                      <p className="text-xs text-gray-500">/{store.slug}</p>
+                      <h4 className="font-semibold text-gray-900">{store.name}</h4>
+                      <p className="text-[11.5px] text-[#9ca3af]">/{store.slug}</p>
                     </div>
                   </div>
-                  <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-semibold">Chờ duyệt</span>
+                  <span className="px-[10px] py-[3px] rounded-full text-[11px] font-semibold bg-[#fef3c7] text-[#92400e]">Chờ duyệt</span>
                 </div>
 
-                <div className="space-y-2 text-sm mb-4">
+                <div className="space-y-2 text-[13px] mb-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Chủ sở hữu:</span>
-                    <span className="font-medium text-gray-800">{store.owner.name}</span>
+                    <span className="text-[#6b7280]">Chủ sở hữu:</span>
+                    <span className="font-semibold text-gray-900">{store.owner.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Email:</span>
-                    <span className="text-gray-700">{store.owner.email || '—'}</span>
+                    <span className="text-[#6b7280]">Email:</span>
+                    <span className="text-[#4b5563]">{store.owner.email || '—'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">SĐT Shop:</span>
-                    <span className="text-gray-700">{store.phone || '—'}</span>
+                    <span className="text-[#6b7280]">SĐT Shop:</span>
+                    <span className="text-[#4b5563]">{store.phone || '—'}</span>
                   </div>
                   {store.bankName && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Ngân hàng:</span>
-                      <span className="text-gray-700">{store.bankName} - {store.bankAccountNo}</span>
+                      <span className="text-[#6b7280]">Ngân hàng:</span>
+                      <span className="text-[#4b5563]">{store.bankName} - {store.bankAccountNo}</span>
                     </div>
                   )}
                   {store.bankOwnerName && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Chủ TK:</span>
-                      <span className="font-medium text-gray-800">{store.bankOwnerName}</span>
+                      <span className="text-[#6b7280]">Chủ TK:</span>
+                      <span className="font-semibold text-gray-900">{store.bankOwnerName}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Ngày đăng ký:</span>
-                    <span className="text-gray-700">{fmtDate(store.createdAt)}</span>
+                    <span className="text-[#6b7280]">Ngày đăng ký:</span>
+                    <span className="text-[#4b5563]">{fmtDate(store.createdAt)}</span>
                   </div>
                 </div>
 
@@ -133,78 +149,71 @@ export default async function StoresPage() {
       )}
 
       {/* Active Stores Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-800">Cửa hàng đang hoạt động</h3>
-        </div>
+      <div className="bg-white rounded-[14px] border border-[#eceef2] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full border-collapse text-[13px] min-w-[840px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Cửa hàng</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Chủ sở hữu</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Sản phẩm</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Đơn hàng</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Ngày tạo</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Trạng thái</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap text-center">Thao tác</th>
+              <tr className="bg-[#f9fafb]">
+                <th className="px-4 py-[10px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Cửa hàng</th>
+                <th className="px-3 py-[10px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Chủ cửa hàng</th>
+                <th className="px-3 py-[10px] text-right text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Sản phẩm</th>
+                <th className="px-3 py-[10px] text-right text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Đơn hàng</th>
+                <th className="px-3 py-[10px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Tham gia</th>
+                <th className="px-3 py-[10px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Trạng thái</th>
+                <th className="px-4 py-[10px]"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {stores.filter(s => s.isActive && !s.isBanned).length === 0 ? (
+            <tbody>
+              {activeCount === 0 ? (
                 <tr>
                   <td colSpan={7}>
                     <div className="text-center py-12">
-                      <div className="text-lg font-semibold text-gray-700">Chưa có cửa hàng nào đang hoạt động</div>
+                      <div className="text-[15px] font-semibold text-[#4b5563]">Chưa có cửa hàng nào đang hoạt động</div>
                     </div>
                   </td>
                 </tr>
               ) : (
-                stores.filter(s => s.isActive && !s.isBanned).map((store) => (
-                  <tr key={store.id} className="hover:bg-gray-50/50 transition-colors">
+                stores.filter(s => s.isActive && !s.isBanned).map((store, i) => (
+                  <tr key={store.id} className={`border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors ${i % 2 === 1 ? 'bg-[#f7f9fc]' : ''}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-[10px]">
                         {store.logoUrl ? (
                           <Image
                             loader={passthroughImageLoader}
                             unoptimized
                             src={store.logoUrl}
                             alt={store.name}
-                            width={40}
-                            height={40}
-                            className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                            width={32}
+                            height={32}
+                            className="w-8 h-8 rounded-[9px] object-cover border border-[#eceef2] flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                          <div className="w-8 h-8 rounded-[9px] bg-[#2563eb] flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0">
                             {store.name.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
-                          <div className="font-semibold text-gray-800">{store.name}</div>
-                          <div className="text-xs text-gray-500">/{store.slug}</div>
+                          <div className="font-semibold text-gray-900 whitespace-nowrap">{store.name}</div>
+                          <div className="text-[11.5px] text-[#9ca3af]">/{store.slug}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="text-gray-800 font-medium">{store.owner.name}</div>
-                      <div className="text-xs text-gray-500">{store.owner.email || '—'}</div>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="text-gray-900 font-semibold">{store.owner.name}</div>
+                      <div className="text-[11.5px] text-[#9ca3af]">{store.owner.email || '—'}</div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-medium text-gray-700">{store._count.products}</span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-medium text-gray-700">{store._count.orders}</span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(store.createdAt)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="px-2.5 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                    <td className="px-3 py-3 text-right text-[#4b5563]">{store._count.products}</td>
+                    <td className="px-3 py-3 text-right text-[#4b5563]">{store._count.orders}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-[#6b7280]">{fmtDate(store.createdAt)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className="px-[10px] py-[3px] rounded-full text-[11px] font-semibold bg-[#d1fae5] text-[#047857]">
                         Hoạt động
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       <Link
                         href={`/admin/stores/${store.id}`}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-semibold transition-colors"
+                        className="text-[#2563eb] font-semibold cursor-pointer text-[12.5px] hover:underline"
                       >
                         Chi tiết
                       </Link>
@@ -219,40 +228,40 @@ export default async function StoresPage() {
 
       {/* Banned Stores */}
       {bannedCount > 0 && (
-        <div className="mt-6">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-            <h3 className="font-bold text-red-800 mb-1">Cửa hàng bị cấm ({bannedCount})</h3>
-            <p className="text-sm text-red-700">Các cửa hàng dưới đây đã bị vô hiệu hóa do vi phạm chính sách.</p>
+        <div className="mt-4">
+          <div className="bg-[#fee2e2] border border-[#fca5a5] rounded-[14px] p-4 mb-4">
+            <h3 className="font-bold text-[#dc2626] mb-1">Cửa hàng bị cấm ({bannedCount})</h3>
+            <p className="text-[13px] text-[#dc2626]">Các cửa hàng dưới đây đã bị vô hiệu hóa do vi phạm chính sách.</p>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-[14px] border border-[#eceef2] overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
+              <table className="w-full border-collapse text-[13px]">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/60">
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Cửa hàng</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Lý do</th>
-                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap text-center">Thao tác</th>
+                  <tr className="bg-[#f9fafb]">
+                    <th className="px-4 py-[10px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Cửa hàng</th>
+                    <th className="px-3 py-[10px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Lý do</th>
+                    <th className="px-4 py-[10px]"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {stores.filter(s => s.isBanned).map(store => (
-                    <tr key={store.id} className="hover:bg-gray-50/50 transition-colors">
+                <tbody>
+                  {stores.filter(s => s.isBanned).map((store, i) => (
+                    <tr key={store.id} className={`border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors ${i % 2 === 1 ? 'bg-[#f7f9fc]' : ''}`}>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center text-white font-bold">
+                        <div className="flex items-center gap-[10px]">
+                          <div className="w-8 h-8 rounded-[9px] bg-[#dc2626] flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0">
                             {store.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-800">{store.name}</div>
-                            <div className="text-xs text-gray-500">/{store.slug}</div>
+                            <div className="font-semibold text-gray-900 whitespace-nowrap">{store.name}</div>
+                            <div className="text-[11.5px] text-[#9ca3af]">/{store.slug}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-red-700">{store.bannedReason || '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <td className="px-3 py-3 text-[#dc2626]">{store.bannedReason || '—'}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <Link
                           href={`/admin/stores/${store.id}`}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg text-sm font-semibold transition-colors"
+                          className="text-[#2563eb] font-semibold cursor-pointer text-[12.5px] hover:underline"
                         >
                           Chi tiết
                         </Link>

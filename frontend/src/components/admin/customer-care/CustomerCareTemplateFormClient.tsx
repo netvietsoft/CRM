@@ -138,50 +138,50 @@ export default function CustomerCareTemplateFormClient({
   const usedVariables = extractTemplateVariables(form.content);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-lg font-extrabold text-gray-900">
               {templateId ? 'Sửa template' : 'Tạo template'}
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-[12.5px] text-[#9ca3af]">
               Tạo mẫu tin nhắn để dùng lại cho gửi cá nhân, campaign và tin tự động.
             </p>
           </div>
           <button
             type="button"
             onClick={() => router.push('/admin/customer-care/templates')}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+            className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
           >
             Quay lại danh sách
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-[22px]">
         {loading ? (
-          <div className="py-10 text-center text-sm text-gray-500">Đang tải template...</div>
+          <div className="py-10 text-center text-[13px] text-[#9ca3af]">Đang tải template...</div>
         ) : (
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Tên template</span>
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Tên template</span>
               <input
                 required
                 value={form.name}
                 onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Kênh</span>
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Kênh</span>
               <select
                 value={form.channelCode}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, channelCode: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 {messagingChannelOptions.map((option) => (
                   <option key={option.value} value={option.value} disabled={option.disabled}>
@@ -192,11 +192,11 @@ export default function CustomerCareTemplateFormClient({
             </label>
 
             <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Loại</span>
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Loại</span>
               <select
                 value={form.kind}
                 onChange={(event) => setForm((prev) => ({ ...prev, kind: event.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 {templateKindOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -206,26 +206,27 @@ export default function CustomerCareTemplateFormClient({
               </select>
             </label>
 
-            <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
+            <label className="flex items-center gap-2.5 self-end rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] font-bold text-gray-900">
               <input
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, isActive: event.target.checked }))
                 }
+                className="accent-[#2563eb]"
               />
               Đang hoạt động
             </label>
 
             <div className="space-y-2 md:col-span-2">
-              <span className="text-sm font-semibold text-gray-700">Biến trong nội dung</span>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Biến trong nội dung</span>
+              <div className="rounded-[10px] border border-[#eceef2] px-3.5 py-2.5 text-[12.5px] font-mono text-[#4b5563]">
                 {usedVariables.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {usedVariables.map((variable) => (
                       <span
                         key={variable}
-                        className="rounded-md bg-white px-2 py-1 font-medium text-gray-700 ring-1 ring-gray-200"
+                        className="rounded-md bg-[#f1f5f9] px-2 py-1 font-bold text-[#64748b]"
                       >
                         {variable}
                       </span>
@@ -235,17 +236,17 @@ export default function CustomerCareTemplateFormClient({
                   <span>Chưa có biến nào trong nội dung template.</span>
                 )}
               </div>
-              <div className="rounded-lg border border-blue-100 bg-blue-50 text-sm text-gray-700">
+              <div className="rounded-[10px] border border-[#bfdbfe] bg-[#eff6ff] text-[12.5px] text-[#2563eb]">
                 <button
                   type="button"
                   onClick={() => setShowVariableGuide((prev) => !prev)}
-                  className="flex w-full items-center justify-between px-3 py-2 text-left font-semibold text-blue-900"
+                  className="flex w-full items-center justify-between px-3.5 py-[11px] text-left font-bold text-[#1d4ed8]"
                 >
                   <span>Hướng dẫn dùng biến trong template</span>
                   <span>{showVariableGuide ? 'Ẩn' : 'Xem'}</span>
                 </button>
                 {showVariableGuide ? (
-                  <div className="space-y-2 border-t border-blue-100 px-3 py-3">
+                  <div className="space-y-2 border-t border-[#bfdbfe] px-3.5 py-3 text-[#374151]">
                     <p>
                       Dùng cú pháp <span className="font-semibold">{'{{ten_bien}}'}</span> để chèn
                       dữ liệu vào nội dung tin nhắn.
@@ -305,8 +306,8 @@ export default function CustomerCareTemplateFormClient({
                     </p>
                   </div>
                 ) : (
-                  <div className="px-3 pb-3 text-gray-600">
-                    Nhấn <span className="font-semibold">Xem</span> để mở danh sách biến và ý nghĩa
+                  <div className="px-3.5 pb-3 text-[#2563eb]">
+                    Nhấn <span className="font-bold">Xem</span> để mở danh sách biến và ý nghĩa
                     từng biến.
                   </div>
                 )}
@@ -314,14 +315,14 @@ export default function CustomerCareTemplateFormClient({
             </div>
 
             <label className="space-y-2 md:col-span-2">
-              <span className="text-sm font-semibold text-gray-700">Nội dung</span>
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Nội dung</span>
               <textarea
                 rows={10}
                 required
                 placeholder="Ví dụ: CHY xác nhận đơn {{order_code}} của {{customer_name}} đã được tiếp nhận."
                 value={form.content}
                 onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-                className="w-full rounded-xl border border-gray-200 px-3 py-3 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
@@ -329,14 +330,14 @@ export default function CustomerCareTemplateFormClient({
               <button
                 type="button"
                 onClick={() => router.push('/admin/customer-care/templates')}
-                className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+                className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                className="rounded-[10px] bg-[#2563eb] px-[18px] py-2.5 text-[13px] font-bold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
               >
                 {saving ? 'Đang lưu...' : 'Lưu template'}
               </button>

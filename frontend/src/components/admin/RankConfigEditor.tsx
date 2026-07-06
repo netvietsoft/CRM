@@ -18,21 +18,14 @@ interface UpdateRankConfigResponse {
   config: RankConfigEditorProps;
 }
 
-const rankPanelClassMap: Record<string, string> = {
-  MEMBER: 'border-slate-300 bg-slate-50 shadow-slate-200/70',
-  SILVER: 'border-slate-400 bg-slate-100 shadow-slate-300/70',
-  GOLD: 'border-amber-300 bg-amber-50 shadow-amber-200/70',
-  DIAMOND: 'border-cyan-300 bg-cyan-50 shadow-cyan-200/70',
-  PLATINUM: 'border-fuchsia-300 bg-fuchsia-50 shadow-fuchsia-200/70',
+const rankPillStyleMap: Record<string, { background: string; color: string }> = {
+  PLATINUM: { background: '#fae8ff', color: '#701a75' },
+  DIAMOND: { background: '#cffafe', color: '#164e63' },
+  GOLD: { background: '#fef3c7', color: '#78350f' },
+  SILVER: { background: '#e2e8f0', color: '#0f172a' },
 };
 
-const rankBadgeClassMap: Record<string, string> = {
-  MEMBER: 'bg-slate-100 text-slate-800 border border-slate-300 ring-1 ring-slate-200 shadow-sm',
-  SILVER: 'bg-slate-200 text-slate-900 border border-slate-400 ring-1 ring-slate-300 shadow-sm',
-  GOLD: 'bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-200 shadow-sm',
-  DIAMOND: 'bg-cyan-100 text-cyan-900 border border-cyan-300 ring-1 ring-cyan-200 shadow-sm',
-  PLATINUM: 'bg-fuchsia-100 text-fuchsia-900 border border-fuchsia-300 ring-1 ring-fuchsia-200 shadow-sm',
-};
+const defaultRankPillStyle = { background: '#f1f5f9', color: '#334155' };
 
 export default function RankConfigEditor({
   rank,
@@ -80,49 +73,56 @@ export default function RankConfigEditor({
     }
   };
 
+  const pillStyle = rankPillStyleMap[rank] || defaultRankPillStyle;
+  const thresholdLabel = `Chi tiêu tối thiểu: ${Number(form.minTotalSpent || 0).toLocaleString('vi-VN')}₫`;
+
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm ${rankPanelClassMap[rank] || 'border-gray-200 bg-white shadow-gray-200/70'}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide ${rankBadgeClassMap[rank] || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>{rank}</div>
-          <div className={`text-sm ${rank === 'SILVER' ? 'text-slate-700' : 'text-gray-600'}`}>Điều kiện tối thiểu để đạt hạng này</div>
-        </div>
+    <div className="flex flex-col gap-3 rounded-[14px] border border-[#eceef2] bg-white p-5">
+      <div className="flex items-center justify-between">
+        <span
+          className="rounded-full px-[14px] py-[5px] text-[12px] font-extrabold uppercase tracking-[0.03em]"
+          style={{ background: pillStyle.background, color: pillStyle.color }}
+        >
+          {rank}
+        </span>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-[10px] bg-[#2563eb] px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-50"
         >
           {saving ? 'Đang lưu...' : 'Lưu'}
         </button>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <div className="text-[13.5px] font-bold text-[#111827]">{thresholdLabel}</div>
+
+      <div className="grid gap-3 md:grid-cols-2">
         <label className="block">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Chi tiêu tối thiểu</div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Chi tiêu tối thiểu</div>
           <input
             type="number"
             min="0"
             value={form.minTotalSpent}
             onChange={(e) => setForm((prev) => ({ ...prev, minTotalSpent: e.target.value }))}
             placeholder="Ví dụ: 2000000"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
           />
         </label>
 
         <label className="block">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Số đơn/tháng</div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Số đơn/tháng</div>
           <input
             type="number"
             min="0"
             value={form.minOrdersMonth}
             onChange={(e) => setForm((prev) => ({ ...prev, minOrdersMonth: e.target.value }))}
             placeholder="Để trống nếu không dùng"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
           />
         </label>
 
         <label className="block">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Chiết khấu gợi ý (%)</div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Chiết khấu gợi ý (%)</div>
           <input
             type="number"
             min="0"
@@ -131,18 +131,18 @@ export default function RankConfigEditor({
             value={form.discountPercent}
             onChange={(e) => setForm((prev) => ({ ...prev, discountPercent: e.target.value }))}
             placeholder="Ví dụ: 5"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
           />
         </label>
 
         <label className="block md:col-span-2">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Mô tả</div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Mô tả / Quyền lợi</div>
           <textarea
             value={form.description}
             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
             rows={3}
             placeholder="Mô tả ngắn về điều kiện hoặc quyền lợi của hạng này"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px] leading-[1.55] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
           />
         </label>
       </div>

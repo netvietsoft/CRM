@@ -52,43 +52,46 @@ export default function CategoryTree({ categories }: CategoryTreeProps) {
 
     return (
       <React.Fragment key={category.id}>
-        <tr className="hover:bg-gray-50">
-          <td className="px-6 py-4">
-            <div className="flex items-start gap-2" style={{ paddingLeft: `${indent}px` }}>
+        <tr className="border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff]">
+          <td className="px-4 py-[11px]">
+            <div
+              className="flex items-start gap-2"
+              style={level > 0 ? { paddingLeft: `${indent}px`, borderLeft: '2px solid #e8eaef' } : { paddingLeft: `${indent}px` }}
+            >
               <span className={`mt-0.5 ${level === 0 ? 'text-lg' : 'text-sm'}`}>
                 {level === 0 ? '📁' : '📄'}
               </span>
               <div className="flex flex-col gap-0.5">
-                <span className={`${level === 0 ? 'font-semibold text-gray-800' : 'font-medium text-gray-700'}`}>
+                <span className={`${level === 0 ? 'text-[14px] font-bold text-gray-800' : 'text-[13px] font-medium text-[#374151]'}`}>
                   {category.name}
                 </span>
-                <span className="font-mono text-xs text-gray-500">
+                <span className="font-mono text-[11.5px] text-[#9ca3af]">
                   {category.slug}
                 </span>
               </div>
             </div>
           </td>
-          <td className="px-6 py-4">
+          <td className="px-4 py-[11px]">
             {category.parent ? (
-              <span className="text-sm text-gray-600">{category.parent.name}</span>
+              <span className="text-[13px] text-[#4b5563]">{category.parent.name}</span>
             ) : (
-              <span className="text-gray-400">—</span>
+              <span className="text-[#d1d5db]">—</span>
             )}
           </td>
-          <td className="px-6 py-4">
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+          <td className="px-4 py-[11px]">
+            <span className="inline-flex items-center rounded-full bg-[#dbeafe] px-2.5 py-[3px] text-[11px] font-semibold text-[#2140da]">
               {category._count.products} sản phẩm
             </span>
           </td>
-          <td className="px-6 py-4 text-gray-700">{category.sortOrder}</td>
-          <td className="px-6 py-4">
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              category.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          <td className="px-4 py-[11px] text-[13px] text-[#4b5563]">{category.sortOrder}</td>
+          <td className="px-4 py-[11px]">
+            <span className={`inline-flex items-center rounded-full px-2.5 py-[3px] text-[11px] font-semibold ${
+              category.isActive ? 'bg-[#d1fae5] text-[#047857]' : 'bg-[#fee2e2] text-[#dc2626]'
             }`}>
               {category.isActive ? 'Hoạt động' : 'Tắt'}
             </span>
           </td>
-          <td className="px-6 py-4">
+          <td className="px-4 py-[11px]">
             <div className="flex items-center justify-end gap-2">
               <CategoryRowActions
                 category={category}
@@ -98,13 +101,13 @@ export default function CategoryTree({ categories }: CategoryTreeProps) {
               {level === 0 && hasChildren && (
                 <button
                   onClick={() => toggleExpand(category.id)}
-                  className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                  className="rounded p-1.5 transition-colors hover:bg-[#eff6ff]"
                   title={isExpanded ? 'Thu gọn' : 'Mở rộng'}
                 >
                   {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                    <ChevronDown className="h-4 w-4 text-[#6b7280]" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                    <ChevronRight className="h-4 w-4 text-[#6b7280]" />
                   )}
                 </button>
               )}
@@ -129,10 +132,10 @@ export default function CategoryTree({ categories }: CategoryTreeProps) {
       {categories.length === 0 ? (
         <tr>
           <td colSpan={6}>
-            <div className="text-center py-12">
-              <div className="text-6xl mb-3">📁</div>
-              <div className="text-xl font-semibold text-gray-800 mb-2">Chưa có danh mục nào</div>
-              <div className="text-gray-600">Tạo danh mục đầu tiên để phân loại sản phẩm</div>
+            <div className="py-12 text-center">
+              <div className="mb-3 text-6xl">📁</div>
+              <div className="mb-2 text-[17px] font-bold text-gray-900">Chưa có danh mục nào</div>
+              <div className="text-[13px] text-[#6b7280]">Tạo danh mục đầu tiên để phân loại sản phẩm</div>
             </div>
           </td>
         </tr>

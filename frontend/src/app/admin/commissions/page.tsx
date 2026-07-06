@@ -40,11 +40,11 @@ interface CommissionStats {
 }
 
 const levelLabels: Record<number, string> = { 1: 'F1 → F0', 2: 'F2 → F0', 3: 'F3 → F0', 4: 'F4 → F0' };
-const statusMap: Record<string, { cls: string; label: string }> = {
-  PENDING: { cls: 'bg-yellow-100 text-yellow-700', label: 'Chờ duyệt' },
-  APPROVED: { cls: 'bg-blue-100 text-blue-700', label: 'Đã duyệt' },
-  PAID: { cls: 'bg-green-100 text-green-700', label: 'Đã trả' },
-  CANCELLED: { cls: 'bg-red-100 text-red-700', label: 'Hủy' },
+const statusMap: Record<string, { bg: string; fg: string; label: string }> = {
+  PENDING: { bg: '#fef3c7', fg: '#92400e', label: 'Chờ duyệt' },
+  APPROVED: { bg: '#dbeafe', fg: '#1d4ed8', label: 'Đã duyệt' },
+  PAID: { bg: '#d1fae5', fg: '#047857', label: 'Đã trả' },
+  CANCELLED: { bg: '#fee2e2', fg: '#dc2626', label: 'Hủy' },
 };
 
 export default async function CommissionsPage() {
@@ -67,103 +67,101 @@ export default async function CommissionsPage() {
 
   return (
     <>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-1">Hoa hồng Referral</h1>
-        <p className="text-gray-600 text-sm">Quản lý tỷ lệ hoa hồng và lịch sử chi trả</p>
+      <div className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="m-0 text-[24px] font-extrabold tracking-[-0.4px] text-slate-900">Hoa hồng Referral</h1>
+          <p className="mt-1 mb-0 text-[13px] text-[#6b7280]">Quản lý tỷ lệ hoa hồng và lịch sử chi trả</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Tổng hoa hồng đã sinh</div>
-          <div className="text-3xl font-bold text-gray-800 mb-2">{fmt(stats.total.amount)}</div>
-          <div className="text-xs text-gray-600">{stats.total.count} giao dịch</div>
+      {/* Stats */}
+      <div className="mb-4 grid grid-cols-1 gap-[14px] md:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-[5px] text-[12px] text-[#6b7280]">Tổng hoa hồng đã sinh</div>
+          <div className="text-[20px] font-extrabold tracking-[-0.3px] text-slate-900">{fmt(stats.total.amount)}</div>
+          <div className="mt-[3px] text-[11.5px] font-semibold text-[#6b7280]">{stats.total.count} giao dịch</div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Hoa hồng chờ duyệt</div>
-          <div className="text-3xl font-bold text-gray-800 mb-2">{fmt(stats.pending.amount)}</div>
-          <div className="text-xs text-gray-600">{stats.pending.count} giao dịch</div>
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-[5px] text-[12px] text-[#6b7280]">Hoa hồng chờ duyệt</div>
+          <div className="text-[20px] font-extrabold tracking-[-0.3px] text-slate-900">{fmt(stats.pending.amount)}</div>
+          <div className="mt-[3px] text-[11.5px] font-semibold text-[#92400e]">{stats.pending.count} giao dịch</div>
         </div>
-        {configs.map((c) => (
-          <div key={c.id} className="bg-white p-6 rounded-xl shadow-sm">
-            <div className="text-sm text-gray-600 mb-2">Tầng F{c.level}</div>
-            <div className="text-3xl font-bold text-gray-800 mb-2">{c.percentage}%</div>
-            <div className="text-xs text-gray-600">{c.isActive ? 'Đang hoạt động' : 'Tắt'}</div>
-          </div>
-        ))}
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-[5px] text-[12px] text-[#6b7280]">Số tầng đang hoạt động</div>
+          <div className="text-[20px] font-extrabold tracking-[-0.3px] text-slate-900">{configs.filter(c => c.isActive).length}</div>
+          <div className="mt-[3px] text-[11.5px] font-semibold text-[#047857]">/ {configs.length} tầng cấu hình</div>
+        </div>
       </div>
 
       {/* Commission Config */}
-      <div className="bg-white mb-6 p-6 rounded-xl shadow-sm">
-        <h3 className="text-lg font-bold mb-4">
-          📊 Cấu hình tỷ lệ hoa hồng
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="mb-4 rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <div className="mb-[14px] text-[15px] font-bold text-slate-900">Cấu hình tỷ lệ hoa hồng</div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {configs.map((c) => (
-            <div key={c.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-              <div className="text-xs text-gray-500 mb-2">
-                Khi F{c.level} mua hàng
-              </div>
-              <div className="text-2xl font-extrabold text-blue-600">
-                {c.percentage}%
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                F0 nhận hoa hồng
-              </div>
+            <div key={c.id} className="rounded-[12px] border border-[#eceef2] p-[14px] text-center">
+              <div className="mb-1 text-[11.5px] font-semibold text-[#6b7280]">Khi F{c.level} mua hàng</div>
+              <div className="text-[24px] font-extrabold text-[#2563eb]">{c.percentage}%</div>
+              <div className="mt-[2px] text-[11px] text-[#9ca3af]">F0 nhận hoa hồng</div>
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-600 mt-4">
+        <p className="mt-4 text-[12px] text-[#6b7280]">
           Ví dụ: F0 giới thiệu F1, F1 giới thiệu F2. Khi F2 mua hàng 1,000,000đ → F0 nhận 3% = 30,000đ, F1 nhận 5% = 50,000đ
         </p>
       </div>
 
       {/* Ledger */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <span className="text-lg font-bold text-gray-800">Lịch sử hoa hồng</span>
-        </div>
+      <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+        <div className="border-b border-[#f0f1f5] px-5 py-[15px] text-[15px] font-bold text-slate-900">Sổ hoa hồng</div>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Người nhận</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tầng</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Đơn hàng</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Giá trị đơn</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tỷ lệ</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Hoa hồng</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+          <table className="w-full min-w-[840px] border-collapse text-[13px]">
+            <thead>
+              <tr className="bg-[#f9fafb]">
+                <th className="px-4 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Người nhận</th>
+                <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Đơn hàng</th>
+                <th className="px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Giá trị đơn</th>
+                <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Tầng</th>
+                <th className="px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Tỷ lệ</th>
+                <th className="px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Hoa hồng</th>
+                <th className="px-3 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Trạng thái</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {commissions.length === 0 ? (
                 <tr>
                   <td colSpan={7}>
-                    <div className="text-center py-12">
-                      <div className="text-6xl mb-3">💰</div>
-                      <div className="text-xl font-semibold text-gray-800">Chưa có hoa hồng</div>
+                    <div className="py-12 text-center">
+                      <div className="mb-3 text-6xl">💰</div>
+                      <div className="text-xl font-semibold text-slate-900">Chưa có hoa hồng</div>
                     </div>
                   </td>
                 </tr>
-              ) : commissions.map((c) => {
-                const st = statusMap[c.status] || { cls: 'bg-gray-100 text-gray-600', label: c.status };
+              ) : commissions.map((c, idx) => {
+                const st = statusMap[c.status] || { bg: '#f3f4f6', fg: '#4b5563', label: c.status };
                 return (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-800">{c.user.name}</div>
-                      <div className="text-xs text-gray-600 font-mono">{c.user.referralCode}</div>
+                  <tr
+                    key={c.id}
+                    className="border-t border-[#f3f4f6] hover:bg-[#eff6ff]"
+                    style={{ background: idx % 2 === 1 ? '#f7f9fc' : '#fff' }}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="whitespace-nowrap font-semibold text-slate-900">{c.user.name}</div>
+                      <div className="font-mono text-[11px] text-[#9ca3af]">{c.user.referralCode}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                    <td className="whitespace-nowrap px-3 py-3 font-mono text-[12px] font-semibold text-[#2563eb]">{c.order.orderCode}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-slate-900">{fmt(c.order.totalAmount)}</td>
+                    <td className="px-3 py-3">
+                      <span className="rounded-[8px] bg-[#eef2ff] px-[9px] py-[3px] text-[11px] font-bold text-[#4338ca]">
                         {levelLabels[c.level] || `F${c.level}`}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-mono text-xs text-gray-700">{c.order.orderCode}</td>
-                    <td className="px-6 py-4 font-semibold text-gray-800">{fmt(c.order.totalAmount)}</td>
-                    <td className="px-6 py-4 font-semibold text-blue-600">{c.percentage}%</td>
-                    <td className="px-6 py-4 font-bold text-green-600">{fmt(c.amount)}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${st.cls}`}>
+                    <td className="px-3 py-3 text-right text-[#4b5563]">{c.percentage}%</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right font-bold text-[#059669]">{fmt(c.amount)}</td>
+                    <td className="px-3 py-3">
+                      <span
+                        className="whitespace-nowrap rounded-full px-[10px] py-[3px] text-[11px] font-semibold"
+                        style={{ background: st.bg, color: st.fg }}
+                      >
                         {st.label}
                       </span>
                     </td>

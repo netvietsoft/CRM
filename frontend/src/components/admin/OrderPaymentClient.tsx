@@ -132,8 +132,8 @@ export default function OrderPaymentClient({ order, metadata, isPancake }: Order
   }, [shippingFee, discountAmount, surcharge, transferMoney, points, order.id, registerSaveAction]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-5">Thanh toán</h2>
+    <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+      <h2 className="text-[15px] font-bold text-gray-900 mb-5">Thanh toán</h2>
 
       {/* Checkboxes row */}
       {isPancake && (
@@ -251,7 +251,7 @@ export default function OrderPaymentClient({ order, metadata, isPancake }: Order
 
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-700 font-medium">Tiền cần thu</span>
-          <span className="text-sm font-bold text-blue-600">{fmt(tienCanThu)}</span>
+          <span className="text-sm font-bold text-[#2563eb]">{fmt(tienCanThu)}</span>
         </div>
 
         <div className="flex items-center justify-between pb-3 border-b border-gray-200 border-dashed">

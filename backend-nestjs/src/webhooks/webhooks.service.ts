@@ -8,6 +8,7 @@ import { AdminNotificationsService } from '../modules/admin-notifications/admin-
 import { PancakeService } from '../integrations/pancake/pancake.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
 import { VouchersService } from '../vouchers/vouchers.service';
+import { OrdersService } from '../orders/orders.service';
 import { OrderSourcesService } from '../order-sources/order-sources.service';
 import { ViettelCustomerService } from '../integrations/viettelpost/viettel-customer.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
@@ -23,6 +24,7 @@ export class WebhooksService {
     private readonly pancakeService: PancakeService,
     private readonly messagingAutomationService: MessagingAutomationService,
     private readonly vouchersService: VouchersService,
+    private readonly ordersService: OrdersService,
     private readonly orderSourcesService: OrderSourcesService,
     private readonly viettelCustomerService: ViettelCustomerService,
     @Optional() @InjectQueue('voucher-queue') private voucherQueue?: Queue,
@@ -334,7 +336,7 @@ export class WebhooksService {
 
       if (
         updatedOrder.status !== previousStatus &&
-        ['CANCELLED', 'REFUNDED'].includes(updatedOrder.status) &&
+        ['CANCELLED', 'REFUNDED', 'RETURNING'].includes(updatedOrder.status) &&
         updatedOrder.paymentStatus !== 'PAID'
       ) {
         await this.releaseAppliedVouchersForOrder(updatedOrder.id);
@@ -347,11 +349,16 @@ export class WebhooksService {
         );
       }
 
+      // C5/C6: cộng doanh thu/hoa hồng/soldCount (DELIVERED/PAYMENT_COLLECTED/COMPLETED)
+      // hoặc đảo lại (CANCELLED/REFUNDED/RETURNING) đúng như luồng admin — dùng chung
+      // OrdersService.applyStatusSideEffects (đã idempotent + gọi processSuccessfulOrderVoucherRules).
       if (
         updatedOrder.status !== previousStatus &&
-        ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'].includes(updatedOrder.status)
+        ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED', 'CANCELLED', 'REFUNDED', 'RETURNING'].includes(
+          updatedOrder.status,
+        )
       ) {
-        await this.vouchersService.processSuccessfulOrderVoucherRules(updatedOrder.id);
+        await this.ordersService.applyStatusSideEffects(updatedOrder.id, updatedOrder.status);
       }
     }
   }

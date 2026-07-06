@@ -33,12 +33,12 @@ export default function DeleteStoreButton({ storeId, storeName }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-red-50">
-      <p className="text-xs text-gray-500 mb-4 leading-relaxed">Xoá vĩnh viễn cửa hàng này và toàn bộ dữ liệu. Thao tác này không thể phục hồi.</p>
+    <div className="bg-white rounded-[14px] border border-[#fca5a5] p-6">
+      <p className="text-[11.5px] text-[#6b7280] mb-4 leading-relaxed">Xoá vĩnh viễn cửa hàng này và toàn bộ dữ liệu. Thao tác này không thể phục hồi.</p>
       <button
         onClick={handleDelete}
         disabled={loading}
-        className="w-full py-2.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-red-200"
+        className="w-full py-2.5 bg-[#fee2e2] hover:bg-[#dc2626] text-[#dc2626] hover:text-white rounded-[10px] font-bold text-[13px] transition-all flex items-center justify-center gap-2 border border-[#fca5a5]"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />

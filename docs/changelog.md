@@ -5,6 +5,34 @@
 
 ---
 
+## 2026-07-04 (phiên audit-fix) — Sửa 15 lỗi 🔴+🟠 (tiền/đơn · bảo mật · DB)
+
+> ⚠️ **CHƯA COMMIT** — trên `main`. Báo cáo nguồn: `docs/audit-report-2026-07-04.md`. Verify: tsc BE+FE sạch; jest xanh (trừ 1 test VietQR `expireOverdueVietqrOrders` **pre-existing** — fail y hệt trên HEAD sạch, không liên quan).
+> **CẦN CHẠY `prisma migrate deploy` khi restart BE** (2 migration mới: `20260704120000_order_credits_applied`, `20260704130000_order_conversation_and_user_setnull`).
+
+### Tiền/đơn (gộp G1+G2 — `orders.service.ts` + `webhooks.service.ts`)
+- **C1**: `create()` — bọc trừ kho/voucher/commissionBalance + `order.create` trong 1 `$transaction` (lỗi giữa chừng → rollback hết).
+- **C5+C6+I3**: tách `applyDeliveredCredits`/`revertDeliveredCredits` (idempotent qua cột mới `Order.creditsApplied`, bọc transaction) + `applyStatusSideEffects(orderId,status)` dùng chung. Webhook VTP DELIVERED/PAYMENT_COLLECTED/COMPLETED → cộng; CANCELLED/REFUNDED/**RETURNING** → đảo (sửa enum `'RETURNED'`→`'RETURNING'`). Hết cộng lặp khi đảo trạng thái.
+- **I4**: `customerCancelOrder` — bọc transaction, hoàn **ProductVariant.stock** (không chỉ product) + thả voucher đã áp.
+
+### Bảo mật
+- **C3**: 3 endpoint `ai-agent.controller` (suggestions/config/pause + approve) nay verify quyền qua `messenger.assertConversationInStore` / `assertPageInStore` (thêm 2 method public) — chặn đọc draft/PII + đổi persona AUTO xuyên store. (Không cần thêm cột storeId.)
+- **C4**: webhook Casso verify HMAC trên **raw body** (`req.rawBody`) thay vì `JSON.stringify`, so sánh **`timingSafeEqual`**.
+- **I5**: route `/api/admin/integrations/get-shop-id` thêm guard ADMIN + bỏ leak `errorText`.
+- **I8**: `sync-products`/`sync-categories` route gọi backend qua `apiClient` (forward token) — sync hết bị 401.
+- **I9**: `apiClientClient` chỉ refresh khi **401** (bỏ 403) — hết mất phiên do xoay token thừa.
+
+### DB / logic
+- **C2**: `Order.userId` `onDelete: Cascade`→**`SetNull`** (xoá khách không xoá lịch sử đơn).
+- **I6**: thêm cột thật **`Order.conversationId` + index** (backfill từ metadata); `findByConversation` + tạo đơn CCM dùng cột này thay vì lọc JSON (hết full-scan khi mở panel). *(Còn vài `string_contains` trackingCode ở webhook/voucher — tần suất thấp, chưa đổi.)*
+- **I1**: `setContactDob` chỉ đồng bộ `User.dob` khi SĐT khớp **duy nhất 1** user (hết ghi đè nhầm).
+- **I2**: `AiAgentService.onIncoming` khoá in-memory per-conversation (tin đến dồn dập không sinh reply trùng).
+- **I7**: ingest tin nhắn bắt lỗi `P2002` khi `create` (Meta retry trùng `mid`) → bỏ qua, không tăng counter.
+
+> 🟡 M1–M8 (Float→Decimal, AUTO reply nuốt lỗi, token cap…) **ngoài phạm vi** đợt này (chọn 🔴+🟠).
+
+---
+
 ## 2026-07-02 → 07-03 (phiên CCM tiếp) — Sao ưu tiên · Sinh nhật · Icon Pancake · Bài viết/Thống kê thật · Biến #{} · Ảnh R2 · Polish
 
 > ⚠️ **CHƯA COMMIT** — nối tiếp working tree trên `main`. Chi tiết feature-map: `docs/09-ccm-workspace.md`.

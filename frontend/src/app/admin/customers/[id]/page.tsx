@@ -116,23 +116,23 @@ function formatDateTime(value: string | Date) {
   }).format(new Date(value));
 }
 
-const statusMap: Record<string, { label: string; className: string }> = {
-  PENDING: { label: 'Chờ duyệt', className: 'bg-orange-50 text-orange-700 border-orange-200' },
-  CONFIRMED: { label: 'Đã xác nhận', className: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
-  PACKAGING: { label: 'Đang đóng hàng', className: 'bg-violet-50 text-violet-700 border-violet-200' },
-  SHIPPED: { label: 'Đã gửi hàng', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  DELIVERED: { label: 'Đã nhận hàng', className: 'bg-teal-50 text-teal-700 border-teal-200' },
-  COMPLETED: { label: 'Hoàn thành', className: 'bg-green-50 text-green-700 border-green-200' },
-  CANCELLED: { label: 'Đã hủy', className: 'bg-red-50 text-red-700 border-red-200' },
-  REFUNDED: { label: 'Hoàn trả', className: 'bg-red-50 text-red-700 border-red-200' },
+const statusMap: Record<string, { label: string; bg: string; fg: string }> = {
+  PENDING: { label: 'Chờ duyệt', bg: '#ffedd5', fg: '#c2410c' },
+  CONFIRMED: { label: 'Đã xác nhận', bg: '#fef3c7', fg: '#92400e' },
+  PACKAGING: { label: 'Đang đóng hàng', bg: '#fef3c7', fg: '#92400e' },
+  SHIPPED: { label: 'Đã gửi hàng', bg: '#dbeafe', fg: '#1d4ed8' },
+  DELIVERED: { label: 'Đã nhận hàng', bg: '#d1fae5', fg: '#047857' },
+  COMPLETED: { label: 'Hoàn thành', bg: '#d1fae5', fg: '#047857' },
+  CANCELLED: { label: 'Đã hủy', bg: '#fee2e2', fg: '#dc2626' },
+  REFUNDED: { label: 'Hoàn trả', bg: '#fee2e2', fg: '#dc2626' },
 };
 
-const rankMap: Record<string, string> = {
-  MEMBER: 'bg-slate-100 text-slate-800 border border-slate-300 ring-1 ring-slate-200 shadow-sm',
-  SILVER: 'bg-slate-200 text-slate-900 border border-slate-400 ring-1 ring-slate-300 shadow-sm',
-  GOLD: 'bg-amber-100 text-amber-900 border border-amber-300 ring-1 ring-amber-200 shadow-sm',
-  DIAMOND: 'bg-cyan-100 text-cyan-900 border border-cyan-300 ring-1 ring-cyan-200 shadow-sm',
-  PLATINUM: 'bg-fuchsia-100 text-fuchsia-900 border border-fuchsia-300 ring-1 ring-fuchsia-200 shadow-sm',
+const rankMap: Record<string, { bg: string; fg: string }> = {
+  MEMBER: { bg: '#f1f5f9', fg: '#334155' },
+  SILVER: { bg: '#e2e8f0', fg: '#1e293b' },
+  GOLD: { bg: '#fef3c7', fg: '#92400e' },
+  DIAMOND: { bg: '#cffafe', fg: '#155e75' },
+  PLATINUM: { bg: '#fae8ff', fg: '#86198f' },
 };
 
 export default async function CustomerDetailPage(props: {
@@ -150,8 +150,9 @@ export default async function CustomerDetailPage(props: {
   if (!customer) {
     return (
       <div className="py-16 text-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Không tìm thấy khách hàng</h1>
-        <Link href="/admin/customers" className="inline-block mt-4 text-sm font-medium text-blue-600 hover:text-blue-700">
+        <div className="mb-[10px] text-[44px]">👥</div>
+        <h1 className="text-[16px] font-bold text-[#111827]">Không tìm thấy khách hàng</h1>
+        <Link href="/admin/customers" className="mt-4 inline-block text-[13px] font-semibold text-[#2563eb] hover:text-[#1d4ed8]">
           Quay lại danh sách
         </Link>
       </div>
@@ -168,252 +169,230 @@ export default async function CustomerDetailPage(props: {
 
   const customerName = customer.name || customer.phone || 'Khách hàng';
 
+  const rankTone = rankMap[customer.rank] || rankMap.MEMBER;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <Link href="/admin/customers" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-            Quay lại danh sách
-          </Link>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">{customerName}</h1>
-          
-          <div className="flex flex-wrap items-center gap-3 mt-3">
-            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${rankMap[customer.rank] || rankMap.MEMBER}`}>
+    <div>
+      <Link
+        href="/admin/customers"
+        className="mb-[14px] inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#6b7280] hover:text-[#2563eb]"
+      >
+        ← Danh sách khách hàng
+      </Link>
+
+      {/* Header card */}
+      <div className="mb-4 flex flex-wrap items-center gap-[18px] rounded-[14px] border border-[#eceef2] bg-white p-[22px]">
+        <div
+          className="flex h-[62px] w-[62px] items-center justify-center rounded-full text-[24px] font-extrabold text-white"
+          style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)' }}
+        >
+          {customerName.charAt(0).toUpperCase()}
+        </div>
+        <div className="min-w-[200px] flex-1">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[19px] font-extrabold tracking-[-0.3px] text-[#111827]">{customerName}</span>
+            <span
+              className="rounded-full px-[11px] py-[3px] text-[11px] font-bold"
+              style={{ background: rankTone.bg, color: rankTone.fg }}
+            >
               {customer.rank}
             </span>
             {!customer.isActive && (
-              <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+              <span
+                className="rounded-full px-[11px] py-[3px] text-[11px] font-bold"
+                style={{ background: '#fee2e2', color: '#dc2626' }}
+              >
                 BANNED
               </span>
             )}
-            <CustomerActions
-              customerId={customer.id}
-              customerName={customerName}
-              customerPhone={customer.phone}
-              isActive={customer.isActive}
-            />
           </div>
-
-          <p className="mt-2 text-sm text-gray-500">
-            Tạo lúc {formatDate(customer.createdAt)}
-          </p>
+          <div className="mt-[5px] text-[13px] text-[#6b7280]">
+            {customer.phone || 'Chưa có số điện thoại'}
+            {customer.email ? ` · ${customer.email}` : ''}
+          </div>
+          <div className="mt-0.5 text-[13px] text-[#6b7280]">{address || 'Chưa cập nhật địa chỉ'}</div>
+          <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-[12px]">
+            <div>
+              <dt className="text-[#9ca3af]">Giới tính</dt>
+              <dd className="font-semibold text-[#111827]">{customer.gender || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-[#9ca3af]">Ngày sinh</dt>
+              <dd className="font-semibold text-[#111827]">{customer.dob ? formatDate(customer.dob) : '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-[#9ca3af]">Mã giới thiệu</dt>
+              <dd className="font-mono font-semibold text-[#111827]">{customer.referralCode}</dd>
+            </div>
+            <div>
+              <dt className="text-[#9ca3af]">Cập nhật</dt>
+              <dd className="font-semibold text-[#111827]">{formatDateTime(customer.updatedAt)}</dd>
+            </div>
+          </dl>
+        </div>
+        <div className="flex gap-2.5">
+          <CustomerActions
+            customerId={customer.id}
+            customerName={customerName}
+            customerPhone={customer.phone}
+            isActive={customer.isActive}
+          />
         </div>
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white">
-        <div className="px-6 py-5 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gray-900 text-white flex items-center justify-center text-lg font-semibold">
-                {customerName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="text-lg font-semibold text-gray-900">{customerName}</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  {customer.phone || 'Chưa có số điện thoại'}
-                  {customer.email ? ` • ${customer.email}` : ''}
-                </div>
-              </div>
-            </div>
-
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <dt className="text-gray-500">Giới tính</dt>
-                <dd className="mt-1 font-medium text-gray-900">{customer.gender || '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Ngày sinh</dt>
-                <dd className="mt-1 font-medium text-gray-900">{customer.dob ? formatDate(customer.dob) : '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Mã giới thiệu</dt>
-                <dd className="mt-1 font-medium text-gray-900 font-mono">{customer.referralCode}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Cập nhật lần cuối</dt>
-                <dd className="mt-1 font-medium text-gray-900">{formatDateTime(customer.updatedAt)}</dd>
-              </div>
-            </dl>
-
-            <div>
-              <p className="text-sm text-gray-500">Địa chỉ</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">{address || 'Chưa cập nhật'}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Tổng chi tiêu</p>
-              <p className="mt-2 text-xl font-semibold text-gray-900">{formatMoney(customer.totalSpent)}</p>
-              <p className="mt-1 text-xs text-gray-500">
-                Hoàn thành {customer.stats?.completedOrders || 0} đơn
-              </p>
-            </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Hoa hồng hiện tại</p>
-              <p className="mt-2 text-xl font-semibold text-gray-900">{formatMoney(customer.commissionBalance)}</p>
-              <p className="mt-1 text-xs text-gray-500">
-                Tổng đã trả {formatMoney(customer.stats?.totalCommission || 0)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Đơn hàng</p>
-              <p className="mt-2 text-xl font-semibold text-gray-900">{customer._count?.orders || 0}</p>
-              <p className="mt-1 text-xs text-gray-500">
-                Doanh thu hoàn thành {formatMoney(customer.stats?.completedRevenue || 0)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <p className="text-xs font-medium text-gray-500">Người được giới thiệu</p>
-              <p className="mt-2 text-xl font-semibold text-gray-900">{customer._count?.referees || 0}</p>
-              <p className="mt-1 text-xs text-gray-500">
-                Voucher {customer._count?.userVouchers || 0}
-              </p>
-            </div>
-          </div>
+      {/* Stat tiles */}
+      <div className="stat-grid mb-4 grid grid-cols-1 gap-[14px] sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-1.5 text-[12px] text-[#6b7280]">Tổng chi tiêu</div>
+          <div className="text-[19px] font-extrabold tracking-[-0.3px] text-[#111827]">{formatMoney(customer.totalSpent)}</div>
+          <div className="mt-1 text-[11px] text-[#9ca3af]">Hoàn thành {customer.stats?.completedOrders || 0} đơn</div>
         </div>
-      </section>
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-1.5 text-[12px] text-[#6b7280]">Hoa hồng hiện tại</div>
+          <div className="text-[19px] font-extrabold tracking-[-0.3px] text-[#059669]">{formatMoney(customer.commissionBalance)}</div>
+          <div className="mt-1 text-[11px] text-[#9ca3af]">Tổng đã trả {formatMoney(customer.stats?.totalCommission || 0)}</div>
+        </div>
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-1.5 text-[12px] text-[#6b7280]">Đơn hàng</div>
+          <div className="text-[19px] font-extrabold tracking-[-0.3px] text-[#111827]">{customer._count?.orders || 0}</div>
+          <div className="mt-1 text-[11px] text-[#9ca3af]">Doanh thu hoàn thành {formatMoney(customer.stats?.completedRevenue || 0)}</div>
+        </div>
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-4">
+          <div className="mb-1.5 text-[12px] text-[#6b7280]">Người được giới thiệu</div>
+          <div className="text-[19px] font-extrabold tracking-[-0.3px] text-[#111827]">{customer._count?.referees || 0}</div>
+          <div className="mt-1 text-[11px] text-[#9ca3af]">Voucher {customer._count?.userVouchers || 0}</div>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-6">
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-gray-200 bg-white">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">Đơn hàng gần đây</h2>
-            </div>
-            <div className="p-4">
-              {customer.orders?.length ? (
-                <div className="space-y-2">
-                  {customer.orders.map((order) => {
-                    const status = statusMap[order.status] || {
-                      label: order.status,
-                      className: 'bg-gray-50 text-gray-700 border-gray-200',
-                    };
+      {/* Content grid */}
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
+        <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+          <div className="border-b border-[#f0f1f5] px-5 py-[15px] text-[15px] font-bold text-[#111827]">Đơn hàng gần đây</div>
+          {customer.orders?.length ? (
+            <table className="w-full border-collapse text-[13px]">
+              <tbody>
+                {customer.orders.map((order) => {
+                  const status = statusMap[order.status] || {
+                    label: order.status,
+                    bg: '#f3f4f6',
+                    fg: '#374151',
+                  };
 
-                    return (
-                      <Link
-                        key={order.id}
-                        href={`/admin/orders/${order.id}`}
-                        className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">#{order.orderCode}</p>
-                          <p className="mt-1 text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className={`px-2.5 py-1 rounded-full border text-xs font-medium ${status.className}`}>
-                            {status.label}
-                          </span>
-                          <span className="text-sm font-semibold text-gray-900 min-w-28 text-right">
-                            {formatMoney(order.totalAmount)}
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="px-2 py-8 text-sm text-gray-500 text-center">Chưa có đơn hàng</div>
-              )}
-            </div>
-          </section>
-
-          {customer.commissionsEarned?.length > 0 && (
-            <section className="rounded-2xl border border-gray-200 bg-white">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">Lịch sử hoa hồng</h2>
-              </div>
-              <div className="p-4 space-y-2">
-                {customer.commissionsEarned.map((commission) => (
-                  <div key={commission.id} className="rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">
-                        Đơn #{commission.order?.orderCode || '—'}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Cấp {commission.level} • {commission.percentage}% • {formatDate(commission.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-gray-900">{formatMoney(commission.amount)}</p>
-                      <p className="mt-1 text-xs text-gray-500">{commission.status}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+                  return (
+                    <tr key={order.id} className="border-t border-[#f3f4f6] hover:bg-[#eff6ff]">
+                      <td className="px-5 py-2.5">
+                        <Link href={`/admin/orders/${order.id}`} className="font-mono text-[12px] font-semibold text-[#2563eb]">
+                          #{order.orderCode}
+                        </Link>
+                      </td>
+                      <td className="px-2 py-2.5 text-[12px] text-[#6b7280]">{formatDateTime(order.createdAt)}</td>
+                      <td className="px-2 py-2.5 text-right font-semibold text-[#111827]">{formatMoney(order.totalAmount)}</td>
+                      <td className="px-5 py-2.5 text-right">
+                        <span
+                          className="whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
+                          style={{ background: status.bg, color: status.fg }}
+                        >
+                          {status.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="px-5 py-8 text-center text-[13px] text-[#6b7280]">Chưa có đơn hàng</div>
           )}
         </div>
 
-        <div className="space-y-6">
-          {customer.referrer && (
-            <section className="rounded-2xl border border-gray-200 bg-white">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">Người giới thiệu</h2>
-              </div>
-              <div className="p-4">
-                <Link
-                  href={`/admin/customers/${customer.referrer.id}`}
-                  className="block rounded-xl border border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors"
-                >
-                  <p className="text-sm font-medium text-gray-900">{customer.referrer.name || customer.referrer.phone}</p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {customer.referrer.phone || 'Chưa có số điện thoại'} • {customer.referrer.referralCode}
-                  </p>
-                </Link>
-              </div>
-            </section>
-          )}
+        <div className="flex flex-col gap-4">
+          {/* Giới thiệu */}
+          <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+            <div className="mb-3 text-[15px] font-bold text-[#111827]">Giới thiệu</div>
+            <div className="mb-3.5 flex items-center justify-between rounded-[10px] border border-dashed border-[#d1d5db] bg-[#f9fafb] px-3.5 py-2.5">
+              <span className="font-mono text-[13px] font-semibold text-[#2140da]">{customer.referralCode}</span>
+            </div>
 
-          {customer.referees?.length > 0 && (
-            <section className="rounded-2xl border border-gray-200 bg-white">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">Khách hàng được giới thiệu</h2>
-              </div>
-              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+            {customer.referrer && (
+              <Link
+                href={`/admin/customers/${customer.referrer.id}`}
+                className="mb-1 flex items-center justify-between border-t border-[#f3f4f6] py-2 hover:bg-[#eff6ff]"
+              >
+                <div>
+                  <div className="text-[13px] font-semibold text-[#111827]">{customer.referrer.name || customer.referrer.phone}</div>
+                  <div className="text-[11.5px] text-[#9ca3af]">Người giới thiệu · {customer.referrer.referralCode}</div>
+                </div>
+              </Link>
+            )}
+
+            {customer.referees?.length > 0 ? (
+              <div className="max-h-80 overflow-y-auto">
                 {customer.referees.map((referee) => (
                   <Link
                     key={referee.id}
                     href={`/admin/customers/${referee.id}`}
-                    className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between border-t border-[#f3f4f6] py-2 hover:bg-[#eff6ff]"
                   >
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{referee.name || referee.phone}</p>
-                      <p className="mt-1 text-xs text-gray-500">{formatDate(referee.createdAt)}</p>
+                      <div className="text-[13px] font-semibold text-[#111827]">{referee.name || referee.phone}</div>
+                      <div className="text-[11.5px] text-[#9ca3af]">{referee.phone || formatDate(referee.createdAt)}</div>
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${rankMap[referee.rank] || rankMap.MEMBER}`}>
-                      {referee.rank}
-                    </span>
+                    <span className="text-[12.5px] font-semibold text-[#059669]">{formatMoney(referee.totalSpent)}</span>
                   </Link>
                 ))}
               </div>
-            </section>
+            ) : (
+              !customer.referrer && (
+                <div className="border-t border-[#f3f4f6] py-3 text-[12.5px] text-[#9ca3af]">Chưa có người được giới thiệu</div>
+              )
+            )}
+          </div>
+
+          {/* Voucher */}
+          {customer.userVouchers?.length > 0 && (
+            <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+              <div className="mb-3 text-[15px] font-bold text-[#111827]">Voucher</div>
+              {customer.userVouchers.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-4 border-t border-[#f3f4f6] py-[9px]">
+                  <div>
+                    <span className="font-mono text-[12.5px] font-semibold text-[#111827]">{item.voucher?.code}</span>
+                    <div className="text-[11.5px] text-[#9ca3af]">
+                      {item.voucher?.type === 'PERCENTAGE'
+                        ? `Giảm ${item.voucher.value}%`
+                        : `Giảm ${formatMoney(item.voucher?.value || 0)}`}
+                      {item.voucher?.validTo ? ` · HSD ${formatDate(item.voucher.validTo)}` : ''}
+                    </div>
+                  </div>
+                  <span
+                    className="whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
+                    style={item.isUsed ? { background: '#f3f4f6', color: '#6b7280' } : { background: '#d1fae5', color: '#047857' }}
+                  >
+                    {item.isUsed ? 'Đã dùng' : 'Chưa dùng'}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
 
-          {customer.userVouchers?.length > 0 && (
-            <section className="rounded-2xl border border-gray-200 bg-white">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-sm font-semibold text-gray-900">Voucher</h2>
-              </div>
-              <div className="p-4 space-y-2">
-                {customer.userVouchers.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 font-mono">{item.voucher?.code}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {item.voucher?.type === 'PERCENTAGE'
-                           ? `Giảm ${item.voucher.value}%`
-                           : `Giảm ${formatMoney(item.voucher?.value || 0)}`}
-                        {item.voucher?.validTo ? ` • HSD ${formatDate(item.voucher.validTo)}` : ''}
-                      </p>
+          {/* Lịch sử hoa hồng */}
+          {customer.commissionsEarned?.length > 0 && (
+            <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+              <div className="mb-3 text-[15px] font-bold text-[#111827]">Lịch sử hoa hồng</div>
+              {customer.commissionsEarned.map((commission) => (
+                <div key={commission.id} className="flex items-center justify-between border-t border-[#f3f4f6] py-[9px]">
+                  <div>
+                    <div className="text-[13px] font-semibold text-[#111827]">Đơn #{commission.order?.orderCode || '—'}</div>
+                    <div className="text-[11.5px] text-[#9ca3af]">
+                      Cấp {commission.level} · {commission.percentage}% · {formatDate(commission.createdAt)}
                     </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${item.isUsed ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-700'}`}>
-                      {item.isUsed ? 'Đã dùng' : 'Chưa dùng'}
-                    </span>
                   </div>
-                ))}
-              </div>
-            </section>
+                  <div className="text-right">
+                    <div className="text-[13px] font-semibold text-[#111827]">{formatMoney(commission.amount)}</div>
+                    <div className="text-[11.5px] text-[#9ca3af]">{commission.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

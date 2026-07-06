@@ -50,8 +50,8 @@ const date = (s: string | null) => { if (!s) return '—'; const d = new Date(s)
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-gray-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-gray-900 break-words">{children}</dd>
+      <dt className="text-xs text-[#9ca3af]">{label}</dt>
+      <dd className="mt-0.5 text-sm font-bold text-[#111827] break-words">{children}</dd>
     </div>
   );
 }
@@ -126,8 +126,8 @@ export default function ViettelCustomerDetailPage() {
     } finally { setSaving(false); }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Đang tải...</div>;
-  if (error && !vc) return <div className="p-8 text-center text-red-500">{error}</div>;
+  if (loading) return <div className="p-8 text-center text-[#9ca3af]">Đang tải...</div>;
+  if (error && !vc) return <div className="p-8 text-center text-[#dc2626]">{error}</div>;
   if (!vc) return null;
 
   const st = vc.status;
@@ -135,40 +135,39 @@ export default function ViettelCustomerDetailPage() {
   // Hành động hợp lệ theo trạng thái (UpdateOrder TYPE)
   const actions: Array<{ type: number; label: string; cls: string }> = [];
   if (editable) {
-    actions.push({ type: 1, label: 'Duyệt đơn', cls: 'bg-indigo-600 hover:bg-indigo-700' });
-    actions.push({ type: 4, label: 'Hủy đơn', cls: 'bg-red-600 hover:bg-red-700' });
+    actions.push({ type: 1, label: 'Duyệt đơn', cls: 'bg-[#2563eb] hover:bg-[#1d4ed8]' });
+    actions.push({ type: 4, label: 'Hủy đơn', cls: 'bg-[#dc2626] hover:brightness-95' });
   }
   if (st === 505) {
-    actions.push({ type: 2, label: 'Duyệt hoàn', cls: 'bg-orange-600 hover:bg-orange-700' });
-    actions.push({ type: 3, label: 'Phát tiếp', cls: 'bg-emerald-600 hover:bg-emerald-700' });
+    actions.push({ type: 2, label: 'Duyệt hoàn', cls: 'bg-[#c2410c] hover:brightness-95' });
+    actions.push({ type: 3, label: 'Phát tiếp', cls: 'bg-[#16a34a] hover:bg-[#15803d]' });
   }
   if (st === 107) {
-    actions.push({ type: 5, label: 'Gửi lại đơn', cls: 'bg-indigo-600 hover:bg-indigo-700' });
-    actions.push({ type: 11, label: 'Xóa đơn đã hủy', cls: 'bg-gray-600 hover:bg-gray-700' });
+    actions.push({ type: 5, label: 'Gửi lại đơn', cls: 'bg-[#2563eb] hover:bg-[#1d4ed8]' });
+    actions.push({ type: 11, label: 'Xóa đơn đã hủy', cls: 'bg-[#4b5563] hover:brightness-95' });
   }
 
+  const inputCls = 'w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] bg-white transition-colors';
+
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm">← Quay lại</button>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              📦 Đơn ViettelPost
-              <button onClick={() => copy('mã vận đơn', vc.trackingCode)} title="Copy mã vận đơn" className="font-mono text-indigo-600 hover:underline">{vc.trackingCode} 📋</button>
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${editable ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>{vc.status ?? '—'} {vc.statusName || ''}</span>
-              <span className="ml-2">cập nhật {date(vc.statusDate || vc.updatedAt)}</span>
-            </p>
-          </div>
-        </div>
+    <div className="max-w-6xl">
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        <button onClick={() => router.back()} className="px-3.5 py-2 rounded-[9px] bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[13px] font-bold text-[#374151] transition">← Quay lại</button>
+        <h1 className="text-[21px] font-extrabold tracking-[-0.3px] text-[#111827] flex items-center gap-2">
+          📦 Đơn ViettelPost
+          <button onClick={() => copy('mã vận đơn', vc.trackingCode)} title="Copy mã vận đơn" className="font-mono text-[#2563eb] hover:underline">{vc.trackingCode} ⧉</button>
+        </h1>
+      </div>
+
+      <div className="flex items-center gap-2.5 flex-wrap mb-4">
+        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${editable ? 'bg-[#fef3c7] text-[#92400e]' : 'bg-[#dbeafe] text-[#1d4ed8]'}`}>{vc.status ?? '—'} {vc.statusName || ''}</span>
+        <span className="text-[13px] text-[#6b7280]">cập nhật {date(vc.statusDate || vc.updatedAt)}</span>
         {/* Hành động ViettelPost (UpdateOrder) — hiện theo trạng thái đơn */}
         {actions.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap ml-auto">
             {actions.map(a => (
               <button key={a.type} onClick={() => void doAction(a.type, a.label)} disabled={saving}
-                className={`px-3 py-2 rounded-lg text-white text-sm font-semibold disabled:opacity-50 ${a.cls}`}>
+                className={`px-3.5 py-2 rounded-[9px] text-white text-[13px] font-semibold disabled:opacity-50 transition ${a.cls}`}>
                 {a.label}
               </button>
             ))}
@@ -176,14 +175,14 @@ export default function ViettelCustomerDetailPage() {
         )}
       </div>
 
-      {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
+      {error && <div className="p-3 mb-4 bg-[#fee2e2] border border-[#fecaca] rounded-[10px] text-[#dc2626] text-[13px]">{error}</div>}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 items-start mb-4">
         {/* Thông tin (chỉ đọc) */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <h2 className="font-bold text-gray-800">Thông tin đơn</h2>
-          <dl className="grid grid-cols-2 gap-4">
-            <Field label="Mã tham chiếu">{vc.orderReference || '—'}</Field>
+        <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+          <h2 className="text-base font-extrabold text-[#111827] mb-4">Thông tin đơn</h2>
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <Field label="Mã tham chiếu"><span className="font-mono">{vc.orderReference || '—'}</span></Field>
             <Field label="Sản phẩm">{vc.productName || '—'}</Field>
             <Field label="COD">{money(vc.cod)}</Field>
             <Field label="Cước (phí+VAT)">{money((vc.moneyTotalFee || 0) + (vc.moneyTotalVat || 0))}</Field>
@@ -191,44 +190,42 @@ export default function ViettelCustomerDetailPage() {
             <Field label="Cân nặng">{vc.productWeight ? `${vc.productWeight} g` : '—'}</Field>
             <Field label="Giao dự kiến">{vc.expectedDeliveryDate || '—'}</Field>
             <Field label="Bưu tá">{vc.employeeName ? `${vc.employeeName}${vc.employeePhone ? ' · ' + vc.employeePhone : ''}` : '—'}</Field>
-            <Field label="Vị trí hiện tại">{vc.locationCurrently || '—'}</Field>
+            <div className="col-span-2"><Field label="Vị trí hiện tại">{vc.locationCurrently || '—'}</Field></div>
             <Field label="Hoàn / Lý do lỗi">{vc.isReturning ? 'Có' : 'Không'}{vc.reasonCode ? ` · ${vc.reasonCode}` : ''}</Field>
           </dl>
         </div>
 
         {/* Form sửa */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-bold text-gray-800">Sửa &amp; cập nhật</h2>
-            {editable
-              ? <span className="text-xs text-green-600">Đơn chưa lấy hàng — sửa được trên VTP</span>
-              : <span className="text-xs text-amber-600">Đã vào khai thác — chỉ lưu CRM, VTP không cho sửa</span>}
-          </div>
-          <div className="space-y-3">
+        <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+          <h2 className="text-base font-extrabold text-[#111827] mb-1.5">Sửa &amp; cập nhật</h2>
+          {editable
+            ? <div className="text-xs text-[#047857] font-semibold mb-3.5">Đơn chưa lấy hàng — sửa được trên VTP</div>
+            : <div className="text-xs text-[#d97706] font-semibold mb-3.5">Đã vào khai thác — chỉ lưu CRM, VTP không cho sửa</div>}
+          <div className="space-y-2.5">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Tên người nhận</label>
-              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.receiverFullname} onChange={e => setForm({ ...form, receiverFullname: e.target.value })} />
+              <label className="block text-[12.5px] font-bold text-[#111827] mb-1.5">Tên người nhận</label>
+              <input className={inputCls} value={form.receiverFullname} onChange={e => setForm({ ...form, receiverFullname: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">SĐT người nhận</label>
+              <label className="block text-[12.5px] font-bold text-[#111827] mb-1.5">SĐT người nhận</label>
               <div className="flex gap-2">
-                <input className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono" value={form.receiverPhone} onChange={e => setForm({ ...form, receiverPhone: e.target.value })} />
-                <button type="button" onClick={() => copy('SĐT', form.receiverPhone)} className="px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm">📋</button>
+                <input className={`${inputCls} flex-1 font-mono`} value={form.receiverPhone} onChange={e => setForm({ ...form, receiverPhone: e.target.value })} />
+                <button type="button" onClick={() => copy('SĐT', form.receiverPhone)} className="px-3 rounded-[10px] bg-[#f3f4f6] hover:bg-[#e5e7eb] text-sm transition">📋</button>
               </div>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Địa chỉ nhận</label>
-              <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.receiverAddress} onChange={e => setForm({ ...form, receiverAddress: e.target.value })} />
+              <label className="block text-[12.5px] font-bold text-[#111827] mb-1.5">Địa chỉ nhận</label>
+              <input className={inputCls} value={form.receiverAddress} onChange={e => setForm({ ...form, receiverAddress: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">COD</label>
-              <input type="number" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.cod} onChange={e => setForm({ ...form, cod: e.target.value })} />
+              <label className="block text-[12.5px] font-bold text-[#111827] mb-1.5">COD</label>
+              <input type="number" className={inputCls} value={form.cod} onChange={e => setForm({ ...form, cod: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Ghi chú đơn</label>
-              <textarea rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.orderNote} onChange={e => setForm({ ...form, orderNote: e.target.value })} />
+              <label className="block text-[12.5px] font-bold text-[#111827] mb-1.5">Ghi chú đơn</label>
+              <textarea rows={3} className={`${inputCls} resize-y`} value={form.orderNote} onChange={e => setForm({ ...form, orderNote: e.target.value })} />
             </div>
-            <button onClick={() => void save()} disabled={saving} className="w-full px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm disabled:opacity-50">
+            <button onClick={() => void save()} disabled={saving} className="w-full px-4 py-3 rounded-[11px] bg-[#4f46e5] hover:bg-[#4338ca] text-white font-bold text-sm disabled:opacity-50 transition mt-1">
               {saving ? 'Đang lưu...' : editable ? 'Lưu & đẩy lên ViettelPost' : 'Lưu vào CRM'}
             </button>
           </div>
@@ -236,37 +233,37 @@ export default function ViettelCustomerDetailPage() {
       </div>
 
       {/* Hành trình */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="font-bold text-gray-800 mb-3">Hành trình ({vc.courierHistory?.length || 0})</h2>
+      <div className="bg-white border border-[#eceef2] rounded-[14px] px-[22px] py-5 mb-3.5">
+        <h2 className="text-[15px] font-extrabold text-[#111827] mb-3">Hành trình ({vc.courierHistory?.length || 0})</h2>
         <ol className="space-y-2">
           {(vc.courierHistory || []).slice().reverse().map((h, i) => (
-            <li key={i} className="flex gap-3 text-sm">
-              <span className="text-gray-400 whitespace-nowrap w-36">{date(h.at)}</span>
-              <span className="font-medium text-gray-800">{h.status ?? ''} {h.statusName || ''}</span>
-              {h.note && <span className="text-gray-500">— {h.note}</span>}
+            <li key={i} className="flex gap-3.5 text-[13px] flex-wrap">
+              <span className="text-[#9ca3af] whitespace-nowrap">{date(h.at)}</span>
+              <span className="font-bold text-[#111827]">{h.status ?? ''} {h.statusName || ''}</span>
+              {h.note && <span className="text-[#6b7280]">— {h.note}</span>}
             </li>
           ))}
-          {(!vc.courierHistory || vc.courierHistory.length === 0) && <li className="text-gray-400 text-sm">Chưa có hành trình.</li>}
+          {(!vc.courierHistory || vc.courierHistory.length === 0) && <li className="text-[#9ca3af] text-[13px]">Chưa có hành trình.</li>}
         </ol>
       </div>
 
       {/* Payload gốc */}
-      <details className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <summary className="font-bold text-gray-800 cursor-pointer">Dữ liệu gốc (webhook + detail-v2)</summary>
+      <details className="bg-white border border-[#eceef2] rounded-[14px] px-[22px] py-4">
+        <summary className="text-sm font-extrabold text-[#111827] cursor-pointer">Dữ liệu gốc (webhook + detail-v2)</summary>
         <div className="grid md:grid-cols-2 gap-4 mt-3">
           <div>
-            <div className="text-xs font-semibold text-gray-600 mb-1">Webhook payload</div>
-            <pre className="text-[11px] bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-72 overflow-auto">{JSON.stringify(vc.rawPayload, null, 1)}</pre>
+            <div className="text-xs font-semibold text-[#6b7280] mb-1">Webhook payload</div>
+            <pre className="text-[11.5px] leading-[1.6] bg-[#0f172a] text-[#a5f3fc] rounded-[10px] p-3.5 max-h-72 overflow-auto font-mono">{JSON.stringify(vc.rawPayload, null, 1)}</pre>
           </div>
           <div>
-            <div className="text-xs font-semibold text-gray-600 mb-1">order/detail-v2</div>
-            <pre className="text-[11px] bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-72 overflow-auto">{JSON.stringify(vc.detailPayload, null, 1)}</pre>
+            <div className="text-xs font-semibold text-[#6b7280] mb-1">order/detail-v2</div>
+            <pre className="text-[11.5px] leading-[1.6] bg-[#0f172a] text-[#a5f3fc] rounded-[10px] p-3.5 max-h-72 overflow-auto font-mono">{JSON.stringify(vc.detailPayload, null, 1)}</pre>
           </div>
         </div>
       </details>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-gray-900 text-white text-sm shadow-lg">✓ {toast}</div>
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-[12px] bg-[#0f172a] text-white text-[13px] shadow-lg">✓ {toast}</div>
       )}
     </div>
   );

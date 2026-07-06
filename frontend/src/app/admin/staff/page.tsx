@@ -7,12 +7,12 @@ export const metadata: Metadata = {
 
 export default function StaffPage() {
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý Nhân viên</h1>
-        <p className="text-gray-500 mt-1 text-sm font-medium">Quản lý đội ngũ nhân viên, gán quyền và điều phối theo từng cửa hàng</p>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto font-[Inter,sans-serif]">
+      <div className="mb-[18px]">
+        <h1 className="m-0 text-[24px] font-extrabold tracking-[-0.4px] text-[#111827]">Nhân viên</h1>
+        <p className="mt-1 text-[13px] text-[#6b7280]">Tài khoản và phân quyền hệ thống</p>
       </div>
-      
+
       <StaffTableClient />
     </div>
   );

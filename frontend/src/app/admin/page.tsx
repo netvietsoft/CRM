@@ -57,6 +57,47 @@ function getStatusBadge(status: string) {
   return map[status] || { class: 'badge-member', label: status };
 }
 
+// Pill màu theo palette handoff: green #047857/#d1fae5, orange #c2410c/#ffedd5,
+// yellow #92400e/#fef3c7, red #dc2626/#fee2e2, blue #1d4ed8/#dbeafe.
+function statusPillClass(cls: string) {
+  switch (cls) {
+    case 'badge-success':
+      return 'bg-[#d1fae5] text-[#047857]';
+    case 'badge-warning':
+      return 'bg-[#fef3c7] text-[#92400e]';
+    case 'badge-info':
+      return 'bg-[#dbeafe] text-[#1d4ed8]';
+    case 'badge-danger':
+      return 'bg-[#fee2e2] text-[#dc2626]';
+    default:
+      return 'bg-[#ffedd5] text-[#c2410c]';
+  }
+}
+
+// Màu hạng KH giữ nguyên logic, tô theo palette pill.
+function rankPillClass(rank: string | null) {
+  switch (rank) {
+    case 'PLATINUM':
+      return 'bg-purple-100 text-purple-700';
+    case 'DIAMOND':
+      return 'bg-[#dbeafe] text-[#1d4ed8]';
+    case 'GOLD':
+      return 'bg-[#fef3c7] text-[#92400e]';
+    case 'SILVER':
+      return 'bg-gray-200 text-gray-700';
+    default:
+      return 'bg-gray-100 text-gray-600';
+  }
+}
+
+// Màu avatar xoay vòng theo initial (giống c.avBg trong handoff).
+const AVATAR_COLORS = ['#2563eb', '#7c3aed', '#059669', '#dc2626', '#d97706', '#0891b2'];
+function avatarColor(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export default async function AdminDashboard() {
   let stats: DashboardStats = {
     totalCustomers: 0,
@@ -78,71 +119,76 @@ export default async function AdminDashboard() {
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-[22px] flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">Dashboard</h1>
-          <p className="text-gray-600 text-sm">Tổng quan hệ thống chăm sóc khách hàng</p>
+          <h1 className="m-0 text-[24px] font-extrabold tracking-[-0.4px] text-[#111827]">Dashboard</h1>
+          <p className="mt-1 mb-0 text-[13px] text-[#6b7280]">Tổng quan hệ thống chăm sóc khách hàng</p>
         </div>
-        <div className="flex gap-3">
-          <Link href="/admin/customers" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-            👥 Khách hàng
+        <div className="flex gap-[10px]">
+          <Link
+            href="/admin/customers"
+            className="px-4 py-[9px] bg-white border border-[#e5e7eb] text-[#374151] rounded-[10px] font-semibold text-[13px] hover:bg-[#f9fafb] transition-colors"
+          >
+            Khách hàng
           </Link>
-          <Link href="/admin/vouchers" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-            🎫 Tạo Voucher
+          <Link
+            href="/admin/vouchers"
+            className="px-4 py-[9px] bg-[#2563eb] text-white rounded-[10px] font-semibold text-[13px] shadow-[0_1px_2px_rgba(37,99,235,.3)] hover:bg-[#1d4ed8] transition-colors"
+          >
+            + Tạo Voucher
           </Link>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Tổng khách hàng</div>
-          <div className="text-3xl text-gray-800 mb-2">{formatNumber(stats.totalCustomers)}</div>
-          <div className="text-xs text-green-600">
+      <div
+        className="grid gap-[14px] mb-[22px]"
+        style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}
+      >
+        <div className="bg-white border border-[#eceef2] rounded-[14px] pt-[18px] px-[18px] pb-4">
+          <div className="text-[12.5px] text-[#6b7280] font-medium mb-2">Tổng khách hàng</div>
+          <div className="text-[24px] font-extrabold tracking-[-0.5px] text-[#111827]">{formatNumber(stats.totalCustomers)}</div>
+          <div className="text-[12px] font-semibold mt-1.5 text-[#059669]">
             +{stats.newCustomersThisMonth} tháng này
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Tổng doanh thu</div>
-          <div className="text-2xl text-gray-800 mb-2">
-            {formatCurrency(stats.totalRevenue)}
-          </div>
-          <div className="text-xs text-green-600 ">
+        <div className="bg-white border border-[#eceef2] rounded-[14px] pt-[18px] px-[18px] pb-4">
+          <div className="text-[12.5px] text-[#6b7280] font-medium mb-2">Tổng doanh thu</div>
+          <div className="text-[24px] font-extrabold tracking-[-0.5px] text-[#111827]">{formatCurrency(stats.totalRevenue)}</div>
+          <div className="text-[12px] font-semibold mt-1.5 text-[#059669]">
             {stats.completedOrders} đơn hoàn thành
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Đơn hàng</div>
-          <div className="text-3xl text-gray-800 mb-2">{formatNumber(stats.totalOrders)}</div>
-          <div className="text-xs text-green-600 ">
+        <div className="bg-white border border-[#eceef2] rounded-[14px] pt-[18px] px-[18px] pb-4">
+          <div className="text-[12.5px] text-[#6b7280] font-medium mb-2">Đơn hàng</div>
+          <div className="text-[24px] font-extrabold tracking-[-0.5px] text-[#111827]">{formatNumber(stats.totalOrders)}</div>
+          <div className="text-[12px] font-semibold mt-1.5 text-[#059669]">
             {stats.completedOrders} hoàn thành
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Voucher hoạt động</div>
-          <div className="text-3xl text-gray-800">{stats.activeVouchers}</div>
+        <div className="bg-white border border-[#eceef2] rounded-[14px] pt-[18px] px-[18px] pb-4">
+          <div className="text-[12.5px] text-[#6b7280] font-medium mb-2">Voucher hoạt động</div>
+          <div className="text-[24px] font-extrabold tracking-[-0.5px] text-[#111827]">{stats.activeVouchers}</div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="text-sm text-gray-600 mb-2">Hoa hồng chờ duyệt</div>
-          <div className="text-2xl text-gray-800">
-            {formatCurrency(stats.pendingCommissions)}
-          </div>
+        <div className="bg-white border border-[#eceef2] rounded-[14px] pt-[18px] px-[18px] pb-4">
+          <div className="text-[12.5px] text-[#6b7280] font-medium mb-2">Hoa hồng chờ duyệt</div>
+          <div className="text-[24px] font-extrabold tracking-[-0.5px] text-[#111827]">{formatCurrency(stats.pendingCommissions)}</div>
         </div>
       </div>
 
       <RevenueStats />
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(360px,1fr))' }}>
         {/* Recent Orders */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex justify-between items-center p-6 border-b border-gray-100">
-            <span className="text-lg font-bold text-gray-800">Đơn hàng gần đây</span>
-            <Link href="/admin/orders" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+        <div className="bg-white border border-[#eceef2] rounded-[14px] overflow-hidden">
+          <div className="flex justify-between items-center px-5 py-4 border-b border-[#f0f1f5]">
+            <span className="text-[15px] font-bold text-[#111827]">Đơn hàng gần đây</span>
+            <Link href="/admin/orders" className="text-[13px] text-[#2563eb] hover:text-[#1d4ed8] font-semibold">
               Xem tất cả →
             </Link>
           </div>
@@ -155,20 +201,16 @@ export default async function AdminDashboard() {
                 const statusInfo = getStatusBadge(order.status);
                 const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                 return (
-                  <Link key={`mob-order-${order.id}`} href={`/admin/orders/${order.id}`} className="flex flex-col gap-2 p-4 active:bg-blue-50/40">
+                  <Link key={`mob-order-${order.id}`} href={`/admin/orders/${order.id}`} className="flex flex-col gap-2 p-4 active:bg-[#eff6ff]">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono text-sm font-bold text-gray-800">{order.orderCode}</span>
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${statusInfo.class === 'badge-success' ? 'bg-green-100 text-green-700' :
-                        statusInfo.class === 'badge-warning' ? 'bg-yellow-100 text-yellow-700' :
-                          statusInfo.class === 'badge-info' ? 'bg-blue-100 text-blue-700' :
-                            'bg-red-100 text-red-700'
-                        }`}>
+                      <span className="font-mono text-xs font-semibold text-[#2563eb]">{order.orderCode}</span>
+                      <span className={`px-2.5 py-[3px] rounded-full text-[11.5px] font-semibold ${statusPillClass(statusInfo.class)}`}>
                         {statusInfo.label}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs mt-1">
-                      <span className="text-gray-600">{displayName}</span>
-                      <span className="font-bold text-rose-600">{formatCurrency(order.totalAmount)}</span>
+                      <span className="text-[#6b7280]">{displayName}</span>
+                      <span className="font-semibold text-[#111827]">{formatCurrency(order.totalAmount)}</span>
                     </div>
                   </Link>
                 );
@@ -178,50 +220,49 @@ export default async function AdminDashboard() {
 
           {/* Desktop View */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã đơn</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Khách hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tổng tiền</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="bg-[#f9fafb]">
+                  <th className="px-5 py-[9px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Mã đơn</th>
+                  <th className="px-3 py-[9px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Khách hàng</th>
+                  <th className="px-3 py-[9px] text-right text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Tổng tiền</th>
+                  <th className="px-5 py-[9px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Trạng thái</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {!stats.recentOrders || stats.recentOrders.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="text-center py-8">
-                      <div className="text-gray-500">Chưa có đơn hàng nào</div>
+                      <div className="text-[#6b7280]">Chưa có đơn hàng nào</div>
                     </td>
                   </tr>
                 ) : (
-                  stats.recentOrders.map((order, idx) => {
+                  stats.recentOrders.map((order) => {
                     const statusInfo = getStatusBadge(order.status);
                     const displayName = order.shippingName || order.user?.name || order.user?.phone || 'Khách lạ';
                     const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                     return (
-                      <tr key={order.id} className={`relative cursor-pointer ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
-                        <td className="px-6 py-4">
+                      <tr key={order.id} className="relative cursor-pointer border-t border-[#f3f4f6] hover:bg-[#eff6ff]">
+                        <td className="px-5 py-[11px]">
                           <Link href={`/admin/orders/${order.id}`} className="absolute inset-0" aria-label={`Xem chi tiết đơn ${order.orderCode}`} />
-                          <span className="font-mono text-xs text-gray-800">
+                          <span className="font-mono text-xs font-semibold text-[#2563eb]">
                             {order.orderCode}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-[11px]">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-semibold">
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
+                              style={{ background: avatarColor(displayName) }}
+                            >
                               {displayChar}
                             </div>
-                            <span className="text-sm">{displayName}</span>
+                            <span className="text-[13px] text-[#111827]">{displayName}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 ">{formatCurrency(order.totalAmount)}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs  ${statusInfo.class === 'badge-success' ? 'bg-green-100 text-green-700' :
-                            statusInfo.class === 'badge-warning' ? 'bg-yellow-100 text-yellow-700' :
-                              statusInfo.class === 'badge-info' ? 'bg-blue-100 text-blue-700' :
-                                'bg-red-100 text-red-700'
-                            }`}>
+                        <td className="px-3 py-[11px] text-right font-semibold text-[#111827]">{formatCurrency(order.totalAmount)}</td>
+                        <td className="px-5 py-[11px]">
+                          <span className={`px-2.5 py-[3px] rounded-full text-[11.5px] font-semibold ${statusPillClass(statusInfo.class)}`}>
                             {statusInfo.label}
                           </span>
                         </td>
@@ -235,10 +276,10 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Top Customers */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="flex justify-between items-center p-6 border-b border-gray-100">
-            <span className="text-lg font-bold text-gray-800">Khách hàng VIP</span>
-            <Link href="/admin/customers" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+        <div className="bg-white border border-[#eceef2] rounded-[14px] overflow-hidden">
+          <div className="flex justify-between items-center px-5 py-4 border-b border-[#f0f1f5]">
+            <span className="text-[15px] font-bold text-[#111827]">Khách hàng VIP</span>
+            <Link href="/admin/customers" className="text-[13px] text-[#2563eb] hover:text-[#1d4ed8] font-semibold">
               Xem tất cả →
             </Link>
           </div>
@@ -251,34 +292,32 @@ export default async function AdminDashboard() {
                 const displayName = customer.name || customer.phone || 'Khách lạ';
                 const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                 return (
-                  <Link key={`mob-cust-${customer.id}`} href={`/admin/customers/${customer.id}`} className="flex flex-col gap-3 p-4 active:bg-blue-50/40">
+                  <Link key={`mob-cust-${customer.id}`} href={`/admin/customers/${customer.id}`} className="flex flex-col gap-3 p-4 active:bg-[#eff6ff]">
                     <div className="flex items-center gap-3 mb-1">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                        style={{ background: avatarColor(displayName) }}
+                      >
                         {displayChar}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <span className="text-sm text-gray-900 truncate pr-2">{displayName}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${customer.rank === 'PLATINUM' ? 'bg-purple-100 text-purple-700' :
-                            customer.rank === 'DIAMOND' ? 'bg-blue-100 text-blue-700' :
-                              customer.rank === 'GOLD' ? 'bg-yellow-100 text-yellow-700' :
-                                customer.rank === 'SILVER' ? 'bg-gray-200 text-gray-700' :
-                                  'bg-gray-100 text-gray-600'
-                            }`}>
+                          <span className="text-sm text-[#111827] font-semibold truncate pr-2">{displayName}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap ${rankPillClass(customer.rank)}`}>
                             {customer.rank}
                           </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">{customer.email || customer.phone}</div>
+                        <div className="text-[11.5px] text-[#9ca3af] mt-0.5">{customer.email || customer.phone}</div>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center text-xs bg-gray-50 p-2 rounded-lg">
+                    <div className="flex justify-between items-center text-xs bg-[#f7f9fc] p-2 rounded-lg">
                       <div className="flex flex-col">
-                        <span className="text-gray-500 mb-0.5">Đã chi</span>
-                        <span className="font-bold text-gray-900">{formatCurrency(customer.totalSpent)}</span>
+                        <span className="text-[#9ca3af] mb-0.5">Đã chi</span>
+                        <span className="font-semibold text-[#111827]">{formatCurrency(customer.totalSpent)}</span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-gray-500 mb-0.5">Số đơn</span>
-                        <span className="font-bold text-indigo-600">{customer._count?.orders || 0} đơn</span>
+                        <span className="text-[#9ca3af] mb-0.5">Số đơn</span>
+                        <span className="font-semibold text-[#4f46e5]">{customer._count?.orders || 0} đơn</span>
                       </div>
                     </div>
                   </Link>
@@ -289,48 +328,50 @@ export default async function AdminDashboard() {
 
           {/* Desktop View */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Khách hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Hạng</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Đã chi</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Đơn</th>
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="bg-[#f9fafb]">
+                  <th className="px-5 py-[9px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Khách hàng</th>
+                  <th className="px-3 py-[9px] text-left text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Hạng</th>
+                  <th className="px-3 py-[9px] text-right text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Đã chi</th>
+                  <th className="px-5 py-[9px] text-right text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Đơn</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {!stats.topCustomers || stats.topCustomers.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="text-center py-8">
-                      <div className="text-gray-500">Chưa có khách hàng nào</div>
+                      <div className="text-[#6b7280]">Chưa có khách hàng nào</div>
                     </td>
                   </tr>
                 ) : (
-                  stats.topCustomers.map((customer, idx) => {
+                  stats.topCustomers.map((customer) => {
                     const displayName = customer.name || customer.phone || 'Khách lạ';
+                    const displayChar = displayName !== 'Khách lạ' ? displayName.charAt(0).toUpperCase() : '?';
                     return (
-                      <tr key={customer.id} className={`relative cursor-pointer ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}>
-                        <td className="px-6 py-4">
+                      <tr key={customer.id} className="relative cursor-pointer border-t border-[#f3f4f6] hover:bg-[#eff6ff]">
+                        <td className="px-5 py-[11px]">
                           <Link href={`/admin/customers/${customer.id}`} className="absolute inset-0" aria-label={`Xem chi tiết khách hàng ${displayName}`} />
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="w-[30px] h-[30px] rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                              style={{ background: avatarColor(displayName) }}
+                            >
+                              {displayChar}
+                            </div>
                             <div>
-                              <div className="text-sm">{displayName}</div>
-                              <div className="text-xs text-gray-600">{customer.email || customer.phone}</div>
+                              <div className="text-[13px] font-semibold text-[#111827]">{displayName}</div>
+                              <div className="text-[11.5px] text-[#9ca3af]">{customer.email || customer.phone}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${customer.rank === 'PLATINUM' ? 'bg-purple-100 text-purple-700' :
-                            customer.rank === 'DIAMOND' ? 'bg-blue-100 text-blue-700' :
-                              customer.rank === 'GOLD' ? 'bg-yellow-100 text-yellow-700' :
-                                customer.rank === 'SILVER' ? 'bg-gray-200 text-gray-700' :
-                                  'bg-gray-100 text-gray-600'
-                            }`}>
+                        <td className="px-3 py-[11px]">
+                          <span className={`px-2.5 py-[3px] rounded-full text-[11px] font-bold ${rankPillClass(customer.rank)}`}>
                             {customer.rank}
                           </span>
                         </td>
-                        <td className="px-6 py-4">{formatCurrency(customer.totalSpent)}</td>
-                        <td className="px-6 py-4">{customer._count?.orders || 0}</td>
+                        <td className="px-3 py-[11px] text-right font-semibold text-[#111827]">{formatCurrency(customer.totalSpent)}</td>
+                        <td className="px-5 py-[11px] text-right font-semibold text-[#4f46e5]">{customer._count?.orders || 0}</td>
                       </tr>
                     );
                   })

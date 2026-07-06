@@ -185,54 +185,54 @@ export default function MasterDataManager({
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="mb-1 text-3xl font-bold text-gray-800">{title}</h1>
-          <p className="text-sm text-gray-600">{description}</p>
+          <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px] text-gray-900">{title}</h1>
+          <p className="mt-1 text-[13px] text-[#6b7280]">{description}</p>
         </div>
         <button
-          className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700"
+          className="cursor-pointer rounded-[10px] bg-[#2563eb] px-4 py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
           onClick={openCreateModal}
         >
-          + Tạo {entityLabel}
+          + Thêm mới
         </button>
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-2 text-sm text-gray-600">Tổng bản ghi</div>
-          <div className="text-3xl font-bold text-gray-800">{items.length}</div>
+      <div className="mb-5 grid grid-cols-1 gap-[14px] sm:grid-cols-3">
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-[18px]">
+          <div className="mb-2 text-[13px] text-[#6b7280]">Tổng bản ghi</div>
+          <div className="text-[26px] font-extrabold text-gray-900">{items.length}</div>
         </div>
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-2 text-sm text-gray-600">Đang hoạt động</div>
-          <div className="text-3xl font-bold text-green-600">{activeCount}</div>
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-[18px]">
+          <div className="mb-2 text-[13px] text-[#6b7280]">Đang hoạt động</div>
+          <div className="text-[26px] font-extrabold text-[#047857]">{activeCount}</div>
         </div>
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <div className="mb-2 text-sm text-gray-600">Đang tắt</div>
-          <div className="text-3xl font-bold text-gray-800">{items.length - activeCount}</div>
+        <div className="rounded-[14px] border border-[#eceef2] bg-white p-[18px]">
+          <div className="mb-2 text-[13px] text-[#6b7280]">Đang tắt</div>
+          <div className="text-[26px] font-extrabold text-gray-900">{items.length - activeCount}</div>
         </div>
       </div>
 
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-md">
-          <SearchIcon className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9ca3af]" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder={`Tìm ${entityLabel.toLowerCase()}...`}
-            className="w-full rounded-lg border border-gray-300 bg-white py-3 pl-11 pr-4 text-sm shadow-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-[10px] border border-[#eceef2] bg-white py-[9px] pl-10 pr-4 text-[13px] text-gray-800 outline-none placeholder:text-[#9ca3af] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-[10px] bg-[#eef0f4] p-1">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-[8px] px-3 py-[7px] text-[13px] font-semibold transition-colors ${
               statusFilter === 'all'
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-[#6b7280] hover:text-gray-900'
             }`}
           >
             Tất cả
@@ -240,10 +240,10 @@ export default function MasterDataManager({
           <button
             type="button"
             onClick={() => setStatusFilter('active')}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-[8px] px-3 py-[7px] text-[13px] font-semibold transition-colors ${
               statusFilter === 'active'
-                ? 'bg-green-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-[#6b7280] hover:text-gray-900'
             }`}
           >
             Hoạt động
@@ -251,10 +251,10 @@ export default function MasterDataManager({
           <button
             type="button"
             onClick={() => setStatusFilter('inactive')}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-[8px] px-3 py-[7px] text-[13px] font-semibold transition-colors ${
               statusFilter === 'inactive'
-                ? 'bg-gray-700 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-[#6b7280] hover:text-gray-900'
             }`}
           >
             Đang tắt
@@ -262,68 +262,88 @@ export default function MasterDataManager({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-        <div className="border-b border-gray-100 p-6">
+      <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+        <div className="border-b border-[#f3f4f6] px-[18px] py-4">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-lg font-bold text-gray-800">Danh sách {entityLabel}</span>
-            <span className="text-sm text-gray-500">{sortedItems.length} bản ghi</span>
+            <span className="text-[15px] font-bold text-gray-900">Danh sách {entityLabel}</span>
+            <span className="text-[12px] font-semibold text-[#6b7280]">{sortedItems.length} bản ghi</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
+          <table className="w-full border-collapse text-[13px]">
+            <thead>
+              <tr className="bg-[#f9fafb]">
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600"
+                    className="px-4 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]"
                   >
                     {column.label}
                   </th>
                 ))}
-                <th className="px-6 py-3"></th>
+                <th className="px-4 py-[10px]"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {sortedItems.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length + 1} className="px-6 py-12 text-center text-sm text-gray-500">
+                  <td colSpan={columns.length + 1} className="px-4 py-12 text-center text-[13px] text-[#6b7280]">
                     Không có dữ liệu phù hợp.
                   </td>
                 </tr>
               )}
-              {sortedItems.map((item) => (
-                <tr key={item.id}>
-                  {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 text-sm text-gray-700">
-                      {column.render
-                        ? column.render(item as MasterRecord & Record<string, unknown>)
-                        : column.format === 'activeStatus'
-                          ? ((item as Record<string, unknown>).isActive === false ? 'Tắt' : 'Hoạt động')
-                          : String(getItemValue(item, column.key) ?? '—')}
-                    </td>
-                  ))}
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(item)}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
+              {sortedItems.map((item, index) => (
+                <tr
+                  key={item.id}
+                  className="border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff]"
+                  style={{ background: index % 2 === 1 ? '#f7f9fc' : undefined }}
+                >
+                  {columns.map((column) => {
+                    const isActiveStatus = column.format === 'activeStatus';
+                    const isCode = column.key === 'code';
+                    const active = (item as Record<string, unknown>).isActive !== false;
+                    return (
+                      <td
+                        key={column.key}
+                        className={`px-4 py-[11px] align-middle ${
+                          isCode ? "font-mono text-[12px] font-bold text-[#2140da]" : 'text-[#4b5563]'
+                        } ${column.key === 'name' ? 'font-semibold text-gray-800' : ''}`}
                       >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeleteItem(item);
-                          setError('');
-                        }}
-                        className="text-sm font-medium text-red-600 hover:text-red-700"
-                      >
-                        Xóa
-                      </button>
-                    </div>
+                        {column.render ? (
+                          column.render(item as MasterRecord & Record<string, unknown>)
+                        ) : isActiveStatus ? (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-[3px] text-[11px] font-semibold ${
+                              active ? 'bg-[#d1fae5] text-[#047857]' : 'bg-[#fee2e2] text-[#dc2626]'
+                            }`}
+                          >
+                            {active ? 'Hoạt động' : 'Tắt'}
+                          </span>
+                        ) : (
+                          String(getItemValue(item, column.key) ?? '—')
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="whitespace-nowrap px-4 py-[11px] text-right">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(item)}
+                      className="mr-3 cursor-pointer text-[12.5px] font-semibold text-[#2563eb] hover:text-[#1d4ed8]"
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleteItem(item);
+                        setError('');
+                      }}
+                      className="cursor-pointer text-[12.5px] font-semibold text-[#dc2626] hover:opacity-80"
+                    >
+                      Xoá
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -334,17 +354,17 @@ export default function MasterDataManager({
 
       {showModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
         >
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-gray-200 p-6">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingItem ? `Sửa ${entityLabel}` : `Tạo ${entityLabel} mới`}
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#eceef2] px-6 py-5">
+              <h2 className="text-[18px] font-bold text-gray-900">
+                {editingItem ? `Sửa ${entityLabel}` : `Thêm ${entityLabel} mới`}
               </h2>
-              <button className="text-2xl leading-none text-gray-400 hover:text-gray-600" onClick={() => setShowModal(false)}>
+              <button className="cursor-pointer text-2xl leading-none text-[#9ca3af] hover:text-gray-600" onClick={() => setShowModal(false)}>
                 ✕
               </button>
             </div>
@@ -352,7 +372,7 @@ export default function MasterDataManager({
             <form onSubmit={handleSubmit}>
               <div className="space-y-4 p-6">
                 {error && (
-                  <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                  <div className="flex items-center gap-2 rounded-[10px] border border-[#fecaca] bg-[#fee2e2] px-4 py-3 text-[13px] text-[#dc2626]">
                     <span>⚠</span>
                     <span>{error}</span>
                   </div>
@@ -361,10 +381,10 @@ export default function MasterDataManager({
                 {fields.map((field) => (
                   <div key={field.key}>
                     {field.type === 'checkbox' ? (
-                      <label className="flex cursor-pointer items-center gap-2 text-sm">
+                      <label className="flex cursor-pointer items-center gap-2 text-[13px]">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="h-4 w-4 rounded border-[#d1d5db] text-[#2563eb] focus:ring-[#2563eb]"
                           checked={Boolean(form[field.key])}
                           onChange={(e) => update(field.key, e.target.checked)}
                         />
@@ -372,13 +392,13 @@ export default function MasterDataManager({
                       </label>
                     ) : (
                       <>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                        <label className="mb-1 block text-[13px] font-medium text-gray-700">
                           {field.label}
                           {field.required ? ' *' : ''}
                         </label>
                         {field.type === 'textarea' ? (
                           <textarea
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-[10px] border border-[#eceef2] px-3 py-2 text-[13px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20"
                             rows={3}
                             required={field.required}
                             value={String(form[field.key] ?? '')}
@@ -388,7 +408,9 @@ export default function MasterDataManager({
                         ) : (
                           <input
                             type={field.type === 'email' ? 'email' : 'text'}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                            className={`w-full rounded-[10px] border border-[#eceef2] px-3 py-2 text-[13px] outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/20 ${
+                              field.key === 'code' ? "font-mono" : ''
+                            }`}
                             required={field.required}
                             value={String(form[field.key] ?? '')}
                             onChange={(e) => update(field.key, e.target.value)}
@@ -401,20 +423,20 @@ export default function MasterDataManager({
                 ))}
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-gray-200 p-6">
+              <div className="flex items-center justify-end gap-3 border-t border-[#eceef2] px-6 py-4">
                 <button
                   type="button"
-                  className="rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  className="cursor-pointer rounded-[10px] border border-[#eceef2] px-4 py-2 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-[#f7f8fb]"
                   onClick={() => setShowModal(false)}
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="cursor-pointer rounded-[10px] bg-[#2563eb] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={loading}
                 >
-                  {loading ? 'Đang lưu...' : editingItem ? 'Cập nhật' : 'Tạo mới'}
+                  {loading ? 'Đang lưu...' : editingItem ? 'Cập nhật' : 'Thêm mới'}
                 </button>
               </div>
             </form>
@@ -424,19 +446,19 @@ export default function MasterDataManager({
 
       {deleteItem && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) setDeleteItem(null);
           }}
         >
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
             <div className="p-6">
-              <h3 className="mb-2 text-lg font-bold text-gray-800">Xóa {entityLabel}?</h3>
-              <p className="mb-6 text-sm text-gray-600">
-                Bạn có chắc chắn muốn xóa <strong>{String(getItemValue(deleteItem, 'name') ?? deleteItem.id)}</strong>?
+              <h3 className="mb-2 text-[17px] font-bold text-gray-900">Xoá {entityLabel}?</h3>
+              <p className="mb-6 text-[13px] text-[#6b7280]">
+                Bạn có chắc chắn muốn xoá <strong className="text-gray-800">{String(getItemValue(deleteItem, 'name') ?? deleteItem.id)}</strong>?
               </p>
               {error && (
-                <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                <div className="mb-4 flex items-center gap-2 rounded-[10px] border border-[#fecaca] bg-[#fee2e2] px-4 py-3 text-[13px] text-[#dc2626]">
                   <span>⚠</span>
                   <span>{error}</span>
                 </div>
@@ -444,7 +466,7 @@ export default function MasterDataManager({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                  className="flex-1 cursor-pointer rounded-[10px] border border-[#eceef2] px-4 py-2 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-[#f7f8fb]"
                   onClick={() => setDeleteItem(null)}
                   disabled={loading}
                 >
@@ -452,11 +474,11 @@ export default function MasterDataManager({
                 </button>
                 <button
                   type="button"
-                  className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 cursor-pointer rounded-[10px] bg-[#dc2626] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#b91c1c] disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={handleDelete}
                   disabled={loading}
                 >
-                  {loading ? 'Đang xóa...' : 'Xóa'}
+                  {loading ? 'Đang xoá...' : 'Xoá'}
                 </button>
               </div>
             </div>

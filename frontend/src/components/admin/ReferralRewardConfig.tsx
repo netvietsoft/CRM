@@ -110,7 +110,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
   return (
     <>
       <button
-        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+        className="rounded-[10px] border border-[#e5e7eb] px-4 py-[9px] text-[13px] font-semibold text-[#374151] transition-colors hover:bg-[#f9fafb]"
         onClick={() => setShowModal(true)}
         id="config-referral-reward-btn"
       >
@@ -119,16 +119,16 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
 
       {showModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[16px] bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#f0f1f5] p-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-800">Cấu hình thưởng theo lần mời</h2>
+                <h2 className="text-[18px] font-bold text-slate-900">Cấu hình thưởng theo lần mời</h2>
               </div>
               <button
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                className="text-2xl leading-none text-[#9ca3af] transition-colors hover:text-[#4b5563]"
                 onClick={() => setShowModal(false)}
               >
                 ✕
@@ -137,7 +137,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
 
             <div className="p-6">
               {success && (
-                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2.5 rounded-lg text-sm mb-4 flex items-center gap-2">
+                <div className="mb-4 flex items-center gap-2 rounded-[10px] border border-[#d1fae5] bg-[#ecfdf5] px-4 py-2.5 text-[13px] text-[#047857]">
                   <span>✅</span>
                   <span>Đã lưu cấu hình thành công!</span>
                 </div>
@@ -145,7 +145,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
 
               <div className="space-y-3">
                 {/* Header */}
-                <div className="grid grid-cols-[80px_160px_1fr_36px] gap-3 text-xs font-semibold text-gray-500 px-1">
+                <div className="grid grid-cols-[80px_160px_1fr_36px] gap-3 px-1 text-[11.5px] font-semibold text-[#6b7280]">
                   <span>Lần mời</span>
                   <span>Loại thưởng</span>
                   <span>Chi tiết</span>
@@ -156,12 +156,12 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                   <div key={idx} className="grid grid-cols-[80px_160px_1fr_36px] gap-3 items-center">
                     {/* Milestone number */}
                     <div className="flex items-center">
-                      <input type="number" value={tier.milestone} onChange={e => updateTier(idx, 'milestone', parseInt(e.target.value))} className="w-13 px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white" />
+                      <input type="number" value={tier.milestone} onChange={e => updateTier(idx, 'milestone', parseInt(e.target.value))} className="w-13 rounded-[10px] border border-[#e5e7eb] bg-white px-2.5 py-2 text-[13px] text-slate-900 focus:border-transparent focus:ring-2 focus:ring-[#2563eb]" />
                     </div>
 
                     {/* Reward type */}
                     <select
-                      className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-2.5 py-2 text-[13px] text-slate-900 focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
                       value={tier.rewardType}
                       onChange={e => updateTier(idx, 'rewardType', e.target.value as RewardTier['rewardType'])}
                     >
@@ -172,18 +172,18 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                     {/* Detail */}
                     {tier.rewardType === 'SPIN' ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">Số lượt:</span>
+                        <span className="text-[13px] text-[#6b7280]">Số lượt:</span>
                         <input
                           type="number"
                           min={1}
-                          className="w-20 px-2.5 py-2 border border-gray-300 rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                          className="w-20 rounded-[10px] border border-[#e5e7eb] bg-white px-2.5 py-2 text-center text-[13px] text-slate-900 focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
                           value={tier.spinTurns}
                           onChange={e => updateTier(idx, 'spinTurns', parseInt(e.target.value) || 1)}
                         />
                       </div>
                     ) : (
                       <select
-                        className="w-full px-2.5 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-2.5 py-2 text-[13px] text-slate-900 focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
                         value={tier.voucherId || ''}
                         onChange={e => updateTier(idx, 'voucherId', e.target.value || null)}
                       >
@@ -199,7 +199,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                     {/* Remove */}
                     <button
                       type="button"
-                      className="text-red-400 hover:text-red-600 transition-colors text-lg leading-none disabled:opacity-30"
+                      className="text-lg leading-none text-[#dc2626] transition-colors hover:text-[#b91c1c] disabled:opacity-30"
                       onClick={() => removeTier(idx)}
                       disabled={tiers.length <= 1}
                     >
@@ -209,23 +209,23 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                 ))}
               </div>
 
-              <p className="text-xs text-gray-500 mt-4">
+              <p className="mt-4 text-[12px] text-[#6b7280]">
                 💡 Khi user B đăng ký qua referral code của user A, hệ thống sẽ tự động cấp thưởng cho A theo cấu hình trên.
               </p>
             </div>
 
-            <div className="flex items-center justify-between p-6 border-t border-gray-200">
+            <div className="flex items-center justify-between border-t border-[#f0f1f5] p-6">
               <button
                 type="button"
                 onClick={addTier}
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                className="rounded-[10px] bg-[#eff6ff] px-3 py-1.5 text-[13px] font-semibold text-[#2563eb] transition-colors hover:bg-[#dbeafe]"
               >
                 + Thêm lần
               </button>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+                  className="rounded-[10px] border border-[#e5e7eb] px-4 py-2 text-[13px] font-semibold text-[#374151] transition-colors hover:bg-[#f9fafb]"
                   onClick={() => setShowModal(false)}
                 >
                   Đóng
@@ -234,7 +234,7 @@ export default function ReferralRewardConfig({ initialTiers, vouchers }: Props) 
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-[10px] bg-[#2563eb] px-4 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {saving ? 'Đang lưu...' : '💾 Lưu cấu hình'}
                 </button>

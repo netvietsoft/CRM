@@ -331,17 +331,17 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#eceef2] p-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Sửa Voucher</h2>
-            <span className="text-sm font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded mt-1 inline-block">{voucher.code}</span>
+            <h2 className="text-xl font-bold text-slate-900">Sửa Voucher</h2>
+            <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 font-mono text-sm font-bold text-[#2140da]">{voucher.code}</span>
           </div>
           <button
-            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            className="text-2xl leading-none text-gray-400 hover:text-gray-600"
             onClick={onClose}
           >
             ✕
@@ -350,7 +350,7 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-lg border border-[#fca5a5] bg-[#fee2e2] px-4 py-3 text-[#dc2626]">
                 <span>⚠</span>
                 <span>{error}</span>
               </div>
@@ -360,7 +360,7 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tên hiển thị *</label>
               <input
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent invalid:border-[#dc2626]"
                 required
                 value={form.name}
                 onChange={e => update('name', e.target.value)}
@@ -411,7 +411,7 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
                   </label>
                   <input
                     type="number"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent invalid:border-[#dc2626]"
                     required={form.type !== 'STACK'}
                     value={form.value}
                     onChange={e => update('value', e.target.value)}
@@ -830,28 +830,33 @@ export default function EditVoucherModal({ voucher, onSaved, onClose }: Props) {
                 <span className="text-gray-700">Cho phép cộng dồn</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer text-sm">
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                  checked={form.isActive as boolean}
-                  onChange={e => update('isActive', e.target.checked)}
-                />
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.isActive as boolean}
+                  onClick={() => update('isActive', !form.isActive)}
+                  className={`inline-flex h-5 w-[34px] items-center rounded-full p-[2px] transition-colors ${form.isActive ? 'bg-[#2563eb]' : 'bg-[#cbd5e1]'}`}
+                >
+                  <span
+                    className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${form.isActive ? 'translate-x-[14px]' : 'translate-x-0'}`}
+                  />
+                </button>
                 <span className="text-gray-700">Đang hoạt động</span>
               </label>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 border-t border-[#eceef2] p-6">
             <button
               type="button"
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
+              className="rounded-[10px] border border-gray-300 px-4 py-[9px] text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50"
               onClick={onClose}
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-[10px] bg-[#2563eb] px-4 py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Đang lưu...' : '💾 Lưu thay đổi'}

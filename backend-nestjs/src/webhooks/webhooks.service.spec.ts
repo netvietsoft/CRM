@@ -11,6 +11,7 @@ function makeService() {
   const pancakeService: any = {};
   const messagingAutomationService: any = { handleOrderStateChange: jest.fn() };
   const vouchersService: any = { processSuccessfulOrderVoucherRules: jest.fn() };
+  const ordersService: any = { applyStatusSideEffects: jest.fn() };
   const orderSourcesService: any = { ensureExists: jest.fn() };
   const viettelCustomerService: any = { upsertFromWebhook: jest.fn() };
   const service = new WebhooksService(
@@ -19,6 +20,7 @@ function makeService() {
     pancakeService,
     messagingAutomationService,
     vouchersService,
+    ordersService,
     orderSourcesService,
     viettelCustomerService,
   );

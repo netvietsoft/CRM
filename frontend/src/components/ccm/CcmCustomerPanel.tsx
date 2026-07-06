@@ -78,18 +78,18 @@ function TagPicker({ label, catalog, value, onChange, align = 'right' }: {
   return (
     <div className="relative flex items-center gap-1 flex-wrap justify-end">
       {value.map((t) => (
-        <span key={t} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-blue-50 text-[#3b5bdb]">
-          {t}<button title="Bỏ thẻ" onClick={() => toggle(t)} className="text-blue-300 hover:text-red-500">✕</button>
+        <span key={t} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-[#e9efff] text-[#3c55e6] font-semibold">
+          {t}<button title="Bỏ thẻ" onClick={() => toggle(t)} className="text-[#a5b4fc] hover:text-red-500">✕</button>
         </span>
       ))}
-      <button title={`Thêm ${label.toLowerCase()}`} onClick={() => setOpen((o) => !o)} className="text-xs text-[#3b5bdb] bg-blue-50 px-2 py-0.5 rounded hover:bg-blue-100">＋ {label}</button>
+      <button title={`Thêm ${label.toLowerCase()}`} onClick={() => setOpen((o) => !o)} className="text-xs font-semibold text-[#3c55e6] bg-[#e9efff] px-2 py-0.5 rounded-full hover:bg-[#dbe3ff]">＋ {label}</button>
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className={`absolute z-20 ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-52 max-h-60 overflow-y-auto py-1`}>
+          <div className={`absolute z-20 ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-1 bg-white border border-[#e6e9f2] rounded-[11px] shadow-[0_18px_50px_rgba(15,23,42,.16)] w-52 max-h-60 overflow-y-auto p-1`}>
             {catalog.map((t) => (
-              <button key={t} onClick={() => toggle(t)} className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-gray-50">
-                <span className="w-4 text-[#3b5bdb]">{value.includes(t) ? '✓' : ''}</span>{t}
+              <button key={t} onClick={() => toggle(t)} className="w-full flex items-center gap-2 px-2.5 py-2 text-sm text-left rounded-lg hover:bg-[#f3f4f6]">
+                <span className="w-4 text-[#3c55e6]">{value.includes(t) ? '✓' : ''}</span>{t}
               </button>
             ))}
           </div>
@@ -125,17 +125,17 @@ function OrderCard({ o, contactName, contactPhone, onPush }: {
   }, [carrier?.trackingCode]);
 
   return (
-    <div className="rounded-xl border border-gray-200 overflow-hidden mb-3">
+    <div className="rounded-[12px] border border-[#eceef2] overflow-hidden mb-3">
       {/* Header màu theo trạng thái */}
       <div className={`flex items-center gap-2 px-3 py-2 text-white text-sm ${headerBg(o.status)}`}>
-        <span className="font-semibold">🧾 {o.orderCode}</span>
+        <span className="font-bold font-mono">🧾 {o.orderCode}</span>
         <button onClick={onPush} className="ml-auto px-2 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-[11px]">🚚 Đẩy VTP</button>
       </div>
 
       {/* Luồng trạng thái */}
       <div className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-400 border-b border-gray-100">
         <span>Mới</span><span>›</span>
-        <span className="text-[#3b5bdb] font-medium">{sv.label}</span>
+        <span className="text-[#3c55e6] font-semibold">{sv.label}</span>
         <span>›</span><span>Hủy</span>
       </div>
 
@@ -164,7 +164,7 @@ function OrderCard({ o, contactName, contactPhone, onPush }: {
         <div className="flex items-center justify-between text-sm"><span className="text-gray-500">🕑 Cập nhật</span><span className="text-gray-600">{timeVi(o.updatedAt)}</span></div>
         <div className="flex items-start justify-between text-sm gap-2">
           <span className="text-gray-500 shrink-0">📝 Ghi chú</span>
-          <span className="text-[#3b5bdb] text-right">{o.note || o.customerNote || 'Chưa có'}</span>
+          <span className="text-[#3c55e6] text-right">{o.note || o.customerNote || 'Chưa có'}</span>
         </div>
       </div>
 
@@ -182,7 +182,7 @@ function OrderCard({ o, contactName, contactPhone, onPush }: {
         ) : (
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400 italic">Chưa đẩy vận đơn</span>
-            <button onClick={onPush} className="px-2 py-1 rounded-md border border-[#3b5bdb] text-[#3b5bdb] text-xs hover:bg-blue-50">🚚 Đẩy Viettel Post</button>
+            <button onClick={onPush} className="px-2.5 py-1.5 rounded-[9px] border border-[#fecaca] bg-white text-[#dc2626] text-xs font-bold hover:bg-[#fef2f2]">🚚 Đẩy Viettel Post</button>
           </div>
         )}
       </div>
@@ -310,12 +310,12 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
   };
 
   return (
-    <div className="w-full h-full border-l border-gray-200 bg-white flex flex-col">
+    <div className="w-full h-full border-l border-[#e6e9f2] bg-white flex flex-col">
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 text-sm shrink-0">
+      <div className="flex border-b border-[#e6e9f2] text-sm shrink-0">
         {(['info', 'create'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-3 font-medium ${tab === t ? 'text-[#3b5bdb] border-b-2 border-[#3b5bdb]' : 'text-gray-500 hover:bg-gray-50'}`}>
+            className={`flex-1 py-3 font-bold ${tab === t ? 'text-[#3c55e6] border-b-2 border-[#3c55e6]' : 'text-gray-500 hover:bg-gray-50'}`}>
             {t === 'info' ? 'Thông tin' : 'Tạo đơn'}
           </button>
         ))}
@@ -326,24 +326,24 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
         <div className={`px-3 py-2 text-xs shrink-0 ${flash.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>{flash.text}</div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
         {tab === 'info' ? (
           <>
             {/* --- FRAME 4A: GHI CHÚ --- */}
             <div>
-              <div className="text-xs font-semibold text-gray-400 uppercase mb-1">Khách hàng</div>
-              <div className="text-sm font-medium text-gray-800">{contactName}</div>
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-[.06em] mb-1.5">Khách hàng</div>
+              <div className="text-[15px] font-bold text-gray-900">{contactName}</div>
               {contactPhone && <div className="text-sm text-blue-600">📞 {contactPhone}</div>}
             </div>
 
             {/* --- FRAME 4B: DANH SÁCH ĐƠN THẬT --- */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-semibold text-gray-700">Đơn hàng {loadingOrders ? '…' : `(${orders.length})`}</div>
+                <div className="text-[13.5px] font-bold text-gray-800">Đơn hàng {loadingOrders ? '…' : `(${orders.length})`}</div>
                 <button title="Tải lại danh sách đơn" onClick={() => void loadOrders()} className="text-xs text-gray-400 hover:text-gray-600">⟳</button>
               </div>
               {!loadingOrders && orders.length === 0 && (
-                <div className="text-xs text-gray-400 italic">
+                <div className="text-[12.5px] text-gray-400 italic leading-relaxed">
                   Chưa có đơn nào cho khách này.{!contactPhone && ' (Khách chưa có SĐT — đơn tạo từ hội thoại này vẫn sẽ hiện ở đây.)'}
                 </div>
               )}
@@ -362,22 +362,22 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
           <div className="space-y-4">
             {/* Người nhận */}
             <div className="space-y-2">
-              <div className="text-xs font-semibold text-gray-400 uppercase">Người nhận</div>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên người nhận" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3b5bdb]" />
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Số điện thoại" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3b5bdb]" />
-              <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Địa chỉ nhận hàng" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3b5bdb]" />
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-[.06em]">Người nhận</div>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên người nhận" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6]" />
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Số điện thoại" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6]" />
+              <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Địa chỉ nhận hàng" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6]" />
             </div>
 
             {/* Sản phẩm */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="text-xs font-semibold text-gray-400 uppercase">Sản phẩm (SL: {lines.reduce((s, l) => s + l.qty, 0)})</div>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-[11px] font-bold text-gray-500 uppercase tracking-[.06em]">Sản phẩm (SL: {lines.reduce((s, l) => s + l.qty, 0)})</div>
               </div>
               {/* Bảng dòng SP */}
               {lines.length > 0 && (
-                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 mb-2">
+                <div className="border border-[#eceef2] rounded-[10px] divide-y divide-gray-100 mb-2">
                   {lines.map((l) => (
-                    <div key={l.productId} className="flex items-center gap-2 px-2 py-2">
+                    <div key={l.productId} className="flex items-center gap-2 px-2.5 py-2">
                       <div className="w-8 h-8 rounded bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center text-gray-400 text-xs">
                         {l.imageUrl ? <img src={l.imageUrl} alt="" className="w-full h-full object-cover" /> : '📦'}
                       </div>
@@ -398,21 +398,21 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
               {/* Ô tìm SP */}
               <div className="relative">
                 <input value={q} onChange={(e) => { setQ(e.target.value); setShowHits(true); }} onFocus={() => setShowHits(true)}
-                  placeholder="🔍 Tìm sản phẩm để thêm…" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3b5bdb]" />
+                  placeholder="🔍 Tìm sản phẩm để thêm…" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[12.5px] outline-none focus:border-[#3c55e6]" />
                 {showHits && q.trim() && (
-                  <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                  <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-[#e6e9f2] rounded-[11px] shadow-[0_18px_50px_rgba(15,23,42,.16)] max-h-56 overflow-y-auto">
                     {searching && <div className="px-3 py-2 text-xs text-gray-400">Đang tìm…</div>}
                     {!searching && hits.length === 0 && <div className="px-3 py-2 text-xs text-gray-400">Không có kết quả.</div>}
                     {hits.map((p) => (
-                      <button key={p.id} onClick={() => addProduct(p)} className="w-full flex items-center gap-2 px-2 py-2 hover:bg-gray-50 text-left">
+                      <button key={p.id} onClick={() => addProduct(p)} className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-[#f3f6ff] text-left">
                         <div className="w-8 h-8 rounded bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center text-gray-400 text-xs">
                           {p.imageUrl ? <img src={p.imageUrl} alt="" className="w-full h-full object-cover" /> : '📦'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm text-gray-800 truncate">{p.name}</div>
-                          <div className="text-xs text-gray-400">{fmtVnd(p.salePrice ?? p.originalPrice ?? 0)}{p.sku ? ` · ${p.sku}` : ''}</div>
+                          <div className="text-[12.5px] font-semibold text-gray-800 truncate">{p.name}</div>
+                          <div className="text-xs text-[#059669] font-semibold">{fmtVnd(p.salePrice ?? p.originalPrice ?? 0)}{p.sku ? ` · ${p.sku}` : ''}</div>
                         </div>
-                        <span className="text-[#3b5bdb] text-lg shrink-0">＋</span>
+                        <span className="text-[#3c55e6] text-lg shrink-0">＋</span>
                       </button>
                     ))}
                   </div>
@@ -421,38 +421,38 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
             </div>
 
             {/* Thanh toán */}
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-gray-400 uppercase">Thanh toán</div>
-              <div className="flex items-center gap-4 text-sm">
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={freeShip} onChange={(e) => setFreeShip(e.target.checked)} /> Miễn phí giao hàng</label>
-                <label className="flex items-center gap-1.5"><input type="checkbox" checked={transfer} onChange={(e) => setTransfer(e.target.checked)} /> Chuyển khoản</label>
+            <div className="space-y-2.5">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-[.06em]">Thanh toán</div>
+              <div className="flex items-center gap-3.5 text-[12.5px] font-semibold flex-wrap">
+                <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={freeShip} onChange={(e) => setFreeShip(e.target.checked)} className="w-[15px] h-[15px] accent-[#3c55e6]" /> Miễn phí giao hàng</label>
+                <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={transfer} onChange={(e) => setTransfer(e.target.checked)} className="w-[15px] h-[15px] accent-[#3c55e6]" /> Chuyển khoản</label>
               </div>
-              <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Tổng giá trị đơn hàng</span><b>{fmtVnd(subtotal)}</b></div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Phí vận chuyển</span>
-                <input type="number" min={0} disabled={freeShip} value={freeShip ? 0 : shippingFee} onChange={(e) => setShippingFee(Number(e.target.value))} className="w-28 border border-gray-200 rounded px-2 py-1 text-right text-sm disabled:bg-gray-100" />
+              <div className="flex items-center justify-between text-[13px]"><span className="text-[#4b5563]">Tổng giá trị đơn hàng</span><b>{fmtVnd(subtotal)}</b></div>
+              <div className="flex items-center justify-between text-[13px] gap-2.5">
+                <span className="text-[#4b5563] shrink-0">Phí vận chuyển</span>
+                <input type="number" min={0} disabled={freeShip} value={freeShip ? 0 : shippingFee} onChange={(e) => setShippingFee(Number(e.target.value))} className="w-[110px] border border-[#e5e7eb] rounded-[8px] px-2.5 py-1.5 text-right text-[12.5px] outline-none focus:border-[#3c55e6] disabled:bg-gray-100" />
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Giảm giá</span>
-                <input type="number" min={0} value={discount} onChange={(e) => setDiscount(Number(e.target.value))} className="w-28 border border-gray-200 rounded px-2 py-1 text-right text-sm" />
+              <div className="flex items-center justify-between text-[13px] gap-2.5">
+                <span className="text-[#4b5563] shrink-0">Giảm giá</span>
+                <input type="number" min={0} value={discount} onChange={(e) => setDiscount(Number(e.target.value))} className="w-[110px] border border-[#e5e7eb] rounded-[8px] px-2.5 py-1.5 text-right text-[12.5px] outline-none focus:border-[#3c55e6]" />
               </div>
-              <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú nội bộ…" rows={2} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3b5bdb]" />
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú nội bộ…" rows={2} className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[12.5px] outline-none focus:border-[#3c55e6] resize-y" />
             </div>
 
             {/* Thẻ đơn hàng */}
-            <div className="space-y-1">
-              <div className="text-xs font-semibold text-gray-400 uppercase">Thẻ đơn hàng</div>
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-gray-500 uppercase tracking-[.06em]">Thẻ đơn hàng</div>
               <TagPicker label="Thẻ" catalog={ORDER_TAGS} value={orderTags} onChange={setOrderTags} align="left" />
             </div>
 
             {/* Footer tổng + nút */}
             <div className="flex items-center justify-between pt-1">
-              <span className="text-sm text-gray-600">Tổng cần thu</span>
-              <span className="text-lg font-bold text-red-600">{fmtVnd(total)}</span>
+              <span className="text-[13.5px] font-bold text-[#4b5563]">Tổng cần thu</span>
+              <span className="text-[19px] font-extrabold text-[#3c55e6]">{fmtVnd(total)}</span>
             </div>
             <div className="flex gap-2">
-              <button onClick={reset} type="button" className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Thiết lập lại</button>
-              <button onClick={() => void submit()} disabled={submitting} className="flex-1 py-2 rounded-lg bg-[#3b5bdb] text-white text-sm font-medium disabled:opacity-60">{submitting ? 'Đang tạo…' : 'Tạo đơn'}</button>
+              <button onClick={reset} type="button" className="flex-1 py-2.5 rounded-[11px] border border-[#e5e7eb] text-[13px] font-bold text-gray-700 hover:bg-gray-50">Thiết lập lại</button>
+              <button onClick={() => void submit()} disabled={submitting} className="flex-1 py-2.5 rounded-[11px] bg-[#4f68ee] text-white text-[13px] font-bold hover:bg-[#3c55e6] disabled:opacity-60">{submitting ? 'Đang tạo…' : 'Tạo đơn'}</button>
             </div>
           </div>
         )}

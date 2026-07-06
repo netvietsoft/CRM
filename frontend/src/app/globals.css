@@ -4,6 +4,26 @@
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+
+  /* ===== CCM design tokens (handoff CCM Messenger) ===== */
+  --color-ccm-brand: #3c55e6;      /* header/rail */
+  --color-ccm-primary: #4f68ee;    /* nút chính */
+  --color-ccm-primary-hover: #3c55e6;
+  --color-ccm-app: #eef1f8;        /* nền app */
+  --color-ccm-chat: #f6f8fd;       /* nền vùng chat */
+  --color-ccm-active: #e9efff;     /* hội thoại/tab active */
+  --color-ccm-border: #e6e9f2;     /* viền panel/card */
+  --color-ccm-avatar-bg: #ead9fb;  /* nền avatar */
+  --color-ccm-avatar-fg: #7c3aed;  /* chữ avatar */
+
+  /* ===== CRM admin redesign tokens (handoff_crm_redesign) ===== */
+  --color-crm-primary: #2563eb;        /* nút/nhấn chính */
+  --color-crm-primary-hover: #1d4ed8;
+  --color-crm-app: #f7f8fb;            /* nền app */
+  --color-crm-border: #eceef2;         /* viền card */
+  --color-crm-th: #f9fafb;             /* nền header bảng */
+  --color-crm-zebra: #f7f9fc;          /* hàng chẵn */
+  --color-crm-row-hover: #eff6ff;      /* hover hàng */
 }
 
 body {

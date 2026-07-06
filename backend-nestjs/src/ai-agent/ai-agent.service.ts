@@ -16,6 +16,9 @@ export const DEFAULT_PERSONA = `Bạn là nhân viên tư vấn bán hàng của
 @Injectable()
 export class AiAgentService {
   private readonly logger = new Logger(AiAgentService.name);
+  // Khoá per-conversation: chặn nhiều vòng orchestrate chạy song song cho cùng hội thoại
+  // (tin đến dồn dập → tránh gửi nhiều reply trùng / tạo suggestion trùng).
+  private readonly inFlight = new Set<string>();
   constructor(
     private readonly anthropic: AnthropicClient,
     private readonly tools: AiToolsService,
@@ -25,6 +28,8 @@ export class AiAgentService {
 
   // Điểm vào khi có tin ĐẾN. Guard đầy đủ rồi mới gọi Claude.
   async onIncoming(conversationId: string): Promise<void> {
+    if (this.inFlight.has(conversationId)) return; // đã có vòng đang chạy cho hội thoại này
+    this.inFlight.add(conversationId);
     try {
       if (!this.anthropic.isEnabled()) return;
       const conv = await this.prisma.msgConversation.findUnique({ where: { id: conversationId }, include: { page: true, contact: true } });
@@ -39,6 +44,8 @@ export class AiAgentService {
       await this.orchestrate(conv, config);
     } catch (e) {
       this.logger.warn(`[AI] onIncoming ${conversationId} lỗi: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      this.inFlight.delete(conversationId);
     }
   }
 

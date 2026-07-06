@@ -62,14 +62,14 @@ export default function StoreApprovalButton({ storeId, storeName }: Props) {
       <button
         onClick={handleApprove}
         disabled={loading}
-        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors text-sm"
+        className="flex-1 px-3 py-2 bg-[#eff6ff] text-[#1d4ed8] border border-[#bfdbfe] rounded-lg font-semibold hover:bg-[#dbeafe] disabled:opacity-50 transition-colors text-[12.5px]"
       >
-        ✓ Phê duyệt
+        ✓ Duyệt
       </button>
       <button
         onClick={handleReject}
         disabled={loading}
-        className="flex-1 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-medium hover:bg-red-100 disabled:opacity-50 transition-colors text-sm"
+        className="flex-1 px-3 py-2 bg-[#fee2e2] text-[#dc2626] border border-[#fca5a5] rounded-lg font-semibold hover:bg-[#fecaca] disabled:opacity-50 transition-colors text-[12.5px]"
       >
         ✕ Từ chối
       </button>

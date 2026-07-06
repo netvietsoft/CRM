@@ -83,11 +83,11 @@ export default async function CustomersPage(props: {
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">Khách hàng</h1>
-          <p className="text-gray-600 text-sm">
-            {pagination.total} khách hàng trong hệ thống
+          <h1 className="m-0 text-[24px] font-extrabold tracking-[-0.4px] text-[#111827]">Khách hàng</h1>
+          <p className="mt-1 mb-0 text-[13px] text-[#6b7280]">
+            {pagination.total} khách hàng · quản lý hạng, chi tiêu và giới thiệu
           </p>
         </div>
         <CustomerActions />
@@ -148,8 +148,8 @@ export default async function CustomersPage(props: {
                   href={buildHref(page as number)}
                   className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
                     currentPage === page
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-[#2563eb] text-white'
+                      : 'text-[#374151] hover:bg-[#f3f4f6]'
                   }`}
                 >
                   {page}

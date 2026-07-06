@@ -36,7 +36,14 @@ function presetRange(p: string): { from: string; to: string } {
   return { from: ymd(f), to };
 }
 
-const profitClass = (v: number) => (v < 0 ? 'text-red-600' : 'text-green-600');
+const PRESETS: { value: string; label: string }[] = [
+  { value: 'today', label: 'Hôm nay' },
+  { value: '7d', label: '7 ngày' },
+  { value: 'month', label: 'Tháng này' },
+  { value: 'custom', label: 'Tùy chọn' },
+];
+
+const profitColor = (v: number) => (v < 0 ? '#dc2626' : '#047857');
 
 export default function AnalyticsClient() {
   const [preset, setPreset] = useState('month');
@@ -79,119 +86,173 @@ export default function AnalyticsClient() {
 
   const toggle = (id: string) => setExpanded((e) => ({ ...e, [id]: !e[id] }));
 
+  const kpis = data
+    ? [
+        { label: 'Doanh thu COD', value: formatVnd(data.totals.revenueCod), color: '#111827' },
+        { label: 'Quảng cáo Meta', value: formatVnd(data.totals.adSpend), color: '#111827' },
+        { label: 'Giá vốn (Cost SP)', value: formatVnd(data.totals.costProduct), color: '#111827' },
+        { label: 'Vận hành', value: formatVnd(data.totals.operations), color: '#111827' },
+        { label: 'Tổng lãi', value: formatVnd(data.totals.profit), color: profitColor(data.totals.profit) },
+      ]
+    : [];
+
   return (
     <div className="py-2">
-      <h1 className="mb-1 text-2xl font-bold text-gray-800">Lãi/Lỗ sản phẩm</h1>
-      <p className="mb-4 text-sm text-gray-500">Doanh thu đơn COD đã thu − giá vốn (Giá sản xuất) − tiền quảng cáo Meta (theo map) − vận hành.</p>
-
-      {/* Bộ lọc */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Select
-          className="w-40" size="sm" value={preset} onChange={applyPreset}
-          options={[
-            { value: 'today', label: 'Hôm nay' },
-            { value: '7d', label: '7 ngày' },
-            { value: 'month', label: 'Tháng này' },
-            { value: 'custom', label: 'Tùy chọn' },
-          ]}
-        />
-        {preset === 'custom' && (
-          <>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" />
-            <span className="text-gray-400">→</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm" />
-          </>
-        )}
-        <Select
-          className="w-48" size="sm" value={source} onChange={setSource}
-          placeholder="Tất cả nguồn"
-          options={[{ value: '', label: 'Tất cả nguồn' }, ...sources.map((s) => ({ value: s.code, label: s.name }))]}
-        />
+      <div className="mb-4">
+        <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px] text-[#111827]">Lãi/Lỗ sản phẩm</h1>
+        <p className="mt-1 text-[13px] text-[#6b7280]">Doanh thu COD đã thu − giá vốn − quảng cáo Meta − vận hành</p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 bg-gray-50/60 text-xs uppercase tracking-wider text-gray-600">
-              <th className="px-4 py-3">Sản phẩm</th>
-              <th className="px-4 py-3 text-right">Quảng cáo</th>
-              <th className="px-4 py-3 text-right">Doanh thu COD</th>
-              <th className="px-4 py-3 text-right">Cost SP</th>
-              <th className="px-4 py-3 text-right">Vận hành</th>
-              <th className="px-4 py-3 text-right">Tổng lãi</th>
-              <th className="px-4 py-3 text-right">Biên %</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">Đang tính…</td></tr>
-            ) : !data || data.rows.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">Chưa có dữ liệu trong khoảng này.</td></tr>
-            ) : (
-              data.rows.map((r, idx) => {
-                const id = r.productId || `row-${idx}`;
-                const open = !!expanded[id];
-                return (
-                  <Fragment key={id}>
-                    <tr
-                      onClick={() => toggle(id)}
-                      className={`cursor-pointer ${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-blue-50/40`}
-                    >
-                      <td className="px-4 py-3">
-                        <span className="mr-1 text-gray-400">{open ? '▾' : '▸'}</span>
-                        <span className="font-medium text-gray-800">{r.productName}</span>
-                        {r.missingProductionPrice && (
-                          <span className="ml-2 text-amber-600" title="Sản phẩm chưa nhập Giá sản xuất → cost = 0, lãi bị ảo cao">⚠</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-right">{formatVnd(r.adSpend)}</td>
-                      <td className="px-4 py-3 text-right">{formatVnd(r.revenueCod)}</td>
-                      <td className="px-4 py-3 text-right">{formatVnd(r.costProduct)}</td>
-                      <td className="px-4 py-3 text-right">{formatVnd(r.operations)}</td>
-                      <td className={`px-4 py-3 text-right font-bold ${profitClass(r.profit)}`}>{formatVnd(r.profit)}</td>
-                      <td className={`px-4 py-3 text-right ${profitClass(r.profit)}`}>{r.margin === null ? '—' : `${Math.round(r.margin * 100)}%`}</td>
-                    </tr>
-                    {open && r.daily.map((d) => (
-                      <tr key={`${id}-${d.date}`} className="bg-blue-50/20 text-xs text-gray-600">
-                        <td className="px-4 py-2 pl-10">{d.date}</td>
-                        <td className="px-4 py-2 text-right">{formatVnd(d.adSpend)}</td>
-                        <td className="px-4 py-2 text-right">{formatVnd(d.revenueCod)}</td>
-                        <td className="px-4 py-2 text-right">{formatVnd(d.costProduct)}</td>
-                        <td className="px-4 py-2 text-right">{formatVnd(d.operations)}</td>
-                        <td className={`px-4 py-2 text-right ${profitClass(d.profit)}`}>{formatVnd(d.profit)}</td>
-                        <td className="px-4 py-2"></td>
+      {/* Bộ lọc: chips kỳ + nguồn */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {PRESETS.map((p) => {
+          const active = preset === p.value;
+          return (
+            <button
+              key={p.value}
+              onClick={() => applyPreset(p.value)}
+              className={`rounded-[10px] px-4 py-2 text-[13px] font-semibold transition-colors ${
+                active
+                  ? 'bg-[#2563eb] text-white'
+                  : 'border border-[#e5e7eb] bg-white text-[#374151] hover:bg-[#f9fafb]'
+              }`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+        {preset === 'custom' && (
+          <>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px]" />
+            <span className="text-[#9ca3af]">→</span>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px]" />
+          </>
+        )}
+        <div className="ml-auto">
+          <Select
+            className="w-48" size="sm" value={source} onChange={setSource}
+            placeholder="Tất cả nguồn"
+            triggerClassName="rounded-[10px] border-[#e5e7eb] text-[13px]"
+            options={[{ value: '', label: 'Tất cả nguồn' }, ...sources.map((s) => ({ value: s.code, label: s.name }))]}
+          />
+        </div>
+      </div>
+
+      {/* 5 KPI cards */}
+      <div className="mb-4 grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-5">
+        {kpis.length > 0
+          ? kpis.map((s) => (
+              <div key={s.label} className="rounded-[14px] border border-[#eceef2] bg-white px-4 py-[15px]">
+                <div className="mb-[5px] text-[12px] text-[#6b7280]">{s.label}</div>
+                <div className="font-mono text-[17px] font-extrabold tracking-[-0.3px]" style={{ color: s.color }}>{s.value}</div>
+              </div>
+            ))
+          : [0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-[14px] border border-[#eceef2] bg-white px-4 py-[15px]">
+                <div className="mb-[5px] h-3 w-20 rounded bg-[#f3f4f6]" />
+                <div className="h-5 w-24 rounded bg-[#f3f4f6]" />
+              </div>
+            ))}
+      </div>
+
+      <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] border-collapse text-[13px]">
+            <thead>
+              <tr className="bg-[#f9fafb]">
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Sản phẩm</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Quảng cáo</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Doanh thu COD</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Cost SP</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Vận hành</th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Tổng lãi</th>
+                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Biên %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-[#6b7280]">Đang tính…</td></tr>
+              ) : !data || data.rows.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-[#6b7280]">Chưa có dữ liệu trong khoảng này.</td></tr>
+              ) : (
+                data.rows.map((r, idx) => {
+                  const id = r.productId || `row-${idx}`;
+                  const open = !!expanded[id];
+                  return (
+                    <Fragment key={id}>
+                      <tr
+                        onClick={() => toggle(id)}
+                        className={`cursor-pointer border-t border-[#f3f4f6] hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'}`}
+                      >
+                        <td className="px-4 py-3 font-semibold text-[#111827]">
+                          <span className="mr-1.5 text-[#9ca3af]">{open ? '▾' : '▸'}</span>
+                          {r.productName}
+                          {r.missingProductionPrice && (
+                            <span
+                              className="ml-2 rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-bold text-[#92400e]"
+                              title="Sản phẩm chưa nhập Giá sản xuất → cost = 0, lãi bị ảo cao"
+                            >
+                              Chưa có giá vốn
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono">{formatVnd(r.adSpend)}</td>
+                        <td className="px-3 py-3 text-right font-mono">{formatVnd(r.revenueCod)}</td>
+                        <td className="px-3 py-3 text-right font-mono">{formatVnd(r.costProduct)}</td>
+                        <td className="px-3 py-3 text-right font-mono">{formatVnd(r.operations)}</td>
+                        <td className="px-3 py-3 text-right font-mono font-extrabold" style={{ color: profitColor(r.profit) }}>{formatVnd(r.profit)}</td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold" style={{ color: profitColor(r.profit) }}>{r.margin === null ? '—' : `${Math.round(r.margin * 100)}%`}</td>
                       </tr>
-                    ))}
-                  </Fragment>
-                );
-              })
-            )}
-          </tbody>
-          {data && data.rows.length > 0 && (
-            <tfoot>
-              {(data.unmatched.revenueCod > 0 || data.unmatched.costProduct > 0) && (
-                <tr className="bg-amber-50 text-amber-800">
-                  <td className="px-4 py-3 font-medium">Chưa khớp sản phẩm</td>
-                  <td className="px-4 py-3 text-right">—</td>
-                  <td className="px-4 py-3 text-right">{formatVnd(data.unmatched.revenueCod)}</td>
-                  <td className="px-4 py-3 text-right">{formatVnd(data.unmatched.costProduct)}</td>
-                  <td className="px-4 py-3 text-right">—</td>
-                  <td className="px-4 py-3 text-right">—</td>
+                      {open && (
+                        <tr>
+                          <td colSpan={7} className="bg-[#f5f8ff] p-0">
+                            <table className="w-full border-collapse text-[12px] text-[#4b5563]">
+                              <tbody>
+                                {r.daily.map((d) => (
+                                  <tr key={`${id}-${d.date}`} className="border-t border-[#e8edfb]">
+                                    <td className="w-[22%] py-[7px] pl-10 pr-4 font-mono">{d.date}</td>
+                                    <td className="px-3 py-[7px] text-right font-mono">{formatVnd(d.adSpend)}</td>
+                                    <td className="px-3 py-[7px] text-right font-mono">{formatVnd(d.revenueCod)}</td>
+                                    <td className="px-3 py-[7px] text-right font-mono">{formatVnd(d.costProduct)}</td>
+                                    <td className="px-3 py-[7px] text-right font-mono">{formatVnd(d.operations)}</td>
+                                    <td className="px-3 py-[7px] text-right font-mono font-bold" style={{ color: profitColor(d.profit) }}>{formatVnd(d.profit)}</td>
+                                    <td className="w-[9%] px-4 py-[7px]"></td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })
+              )}
+              {data && data.rows.length > 0 && (data.unmatched.revenueCod > 0 || data.unmatched.costProduct > 0) && (
+                <tr className="border-t border-[#f3f4f6] bg-[#fffbeb] text-[#92400e]">
+                  <td className="px-4 py-3 font-semibold">Chưa khớp sản phẩm</td>
+                  <td className="px-3 py-3 text-right font-mono">—</td>
+                  <td className="px-3 py-3 text-right font-mono">{formatVnd(data.unmatched.revenueCod)}</td>
+                  <td className="px-3 py-3 text-right font-mono">{formatVnd(data.unmatched.costProduct)}</td>
+                  <td className="px-3 py-3 text-right font-mono">—</td>
+                  <td className="px-3 py-3 text-right font-mono">—</td>
                   <td className="px-4 py-3"></td>
                 </tr>
               )}
-              <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold text-gray-800">
-                <td className="px-4 py-3">Tổng cộng</td>
-                <td className="px-4 py-3 text-right">{formatVnd(data.totals.adSpend)}</td>
-                <td className="px-4 py-3 text-right">{formatVnd(data.totals.revenueCod)}</td>
-                <td className="px-4 py-3 text-right">{formatVnd(data.totals.costProduct)}</td>
-                <td className="px-4 py-3 text-right">{formatVnd(data.totals.operations)}</td>
-                <td className={`px-4 py-3 text-right ${profitClass(data.totals.profit)}`}>{formatVnd(data.totals.profit)}</td>
-                <td className="px-4 py-3"></td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
+              {data && data.rows.length > 0 && (
+                <tr className="border-t-2 border-[#e5e7eb] bg-[#f9fafb] font-extrabold text-[#111827]">
+                  <td className="px-4 py-3">Tổng cộng</td>
+                  <td className="px-3 py-3 text-right font-mono">{formatVnd(data.totals.adSpend)}</td>
+                  <td className="px-3 py-3 text-right font-mono">{formatVnd(data.totals.revenueCod)}</td>
+                  <td className="px-3 py-3 text-right font-mono">{formatVnd(data.totals.costProduct)}</td>
+                  <td className="px-3 py-3 text-right font-mono">{formatVnd(data.totals.operations)}</td>
+                  <td className="px-3 py-3 text-right font-mono" style={{ color: '#059669' }}>{formatVnd(data.totals.profit)}</td>
+                  <td className="px-4 py-3"></td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

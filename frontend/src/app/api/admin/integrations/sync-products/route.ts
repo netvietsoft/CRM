@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { apiClient } from '@/lib/apiClient';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,21 +13,12 @@ export async function POST(req: NextRequest) {
     const { storeId } = body;
 
     console.log('[API] Starting Pancake product sync via backend...');
-    
-    // Call backend NestJS API
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-    const response = await fetch(`${backendUrl}/integrations/pancake/sync-products`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId }),
-    });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Backend sync failed');
-    }
-
-    const result = await response.json();
+    // Call backend NestJS API (apiClient forwards the admin's access token)
+    const result = await apiClient.post<{ synced: number; errors: number; total?: number }>(
+      '/integrations/pancake/sync-products',
+      { storeId },
+    );
 
     return NextResponse.json({
       success: true,

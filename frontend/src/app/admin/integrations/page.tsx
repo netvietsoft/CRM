@@ -178,7 +178,7 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
       <FacebookConnectCard />
 
       {/* Connected Platforms */}
@@ -187,7 +187,7 @@ export default function IntegrationsPage() {
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             Cấu hình
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {connectedPlatforms.map(renderPlatformCard)}
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function IntegrationsPage() {
           <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
             Cài đặt cấu hình
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-90">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 opacity-90">
             {availablePlatforms.map(renderPlatformCard)}
           </div>
         </div>
