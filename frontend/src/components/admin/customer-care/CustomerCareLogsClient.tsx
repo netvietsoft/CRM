@@ -37,21 +37,21 @@ function getLogStatusLabel(status: string) {
 
 function getLogStatusClassName(status: string) {
   if (status === 'QUEUED') {
-    return 'bg-amber-50 text-amber-700 ring-amber-200';
+    return 'bg-[#fef3c7] text-[#92400e]';
   }
   if (status === 'SENT') {
-    return 'bg-blue-50 text-blue-700 ring-blue-200';
+    return 'bg-[#dbeafe] text-[#1d4ed8]';
   }
   if (status === 'DELIVERED' || status === 'READ') {
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    return 'bg-[#d1fae5] text-[#047857]';
   }
   if (status === 'FAILED') {
-    return 'bg-rose-50 text-rose-700 ring-rose-200';
+    return 'bg-[#fee2e2] text-[#dc2626]';
   }
   if (status === 'SKIPPED') {
-    return 'bg-gray-100 text-gray-700 ring-gray-200';
+    return 'bg-[#f1f5f9] text-[#64748b]';
   }
-  return 'bg-gray-100 text-gray-700 ring-gray-200';
+  return 'bg-[#f1f5f9] text-[#64748b]';
 }
 
 function getLogIssueSummary(log: MessageLogRecord) {
@@ -217,15 +217,15 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900">Tin đã gửi</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <h1 className="text-lg font-extrabold text-gray-900">Tin đã gửi</h1>
+        <p className="mt-1 text-[12.5px] text-[#9ca3af]">
           Theo dõi log gửi SMS thực tế, kiểm tra lỗi, retry thủ công và xuất Excel chuẩn.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <input
             value={search}
@@ -234,7 +234,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
               setPage(1);
             }}
             placeholder="Tên khách, số điện thoại, nội dung"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm xl:col-span-2"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] xl:col-span-2"
           />
           <select
             value={status}
@@ -242,7 +242,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
               setStatus(event.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
           >
             <option value="">Tất cả trạng thái</option>
             {logStatusOptions.map((option) => (
@@ -258,7 +258,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
               setDateFrom(event.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[12.5px] outline-none focus:border-[#2563eb]"
           />
           <input
             type="date"
@@ -267,9 +267,9 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
               setDateTo(event.target.value);
               setPage(1);
             }}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[12.5px] outline-none focus:border-[#2563eb]"
           />
-          <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
+          <div className="flex items-center justify-center rounded-[10px] bg-[#eff6ff] px-3.5 py-2 text-[12.5px] font-bold text-[#2563eb]">
             {pagination.total} log
           </div>
         </div>
@@ -279,67 +279,67 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
             type="button"
             onClick={handleExport}
             disabled={exporting}
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
+            className="inline-flex items-center justify-center rounded-[9px] bg-[#111827] px-4 py-2.5 text-[12.5px] font-bold text-white hover:bg-[#374151] disabled:opacity-60"
           >
             {exporting ? 'Đang xuất...' : 'Xuất Excel (XLSX)'}
           </button>
         </div>
 
         <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full">
             <thead>
-              <tr className="text-left text-sm text-gray-500">
-                <th className="px-4 py-3">Người nhận</th>
-                <th className="px-4 py-3">Nguồn gửi</th>
-                <th className="px-4 py-3">Trạng thái</th>
-                <th className="px-4 py-3">Thời gian</th>
-                <th className="px-4 py-3">Lỗi</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
+              <tr className="border-b border-[#f1f5f9] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                <th className="px-4 py-2.5">Người nhận</th>
+                <th className="px-4 py-2.5">Nguồn gửi</th>
+                <th className="px-4 py-2.5">Trạng thái</th>
+                <th className="px-4 py-2.5">Thời gian</th>
+                <th className="px-4 py-2.5">Lỗi</th>
+                <th className="px-4 py-2.5 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                     Đang tải log...
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                     Chưa có log nào phù hợp với bộ lọc hiện tại.
                   </td>
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id} className="align-top">
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-gray-900">
+                  <tr key={log.id} className="border-b border-[#f1f5f9] align-top text-[13px] hover:bg-[#eff6ff]">
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-gray-900">
                         {log.recipientName || 'Không có tên'}
                       </div>
-                      <div className="mt-1 text-gray-500">{log.recipientValue}</div>
+                      <div className="mt-1 font-mono text-[#6b7280]">{log.recipientValue}</div>
                       {log.user?.id ? (
                         <Link
                           href={`/admin/customers/${log.user.id}`}
-                          className="mt-2 inline-block text-sm font-semibold text-blue-600 hover:text-blue-700"
+                          className="mt-2 inline-block text-[12px] font-bold text-[#2563eb] hover:text-[#1d4ed8]"
                         >
                           Xem khách hàng
                         </Link>
                       ) : null}
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-gray-900">
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-gray-900">
                         {log.campaign?.name || log.automationRule?.name || 'Gửi thủ công'}
                       </div>
-                      <div className="mt-1 max-w-sm line-clamp-2 text-gray-500">{log.content}</div>
-                      <div className="mt-1 text-xs font-semibold text-gray-500">
+                      <div className="mt-1 max-w-sm line-clamp-2 text-[#6b7280]">{log.content}</div>
+                      <div className="mt-1 text-[11px] font-bold text-[#9ca3af]">
                         {getMessagePurposeLabel(log.purpose)}
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                      <div className="mt-2 flex flex-wrap gap-3 text-[12px]">
                         {log.campaign?.id ? (
                           <Link
                             href={`/admin/customer-care/campaigns/${log.campaign.id}`}
-                            className="font-semibold text-blue-600 hover:text-blue-700"
+                            className="font-bold text-[#2563eb] hover:text-[#1d4ed8]"
                           >
                             Campaign
                           </Link>
@@ -347,7 +347,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
                         {log.automationRule?.id ? (
                           <Link
                             href={`/admin/customer-care/automations/${log.automationRule.id}`}
-                            className="font-semibold text-blue-600 hover:text-blue-700"
+                            className="font-bold text-[#2563eb] hover:text-[#1d4ed8]"
                           >
                             Tin tự động
                           </Link>
@@ -355,44 +355,44 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
                         {log.order?.id ? (
                           <Link
                             href={`/admin/orders/${log.order.id}`}
-                            className="font-semibold text-blue-600 hover:text-blue-700"
+                            className="font-bold text-[#2563eb] hover:text-[#1d4ed8]"
                           >
                             Đơn {log.order.orderCode}
                           </Link>
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getLogStatusClassName(log.status)}`}
+                        className={`inline-flex rounded-full px-2.5 py-[3px] text-[11px] font-bold ${getLogStatusClassName(log.status)}`}
                       >
                         {getLogStatusLabel(log.status)}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="text-gray-700">Tạo: {formatDateTime(log.createdAt)}</div>
-                      <div className="mt-1 text-gray-500">Gửi: {formatDateTime(log.sentAt)}</div>
+                    <td className="px-4 py-3.5">
+                      <div className="text-[#374151]">Tạo: {formatDateTime(log.createdAt)}</div>
+                      <div className="mt-1 text-[#6b7280]">Gửi: {formatDateTime(log.sentAt)}</div>
                     </td>
-                    <td className="px-4 py-4 text-gray-500">
+                    <td className="px-4 py-3.5 text-[#6b7280]">
                       <div className="max-w-xs">
                         {getLogIssueSummary(log)}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       <div className="flex justify-end gap-2">
                         {log.status === 'FAILED' ? (
                           <button
                             type="button"
                             onClick={() => handleRetry(log.id)}
                             disabled={retryingLogId === log.id}
-                            className="rounded-lg bg-amber-100 px-3 py-1.5 font-semibold text-amber-800 hover:bg-amber-200 disabled:opacity-60"
+                            className="rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-1.5 text-[12px] font-bold text-[#b45309] hover:bg-[#fef3c7] disabled:opacity-60"
                           >
                             {retryingLogId === log.id ? 'Đang retry...' : 'Retry'}
                           </button>
                         ) : null}
                         <Link
                           href={`/admin/customer-care/logs/${log.id}`}
-                          className="rounded-lg bg-gray-100 px-3 py-1.5 font-semibold text-gray-700 hover:bg-gray-200"
+                          className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
                         >
                           Xem chi tiết
                         </Link>
@@ -406,7 +406,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
         </div>
 
         <div className="mt-6 flex items-center justify-between">
-          <div className="text-sm text-gray-500">
+          <div className="text-[12.5px] text-[#9ca3af]">
             Trang {pagination.page}/{Math.max(pagination.totalPages, 1)} • {pagination.total} bản ghi
           </div>
           <div className="flex gap-2">
@@ -414,7 +414,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Trang trước
             </button>
@@ -422,7 +422,7 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
               type="button"
               disabled={page >= Math.max(pagination.totalPages, 1)}
               onClick={() => setPage((prev) => prev + 1)}
-              className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb] disabled:cursor-not-allowed disabled:opacity-50"
             >
               Trang sau
             </button>

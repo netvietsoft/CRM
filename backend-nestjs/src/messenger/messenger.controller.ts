@@ -130,6 +130,14 @@ export class MessengerController {
     return this.service.setContactDob(storeId, id, body?.dob ?? null);
   }
 
+  @Post('conversations/:id/contact-gender')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Đặt giới tính khách (MALE|FEMALE|OTHER|null) — đồng bộ User.gender nếu khớp SĐT' })
+  contactGender(@GetEffectiveStoreId() storeId: string | null, @Param('id') id: string, @Body() body: { gender?: string | null }) {
+    return this.service.setContactGender(storeId, id, body?.gender ?? null);
+  }
+
   @Post('conversations/:id/labels')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_VIEW)

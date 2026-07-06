@@ -53,61 +53,49 @@ export default function OrderStatusFilter({ counts = {} }: { counts?: Record<str
     return `/admin/orders?${params.toString()}`;
   };
 
+  const chipClass = (active: boolean) =>
+    `flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap border transition-all ${
+      active
+        ? 'bg-[#2563eb] text-white border-transparent shadow-sm shadow-blue-100'
+        : 'bg-white text-[#4b5563] border-[#eceef2] hover:bg-[#f9fafb]'
+    }`;
+
   return (
-    <div className="bg-white rounded-xl shadow-sm mb-6 flex items-center p-2 gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      <Link
-        href={buildUrl(null)}
-        className={`px-3 py-2 rounded-lg text-[13px] font-bold whitespace-nowrap transition-all ${
-          !currentStatus 
-            ? 'bg-blue-600 text-white shadow-md shadow-blue-100' 
-            : 'text-gray-500 hover:bg-gray-100'
-        }`}
-      >
-        Tất cả ({totalOrders})
+    <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <Link href={buildUrl(null)} className={chipClass(!currentStatus)}>
+        Tất cả <span className="font-bold opacity-65">{totalOrders}</span>
       </Link>
       {Object.entries(mainStatuses).map(([val, label]) => (
-        <Link
-          key={val}
-          href={buildUrl(val)}
-          className={`px-3 py-2 rounded-lg text-[13px] font-bold whitespace-nowrap transition-all ${
-            currentStatus === val
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-              : 'text-gray-500 hover:bg-gray-100'
-          }`}
-        >
-          {label} ({counts[val] || 0})
+        <Link key={val} href={buildUrl(val)} className={chipClass(currentStatus === val)}>
+          {label} <span className="font-bold opacity-65">{counts[val] || 0}</span>
         </Link>
       ))}
-      
-      <div className="relative ml-auto" ref={dropdownRef}>
-        <button 
+
+      <div className="relative ml-auto shrink-0" ref={dropdownRef}>
+        <button
           onClick={() => setIsOpen(!isOpen)}
-          className={`px-3 py-2 rounded-lg text-[13px] font-bold whitespace-nowrap transition-all flex items-center gap-2 ${
-            Object.keys(extraStatuses).includes(currentStatus || '')
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
-              : 'text-gray-500 hover:bg-gray-100'
-          }`}
+          className={`${chipClass(Object.keys(extraStatuses).includes(currentStatus || ''))} cursor-pointer`}
         >
-          {Object.keys(extraStatuses).includes(currentStatus || '') 
-            ? `${extraStatuses[currentStatus as keyof typeof extraStatuses]} (${counts[currentStatus!] || 0})` 
+          {Object.keys(extraStatuses).includes(currentStatus || '')
+            ? <>{extraStatuses[currentStatus as keyof typeof extraStatuses]} <span className="font-bold opacity-65">{counts[currentStatus!] || 0}</span></>
             : 'Khác'}
           <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute right-0 mt-2 w-48 bg-white border border-[#eceef2] rounded-xl p-1.5 z-50 shadow-[0_16px_40px_rgba(15,23,42,0.16)] animate-in fade-in slide-in-from-top-2 duration-200">
             {Object.entries(extraStatuses).map(([val, label]) => (
               <Link
                 key={val}
                 href={buildUrl(val)}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center justify-between px-4 py-2 text-sm transition-colors ${
+                className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
                   currentStatus === val
-                    ? 'bg-blue-50 text-blue-700 font-bold'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    ? 'bg-[#eff6ff] text-[#2563eb] font-bold'
+                    : 'text-[#374151] hover:bg-[#f3f4f6]'
                 }`}
               >
                 <span>{label}</span>
-                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="text-[10px] bg-[#f3f4f6] text-[#6b7280] px-1.5 py-0.5 rounded-full font-bold">
                   {counts[val] || 0}
                 </span>
               </Link>

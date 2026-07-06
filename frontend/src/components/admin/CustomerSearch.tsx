@@ -22,12 +22,12 @@ const RANKS = [
 export default function CustomerSearch() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [rank, setRank] = useState(searchParams.get('rank') || '');
   const [province, setProvince] = useState(searchParams.get('province') || '');
   const [provinces, setProvinces] = useState<ProvinceOption[]>([]);
-  
+
   const debouncedSearch = useDebounce(search, 500);
   const initialRender = useRef(true);
 
@@ -45,21 +45,21 @@ export default function CustomerSearch() {
 
     loadProvinces();
   }, []);
-  
+
   useEffect(() => {
     if (initialRender.current) {
       initialRender.current = false;
       return;
     }
-    
+
     const params = new URLSearchParams(window.location.search);
-    
+
     if (debouncedSearch) {
       params.set('search', debouncedSearch);
     } else {
       params.delete('search');
     }
-    
+
     if (rank) {
       params.set('rank', rank);
     } else {
@@ -71,49 +71,56 @@ export default function CustomerSearch() {
     } else {
       params.delete('province');
     }
-    
+
     params.delete('page'); // Reset page when searching
-    
+
     router.push(`/admin/customers?${params.toString()}`);
   }, [debouncedSearch, rank, province, router]);
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm mb-6">
-      <div className="flex flex-col xl:flex-row xl:items-center gap-4">
-        <div className="relative w-full xl:min-w-0 xl:flex-[1.6]">
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          </div>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm theo tên, số điện thoại..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-gray-700 placeholder-gray-400 transition-shadow"
-          />
+    <div className="mb-[14px] flex flex-wrap items-center gap-[10px]">
+      <div className="relative min-w-[220px] max-w-[340px] flex-1">
+        <div className="pointer-events-none absolute left-[14px] top-1/2 -translate-y-1/2 text-[#9ca3af]">
+          <svg className="h-[15px] w-[15px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.3-4.3M18 11a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
         </div>
-        <div className="relative w-full xl:w-56 xl:flex-none">
-          <Select
-            value={province}
-            onChange={(val) => setProvince(val)}
-            options={[
-              { value: '', label: 'Tất cả khu vực' },
-              ...provinces.map((item) => ({ value: item.name, label: item.name })),
-            ]}
-            className="w-full xl:w-56"
-            placeholder="Tất cả khu vực"
-          />
-        </div>
-        <div className="relative w-full xl:w-48 xl:flex-none">
-          <Select
-            value={rank}
-            onChange={(val) => setRank(val)}
-            options={RANKS}
-            className="w-full xl:w-48"
-            placeholder="Tất cả hạng"
-          />
-        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm theo tên, SĐT, email…"
+          className="w-full rounded-[10px] border border-[#e5e7eb] bg-white py-[9px] pl-[38px] pr-[14px] text-[13px] text-[#111827] outline-none placeholder:text-[#9ca3af] focus:border-[#2563eb] focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
+        />
       </div>
+
+      <Select
+        value={province}
+        onChange={(val) => setProvince(val)}
+        options={[
+          { value: '', label: 'Tất cả khu vực' },
+          ...provinces.map((item) => ({ value: item.name, label: item.name })),
+        ]}
+        className="w-full sm:w-[190px]"
+        triggerClassName="rounded-[10px] border border-[#e5e7eb] bg-white py-[9px] text-[13px] text-[#111827]"
+        placeholder="Tất cả khu vực"
+      />
+
+      {RANKS.map((r) => {
+        const active = rank === r.value;
+        return (
+          <button
+            key={r.value || 'all'}
+            type="button"
+            onClick={() => setRank(r.value)}
+            className={`rounded-[10px] border px-[14px] py-[9px] text-[13px] font-semibold transition-colors ${
+              active
+                ? 'border-[#2563eb] bg-[#2563eb] text-white'
+                : 'border-[#e5e7eb] bg-white text-[#374151] hover:bg-[#f3f4f6]'
+            }`}
+          >
+            {r.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

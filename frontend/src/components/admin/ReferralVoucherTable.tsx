@@ -44,13 +44,13 @@ function formatCurrency(amount: number) {
 }
 
 function getTypeBadge(type: string) {
-  const map: Record<string, { bg: string; label: string }> = {
-    PERCENT: { bg: 'bg-blue-100 text-blue-700', label: 'Giảm %' },
-    FIXED_AMOUNT: { bg: 'bg-green-100 text-green-700', label: 'Giảm tiền' },
-    FREESHIP: { bg: 'bg-cyan-100 text-cyan-700', label: 'Free ship' },
-    STACK: { bg: 'bg-orange-100 text-orange-700', label: 'Stack' },
+  const map: Record<string, { bg: string; fg: string; label: string }> = {
+    PERCENT: { bg: '#dbeafe', fg: '#1d4ed8', label: 'Giảm %' },
+    FIXED_AMOUNT: { bg: '#d1fae5', fg: '#047857', label: 'Giảm tiền' },
+    FREESHIP: { bg: '#cffafe', fg: '#0e7490', label: 'Free ship' },
+    STACK: { bg: '#ffedd5', fg: '#c2410c', label: 'Stack' },
   };
-  return map[type] || { bg: 'bg-gray-100 text-gray-600', label: type };
+  return map[type] || { bg: '#f3f4f6', fg: '#4b5563', label: type };
 }
 
 export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralVoucher[] }) {
@@ -74,32 +74,32 @@ export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralV
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <span className="text-lg font-bold text-gray-800">Danh sách Voucher Referral</span>
-          <span className="text-sm text-gray-500">{vouchers.length} voucher</span>
+      <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+        <div className="flex items-center justify-between border-b border-[#f0f1f5] px-5 py-[15px]">
+          <span className="text-[15px] font-bold text-slate-900">Danh sách Voucher Referral</span>
+          <span className="text-[12.5px] text-[#6b7280]">{vouchers.length} voucher</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full min-w-[840px] border-collapse text-left text-[13px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Code</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Tên</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Loại</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Giá trị</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Đơn tối thiểu</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Đã dùng</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">Trạng thái</th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap text-right">Thao tác</th>
+              <tr className="bg-[#f9fafb]">
+                <th className="whitespace-nowrap px-4 py-[10px] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Code</th>
+                <th className="whitespace-nowrap px-3 py-[10px] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Tên</th>
+                <th className="whitespace-nowrap px-3 py-[10px] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Loại</th>
+                <th className="whitespace-nowrap px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Giá trị</th>
+                <th className="whitespace-nowrap px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Đơn tối thiểu</th>
+                <th className="whitespace-nowrap px-3 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Đã dùng</th>
+                <th className="whitespace-nowrap px-3 py-[10px] text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Trạng thái</th>
+                <th className="whitespace-nowrap px-4 py-[10px] text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {vouchers.length === 0 ? (
                 <tr>
                   <td colSpan={8}>
-                    <div className="text-center py-12">
-                      <div className="text-xl font-semibold text-gray-800 mb-2">Chưa có voucher referral</div>
-                      <div className="text-gray-600">Tạo voucher đầu tiên để gán vào phần thưởng mời bạn</div>
+                    <div className="py-12 text-center">
+                      <div className="mb-2 text-xl font-semibold text-slate-900">Chưa có voucher referral</div>
+                      <div className="text-[13px] text-[#6b7280]">Tạo voucher đầu tiên để gán vào phần thưởng mời bạn</div>
                     </div>
                   </td>
                 </tr>
@@ -108,48 +108,57 @@ export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralV
                 const isDeleting = deletingId === voucher.id;
 
                 return (
-                  <tr key={voucher.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50/50 transition-colors ${isDeleting ? 'opacity-50' : ''}`}>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-mono font-bold text-sm bg-gray-100 px-2 py-1 rounded">
+                  <tr
+                    key={voucher.id}
+                    className={`border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${isDeleting ? 'opacity-50' : ''}`}
+                    style={{ background: idx % 2 === 1 ? '#f7f9fc' : '#fff' }}
+                  >
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span className="rounded bg-[#f3f4f6] px-2 py-1 font-mono text-[12px] font-bold text-slate-900">
                         {voucher.code}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-800">{voucher.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${typeInfo.bg}`}>
+                    <td className="whitespace-nowrap px-3 py-3 font-medium text-slate-900">{voucher.name}</td>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      <span
+                        className="rounded-full px-[10px] py-[3px] text-[11px] font-semibold"
+                        style={{ background: typeInfo.bg, color: typeInfo.fg }}
+                      >
                         {typeInfo.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-800">
+                    <td className="whitespace-nowrap px-3 py-3 text-right font-medium text-slate-900">
                       {voucher.type === 'PERCENT'
                         ? `${voucher.value}%`
                         : formatCurrency(voucher.value)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700">{formatCurrency(voucher.minOrderValue)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700">
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-[#4b5563]">{formatCurrency(voucher.minOrderValue)}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-[#4b5563]">
                       {voucher._count?.userVouchers || voucher.usedCount || 0}
                       {voucher.totalUsageLimit ? `/${voucher.totalUsageLimit}` : ''}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${voucher.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      <span
+                        className="rounded-full px-[10px] py-[3px] text-[11px] font-semibold"
+                        style={voucher.isActive ? { background: '#d1fae5', color: '#047857' } : { background: '#fee2e2', color: '#dc2626' }}
+                      >
                         {voucher.isActive ? 'Hoạt động' : 'Tắt'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <div className="flex items-center justify-end gap-3">
                         <button
                           onClick={() => setEditVoucher(voucher)}
-                          className="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium transition-colors"
+                          className="text-[12.5px] font-semibold text-[#2563eb] transition-colors hover:text-[#1d4ed8]"
                         >
-                          ✏️ Sửa
+                          Sửa
                         </button>
                         <button
                           onClick={() => handleDelete(voucher.id, voucher.code)}
                           disabled={isDeleting}
-                          className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                          className="text-[12.5px] font-semibold text-[#dc2626] transition-colors hover:text-[#b91c1c] disabled:opacity-50"
                         >
-                          {isDeleting ? '...' : '🗑️ Xoá'}
+                          {isDeleting ? '...' : 'Xoá'}
                         </button>
                       </div>
                     </td>

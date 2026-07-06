@@ -179,51 +179,51 @@ export default function CustomerCareAutomationFormClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-lg font-extrabold text-gray-900">
               {ruleId ? 'Sửa tin tự động' : 'Tạo tin tự động'}
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-[12.5px] text-[#9ca3af]">
               Cấu hình rule SMS theo trigger nghiệp vụ, template và điều kiện lọc khách hàng.
             </p>
           </div>
           <button
             type="button"
             onClick={() => router.push('/admin/customer-care/automations')}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+            className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
           >
             Quay lại danh sách
           </button>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-[22px]">
         {loading ? (
-          <div className="py-10 text-center text-sm text-gray-500">Đang tải rule tự động...</div>
+          <div className="py-10 text-center text-sm text-[#9ca3af]">Đang tải rule tự động...</div>
         ) : (
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Tên rule</span>
+            <label className="flex flex-col">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">Tên rule</span>
               <input
                 required
                 value={form.name}
                 onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                 placeholder="Ví dụ: Nhắn cảm ơn sau khi giao hàng thành công"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Kênh gửi</span>
+            <label className="flex flex-col">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">Kênh gửi</span>
               <select
                 value={form.channelCode}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, channelCode: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 {messagingChannelOptions.map((option) => (
                   <option key={option.value} value={option.value} disabled={option.disabled}>
@@ -233,14 +233,14 @@ export default function CustomerCareAutomationFormClient({
               </select>
             </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Trigger</span>
+            <label className="flex flex-col">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">Trigger</span>
               <select
                 value={form.triggerType}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, triggerType: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 {triggerTypeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -250,14 +250,14 @@ export default function CustomerCareAutomationFormClient({
               </select>
             </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Template</span>
+            <label className="flex flex-col">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">Template</span>
               <select
                 value={form.templateId}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, templateId: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 <option value="">Tự soạn nội dung</option>
                 {templates.map((template) => (
@@ -268,8 +268,8 @@ export default function CustomerCareAutomationFormClient({
               </select>
             </label>
 
-            <label className="space-y-2 md:col-span-2">
-              <span className="text-sm font-semibold text-gray-700">
+            <label className="flex flex-col md:col-span-2">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">
                 Nội dung khi không dùng template
               </span>
               <textarea
@@ -279,22 +279,22 @@ export default function CustomerCareAutomationFormClient({
                   setForm((prev) => ({ ...prev, messageContent: event.target.value }))
                 }
                 placeholder="Nhập nội dung SMS nếu rule này không dùng template có sẵn"
-                className="w-full rounded-lg border border-gray-200 px-3 py-3 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Tìm trong tệp nhận</span>
+            <label className="flex flex-col">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">Tìm trong tệp nhận</span>
               <input
                 value={form.search}
                 onChange={(event) => setForm((prev) => ({ ...prev, search: event.target.value }))}
                 placeholder="Tên khách, số điện thoại hoặc email"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Trạng thái mua</span>
+            <label className="flex flex-col">
+              <span className="mb-1.5 text-[12.5px] font-bold text-gray-900">Trạng thái mua</span>
               <select
                 value={form.purchaseState}
                 onChange={(event) =>
@@ -303,7 +303,7 @@ export default function CustomerCareAutomationFormClient({
                     purchaseState: event.target.value as AudiencePurchaseState | '',
                   }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 <option value="">Không lọc</option>
                 {purchaseStateOptions.map((option) => (
@@ -316,9 +316,10 @@ export default function CustomerCareAutomationFormClient({
 
             {isOrderLikeTrigger(form.triggerType) ? (
               <>
-                <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
+                <label className="flex items-center gap-3 rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] font-bold text-gray-900">
                   <input
                     type="checkbox"
+                    className="accent-[#2563eb]"
                     checked={form.skipPartialOrders}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -330,9 +331,10 @@ export default function CustomerCareAutomationFormClient({
                   Bỏ qua đơn một phần
                 </label>
 
-                <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
+                <label className="flex items-center gap-3 rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] font-bold text-gray-900">
                   <input
                     type="checkbox"
+                    className="accent-[#2563eb]"
                     checked={form.skipExchangeOrders}
                     onChange={(event) =>
                       setForm((prev) => ({
@@ -345,14 +347,15 @@ export default function CustomerCareAutomationFormClient({
                 </label>
               </>
             ) : (
-              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 text-sm text-blue-800 md:col-span-2">
+              <div className="rounded-[10px] border border-[#bfdbfe] bg-[#eff6ff] px-3.5 py-[11px] text-[12.5px] text-[#2563eb] md:col-span-2">
                 Trigger sinh nhật không dùng bộ lọc đơn một phần hoặc đơn đổi.
               </div>
             )}
 
-            <label className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 md:col-span-2">
+            <label className="flex items-center gap-3 rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] font-bold text-gray-900 md:col-span-2">
               <input
                 type="checkbox"
+                className="accent-[#2563eb]"
                 checked={form.isActive}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, isActive: event.target.checked }))
@@ -365,7 +368,7 @@ export default function CustomerCareAutomationFormClient({
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                className="rounded-[10px] bg-[#2563eb] px-5 py-3 text-sm font-bold text-white hover:bg-[#1d4ed8] disabled:opacity-60"
               >
                 {saving ? 'Đang lưu...' : 'Lưu rule'}
               </button>

@@ -29,24 +29,28 @@ export class AiAgentController {
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_VIEW)
   @ApiOperation({ summary: 'Cấu hình AI theo page + cờ đã cấu hình key' })
-  async getConfig(@Query('pageId') pageId?: string) {
-    const config = pageId ? await this.prisma.aiAgentConfig.findUnique({ where: { pageId } }) : null;
+  async getConfig(@GetEffectiveStoreId() storeId: string | null, @Query('pageId') pageId?: string) {
+    if (!pageId) return { config: null, configured: this.anthropic.isEnabled() };
+    await this.messenger.assertPageInStore(storeId, pageId); // scope: page phải thuộc store của caller
+    const config = await this.prisma.aiAgentConfig.findUnique({ where: { pageId } });
     return { config, configured: this.anthropic.isEnabled() };
   }
 
   @Put('config')
   @Roles('ADMIN', 'MODERATOR')
   @Permissions(Permission.MESSENGER_SEND)
-  async putConfig(@Body() body: { pageId: string; enabled?: boolean; mode?: string; persona?: string; dailyTokenCap?: number }) {
+  async putConfig(@GetEffectiveStoreId() storeId: string | null, @Body() body: { pageId: string; enabled?: boolean; mode?: string; persona?: string; dailyTokenCap?: number }) {
     const { pageId, ...rest } = body;
     if (!pageId) throw new NotFoundException('Thiếu pageId');
+    await this.messenger.assertPageInStore(storeId, pageId); // scope: chỉ cấu hình page thuộc store mình
     return this.prisma.aiAgentConfig.upsert({ where: { pageId }, create: { pageId, ...rest }, update: rest });
   }
 
   @Get('suggestions')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_VIEW)
-  suggestions(@Query('conversationId') conversationId: string) {
+  async suggestions(@GetEffectiveStoreId() storeId: string | null, @Query('conversationId') conversationId: string) {
+    await this.messenger.assertConversationInStore(storeId, conversationId); // scope: hội thoại phải thuộc store
     return this.prisma.aiSuggestion.findMany({ where: { conversationId, status: 'PENDING' }, orderBy: { createdAt: 'desc' }, take: 20 });
   }
 
@@ -57,6 +61,7 @@ export class AiAgentController {
   async approve(@Param('id') id: string, @GetEffectiveStoreId() storeId: string | null, @GetUser('id') userId: string, @GetUser('role') role: string) {
     const s = await this.prisma.aiSuggestion.findUnique({ where: { id } });
     if (!s) throw new NotFoundException('Không thấy gợi ý');
+    await this.messenger.assertConversationInStore(storeId, s.conversationId); // scope: gợi ý phải thuộc hội thoại của store
     if (s.replyText) { try { await this.messenger.reply(storeId, userId, s.conversationId, { text: s.replyText }); } catch { /* ignore */ } }
     const draft = s.orderDraft as any;
     let orderCode: string | undefined;
@@ -80,7 +85,8 @@ export class AiAgentController {
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_SEND)
   @ApiOperation({ summary: 'Tạm dừng AI cho 1 hội thoại (người tiếp quản)' })
-  async pause(@Param('id') conversationId: string) {
+  async pause(@GetEffectiveStoreId() storeId: string | null, @Param('id') conversationId: string) {
+    await this.messenger.assertConversationInStore(storeId, conversationId); // scope: chỉ tạm dừng hội thoại thuộc store
     await this.prisma.aiConversationState.upsert({ where: { conversationId }, create: { conversationId, status: 'PAUSED' }, update: { status: 'PAUSED' } });
     return { ok: true };
   }

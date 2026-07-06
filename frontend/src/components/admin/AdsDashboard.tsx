@@ -105,10 +105,10 @@ const KPI_STORAGE_KEY = 'adsDash.kpis.v1';
 const KPI_COL_OPTIONS = [2, 3, 4, 5, 6];
 
 const STATUS_CLS: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-700',
-  PAUSED: 'bg-yellow-100 text-yellow-700',
-  ARCHIVED: 'bg-gray-100 text-gray-600',
-  DELETED: 'bg-red-100 text-red-700',
+  ACTIVE: 'bg-[#d1fae5] text-[#047857]',
+  PAUSED: 'bg-[#fef3c7] text-[#92400e]',
+  ARCHIVED: 'bg-[#f1f5f9] text-[#64748b]',
+  DELETED: 'bg-[#fee2e2] text-[#dc2626]',
 };
 
 // URL theo tài khoản: '' (rỗng) = tất cả → /admin/adsmeta/accall; ngược lại → /admin/adsmeta/<id>.
@@ -426,44 +426,51 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="p-6 bg-[#f7f8fb] min-h-full">
+      <div className="flex items-end justify-between gap-3 flex-wrap mb-3.5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Quảng cáo</h1>
-          <p className="text-sm text-gray-500">Chiến dịch &amp; chỉ số tài khoản quảng cáo (Meta). Đồng bộ gần nhất: {fmtDateTime(lastSync)}</p>
+          <h1 className="text-2xl font-extrabold tracking-[-0.4px] text-[#111827]">Ads Meta</h1>
+          <p className="mt-1 text-[13px] text-[#6b7280]">Hiệu quả quảng cáo Facebook / Instagram theo chiến dịch → nhóm QC → QC. Đồng bộ gần nhất: {fmtDateTime(lastSync)}</p>
         </div>
         <button
           onClick={sync}
           disabled={syncing}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+          className="px-[18px] py-2.5 rounded-[10px] bg-[#2563eb] text-white text-[13px] font-bold hover:bg-[#1d4ed8] disabled:opacity-50"
         >
           {syncing ? 'Đang đồng bộ…' : '↻ Đồng bộ ngay'}
         </button>
       </div>
 
-      {msg && <div className="mb-3 rounded-lg bg-blue-50 border border-blue-100 px-4 py-2 text-sm text-blue-800">{msg}</div>}
+      {msg && <div className="mb-3.5 rounded-xl bg-[#eff6ff] border border-[#dbe6ff] px-4 py-2.5 text-[13px] text-[#1d4ed8]">{msg}</div>}
 
       {/* Bộ lọc */}
-      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-gray-100 bg-white p-3">
-        <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Tài khoản</span>
-          <select value={accountId} onChange={(e) => router.push(accountHref(e.target.value))} className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-[220px]">
-            <option value="">Tất cả tài khoản</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>{a.name || a.externalId}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Từ ngày</span>
-          <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPreset(null); }} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-        </label>
-        <label className="text-sm">
-          <span className="block text-xs text-gray-500 mb-1">Đến ngày</span>
-          <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPreset(null); }} className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-        </label>
+      <div className="mb-3.5 rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-3.5">
+        <div className="flex flex-wrap items-end gap-3 mb-3">
+          <label className="min-w-[210px]">
+            <span className="block text-[12.5px] font-semibold text-[#6b7280] mb-1.5">Tài khoản</span>
+            <select value={accountId} onChange={(e) => router.push(accountHref(e.target.value))} className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13.5px] font-semibold bg-white text-[#111827]">
+              <option value="">Tất cả tài khoản</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.name || a.externalId}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="block text-[12.5px] font-semibold text-[#6b7280] mb-1.5">Từ ngày</span>
+            <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPreset(null); }} className="border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13.5px] text-[#111827]" />
+          </label>
+          <label>
+            <span className="block text-[12.5px] font-semibold text-[#6b7280] mb-1.5">Đến ngày</span>
+            <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPreset(null); }} className="border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13.5px] text-[#111827]" />
+          </label>
+          <div className="flex-1" />
+          {/* Tuỳ chỉnh KPI */}
+          <div className="relative">
+            <button onClick={() => setKpiMenuOpen(true)} className="px-3.5 py-2 rounded-[9px] border border-[#e5e7eb] bg-white text-[12.5px] font-bold text-[#374151] hover:bg-[#f9fafb] flex items-center gap-1.5">⚙ Tuỳ chỉnh KPI ({visibleKpis.length}/{KPI_CATALOG.length})</button>
+          </div>
+        </div>
         {/* Tìm kiếm nhanh theo khoảng ngày */}
-        <div className="w-full flex flex-wrap items-center gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
           {DATE_PRESETS.map((p) => {
             const [pf, pe] = presetRange(p.key);
             const active = preset === p.key;
@@ -471,7 +478,7 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
               <button
                 key={p.key}
                 onClick={() => { setFrom(pf); setTo(pe); setPreset(p.key); }}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active ? 'bg-[#375DED] text-white border-[#375DED]' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold border transition-colors ${active ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-[#6b7280] border-[#e5e7eb] hover:bg-[#f9fafb]'}`}
               >{p.label}</button>
             );
           })}
@@ -479,62 +486,73 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
       </div>
 
       {/* KPI — kéo–thả card để sắp xếp; nút ⚙ để chọn chỉ số hiển thị & số cột */}
-      <div className="mb-5">
-        <div className="mb-2 flex items-center justify-end">
-          <button onClick={() => setKpiMenuOpen(true)} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">⚙ Chỉ số ({visibleKpis.length}/{KPI_CATALOG.length})</button>
-        </div>
-        <div
-          className={`grid gap-3 ${kpiCols ? '' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'}`}
-          style={kpiCols ? { gridTemplateColumns: `repeat(${kpiCols}, minmax(0, 1fr))` } : undefined}
-        >
-          {visibleKpis.map((k) => (
-            <div
-              key={k.key}
-              draggable
-              onDragStart={() => setKpiDragKey(k.key)}
-              onDragEnd={() => setKpiDragKey(null)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => { moveKpi(kpiDragKey, k.key); setKpiDragKey(null); }}
-              className={`group relative rounded-lg border bg-white px-3 py-2 cursor-move transition-colors ${kpiDragKey === k.key ? 'border-indigo-400 ring-2 ring-indigo-200 opacity-60' : 'border-gray-100 hover:border-gray-200'}`}
-              title="Kéo để sắp xếp"
-            >
-              <div className="flex items-center justify-between gap-1">
-                <div className="text-[11px] text-gray-500 truncate" title={k.label}>{k.label}</div>
-                <span className="text-gray-300 group-hover:text-gray-400 text-xs leading-none select-none">⠿</span>
+      <div className="mb-3.5">
+        {loading ? (
+          <div
+            className={`grid gap-3.5 ${kpiCols ? '' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'}`}
+            style={kpiCols ? { gridTemplateColumns: `repeat(${kpiCols}, minmax(0, 1fr))` } : undefined}
+          >
+            {Array.from({ length: kpiCols || 4 }).map((_, i) => (
+              <div key={i} className="rounded-[14px] border border-[#eceef2] bg-white px-4 py-[15px]">
+                <div className="w-[90px] h-2.5 rounded-[5px] mb-2.5 bg-[linear-gradient(90deg,#eef0f4_25%,#f7f8fa_37%,#eef0f4_63%)] bg-[length:800px_100%] animate-pulse" />
+                <div className="w-[120px] h-5 rounded-[7px] bg-[linear-gradient(90deg,#eef0f4_25%,#f7f8fa_37%,#eef0f4_63%)] bg-[length:800px_100%] animate-pulse" />
               </div>
-              <div className="mt-0.5 text-base font-bold text-gray-800 truncate" title={k.value}>{k.value}</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className={`grid gap-3.5 ${kpiCols ? '' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'}`}
+            style={kpiCols ? { gridTemplateColumns: `repeat(${kpiCols}, minmax(0, 1fr))` } : undefined}
+          >
+            {visibleKpis.map((k) => (
+              <div
+                key={k.key}
+                draggable
+                onDragStart={() => setKpiDragKey(k.key)}
+                onDragEnd={() => setKpiDragKey(null)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { moveKpi(kpiDragKey, k.key); setKpiDragKey(null); }}
+                className={`group relative rounded-[14px] border bg-white px-4 py-[15px] cursor-move transition-colors ${kpiDragKey === k.key ? 'border-[#2563eb] ring-2 ring-[#dbe6ff] opacity-60' : 'border-[#eceef2] hover:border-[#dbe6ff]'}`}
+                title="Kéo để sắp xếp"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <div className="text-xs text-[#6b7280] truncate" title={k.label}>{k.label}</div>
+                  <span className="text-[#d1d5db] group-hover:text-[#9ca3af] text-xs leading-none select-none">⠿</span>
+                </div>
+                <div className="mt-1.5 text-[18px] font-extrabold tracking-[-0.3px] text-[#111827] truncate" title={k.value}>{k.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Thanh công cụ: nút mở popup chọn cột */}
       <div className="mb-3 flex items-center justify-end">
-        <button onClick={() => setColMenuOpen(true)} className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">⚙ Cột ({visibleColumns.length}/{allColumns.length})</button>
+        <button onClick={() => setColMenuOpen(true)} className="px-3.5 py-2 rounded-[9px] border border-[#e5e7eb] bg-white text-[12.5px] font-bold text-[#374151] hover:bg-[#f9fafb] flex items-center gap-1.5">▦ Cột bảng ({visibleColumns.length}/{allColumns.length})</button>
       </div>
 
       {/* Popup chọn cột */}
       {colMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setColMenuOpen(false); }}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-gray-200 p-5">
-              <h2 className="text-lg font-bold text-gray-800">Hiển thị cột <span className="text-sm font-normal text-gray-400">({visibleColumns.length}/{allColumns.length})</span></h2>
-              <button className="text-2xl leading-none text-gray-400 hover:text-gray-600" onClick={() => setColMenuOpen(false)}>✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4" onClick={(e) => { if (e.target === e.currentTarget) setColMenuOpen(false); }}>
+          <div className="bg-white rounded-2xl shadow-[0_16px_48px_rgba(15,23,42,0.16)] w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#eceef2] p-5">
+              <h2 className="text-lg font-extrabold text-[#111827]">Cột hiển thị trong bảng <span className="text-sm font-normal text-[#9ca3af]">({visibleColumns.length}/{allColumns.length})</span></h2>
+              <button className="text-2xl leading-none text-[#9ca3af] hover:text-[#374151]" onClick={() => setColMenuOpen(false)}>✕</button>
             </div>
 
-            <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-2 text-sm">
-              <button onClick={() => setVisibleKeys(new Set(allColumns.map((c) => c.key)))} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Chọn tất cả</button>
-              <button onClick={() => setVisibleKeys(new Set(DEFAULT_VISIBLE))} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Mặc định</button>
-              <button onClick={() => setVisibleKeys(new Set(['name']))} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Bỏ chọn hết</button>
+            <div className="flex items-center gap-2 border-b border-[#f1f5f9] px-5 py-2 text-sm">
+              <button onClick={() => setVisibleKeys(new Set(allColumns.map((c) => c.key)))} className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e5e7eb] text-[#374151] font-semibold">Chọn tất cả</button>
+              <button onClick={() => setVisibleKeys(new Set(DEFAULT_VISIBLE))} className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e5e7eb] text-[#374151] font-semibold">Mặc định</button>
+              <button onClick={() => setVisibleKeys(new Set(['name']))} className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e5e7eb] text-[#374151] font-semibold">Bỏ chọn hết</button>
             </div>
 
             <div className="overflow-y-auto p-5 space-y-4">
               <div>
-                <div className="mb-2 text-xs font-semibold text-gray-400 uppercase">Cột cơ bản</div>
+                <div className="mb-2 text-xs font-semibold text-[#9ca3af] uppercase">Cột cơ bản</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
                   {allColumns.filter((c) => !c.dynamic && c.key !== 'name').map((c) => (
-                    <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 rounded cursor-pointer">
-                      <input type="checkbox" checked={visibleKeys.has(c.key)} onChange={() => toggleCol(c.key)} />
+                    <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 text-[13px] font-semibold text-[#374151] hover:bg-[#f9fafb] rounded cursor-pointer">
+                      <input type="checkbox" checked={visibleKeys.has(c.key)} onChange={() => toggleCol(c.key)} className="accent-[#2563eb]" />
                       <span>{c.label}</span>
                     </label>
                   ))}
@@ -542,21 +560,22 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
               </div>
               {allColumns.some((c) => c.dynamic) && (
                 <div>
-                  <div className="mb-2 text-xs font-semibold text-gray-400 uppercase">Chỉ số Facebook (động)</div>
+                  <div className="mb-2 text-xs font-semibold text-[#9ca3af] uppercase">Chỉ số Facebook (động)</div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
                     {allColumns.filter((c) => c.dynamic).map((c) => (
-                      <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 rounded cursor-pointer">
-                        <input type="checkbox" checked={visibleKeys.has(c.key)} onChange={() => toggleCol(c.key)} />
+                      <label key={c.key} className="flex items-center gap-2 px-2 py-1.5 text-[13px] font-semibold text-[#374151] hover:bg-[#f9fafb] rounded cursor-pointer">
+                        <input type="checkbox" checked={visibleKeys.has(c.key)} onChange={() => toggleCol(c.key)} className="accent-[#2563eb]" />
                         <span className="truncate" title={c.label}>{c.label}</span>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
+              <div className="text-[11.5px] text-[#9ca3af]">Cột Tên / Chạy / ⋯ luôn hiển thị.</div>
             </div>
 
-            <div className="flex justify-end border-t border-gray-200 p-4">
-              <button onClick={() => setColMenuOpen(false)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Xong</button>
+            <div className="flex justify-end border-t border-[#eceef2] p-4">
+              <button onClick={() => setColMenuOpen(false)} className="px-[18px] py-2 rounded-[10px] bg-[#2563eb] text-white font-bold hover:bg-[#1d4ed8]">Xong</button>
             </div>
           </div>
         </div>
@@ -564,55 +583,55 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
 
       {/* Popup thiết lập KPI: hiển thị chỉ số + số cột */}
       {kpiMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setKpiMenuOpen(false); }}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-gray-200 p-5">
-              <h2 className="text-lg font-bold text-gray-800">Thiết lập chỉ số <span className="text-sm font-normal text-gray-400">({visibleKpis.length}/{KPI_CATALOG.length})</span></h2>
-              <button className="text-2xl leading-none text-gray-400 hover:text-gray-600" onClick={() => setKpiMenuOpen(false)}>✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4" onClick={(e) => { if (e.target === e.currentTarget) setKpiMenuOpen(false); }}>
+          <div className="bg-white rounded-2xl shadow-[0_16px_48px_rgba(15,23,42,0.16)] w-full max-w-xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#eceef2] p-5">
+              <h2 className="text-lg font-extrabold text-[#111827]">Thẻ KPI hiển thị <span className="text-sm font-normal text-[#9ca3af]">({visibleKpis.length}/{KPI_CATALOG.length})</span></h2>
+              <button className="text-2xl leading-none text-[#9ca3af] hover:text-[#374151]" onClick={() => setKpiMenuOpen(false)}>✕</button>
             </div>
 
-            <div className="flex items-center gap-2 border-b border-gray-100 px-5 py-2 text-sm">
-              <button onClick={() => setKpiVisible(new Set(KPI_ALL_KEYS))} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Chọn tất cả</button>
-              <button onClick={() => { setKpiVisible(new Set(KPI_ALL_KEYS)); setKpiOrder([...KPI_ALL_KEYS]); setKpiCols(null); }} className="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">Mặc định</button>
+            <div className="flex items-center gap-2 border-b border-[#f1f5f9] px-5 py-2 text-sm">
+              <button onClick={() => setKpiVisible(new Set(KPI_ALL_KEYS))} className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e5e7eb] text-[#374151] font-semibold">Chọn tất cả</button>
+              <button onClick={() => { setKpiVisible(new Set(KPI_ALL_KEYS)); setKpiOrder([...KPI_ALL_KEYS]); setKpiCols(null); }} className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] hover:bg-[#e5e7eb] text-[#374151] font-semibold">Mặc định</button>
             </div>
 
             <div className="overflow-y-auto p-5 space-y-5">
               {/* Số cột */}
               <div>
-                <div className="mb-2 text-xs font-semibold text-gray-400 uppercase">Số cột</div>
+                <div className="mb-2 text-xs font-semibold text-[#9ca3af] uppercase">Số cột</div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => setKpiCols(null)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${kpiCols === null ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${kpiCols === null ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-[#6b7280] border-[#e5e7eb] hover:bg-[#f9fafb]'}`}
                   >Auto</button>
                   {KPI_COL_OPTIONS.map((n) => (
                     <button
                       key={n}
                       onClick={() => setKpiCols(n)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${kpiCols === n ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${kpiCols === n ? 'bg-[#2563eb] text-white border-[#2563eb]' : 'bg-white text-[#6b7280] border-[#e5e7eb] hover:bg-[#f9fafb]'}`}
                     >{n}</button>
                   ))}
                 </div>
-                <p className="mt-1 text-[11px] text-gray-400">Auto: tự co theo màn hình (2 → 3 → 5 cột). Chọn số để cố định.</p>
+                <p className="mt-1 text-[11.5px] text-[#9ca3af]">Auto: tự co theo màn hình (2 → 3 → 5 cột). Chọn số để cố định.</p>
               </div>
 
               {/* Chọn chỉ số hiển thị */}
               <div>
-                <div className="mb-2 text-xs font-semibold text-gray-400 uppercase">Hiển thị chỉ số</div>
+                <div className="mb-2 text-xs font-semibold text-[#9ca3af] uppercase">Hiển thị chỉ số</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1">
                   {KPI_CATALOG.map((k) => (
-                    <label key={k.key} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 rounded cursor-pointer">
-                      <input type="checkbox" checked={kpiVisible.has(k.key)} onChange={() => toggleKpi(k.key)} />
+                    <label key={k.key} className="flex items-center gap-2 px-2 py-1.5 text-[13px] font-semibold text-[#374151] hover:bg-[#f9fafb] rounded cursor-pointer">
+                      <input type="checkbox" checked={kpiVisible.has(k.key)} onChange={() => toggleKpi(k.key)} className="accent-[#2563eb]" />
                       <span className="truncate" title={k.label}>{k.label}</span>
                     </label>
                   ))}
                 </div>
-                <p className="mt-1 text-[11px] text-gray-400">Kéo–thả trực tiếp các thẻ trên dashboard để đổi thứ tự.</p>
+                <p className="mt-1 text-[11.5px] text-[#9ca3af]">Kéo–thả trực tiếp các thẻ trên dashboard để đổi thứ tự.</p>
               </div>
             </div>
 
-            <div className="flex justify-end border-t border-gray-200 p-4">
-              <button onClick={() => setKpiMenuOpen(false)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Xong</button>
+            <div className="flex justify-end border-t border-[#eceef2] p-4">
+              <button onClick={() => setKpiMenuOpen(false)} className="px-[18px] py-2 rounded-[10px] bg-[#2563eb] text-white font-bold hover:bg-[#1d4ed8]">Xong</button>
             </div>
           </div>
         </div>
@@ -622,11 +641,11 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
       {rowMenu && <div className="fixed inset-0 z-10" onClick={() => setRowMenu(null)} />}
 
       {/* Bảng campaign (drill-down: chiến dịch → nhóm QC → quảng cáo) */}
-      <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse text-[13px]">
             <thead>
-              <tr className="bg-[#375DED] text-white">
+              <tr className="bg-[#f9fafb]">
                 {visibleColumns.map((col) => {
                   const draggable = col.key !== 'name';
                   return (
@@ -639,50 +658,53 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
                       onDragEnd={() => setDragKey(null)}
                       onClick={() => toggleSort(col.key)}
                       title={draggable ? 'Kéo để đổi vị trí · Click để sắp xếp' : 'Click để sắp xếp'}
-                      className={`px-4 py-3 whitespace-nowrap font-bold select-none hover:bg-[#2f51c9] ${draggable ? 'cursor-move' : 'cursor-pointer'} ${dragKey === col.key ? 'opacity-50' : ''} ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                      className={`px-4 py-2.5 whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280] select-none hover:bg-[#eff1f4] ${draggable ? 'cursor-move' : 'cursor-pointer'} ${dragKey === col.key ? 'opacity-50' : ''} ${col.align === 'right' ? 'text-right' : 'text-left'}`}
                     >
                       <span className={`inline-flex items-center gap-1 ${col.align === 'right' ? 'flex-row-reverse' : ''}`}>
                         <span>{col.label}</span>
-                        <span className={`text-[11px] ${col.key === sortKey ? 'opacity-100' : 'opacity-40'}`}>{sortIcon(col.key)}</span>
+                        <span className={`text-[10px] ${col.key === sortKey ? 'opacity-100 text-[#2563eb]' : 'opacity-40'}`}>{sortIcon(col.key)}</span>
                       </span>
                     </th>
                   );
                 })}
-                <th className="px-2 py-3 w-10" />
+                <th className="px-2 py-2.5 w-10" />
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={visibleColumns.length + 1} className="px-4 py-10 text-center text-gray-400">Đang tải…</td></tr>
+                <tr><td colSpan={visibleColumns.length + 1} className="px-4 py-10 text-center text-[#9ca3af]">Đang tải…</td></tr>
               ) : flatRows.length === 0 ? (
-                <tr><td colSpan={visibleColumns.length + 1} className="px-4 py-10 text-center text-gray-400">Chưa có dữ liệu. Bấm “Đồng bộ ngay” (cần credentials Meta).</td></tr>
+                <tr><td colSpan={visibleColumns.length + 1} className="px-4 py-10 text-center text-[#9ca3af]">Chưa có dữ liệu. Bấm “Đồng bộ ngay” (cần credentials Meta).</td></tr>
               ) : (() => {
                 let cIdx = -1;
                 return flatRows.map((fr) => {
                   if (fr.kind === 'loading') {
                     return (
-                      <tr key={fr.key} className="bg-white">
-                        <td colSpan={visibleColumns.length + 1} className="py-2 text-xs text-gray-400" style={{ paddingLeft: 16 + fr.level * 20 }}>Đang tải…</td>
+                      <tr key={fr.key} className="bg-white border-t border-[#f3f4f6]">
+                        <td colSpan={visibleColumns.length + 1} className="py-2 text-xs text-[#9ca3af]" style={{ paddingLeft: 16 + fr.level * 20 }}>Đang tải…</td>
                       </tr>
                     );
                   }
                   const r = fr.row!;
                   if (fr.kind === 'campaign') cIdx++;
-                  const bg = fr.kind === 'campaign' ? (cIdx % 2 === 1 ? 'bg-[#F5F9FC]' : 'bg-white') : fr.kind === 'adset' ? 'bg-[#EEF3FF]' : 'bg-[#F8FAFF]';
+                  const bg = fr.kind === 'campaign' ? (cIdx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white') : fr.kind === 'adset' ? 'bg-[#eef3ff]' : 'bg-[#f8faff]';
+                  // Chip cấp: Nhóm QC / QC (design phân cấp).
+                  const levelChip = fr.kind === 'adset' ? 'Nhóm QC' : fr.kind === 'ad' ? 'QC' : null;
                   return (
-                    <tr key={fr.key} className={`${bg} hover:bg-[#EBEBEB] transition-colors`}>
+                    <tr key={fr.key} className={`${bg} border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors`}>
                       {visibleColumns.map((col) => {
                         if (col.key === 'name') {
                           return (
                             <td key={col.key} className="px-4 py-3" style={{ paddingLeft: 16 + fr.level * 20 }}>
-                              <div className="flex items-center gap-2 max-w-[320px]">
+                              <div className="flex items-center gap-2 max-w-[340px]">
                                 {fr.expandable ? (
                                   <button
                                     onClick={() => (fr.kind === 'campaign' ? toggleC(r.id) : toggleS(r.id))}
-                                    className="w-4 shrink-0 text-gray-400 hover:text-gray-700"
+                                    className="w-4 shrink-0 text-[10px] text-[#6b7280] hover:text-[#374151]"
                                   >{fr.expanded ? '▼' : '▶'}</button>
                                 ) : <span className="w-4 shrink-0" />}
-                                <span className={`truncate ${fr.kind === 'campaign' ? 'font-medium' : ''}`} title={r.name || ''}>{r.name || r.externalId}</span>
+                                <span className={`truncate ${fr.kind === 'campaign' ? 'font-bold text-[#111827]' : 'text-[#374151]'}`} title={r.name || ''}>{r.name || r.externalId}</span>
+                                {levelChip && <span className="shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-[#f1f5f9] text-[#64748b]">{levelChip}</span>}
                               </div>
                             </td>
                           );
@@ -690,39 +712,39 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
                         if (col.key === 'status') {
                           return (
                             <td key={col.key} className="px-4 py-3 whitespace-nowrap">
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLS[r.status || ''] || 'bg-gray-100 text-gray-600'}`}>{r.status || '—'}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_CLS[r.status || ''] || 'bg-[#f1f5f9] text-[#64748b]'}`}>{r.status || '—'}</span>
                             </td>
                           );
                         }
                         if (col.key === 'objective') {
-                          return <td key={col.key} className="px-4 py-3 whitespace-nowrap text-gray-600">{r.objective || '—'}</td>;
+                          return <td key={col.key} className="px-4 py-3 whitespace-nowrap text-[#6b7280]">{r.objective || '—'}</td>;
                         }
                         if (col.key === 'results') {
                           return (
                             <td key={col.key} className="px-4 py-3 whitespace-nowrap text-right">
                               <div>{formatNumber(r.results)}</div>
-                              {r.resultType && <div className="text-[11px] text-gray-400">{actionLabel(r.resultType)}</div>}
+                              {r.resultType && <div className="text-[11px] text-[#9ca3af]">{actionLabel(r.resultType)}</div>}
                             </td>
                           );
                         }
                         const val = colValue(col, r) as number;
                         return (
-                          <td key={col.key} className={`px-4 py-3 whitespace-nowrap text-right ${col.key === 'spend' ? 'font-semibold' : ''}`}>
+                          <td key={col.key} className={`px-4 py-3 whitespace-nowrap text-right ${col.key === 'spend' ? 'font-bold text-[#111827]' : 'text-[#374151]'}`}>
                             {col.fmt ? col.fmt(val) : val}
                           </td>
                         );
                       })}
                       <td className="px-2 py-3 text-right relative whitespace-nowrap">
-                        <button onClick={() => setRowMenu(rowMenu === fr.key ? null : fr.key)} className="px-2 text-gray-400 hover:text-gray-700">⋯</button>
+                        <button onClick={() => setRowMenu(rowMenu === fr.key ? null : fr.key)} className="px-1.5 py-0.5 rounded-md text-[15px] font-extrabold text-[#9ca3af] hover:bg-[#eef2ff] hover:text-[#2563eb]">⋯</button>
                         {rowMenu === fr.key && (
-                          <div className="absolute right-2 top-full z-20 mt-1 w-48 rounded-lg border border-gray-200 bg-white shadow-lg text-left">
-                            <button onClick={() => copyId(r.externalId)} className="block w-full px-3 py-2 text-sm hover:bg-gray-50">Sao chép ID</button>
+                          <div className="absolute right-2.5 top-full z-20 mt-1 w-[190px] rounded-xl border border-[#eceef2] bg-white shadow-[0_14px_40px_rgba(15,23,42,0.16)] p-1.5 text-left">
+                            <button onClick={() => copyId(r.externalId)} className="block w-full px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-[#374151] hover:bg-[#f3f4f6]">⧉ Sao chép ID</button>
                             <a
                               href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns${currentAccountExtId ? `?act=${currentAccountExtId}` : ''}`}
                               target="_blank" rel="noreferrer"
                               onClick={() => setRowMenu(null)}
-                              className="block w-full px-3 py-2 text-sm hover:bg-gray-50"
-                            >Mở Meta Ads Manager ↗</a>
+                              className="block w-full px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-[#374151] hover:bg-[#f3f4f6]"
+                            >↗ Mở Ads Manager</a>
                           </div>
                         )}
                       </td>

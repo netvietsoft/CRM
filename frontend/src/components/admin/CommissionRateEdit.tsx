@@ -12,11 +12,11 @@ interface CommissionRateEditProps {
   description: string;
 }
 
-export default function CommissionRateEdit({ 
-  level, 
-  initialPercentage, 
-  label, 
-  description 
+export default function CommissionRateEdit({
+  level,
+  initialPercentage,
+  label,
+  description
 }: CommissionRateEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [percentage, setPercentage] = useState(initialPercentage.toString());
@@ -55,46 +55,46 @@ export default function CommissionRateEdit({
   };
 
   return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 relative">
+    <div className="relative rounded-[12px] border border-[#eceef2] p-[14px] text-center">
       {/* Edit button */}
       {!isEditing && (
         <button
           onClick={() => setIsEditing(true)}
-          className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+          className="absolute right-2 top-2 rounded p-1.5 text-[#9ca3af] transition-colors hover:bg-[#eff6ff] hover:text-[#2563eb]"
           title="Chỉnh sửa"
         >
-          <Pencil className="w-4 h-4" />
+          <Pencil className="h-3.5 w-3.5" />
         </button>
       )}
 
       {/* Action buttons when editing */}
       {isEditing && (
-        <div className="absolute top-2 right-2 flex gap-1">
+        <div className="absolute right-2 top-2 flex gap-1">
           <button
             onClick={handleSave}
             disabled={loading}
-            className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+            className="rounded p-1.5 text-[#047857] transition-colors hover:bg-[#d1fae5] disabled:opacity-50"
             title="Lưu"
           >
-            <Check className="w-4 h-4" />
+            <Check className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleCancel}
             disabled={loading}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+            className="rounded p-1.5 text-[#dc2626] transition-colors hover:bg-[#fee2e2] disabled:opacity-50"
             title="Hủy"
           >
-            <X className="w-4 h-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
-      <div className="font-bold text-blue-600 mb-2">
+      <div className="mb-1 text-[11.5px] font-semibold text-[#6b7280]">
         {label}
       </div>
 
       {isEditing ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-1">
           <input
             type="number"
             step="0.1"
@@ -103,19 +103,19 @@ export default function CommissionRateEdit({
             value={percentage}
             onChange={(e) => setPercentage(e.target.value)}
             onKeyDown={handleKeyPress}
-            className="w-24 px-3 py-2 text-3xl font-extrabold text-gray-800 border-2 border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-[70px] rounded-lg border-2 border-[#2563eb] px-2 py-1 text-center text-[24px] font-extrabold text-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#2563eb]"
             autoFocus
             disabled={loading}
           />
-          <span className="text-3xl font-extrabold text-gray-800">%</span>
+          <span className="text-[24px] font-extrabold text-[#2563eb]">%</span>
         </div>
       ) : (
-        <div className="text-4xl font-extrabold text-gray-800">
+        <div className="text-[24px] font-extrabold text-[#2563eb]">
           {initialPercentage}%
         </div>
       )}
 
-      <div className="text-xs text-gray-600 mt-1">
+      <div className="mt-[2px] text-[11px] text-[#9ca3af]">
         {description}
       </div>
     </div>

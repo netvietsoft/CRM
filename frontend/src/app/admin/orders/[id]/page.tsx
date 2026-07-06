@@ -238,27 +238,37 @@ interface OrderDetail {
   commissions?: CommissionSummary[] | null;
 }
 
+// Design pill families (handoff): green #047857/#d1fae5, orange #c2410c/#ffedd5,
+// yellow #92400e/#fef3c7, red #dc2626/#fee2e2
+const PILL = {
+  green: 'bg-[#d1fae5] text-[#047857]',
+  orange: 'bg-[#ffedd5] text-[#c2410c]',
+  yellow: 'bg-[#fef3c7] text-[#92400e]',
+  red: 'bg-[#fee2e2] text-[#dc2626]',
+  gray: 'bg-gray-100 text-gray-600',
+} as const;
+
 const statusMap: Record<string, { cls: string; label: string }> = {
-  PENDING: { cls: 'bg-orange-100 text-orange-700', label: 'Chờ duyệt' },
-  WAITING_FOR_GOODS: { cls: 'bg-yellow-100 text-yellow-700', label: 'Chờ hàng' },
-  CONFIRMED: { cls: 'bg-cyan-100 text-cyan-700', label: 'Đã xác nhận' },
-  PACKAGING: { cls: 'bg-purple-100 text-purple-700', label: 'Đang đóng hàng' },
-  WAITING_FOR_SHIPPING: { cls: 'bg-indigo-100 text-indigo-700', label: 'Chờ chuyển hàng' },
-  SHIPPED: { cls: 'bg-blue-100 text-blue-700', label: 'Đã gửi hàng' },
-  DELIVERED: { cls: 'bg-teal-100 text-teal-700', label: 'Đã nhận hàng' },
-  PAYMENT_COLLECTED: { cls: 'bg-emerald-100 text-emerald-700', label: 'Đã thu tiền' },
-  RETURNING: { cls: 'bg-amber-100 text-amber-700', label: 'Đang hoàn' },
-  EXCHANGING: { cls: 'bg-amber-100 text-amber-700', label: 'Đang đổi' },
-  COMPLETED: { cls: 'bg-green-100 text-green-700', label: 'Hoàn thành' },
-  CANCELLED: { cls: 'bg-red-100 text-red-700', label: 'Đã hủy' },
-  REFUNDED: { cls: 'bg-red-100 text-red-700', label: 'Đã hoàn trả' },
+  PENDING: { cls: PILL.orange, label: 'Chờ duyệt' },
+  WAITING_FOR_GOODS: { cls: PILL.yellow, label: 'Chờ hàng' },
+  CONFIRMED: { cls: PILL.green, label: 'Đã xác nhận' },
+  PACKAGING: { cls: PILL.yellow, label: 'Đang đóng hàng' },
+  WAITING_FOR_SHIPPING: { cls: PILL.yellow, label: 'Chờ chuyển hàng' },
+  SHIPPED: { cls: PILL.green, label: 'Đã gửi hàng' },
+  DELIVERED: { cls: PILL.green, label: 'Đã nhận hàng' },
+  PAYMENT_COLLECTED: { cls: PILL.green, label: 'Đã thu tiền' },
+  RETURNING: { cls: PILL.orange, label: 'Đang hoàn' },
+  EXCHANGING: { cls: PILL.orange, label: 'Đang đổi' },
+  COMPLETED: { cls: PILL.green, label: 'Hoàn thành' },
+  CANCELLED: { cls: PILL.red, label: 'Đã hủy' },
+  REFUNDED: { cls: PILL.red, label: 'Đã hoàn trả' },
 };
 
 const paymentStatusMap: Record<string, { cls: string; label: string }> = {
-  UNPAID: { cls: 'bg-gray-100 text-gray-700', label: 'Chưa thanh toán' },
-  PAID: { cls: 'bg-green-100 text-green-700', label: 'Đã thanh toán' },
-  PARTIALLY_PAID: { cls: 'bg-yellow-100 text-yellow-700', label: 'Thanh toán 1 phần' },
-  REFUNDED: { cls: 'bg-red-100 text-red-700', label: 'Đã hoàn tiền' },
+  UNPAID: { cls: PILL.gray, label: 'Chưa thanh toán' },
+  PAID: { cls: PILL.green, label: 'Đã thanh toán' },
+  PARTIALLY_PAID: { cls: PILL.yellow, label: 'Thanh toán 1 phần' },
+  REFUNDED: { cls: PILL.red, label: 'Đã hoàn tiền' },
 };
 
 function InfoRow({ label, value, className }: { label: string; value: ReactNode; className?: string }) {
@@ -299,7 +309,7 @@ export default async function OrderDetailPage(props: {
         </h1>
         <Link
           href={backUrl}
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-[#2563eb] hover:text-[#1d4ed8] font-semibold text-sm"
         >
           ← Quay lại danh sách
         </Link>
@@ -367,104 +377,102 @@ export default async function OrderDetailPage(props: {
   return (
     <>
       <OrderReadStatusManager orderId={order.id} isRead={order.isRead ?? false} />
-      <div className="mb-6">
+      <div className="mb-[18px]">
         <Link
           href={backUrl}
-          className="text-blue-600 hover:text-blue-700 font-medium text-sm mb-4 inline-block"
+          className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-gray-500 hover:text-[#2563eb] mb-3.5"
         >
-          ← Quay lại danh sách
+          ← Danh sách đơn hàng
         </Link>
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-1">
-              Đơn hàng #{order.orderCode}
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="m-0 text-[22px] font-extrabold tracking-[-0.4px] font-mono text-gray-900">
+              #{order.orderCode}
             </h1>
-            <div className="flex items-center gap-3 text-sm text-gray-500">
-              {isPancake && m.pancakeCreatedAt && (
-                <span className="text-xs py-0.5 rounded">
-                  {fmtDate(m.pancakeCreatedAt)}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2 flex-wrap items-center">
-            <span className={`px-4 py-2 rounded-lg text-sm font-semibold ${st.cls}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${st.cls}`}>
               {st.label}
             </span>
-            <span className={`px-4 py-2 rounded-lg text-sm font-semibold ${pst.cls}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold ${pst.cls}`}>
               {pst.label}
             </span>
+            {isPancake && m.pancakeCreatedAt && (
+              <span className="text-xs text-gray-400 font-medium">
+                {fmtDate(m.pancakeCreatedAt)}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2.5 flex-wrap items-center">
             <DeleteOrderButton orderId={order.id} orderCode={order.orderCode} />
           </div>
         </div>
       </div>
 
       <OrderSaveProvider>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Order Items */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
+          <div className="bg-white border border-[#eceef2] rounded-[14px] overflow-hidden">
+            <div className="px-5 py-[15px] border-b border-[#f0f1f5] text-[15px] font-bold text-gray-900">
               Sản phẩm ({displayItems.length})
-            </h2>
-            <div className="space-y-4">
+            </div>
+            <div>
               {displayItems.map((item) => (
                 <div
                   key={item.key}
-                  className="flex gap-4 p-4 bg-gray-50 rounded-lg"
+                  className="flex gap-3 items-start px-5 py-[13px] border-b border-[#f3f4f6]"
                 >
-                  <div className="w-14 h-14 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                  <div className="w-11 h-11 bg-[#f3f4f6] rounded-[10px] overflow-hidden flex-shrink-0">
                     {item.image ? (
                       <Image
                         loader={passthroughImageLoader}
                         unoptimized
                         src={item.image}
                         alt={item.name ?? 'Sản phẩm'}
-                        width={56}
-                        height={56}
+                        width={44}
+                        height={44}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-14 h-14 flex items-center justify-center text-gray-400">
-                        📦
+                      <div className="w-11 h-11 flex items-center justify-center text-[10px] font-semibold text-gray-400">
+                        Ảnh
                       </div>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[13.5px] font-semibold text-gray-800 mb-1">
                       {item.name || 'Sản phẩm'}
                     </h3>
                     <div className="flex gap-2 flex-wrap mb-1">
                       {item.displayId && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                        <span className="text-[11px] bg-[#f3f4f6] text-gray-500 px-1.5 py-0.5 rounded font-mono">
                           SKU: {item.displayId}
                         </span>
                       )}
                       {item.barcode && (
-                        <span className="text-xs bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                        <span className="text-[11px] bg-[#f3f4f6] text-gray-500 px-1.5 py-0.5 rounded font-mono">
                           {item.barcode}
                         </span>
                       )}
                     </div>
                     {item.fields && item.fields.length > 0 && (
-                      <p className="text-sm text-gray-600 mb-1">
+                      <p className="text-[11.5px] text-gray-400 mb-1">
                         {item.fields.map((field) => `${field.name || field.keyValue}: ${field.value}`).join(' • ')}
                       </p>
                     )}
-                    <p className="text-sm text-gray-600">
+                    <p className="text-[11.5px] text-gray-400">
                       Số lượng: {item.quantity} {item.weight ? `• ${item.weight}g` : ''}
                     </p>
                     {item.isGift && (
-                      <span className="inline-block mt-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-[#fef3c7] text-[#92400e] text-[11px] font-semibold rounded">
                         Quà tặng
                       </span>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-800">{fmt(item.price)}</p>
-                    <p className="text-sm text-gray-600">
-                      Tổng: {fmt(item.price * item.quantity)}
+                  <div className="text-right whitespace-nowrap min-w-[90px]">
+                    <p className="text-[13.5px] font-bold text-gray-900">{fmt(item.price * item.quantity)}</p>
+                    <p className="text-[12.5px] text-gray-500">
+                      {fmt(item.price)} × {item.quantity}
                     </p>
                   </div>
                 </div>
@@ -473,7 +481,7 @@ export default async function OrderDetailPage(props: {
           </div>
 
           {/* 2-Column Grid for Payment and Notes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Order Summary / Financials - Pancake style (Dynamic Client Component) */}
             <OrderPaymentClient order={order} metadata={m} isPancake={isPancake} />
 
@@ -483,8 +491,8 @@ export default async function OrderDetailPage(props: {
 
           {/* Vouchers */}
           {(order.appliedVouchers?.length ?? 0) > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-800 mb-2">
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h3 className="text-[15px] font-bold text-gray-900 mb-2">
                 Voucher đã áp dụng:
               </h3>
               <div className="space-y-2">
@@ -507,16 +515,16 @@ export default async function OrderDetailPage(props: {
 
           {/* Shipping Partner / Tracking for Pancake */}
           {isPancake && partner && partner.trackingCode && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-4 flex items-center gap-2">
                 Trạng thái đơn hàng
               </h2>
               <div className="space-y-4">
                 {/* Tracking header */}
                 <div className="flex items-center justify-between rounded-lg">
                   <div className='flex items-center gap-2'>
-                    <p className="font-mono font-bold text-blue-700 text-lg select-all">{partner.trackingCode}</p>
-                    <Copy className='w-4 h-4 text-blue-500 cursor-pointer' />
+                    <p className="font-mono font-bold text-[#2563eb] text-lg select-all">{partner.trackingCode}</p>
+                    <Copy className='w-4 h-4 text-[#2563eb] cursor-pointer' />
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-gray-500">Phí Ship</p>
@@ -586,8 +594,8 @@ export default async function OrderDetailPage(props: {
 
           {/* Commissions */}
           {(order.commissions?.length ?? 0) > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-4">
                 Hoa hồng ({order.commissions?.length ?? 0})
               </h2>
               <div className="space-y-3">
@@ -618,12 +626,12 @@ export default async function OrderDetailPage(props: {
         </div>
 
         {/* Right Column */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Information Section */}
           <OrderInfoClient order={order} metadata={m} isPancake={isPancake} staffList={staffList} statusLabel={st.label} />
           {/* Customer Info */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
+          <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+            <h2 className="text-[15px] font-bold text-gray-900 mb-4">
               Khách hàng
             </h2>
             <div className="space-y-3">
@@ -673,8 +681,8 @@ export default async function OrderDetailPage(props: {
           </div>
 
           {/* Shipping Address */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">📍 Nhận hàng</h2>
+          <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+            <h2 className="text-[15px] font-bold text-gray-900 mb-4">📍 Nhận hàng</h2>
             <div className="space-y-3">
               <InfoRow
                 label="Người nhận"
@@ -699,8 +707,8 @@ export default async function OrderDetailPage(props: {
 
           {/* Source / Channel Info for Pancake */}
           {isPancake && (source.accountName || source.pageId || m.trackingLink) && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">📡 Nguồn đơn</h2>
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-4">📡 Nguồn đơn</h2>
               <div className="space-y-3">
                 <InfoRow label="Nguồn" value={source.accountName} />
                 <InfoRow label="Page ID" value={source.pageId} />
@@ -723,7 +731,7 @@ export default async function OrderDetailPage(props: {
                 {m.trackingLink && (
                   <div>
                     <p className="text-xs text-gray-500 mb-0.5">Link xác nhận</p>
-                    <a href={m.trackingLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm break-all">
+                    <a href={m.trackingLink} target="_blank" rel="noreferrer" className="text-[#2563eb] hover:underline text-sm break-all">
                       {m.trackingLink}
                     </a>
                   </div>
@@ -734,8 +742,8 @@ export default async function OrderDetailPage(props: {
 
           {/* Warehouse Info */}
           {isPancake && m.warehouseInfo && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Kho hàng</h2>
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-4">Kho hàng</h2>
               <div className="space-y-3">
                 <InfoRow label="Tên kho" value={m.warehouseInfo.name} />
                 <InfoRow label="SĐT kho" value={m.warehouseInfo.phone_number} />
@@ -746,8 +754,8 @@ export default async function OrderDetailPage(props: {
 
           {/* Tags */}
           {isPancake && m.tags && m.tags.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">🏷️ Thẻ</h2>
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-4">🏷️ Thẻ</h2>
               <div className="flex gap-2 flex-wrap">
                 {m.tags.map((tag, idx) => (
                   <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
@@ -760,8 +768,8 @@ export default async function OrderDetailPage(props: {
 
           {/* Staff Assignments */}
           {isPancake && (m.creator || m.marketer || m.assigningSeller || m.assigningCare) && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Nhân viên</h2>
+            <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+              <h2 className="text-[15px] font-bold text-gray-900 mb-4">Nhân viên</h2>
               <div className="space-y-3">
                 {m.creator && <InfoRow label="Người tạo đơn" value={m.creator.name} />}
                 {m.marketer && <InfoRow label="Marketer" value={m.marketer.name} />}

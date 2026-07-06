@@ -138,24 +138,24 @@ function getCampaignStatusLabel(status: string) {
 
 function getCampaignStatusClassName(status: string) {
   if (status === 'READY') {
-    return 'bg-blue-50 text-blue-700 ring-blue-200';
+    return 'bg-[#dbeafe] text-[#1d4ed8]';
   }
   if (status === 'SCHEDULED') {
-    return 'bg-amber-50 text-amber-700 ring-amber-200';
+    return 'bg-[#fef3c7] text-[#92400e]';
   }
   if (status === 'PROCESSING') {
-    return 'bg-indigo-50 text-indigo-700 ring-indigo-200';
+    return 'bg-[#ffedd5] text-[#c2410c]';
   }
   if (status === 'COMPLETED') {
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    return 'bg-[#d1fae5] text-[#047857]';
   }
   if (status === 'FAILED') {
-    return 'bg-rose-50 text-rose-700 ring-rose-200';
+    return 'bg-[#fee2e2] text-[#dc2626]';
   }
   if (status === 'CANCELLED') {
-    return 'bg-gray-100 text-gray-700 ring-gray-200';
+    return 'bg-[#f1f5f9] text-[#64748b]';
   }
-  return 'bg-gray-100 text-gray-700 ring-gray-200';
+  return 'bg-[#f1f5f9] text-[#64748b]';
 }
 
 export default function CustomerCareImportClient({
@@ -317,77 +317,75 @@ export default function CustomerCareImportClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900">Import từ file ngoài</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Upload file `csv/xlsx`, map cột người nhận, kiểm tra dữ liệu và tạo campaign SMS từ danh sách import.
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <h1 className="text-lg font-extrabold text-gray-900">Import từ file ngoài</h1>
+        <p className="mt-1 text-[12.5px] text-[#9ca3af]">
+          Upload file <span className="font-mono">csv/xlsx</span>, map cột người nhận, kiểm tra dữ liệu và tạo campaign SMS từ danh sách import.
         </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_1fr]">
-        <div className="space-y-6">
-          <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-6">
-              <label className="block">
-                <span className="text-sm font-semibold text-gray-700">Chọn file CSV hoặc XLSX</span>
-                <input
-                  type="file"
-                  accept=".csv,.xlsx"
-                  onChange={handleFileChange}
-                  className="mt-3 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                />
-              </label>
-              <div className="mt-3 text-xs text-gray-500">
-                Hệ thống ưu tiên file có cột số điện thoại và tên khách. Hiện tại tab này chỉ tạo campaign cho kênh SMS.
-              </div>
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+        <div className="flex flex-col gap-4">
+          <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Chọn file CSV hoặc XLSX</span>
+              <input
+                type="file"
+                accept=".csv,.xlsx"
+                onChange={handleFileChange}
+                className="block w-full cursor-pointer rounded-[10px] border border-dashed border-[#d1d5db] px-3.5 py-[11px] text-[13px] text-[#6b7280] hover:border-[#2563eb] hover:text-[#2563eb]"
+              />
+            </label>
+            <div className="mt-1 text-[11px] text-[#9ca3af]">
+              Hệ thống ưu tiên file có cột số điện thoại và tên khách. Hiện tại tab này chỉ tạo campaign cho kênh SMS.
             </div>
 
             {parsingFile ? (
-              <div className="mt-4 text-sm text-gray-500">Đang phân tích file...</div>
+              <div className="mt-4 text-[13px] text-[#9ca3af]">Đang phân tích file...</div>
             ) : parsedFile ? (
-              <div className="mt-6 space-y-6">
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="rounded-xl bg-gray-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="mt-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       File import
                     </div>
-                    <div className="mt-2 text-sm font-semibold text-gray-900">
+                    <div className="text-[15px] font-extrabold text-gray-900">
                       {parsedFile.fileName}
                     </div>
                   </div>
-                  <div className="rounded-xl bg-gray-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       Sheet / loại file
                     </div>
-                    <div className="mt-2 text-sm font-semibold text-gray-900">
+                    <div className="text-[15px] font-extrabold text-gray-900">
                       {parsedFile.sheetName || parsedFile.fileType.toUpperCase()}
                     </div>
                   </div>
-                  <div className="rounded-xl bg-gray-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       Tổng dòng dữ liệu
                     </div>
-                    <div className="mt-2 text-sm font-semibold text-gray-900">
+                    <div className="text-[22px] font-extrabold text-gray-900">
                       {parsedFile.totalRows}
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Map cột dữ liệu</h2>
-                  <p className="mt-1 text-sm text-gray-500">
+                <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                  <h2 className="text-[15px] font-extrabold text-gray-900">Map cột dữ liệu</h2>
+                  <p className="mt-1 text-[12px] text-[#9ca3af]">
                     Cột số điện thoại là bắt buộc. Các cột còn lại có thể bỏ trống nếu file không có.
                   </p>
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    <label className="space-y-2">
-                      <span className="text-sm font-semibold text-gray-700">Cột số điện thoại</span>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Cột số điện thoại</span>
                       <select
                         value={mapping.recipientValue}
                         onChange={(event) =>
                           setMapping((prev) => ({ ...prev, recipientValue: event.target.value }))
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
                       >
                         <option value="">Chọn cột</option>
                         {parsedFile.headers.map((header) => (
@@ -398,14 +396,14 @@ export default function CustomerCareImportClient({
                       </select>
                     </label>
 
-                    <label className="space-y-2">
-                      <span className="text-sm font-semibold text-gray-700">Cột tên khách</span>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Cột tên khách</span>
                       <select
                         value={mapping.recipientName}
                         onChange={(event) =>
                           setMapping((prev) => ({ ...prev, recipientName: event.target.value }))
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
                       >
                         <option value="">Không map</option>
                         {parsedFile.headers.map((header) => (
@@ -416,14 +414,14 @@ export default function CustomerCareImportClient({
                       </select>
                     </label>
 
-                    <label className="space-y-2">
-                      <span className="text-sm font-semibold text-gray-700">Cột email</span>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Cột email</span>
                       <select
                         value={mapping.email}
                         onChange={(event) =>
                           setMapping((prev) => ({ ...prev, email: event.target.value }))
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
                       >
                         <option value="">Không map</option>
                         {parsedFile.headers.map((header) => (
@@ -434,14 +432,14 @@ export default function CustomerCareImportClient({
                       </select>
                     </label>
 
-                    <label className="space-y-2">
-                      <span className="text-sm font-semibold text-gray-700">Cột user ID</span>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Cột user ID</span>
                       <select
                         value={mapping.userId}
                         onChange={(event) =>
                           setMapping((prev) => ({ ...prev, userId: event.target.value }))
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
                       >
                         <option value="">Không map</option>
                         {parsedFile.headers.map((header) => (
@@ -452,14 +450,14 @@ export default function CustomerCareImportClient({
                       </select>
                     </label>
 
-                    <label className="space-y-2 md:col-span-2">
-                      <span className="text-sm font-semibold text-gray-700">Cột order ID</span>
+                    <label className="block md:col-span-2">
+                      <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Cột order ID</span>
                       <select
                         value={mapping.orderId}
                         onChange={(event) =>
                           setMapping((prev) => ({ ...prev, orderId: event.target.value }))
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
                       >
                         <option value="">Không map</option>
                         {parsedFile.headers.map((header) => (
@@ -472,70 +470,71 @@ export default function CustomerCareImportClient({
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-4">
-                  <div className="rounded-xl bg-blue-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-blue-500">
+                <div className="grid grid-cols-2 gap-3.5 md:grid-cols-4">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       Tổng dòng đọc được
                     </div>
-                    <div className="mt-2 text-lg font-bold text-blue-900">{parsedFile.totalRows}</div>
+                    <div className="text-[22px] font-extrabold text-gray-900">{parsedFile.totalRows}</div>
                   </div>
-                  <div className="rounded-xl bg-emerald-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       Dòng hợp lệ
                     </div>
-                    <div className="mt-2 text-lg font-bold text-emerald-900">
+                    <div className="text-[22px] font-extrabold text-[#059669]">
                       {validRecipients.length}
                     </div>
                   </div>
-                  <div className="rounded-xl bg-rose-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-rose-500">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       Dòng thiếu số điện thoại
                     </div>
-                    <div className="mt-2 text-lg font-bold text-rose-900">
+                    <div className="text-[22px] font-extrabold text-[#dc2626]">
                       {invalidRecipients.length}
                     </div>
                   </div>
-                  <div className="rounded-xl bg-amber-50 p-4">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-amber-500">
+                  <div className="rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-[15px]">
+                    <div className="mb-[7px] text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#9ca3af]">
                       Số trùng
                     </div>
-                    <div className="mt-2 text-lg font-bold text-amber-900">
+                    <div className="text-[22px] font-extrabold text-gray-900">
                       {duplicateRecipientCount}
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                  Loại gửi cho file import: <span className="font-semibold">{getMessagePurposeLabel(form.purpose as MessagePurpose)}</span>
-                  <div className="mt-1 text-blue-800">{getMessagePurposeHint(form.purpose as MessagePurpose)}</div>
+                <div className="rounded-[10px] border border-[#bfdbfe] bg-[#eff6ff] px-3.5 py-[11px] text-[12.5px]">
+                  <span className="text-[#2563eb]">Loại gửi cho file import: </span>
+                  <span className="font-bold text-[#1d4ed8]">{getMessagePurposeLabel(form.purpose as MessagePurpose)}</span>
+                  <div className="mt-1 text-[#2563eb]">{getMessagePurposeHint(form.purpose as MessagePurpose)}</div>
                 </div>
 
-                <div className="rounded-2xl border border-gray-200 p-5">
-                  <h2 className="text-lg font-bold text-gray-900">Preview dữ liệu hợp lệ</h2>
-                  <p className="mt-1 text-sm text-gray-500">
+                <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                  <h2 className="text-[15px] font-extrabold text-gray-900">Preview dữ liệu hợp lệ</h2>
+                  <p className="mt-1 text-[12px] text-[#9ca3af]">
                     Xem nhanh dữ liệu sẽ được dùng để tạo danh sách người nhận.
                   </p>
-                  <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-50">
-                        <tr className="text-left text-gray-500">
-                          <th className="px-4 py-3">STT</th>
-                          <th className="px-4 py-3">Số điện thoại</th>
-                          <th className="px-4 py-3">Tên khách</th>
-                          <th className="px-4 py-3">Email</th>
-                          <th className="px-4 py-3">User ID</th>
-                          <th className="px-4 py-3">Order ID</th>
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="min-w-full text-[13px]">
+                      <thead>
+                        <tr className="border-b border-[#f1f5f9] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                          <th className="px-4 py-2.5">STT</th>
+                          <th className="px-4 py-2.5">Số điện thoại</th>
+                          <th className="px-4 py-2.5">Tên khách</th>
+                          <th className="px-4 py-2.5">Email</th>
+                          <th className="px-4 py-2.5">User ID</th>
+                          <th className="px-4 py-2.5">Order ID</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {validRecipients.slice(0, 8).map((row) => (
-                          <tr key={`${row.index}-${row.recipientValue}`}>
-                            <td className="px-4 py-3 text-gray-500">{row.index + 2}</td>
-                            <td className="px-4 py-3 font-medium text-gray-900">{row.recipientValue}</td>
-                            <td className="px-4 py-3 text-gray-700">{row.recipientName || '—'}</td>
-                            <td className="px-4 py-3 text-gray-700">{row.email || '—'}</td>
-                            <td className="px-4 py-3 text-gray-700">{row.userId || '—'}</td>
-                            <td className="px-4 py-3 text-gray-700">{row.orderId || '—'}</td>
+                          <tr key={`${row.index}-${row.recipientValue}`} className="border-b border-[#f1f5f9] hover:bg-[#eff6ff]">
+                            <td className="px-4 py-3.5 text-[#6b7280]">{row.index + 2}</td>
+                            <td className="px-4 py-3.5 font-mono font-medium text-gray-900">{row.recipientValue}</td>
+                            <td className="px-4 py-3.5 text-[#374151]">{row.recipientName || '—'}</td>
+                            <td className="px-4 py-3.5 text-[#374151]">{row.email || '—'}</td>
+                            <td className="px-4 py-3.5 font-mono text-[#374151]">{row.userId || '—'}</td>
+                            <td className="px-4 py-3.5 font-mono text-[#374151]">{row.orderId || '—'}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -544,29 +543,29 @@ export default function CustomerCareImportClient({
                 </div>
 
                 {invalidPreviewRows.length > 0 ? (
-                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
-                    <h2 className="text-lg font-bold text-rose-900">Dòng đang bị bỏ qua</h2>
-                    <p className="mt-1 text-sm text-rose-700">
+                  <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-4 py-3">
+                    <h2 className="text-[13px] font-bold text-[#92400e]">Dòng đang bị bỏ qua</h2>
+                    <p className="mt-1 text-[12.5px] text-[#b45309]">
                       Các dòng dưới đây chưa có số điện thoại theo cột đã map, nên sẽ không được đưa vào campaign.
                     </p>
-                    <div className="mt-4 overflow-x-auto rounded-2xl border border-rose-200 bg-white">
-                      <table className="min-w-full divide-y divide-rose-100 text-sm">
-                        <thead className="bg-rose-50">
-                          <tr className="text-left text-rose-700">
-                            <th className="px-4 py-3">STT</th>
+                    <div className="mt-4 overflow-x-auto rounded-[10px] border border-[#fde68a] bg-white">
+                      <table className="min-w-full text-[13px]">
+                        <thead className="bg-[#f9fafb]">
+                          <tr className="border-b border-[#f1f5f9] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                            <th className="px-4 py-2.5">STT</th>
                             {parsedFile.headers.map((header) => (
-                              <th key={header} className="px-4 py-3 whitespace-nowrap">
+                              <th key={header} className="px-4 py-2.5 whitespace-nowrap">
                                 {header}
                               </th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-rose-100">
+                        <tbody>
                           {invalidPreviewRows.map((row) => (
-                            <tr key={`invalid-${row.index}`}>
-                              <td className="px-4 py-3 text-rose-700">{row.index + 2}</td>
+                            <tr key={`invalid-${row.index}`} className="border-b border-[#f1f5f9] hover:bg-[#eff6ff]">
+                              <td className="px-4 py-3.5 text-[#6b7280]">{row.index + 2}</td>
                               {parsedFile.headers.map((header) => (
-                                <td key={header} className="px-4 py-3 whitespace-nowrap text-gray-700">
+                                <td key={header} className="px-4 py-3.5 whitespace-nowrap text-[#374151]">
                                   {(row.metadata.rawRow as Record<string, string>)[header] || '—'}
                                 </td>
                               ))}
@@ -581,17 +580,17 @@ export default function CustomerCareImportClient({
             ) : null}
           </div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+          <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Campaign import gần đây</h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <h2 className="text-[15px] font-extrabold text-gray-900">Campaign import gần đây</h2>
+                <p className="mt-1 text-[12px] text-[#9ca3af]">
                   Theo dõi nhanh các campaign được tạo từ file ngoài.
                 </p>
               </div>
               <Link
                 href="/admin/customer-care"
-                className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+                className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
               >
                 Sang soạn và gửi
               </Link>
@@ -599,19 +598,19 @@ export default function CustomerCareImportClient({
 
             <div className="mt-5 space-y-3">
               {recentImportCampaigns.length === 0 ? (
-                <div className="rounded-xl bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                <div className="rounded-[10px] border border-[#eceef2] bg-[#f9fafb] px-4 py-5 text-[13px] text-[#9ca3af]">
                   Chưa có campaign import nào gần đây.
                 </div>
               ) : (
                 recentImportCampaigns.map((campaign) => (
                   <div
                     key={campaign.id}
-                    className="rounded-xl border border-gray-200 px-4 py-4"
+                    className="rounded-[10px] border border-[#eceef2] px-4 py-4"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="font-semibold text-gray-900">{campaign.name}</div>
-                        <div className="mt-1 text-sm text-gray-500">
+                        <div className="text-[13px] font-bold text-gray-900">{campaign.name}</div>
+                        <div className="mt-1 text-[12px] text-[#6b7280]">
                           {campaign.scheduledAt
                             ? `Lên lịch: ${new Intl.DateTimeFormat('vi-VN', {
                                 day: '2-digit',
@@ -624,23 +623,23 @@ export default function CustomerCareImportClient({
                         </div>
                       </div>
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getCampaignStatusClassName(campaign.status)}`}
+                        className={`inline-flex rounded-full px-2.5 py-[3px] text-[11px] font-bold ${getCampaignStatusClassName(campaign.status)}`}
                       >
                         {getCampaignStatusLabel(campaign.status)}
                       </span>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-[12px]">
                       <Link
                         href={`/admin/customer-care/campaigns/${campaign.id}`}
-                        className="font-semibold text-blue-600 hover:text-blue-700"
+                        className="font-bold text-[#2563eb] hover:text-[#1d4ed8]"
                       >
                         Xem chi tiết
                       </Link>
-                      <span className="text-gray-500">
+                      <span className="text-[#6b7280]">
                         {campaign._count?.audiences || 0} người nhận
                       </span>
-                      <span className="text-gray-500">{getMessagePurposeLabel(campaign.purpose)}</span>
-                      <span className="text-gray-500">{campaign.channel.code}</span>
+                      <span className="text-[#6b7280]">{getMessagePurposeLabel(campaign.purpose)}</span>
+                      <span className="text-[#6b7280]">{campaign.channel.code}</span>
                     </div>
                   </div>
                 ))
@@ -651,22 +650,22 @@ export default function CustomerCareImportClient({
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100"
+          className="rounded-[14px] border border-[#eceef2] bg-white p-[22px]"
         >
-          <h2 className="text-lg font-bold text-gray-900">Tạo campaign import</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Sau khi xác nhận, hệ thống sẽ tạo một campaign nguồn `IMPORT` từ các dòng hợp lệ.
+          <h2 className="text-[15px] font-extrabold text-gray-900">Tạo campaign import</h2>
+          <p className="mt-1 text-[12px] text-[#9ca3af]">
+            Sau khi xác nhận, hệ thống sẽ tạo một campaign nguồn <span className="font-mono">IMPORT</span> từ các dòng hợp lệ.
           </p>
 
           <div className="mt-6 space-y-4">
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Kênh gửi</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Kênh gửi</span>
               <select
                 value={form.channelCode}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, channelCode: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 {messagingChannelOptions.map((option) => (
                   <option key={option.value} value={option.value} disabled={option.disabled}>
@@ -676,19 +675,19 @@ export default function CustomerCareImportClient({
               </select>
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Tên campaign</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Tên campaign</span>
               <input
                 required
                 value={form.name}
                 onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                 placeholder="Ví dụ: Import khách hàng chiến dịch cuối tuần"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Loại gửi</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Loại gửi</span>
               <select
                 value={form.purpose}
                 onChange={(event) =>
@@ -697,7 +696,7 @@ export default function CustomerCareImportClient({
                     purpose: event.target.value as MessagePurpose,
                   }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 {messagePurposeOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -705,17 +704,17 @@ export default function CustomerCareImportClient({
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500">{getMessagePurposeHint(form.purpose as MessagePurpose)}</p>
+              <p className="mt-1 text-[11px] text-[#9ca3af]">{getMessagePurposeHint(form.purpose as MessagePurpose)}</p>
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Template</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Template</span>
               <select
                 value={form.templateId}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, templateId: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
               >
                 <option value="">Không dùng template</option>
                 {templates.map((template) => (
@@ -726,33 +725,33 @@ export default function CustomerCareImportClient({
               </select>
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Nội dung tin</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Nội dung tin</span>
               <textarea
                 rows={6}
                 value={form.messageContent}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, messageContent: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-3 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
                 placeholder="Nếu để trống thì hệ thống sẽ dùng nội dung của template"
               />
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Lên lịch gửi</span>
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">Lên lịch gửi</span>
               <input
                 type="datetime-local"
                 value={form.scheduledAt}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, scheduledAt: event.target.value }))
                 }
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[12.5px] outline-none focus:border-[#2563eb]"
               />
             </label>
 
-            <label className="block space-y-2">
-              <span className="text-sm font-semibold text-gray-700">
+            <label className="block">
+              <span className="mb-1.5 block text-[12.5px] font-bold text-gray-900">
                 Biến dữ liệu cho template (JSON)
               </span>
               <textarea
@@ -762,16 +761,16 @@ export default function CustomerCareImportClient({
                   setForm((prev) => ({ ...prev, templateVariables: event.target.value }))
                 }
                 placeholder={`{\n  "customer_name": "Khach Import",\n  "order_code": "IMPORT001",\n  "voucher_value": "50000"\n}`}
-                className="w-full rounded-lg border border-gray-200 px-3 py-3 font-mono text-xs"
+                className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 font-mono text-[13px] outline-none focus:border-[#2563eb]"
               />
-              <p className="text-xs text-gray-500">
+              <p className="mt-1 text-[11px] text-[#9ca3af]">
                 Dùng khi muốn truyền thêm dữ liệu dùng chung cho template import.
               </p>
             </label>
           </div>
 
           <div className="mt-6 space-y-3">
-            <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="rounded-[10px] border border-[#eceef2] bg-[#f9fafb] px-3.5 py-[11px] text-[12.5px] text-[#6b7280]">
               {!parsedFile
                 ? 'Chưa có file để tạo campaign'
                 : `${validRecipients.length} dòng hợp lệ, ${uniqueRecipientCount} số duy nhất và ${duplicateRecipientCount} dòng trùng sẽ được gộp trước khi tạo campaign`}
@@ -779,7 +778,11 @@ export default function CustomerCareImportClient({
             <button
               type="submit"
               disabled={submitting || !parsedFile}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              className={`w-full rounded-[10px] px-5 py-3 text-sm font-bold text-white ${
+                submitting || !parsedFile
+                  ? 'bg-[#818cf8] opacity-85 cursor-not-allowed'
+                  : 'bg-[#2563eb] hover:bg-[#1d4ed8]'
+              }`}
             >
               {submitting ? 'Đang tạo campaign...' : 'Tạo campaign từ file import'}
             </button>

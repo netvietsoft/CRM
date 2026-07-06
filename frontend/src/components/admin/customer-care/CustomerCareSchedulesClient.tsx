@@ -37,21 +37,21 @@ interface CustomerCareSchedulesClientProps {
 
 function getScheduleStatusMeta(status: string) {
   if (status === 'PENDING') {
-    return 'bg-amber-50 text-amber-700 ring-amber-200';
+    return 'bg-[#fef3c7] text-[#92400e]';
   }
   if (status === 'PROCESSING') {
-    return 'bg-blue-50 text-blue-700 ring-blue-200';
+    return 'bg-[#dbeafe] text-[#1d4ed8]';
   }
   if (status === 'COMPLETED') {
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    return 'bg-[#d1fae5] text-[#047857]';
   }
   if (status === 'CANCELLED') {
-    return 'bg-gray-100 text-gray-700 ring-gray-200';
+    return 'bg-[#f1f5f9] text-[#64748b]';
   }
   if (status === 'FAILED') {
-    return 'bg-rose-50 text-rose-700 ring-rose-200';
+    return 'bg-[#fee2e2] text-[#dc2626]';
   }
-  return 'bg-gray-100 text-gray-700 ring-gray-200';
+  return 'bg-[#f1f5f9] text-[#64748b]';
 }
 
 function getScheduleStatusLabel(status: string) {
@@ -200,16 +200,16 @@ export default function CustomerCareSchedulesClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900">Lịch gửi</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <h1 className="text-lg font-extrabold text-gray-900">Lịch gửi</h1>
+        <p className="mt-1 text-[12.5px] text-[#9ca3af]">
           Quản lý các campaign SMS đang được hẹn giờ gửi, đổi lịch hoặc hủy trước khi chạy.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white px-5 py-4">
+        <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-5">
           <input
             value={search}
             onChange={(event) => {
@@ -217,7 +217,7 @@ export default function CustomerCareSchedulesClient({
               setPage(1);
             }}
             placeholder="Tìm theo tên campaign"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
           />
 
           <select
@@ -226,7 +226,7 @@ export default function CustomerCareSchedulesClient({
               setStatus(event.target.value);
               setPage(1);
             }}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px]"
           >
             <option value="">Tất cả trạng thái</option>
             {scheduleStatusOptions.map((option) => (
@@ -243,7 +243,7 @@ export default function CustomerCareSchedulesClient({
               setRunFrom(event.target.value);
               setPage(1);
             }}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[12.5px]"
           />
 
           <input
@@ -253,35 +253,35 @@ export default function CustomerCareSchedulesClient({
               setRunTo(event.target.value);
               setPage(1);
             }}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[12.5px]"
           />
 
-          <div className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
+          <div className="flex items-center justify-center rounded-[10px] bg-[#eff6ff] px-3 py-2 text-[12.5px] font-bold text-[#2563eb]">
             {pagination.total} lịch gửi
           </div>
         </div>
 
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full">
             <thead>
-              <tr className="text-left text-sm text-gray-500">
-                <th className="px-4 py-3">Campaign</th>
-                <th className="px-4 py-3">Kênh</th>
-                <th className="px-4 py-3">Run at</th>
-                <th className="px-4 py-3">Trạng thái</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
+              <tr className="border-b border-[#f1f5f9] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                <th className="px-4 py-2.5">Campaign</th>
+                <th className="px-4 py-2.5">Kênh</th>
+                <th className="px-4 py-2.5">Run at</th>
+                <th className="px-4 py-2.5">Trạng thái</th>
+                <th className="px-4 py-2.5 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className="text-[13px]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-[#9ca3af]">
                     Đang tải lịch gửi...
                   </td>
                 </tr>
               ) : schedules.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-[#9ca3af]">
                     Chưa có lịch gửi nào.
                   </td>
                 </tr>
@@ -290,57 +290,57 @@ export default function CustomerCareSchedulesClient({
                   const runAtMeta = getRunAtMeta(schedule);
 
                   return (
-                    <tr key={schedule.id}>
-                      <td className="px-4 py-4">
-                        <div className="font-semibold text-gray-900">
+                    <tr key={schedule.id} className="border-b border-[#f1f5f9] hover:bg-[#eff6ff]">
+                      <td className="px-4 py-3.5">
+                        <div className="font-bold text-gray-900">
                           {schedule.campaign?.name || 'Không có campaign'}
                         </div>
                         <div className="mt-2">
                           {schedule.campaign?.id ? (
                             <Link
                               href={`/admin/customer-care/campaigns/${schedule.campaign.id}`}
-                              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                              className="text-[12.5px] font-bold text-[#2563eb] hover:text-[#1d4ed8]"
                             >
                               Xem chi tiết campaign
                             </Link>
                           ) : (
-                            <span className="text-sm text-gray-500">Không có liên kết</span>
+                            <span className="text-[12.5px] text-[#9ca3af]">Không có liên kết</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-4">{schedule.channel.code}</td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-3.5 font-semibold">{schedule.channel.code}</td>
+                      <td className="px-4 py-3.5">
                         {editingId === schedule.id ? (
                           <input
                             type="datetime-local"
                             value={runAt}
                             onChange={(event) => setRunAt(event.target.value)}
-                            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                            className="rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px]"
                           />
                         ) : (
                           <div>
-                            <div className="font-medium text-gray-900">{formatDateTime(schedule.runAt)}</div>
-                            <div className={`mt-1 text-xs font-semibold ${runAtMeta.className}`}>
+                            <div className="font-semibold text-gray-900">{formatDateTime(schedule.runAt)}</div>
+                            <div className={`mt-1 text-[11.5px] font-semibold ${runAtMeta.className}`}>
                               {runAtMeta.text}
                             </div>
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-3.5">
                         <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getScheduleStatusMeta(schedule.status)}`}
+                          className={`rounded-full px-2.5 py-[3px] text-[11px] font-bold ${getScheduleStatusMeta(schedule.status)}`}
                         >
                           {getScheduleStatusLabel(schedule.status)}
                         </span>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex justify-end gap-2">
+                      <td className="px-4 py-3.5">
+                        <div className="flex justify-end gap-[7px]">
                           {editingId === schedule.id ? (
                             <>
                               <button
                                 type="button"
                                 onClick={() => handleUpdate(schedule.id)}
-                                className="rounded-lg bg-blue-600 px-3 py-1.5 font-semibold text-white"
+                                className="rounded-lg bg-[#2563eb] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#1d4ed8]"
                               >
                                 Lưu
                               </button>
@@ -350,7 +350,7 @@ export default function CustomerCareSchedulesClient({
                                   setEditingId('');
                                   setRunAt('');
                                 }}
-                                className="rounded-lg bg-gray-100 px-3 py-1.5 font-semibold text-gray-700"
+                                className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
                               >
                                 Bỏ
                               </button>
@@ -364,7 +364,7 @@ export default function CustomerCareSchedulesClient({
                                     setEditingId(schedule.id);
                                     setRunAt(schedule.runAt.slice(0, 16));
                                   }}
-                                  className="rounded-lg bg-gray-100 px-3 py-1.5 font-semibold text-gray-700"
+                                  className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
                                 >
                                   Đổi lịch
                                 </button>
@@ -373,7 +373,7 @@ export default function CustomerCareSchedulesClient({
                                 <button
                                   type="button"
                                   onClick={() => handleCancel(schedule.id)}
-                                  className="rounded-lg bg-red-50 px-3 py-1.5 font-semibold text-red-600"
+                                  className="rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-[12px] font-bold text-[#dc2626] hover:bg-[#fef2f2]"
                                 >
                                   Hủy
                                 </button>
@@ -391,8 +391,8 @@ export default function CustomerCareSchedulesClient({
         </div>
 
         {pagination.totalPages > 1 ? (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-            <div className="text-sm text-gray-500">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[12.5px] text-[#6b7280]">
               Trang {pagination.page}/{pagination.totalPages}
             </div>
             <div className="flex items-center gap-2">
@@ -400,7 +400,7 @@ export default function CustomerCareSchedulesClient({
                 type="button"
                 disabled={page <= 1 || loading}
                 onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:opacity-50"
+                className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12.5px] font-bold text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50"
               >
                 Trước
               </button>
@@ -408,7 +408,7 @@ export default function CustomerCareSchedulesClient({
                 type="button"
                 disabled={page >= pagination.totalPages || loading}
                 onClick={() => setPage((prev) => Math.min(prev + 1, pagination.totalPages))}
-                className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-semibold text-gray-700 disabled:opacity-50"
+                className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12.5px] font-bold text-[#374151] hover:bg-[#f9fafb] disabled:opacity-50"
               >
                 Sau
               </button>

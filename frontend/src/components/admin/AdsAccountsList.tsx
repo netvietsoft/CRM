@@ -37,14 +37,14 @@ const paymentIcon = (fd: AdAccount['fundingDetails']): string => {
 
 // Mã trạng thái tài khoản Meta (account_status) → nhãn + màu.
 const ACC_STATUS: Record<number, { label: string; cls: string }> = {
-  1: { label: 'Live', cls: 'text-green-600' },
-  2: { label: 'Vô hiệu', cls: 'text-red-600' },
-  3: { label: 'Chưa thanh toán', cls: 'text-amber-600' },
-  7: { label: 'Đang review', cls: 'text-amber-600' },
-  8: { label: 'Chờ quyết toán', cls: 'text-amber-600' },
-  9: { label: 'Gia hạn', cls: 'text-amber-600' },
-  100: { label: 'Chờ đóng', cls: 'text-gray-500' },
-  101: { label: 'Đã đóng', cls: 'text-gray-500' },
+  1: { label: 'Live', cls: 'text-[#047857]' },
+  2: { label: 'Vô hiệu', cls: 'text-[#dc2626]' },
+  3: { label: 'Chưa thanh toán', cls: 'text-[#c2410c]' },
+  7: { label: 'Đang review', cls: 'text-[#c2410c]' },
+  8: { label: 'Chờ quyết toán', cls: 'text-[#c2410c]' },
+  9: { label: 'Gia hạn', cls: 'text-[#c2410c]' },
+  100: { label: 'Chờ đóng', cls: 'text-[#64748b]' },
+  101: { label: 'Đã đóng', cls: 'text-[#64748b]' },
 };
 
 const num = (n: number | null) => (n == null ? '0' : new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(n));
@@ -145,69 +145,68 @@ export default function AdsAccountsList() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Tất cả tài khoản quảng cáo</h1>
-          <p className="text-sm text-gray-500">Meta Ads · {accounts.length} tài khoản · Đồng bộ gần nhất: {fmtDateTime(lastSync)}</p>
+    <div className="p-6 bg-[#f7f8fb] min-h-full">
+      {msg && <div className="mb-3.5 rounded-xl bg-[#eff6ff] border border-[#dbe6ff] px-4 py-2.5 text-[13px] text-[#1d4ed8]">{msg}</div>}
+
+      <div className="rounded-[14px] border border-[#eceef2] bg-white overflow-hidden">
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-[18px]">
+          <div>
+            <div className="text-[19px] font-extrabold tracking-[-0.3px] text-[#111827]">Tất cả tài khoản quảng cáo</div>
+            <div className="mt-0.5 text-[12.5px] text-[#6b7280]">Meta Ads · {accounts.length} tài khoản · Đồng bộ gần nhất: {fmtDateTime(lastSync)}</div>
+          </div>
+          <button onClick={sync} disabled={syncing} className="px-[18px] py-2.5 rounded-[10px] bg-[#2563eb] text-white text-[13px] font-bold hover:bg-[#1d4ed8] disabled:opacity-50">
+            {syncing ? 'Đang đồng bộ…' : '↻ Đồng bộ ngay'}
+          </button>
         </div>
-        <button onClick={sync} disabled={syncing} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-          {syncing ? 'Đang đồng bộ…' : '↻ Đồng bộ ngay'}
-        </button>
-      </div>
-
-      {msg && <div className="mb-3 rounded-lg bg-blue-50 border border-blue-100 px-4 py-2 text-sm text-blue-800">{msg}</div>}
-
-      <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse text-[13px]">
             <thead>
-              <tr className="bg-slate-800 text-white">
+              <tr className="bg-[#1e293b] text-white">
                 {COLUMNS.map((c) => (
                   <th
                     key={c.label}
                     onClick={c.key ? () => toggleSort(c.key!) : undefined}
-                    className={`px-3 py-3 text-xs font-semibold uppercase whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.key ? 'cursor-pointer select-none hover:bg-slate-700' : ''}`}
+                    className={`px-3 py-3 text-[11px] font-bold uppercase tracking-[0.06em] text-[#e2e8f0] whitespace-nowrap ${c.right ? 'text-right' : ''} ${c.key ? 'cursor-pointer select-none hover:bg-[#334155]' : ''}`}
                   >
                     <span className={`inline-flex items-center ${c.right ? 'flex-row-reverse' : ''}`}>{c.label}{sortIcon(c.key)}</span>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {loading ? (
-                <tr><td colSpan={COLUMNS.length} className="px-4 py-10 text-center text-gray-400">Đang tải…</td></tr>
+                <tr><td colSpan={COLUMNS.length} className="px-4 py-10 text-center text-[#9ca3af]">Đang tải…</td></tr>
               ) : sortedAccounts.length === 0 ? (
-                <tr><td colSpan={COLUMNS.length} className="px-4 py-10 text-center text-gray-400">Chưa có tài khoản. Bấm “Đồng bộ ngay” (cần credentials Meta).</td></tr>
+                <tr><td colSpan={COLUMNS.length} className="px-4 py-10 text-center text-[#9ca3af]">Chưa có tài khoản. Bấm “Đồng bộ ngay” (cần credentials Meta).</td></tr>
               ) : (
                 sortedAccounts.map((a, idx) => {
                   const href = `/admin/adsmeta/${a.id}`;
                   const st = a.accountStatus != null ? ACC_STATUS[a.accountStatus] : undefined;
                   const isBm = !!a.businessExternalId;
                   return (
-                    <tr key={a.id} onClick={() => router.push(href)} className={`${idx % 2 === 1 ? 'bg-gray-50/40' : 'bg-white'} hover:bg-blue-50/60 cursor-pointer`}>
-                      <td className="px-3 py-3 text-gray-500 align-top">{idx + 1}</td>
+                    <tr key={a.id} onClick={() => router.push(href)} className={`border-t border-[#f3f4f6] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} hover:bg-[#eff6ff] cursor-pointer`}>
+                      <td className="px-3 py-3 text-[#6b7280] align-top">{idx + 1}</td>
                       <td className="px-3 py-3 max-w-[260px]">
-                        <div className="font-medium text-gray-800 truncate" title={a.name || ''}>{a.name || '—'}</div>
-                        <div className="text-xs text-gray-400 font-mono">ID: {stripAct(a.externalId)}</div>
+                        <div className="font-bold text-[#111827] truncate" title={a.name || ''}>{a.name || '—'}</div>
+                        <div className="text-[11px] text-[#9ca3af] font-mono">ID: {stripAct(a.externalId)}</div>
                       </td>
                       <td className="px-3 py-3 whitespace-nowrap align-top">
-                        <span className={`inline-flex items-center gap-1 font-medium ${st?.cls || 'text-gray-500'}`}>
+                        <span className={`inline-flex items-center gap-1 font-semibold ${st?.cls || 'text-[#64748b]'}`}>
                           <span className="text-[10px]">●</span>{st?.label || (a.accountStatus ?? '—')}
                         </span>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap align-top text-gray-700" title={a.fundingDetails?.display_string || ''}>
+                      <td className="px-3 py-3 whitespace-nowrap align-top text-[#374151]" title={a.fundingDetails?.display_string || ''}>
                         <span className="mr-1">{paymentIcon(a.fundingDetails)}</span>{paymentLabel(a.fundingDetails)}
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap align-top">{a.currency || '—'}</td>
-                      <td className="px-3 py-3 text-right font-semibold text-gray-900 whitespace-nowrap align-top">{num(a.balance)}</td>
-                      <td className="px-3 py-3 text-right whitespace-nowrap align-top">{a.spendCap && a.spendCap > 0 ? num(a.spendCap) : <span className="text-gray-400">No limit</span>}</td>
-                      <td className="px-3 py-3 text-right whitespace-nowrap align-top">{num(a.amountSpent)}</td>
+                      <td className="px-3 py-3 whitespace-nowrap align-top font-semibold text-[#374151]">{a.currency || '—'}</td>
+                      <td className="px-3 py-3 text-right font-bold text-[#111827] whitespace-nowrap align-top">{num(a.balance)}</td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap align-top text-[#374151]">{a.spendCap && a.spendCap > 0 ? num(a.spendCap) : <span className="text-[#9ca3af]">No limit</span>}</td>
+                      <td className="px-3 py-3 text-right whitespace-nowrap align-top font-bold text-[#111827]">{num(a.amountSpent)}</td>
                       <td className="px-3 py-3 whitespace-nowrap align-top">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${isBm ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`} title={a.businessName || ''}>{isBm ? 'BM' : 'CN'}</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${isBm ? 'bg-[#e0e7ff] text-[#4338ca]' : 'bg-[#f1f5f9] text-[#64748b]'}`} title={a.businessName || ''}>{isBm ? 'BM' : 'CN'}</span>
                       </td>
-                      <td className="px-3 py-3 whitespace-nowrap">
-                        <Link href={href} onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:underline" title="Xem chiến dịch & chỉ số">📊 Chi tiết</Link>
+                      <td className="px-3 py-3 whitespace-nowrap text-right">
+                        <Link href={href} onClick={(e) => e.stopPropagation()} className="text-[#2563eb] font-bold hover:underline" title="Xem chiến dịch & chỉ số">📊 Chi tiết</Link>
                       </td>
                     </tr>
                   );

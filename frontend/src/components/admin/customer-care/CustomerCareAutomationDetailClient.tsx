@@ -21,21 +21,21 @@ interface CustomerCareAutomationDetailClientProps {
 
 function getExecutionStatusClassName(status: string) {
   if (status === 'PENDING') {
-    return 'bg-amber-50 text-amber-700 ring-amber-200';
+    return 'bg-[#fef3c7] text-[#92400e]';
   }
   if (status === 'QUEUED') {
-    return 'bg-blue-50 text-blue-700 ring-blue-200';
+    return 'bg-[#dbeafe] text-[#1d4ed8]';
   }
   if (status === 'SENT') {
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    return 'bg-[#d1fae5] text-[#047857]';
   }
   if (status === 'SKIPPED') {
-    return 'bg-gray-100 text-gray-700 ring-gray-200';
+    return 'bg-[#f1f5f9] text-[#64748b]';
   }
   if (status === 'FAILED') {
-    return 'bg-rose-50 text-rose-700 ring-rose-200';
+    return 'bg-[#fee2e2] text-[#dc2626]';
   }
-  return 'bg-gray-100 text-gray-700 ring-gray-200';
+  return 'bg-[#f1f5f9] text-[#64748b]';
 }
 
 function getExecutionStatusLabel(status: string) {
@@ -138,12 +138,12 @@ export default function CustomerCareAutomationDetailClient({
   }, [initialRule, ruleId]);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Chi tiết tin tự động</h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <h1 className="text-lg font-extrabold text-gray-900">Chi tiết tin tự động</h1>
+            <p className="mt-1 text-[12.5px] text-[#9ca3af]">
               Theo dõi rule, điều kiện áp dụng và lịch sử kích hoạt thực tế.
             </p>
           </div>
@@ -151,14 +151,14 @@ export default function CustomerCareAutomationDetailClient({
             {rule ? (
               <Link
                 href={`/admin/customer-care/automations/${rule.id}/edit`}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                className="rounded-[10px] bg-[#2563eb] px-[18px] py-2.5 text-[13px] font-bold text-white hover:bg-[#1d4ed8]"
               >
                 Sửa rule
               </Link>
             ) : null}
             <Link
               href="/admin/customer-care/automations"
-              className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+              className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
             >
               Quay lại danh sách
             </Link>
@@ -166,39 +166,42 @@ export default function CustomerCareAutomationDetailClient({
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
         {!rule ? (
-          <div className="py-8 text-center text-sm text-gray-500">Không tìm thấy automation rule.</div>
+          <div className="px-4 py-8 text-center text-[#9ca3af]">Không tìm thấy automation rule.</div>
         ) : (
           <div className="space-y-6">
             <div className="grid gap-4 lg:grid-cols-4">
-              <div className="rounded-xl bg-gray-50 p-4 lg:col-span-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5 lg:col-span-2">
+                <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                   Rule
                 </div>
-                <div className="mt-2 text-lg font-bold text-gray-900">{rule.name}</div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                  <span>{rule.channel.code}</span>
-                  <span>•</span>
-                  <span>{getTriggerLabel(rule.triggerType)}</span>
+                <div className="mt-2 text-[15px] font-extrabold text-gray-900">{rule.name}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#6b7280]">
+                  <span className="rounded-md bg-[#f3f4f6] px-2 py-[3px] text-[11px] font-bold text-[#4b5563]">
+                    {rule.channel.code}
+                  </span>
+                  <span className="rounded-md bg-[#f3f4f6] px-2 py-[3px] text-[11px] font-bold text-[#4b5563]">
+                    {getTriggerLabel(rule.triggerType)}
+                  </span>
                 </div>
               </div>
-              <div className="rounded-xl bg-blue-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-blue-500">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                   Lần chạy gần nhất
                 </div>
-                <div className="mt-2 text-sm font-bold text-blue-900">
+                <div className="mt-2 text-[13px] font-bold text-gray-900">
                   {formatDateTime(rule.lastRunAt)}
                 </div>
               </div>
-              <div className="rounded-xl bg-emerald-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-emerald-500">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                   Trạng thái
                 </div>
                 <div className="mt-2">
                   <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      rule.isActive ? 'bg-white text-emerald-700' : 'bg-white text-gray-600'
+                    className={`inline-flex rounded-full px-2.5 py-[3px] text-[11px] font-bold ${
+                      rule.isActive ? 'bg-[#d1fae5] text-[#047857]' : 'bg-[#f1f5f9] text-[#64748b]'
                     }`}
                   >
                     {rule.isActive ? 'Đang bật' : 'Đã tắt'}
@@ -208,32 +211,32 @@ export default function CustomerCareAutomationDetailClient({
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
-              <div className="rounded-xl border border-gray-200 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                   Template
                 </div>
-                <div className="mt-2 text-sm font-semibold text-gray-900">
+                <div className="mt-2 text-[13px] font-semibold text-gray-900">
                   {rule.template?.name || 'Tự soạn nội dung'}
                 </div>
               </div>
-              <div className="rounded-xl border border-gray-200 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                   Nhà cung cấp
                 </div>
-                <div className="mt-2 text-sm font-semibold text-gray-900">
+                <div className="mt-2 text-[13px] font-semibold text-gray-900">
                   {rule.providerConfig?.name || 'Dùng cấu hình mặc định'}
                 </div>
               </div>
-              <div className="rounded-xl border border-gray-200 p-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+                <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                   Tổng execution
                 </div>
-                <div className="mt-2 text-2xl font-bold text-gray-900">{pagination.total}</div>
+                <div className="mt-2 text-[22px] font-extrabold text-gray-900">{pagination.total}</div>
               </div>
             </div>
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+              <div className="rounded-[14px] border border-[#eceef2] bg-white p-5 text-[13px] text-[#6b7280]">
                 Người tạo:{' '}
                 <span className="font-semibold text-gray-900">
                   {rule.createdBy?.name || rule.createdBy?.phone || 'Không rõ'}
@@ -245,7 +248,7 @@ export default function CustomerCareAutomationDetailClient({
                   setStatus(event.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm lg:max-w-xs"
+                className="w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] lg:max-w-xs"
               >
                 <option value="">Tất cả trạng thái execution</option>
                 {automationExecutionStatusOptions.map((option) => (
@@ -256,67 +259,67 @@ export default function CustomerCareAutomationDetailClient({
               </select>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50 text-left text-gray-500">
-                  <tr>
-                    <th className="px-4 py-3">Khách / đơn</th>
-                    <th className="px-4 py-3">Trigger key</th>
-                    <th className="px-4 py-3">Trạng thái</th>
-                    <th className="px-4 py-3">Lý do</th>
-                    <th className="px-4 py-3">Log gửi tin</th>
-                    <th className="px-4 py-3">Thời gian</th>
+            <div className="overflow-x-auto rounded-[14px] border border-[#eceef2]">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#f1f5f9] bg-[#f9fafb] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                    <th className="px-4 py-2.5">Khách / đơn</th>
+                    <th className="px-4 py-2.5">Trigger key</th>
+                    <th className="px-4 py-2.5">Trạng thái</th>
+                    <th className="px-4 py-2.5">Lý do</th>
+                    <th className="px-4 py-2.5">Log gửi tin</th>
+                    <th className="px-4 py-2.5">Thời gian</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                         Đang tải execution log...
                       </td>
                     </tr>
                   ) : executions.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                         Chưa có execution nào.
                       </td>
                     </tr>
                   ) : (
                     executions.map((execution) => (
-                      <tr key={execution.id}>
-                        <td className="px-4 py-3">
+                      <tr key={execution.id} className="border-b border-[#f1f5f9] hover:bg-[#eff6ff]">
+                        <td className="px-4 py-3.5 text-[13px]">
                           <div className="font-semibold text-gray-900">
                             {execution.user?.name || execution.messageLog?.recipientName || 'Không có tên'}
                           </div>
-                          <div className="mt-1 text-gray-500">
+                          <div className="mt-1 font-mono text-[12px] text-[#6b7280]">
                             {execution.order?.orderCode ||
                               execution.user?.phone ||
                               execution.messageLog?.recipientValue ||
                               '—'}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-700">{execution.triggerKey}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5 text-[13px] font-mono text-[#374151]">{execution.triggerKey}</td>
+                        <td className="px-4 py-3.5 text-[13px]">
                           <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getExecutionStatusClassName(execution.status)}`}
+                            className={`inline-flex rounded-full px-2.5 py-[3px] text-[11px] font-bold ${getExecutionStatusClassName(execution.status)}`}
                           >
                             {getExecutionStatusLabel(execution.status)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-500">{execution.reason || '—'}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5 text-[13px] text-[#6b7280]">{execution.reason || '—'}</td>
+                        <td className="px-4 py-3.5 text-[13px]">
                           {execution.messageLog?.id ? (
                             <Link
                               href={`/admin/customer-care/logs/${execution.messageLog.id}`}
-                              className="font-semibold text-blue-700 hover:underline"
+                              className="font-semibold text-[#2563eb] hover:underline"
                             >
                               {getExecutionStatusLabel(execution.status)}
                             </Link>
                           ) : (
-                            <span className="text-gray-500">—</span>
+                            <span className="text-[#9ca3af]">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-gray-500">
+                        <td className="px-4 py-3.5 text-[13px] text-[#6b7280]">
                           <div>Tạo: {formatDateTime(execution.createdAt)}</div>
                           <div className="mt-1">Chạy: {formatDateTime(execution.executedAt)}</div>
                         </td>
@@ -328,7 +331,7 @@ export default function CustomerCareAutomationDetailClient({
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
+              <div className="text-[13px] text-[#6b7280]">
                 Trang {pagination.page}/{Math.max(pagination.totalPages, 1)} • {pagination.total} bản ghi
               </div>
               <div className="flex gap-2">
@@ -336,7 +339,7 @@ export default function CustomerCareAutomationDetailClient({
                   type="button"
                   disabled={page <= 1}
                   onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                  className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Trang trước
                 </button>
@@ -344,18 +347,18 @@ export default function CustomerCareAutomationDetailClient({
                   type="button"
                   disabled={page >= Math.max(pagination.totalPages, 1)}
                   onClick={() => setPage((prev) => prev + 1)}
-                  className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Trang sau
                 </button>
               </div>
             </div>
 
-            <div className="rounded-xl bg-gray-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+              <div className="text-[12px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
                 Trigger config / audience filter / metadata
               </div>
-              <pre className="mt-3 overflow-x-auto rounded-lg bg-white p-4 text-xs text-gray-700 ring-1 ring-gray-200">
+              <pre className="mt-3 overflow-x-auto rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] p-4 font-mono text-[12px] text-[#374151]">
                 {JSON.stringify(
                   {
                     triggerConfig: rule.triggerConfig || {},

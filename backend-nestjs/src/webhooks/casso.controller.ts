@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Headers, Logger, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Headers, Logger, HttpCode, Req, RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { CassoService, CassoWebhookPayload } from './casso.service';
 
@@ -13,6 +14,7 @@ export class CassoController {
   @HttpCode(200)
   async handleCassoWebhook(
     @Headers('x-casso-signature') cassoSignature: string,
+    @Req() req: RawBodyRequest<Request>,
     @Body() payload: CassoWebhookPayload,
   ) {
     this.logger.log(`Received Casso webhook request`);
@@ -28,7 +30,9 @@ export class CassoController {
       return { success: false, error: 'No signature' };
     }
 
-    const payloadString = JSON.stringify(payload);
+    // Verify HMAC over the RAW request bytes (what Casso actually signed),
+    // not a re-serialized JSON.stringify(payload) which can differ from the wire format.
+    const payloadString = req.rawBody?.toString('utf8') ?? JSON.stringify(payload);
     const isValid = this.cassoService.verifySignature(cassoSignature, payloadString, secret);
 
     if (!isValid) {

@@ -88,7 +88,9 @@ async function request<T>(
 
   const data = await parseResponseBody(response);
 
-  if ((response.status === 401 || response.status === 403) && allowRefresh) {
+  // Chỉ refresh khi 401 (token hết hạn). 403 = đã đăng nhập nhưng thiếu quyền —
+  // refresh vô ích và còn xoay refresh-token thừa (đua với middleware) gây mất phiên.
+  if (response.status === 401 && allowRefresh) {
     const refreshed = await refreshSession();
     if (refreshed) {
       return request<T>(endpoint, options, false);

@@ -323,7 +323,9 @@ model Order {
   note                        String?                      @db.Text
   customerNote                String?                      @map("customer_note") @db.Text
   metadata                    Json?
+  conversationId              String?                      @map("conversation_id")
   isRead                      Boolean                      @default(false) @map("is_read")
+  creditsApplied              Boolean                      @default(false) @map("credits_applied")
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
   commissions                 CommissionLedger[]
@@ -332,7 +334,7 @@ model Order {
   messageAudiences            MessageAudience[]
   messageAutomationExecutions MessageAutomationExecution[]
   messageLogs                 MessageLog[]
-  user                        User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                        User?                        @relation(fields: [userId], references: [id], onDelete: SetNull)
   storeId                     String?                      @map("store_id")
   store                       Store?                       @relation(fields: [storeId], references: [id], onDelete: SetNull)
   assigningSellerId           String?                      @map("assigning_seller_id")
@@ -345,6 +347,7 @@ model Order {
   @@index([storeId])
   @@index([assigningSellerId])
   @@index([assigningCareId])
+  @@index([conversationId])
   @@map("orders")
 }
 
@@ -1627,6 +1630,7 @@ model MsgContact {
   name          String?           @db.Text
   phone         String?           // SĐT khách tự cung cấp trong chat (trích từ nội dung tin)
   dob           DateTime?         // ngày sinh khách (set từ 3A); đồng bộ sang User.dob nếu khớp SĐT
+  gender        Gender?           // giới tính khách (set từ 3A); đồng bộ sang User.gender nếu khớp SĐT duy nhất
   avatarUrl     String?           @map("avatar_url") @db.Text
   raw           Json?
   createdAt     DateTime          @default(now()) @map("created_at")

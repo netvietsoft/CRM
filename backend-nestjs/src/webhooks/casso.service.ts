@@ -55,15 +55,18 @@ export class CassoService {
 
       const formats = [`${timestamp}.${payload}`, payload, `${timestamp}${payload}`];
 
+      const hashBuf = Buffer.from(hash, 'hex');
+
       for (let i = 0; i < formats.length; i++) {
         const signedPayload = formats[i];
 
-        const computedHash = crypto
+        const computedBuf = crypto
           .createHmac('sha512', secret)
           .update(signedPayload)
-          .digest('hex');
+          .digest();
 
-        if (computedHash === hash) {
+        // So sánh hằng-thời-gian (chống timing attack); độ dài lệch → bỏ qua
+        if (computedBuf.length === hashBuf.length && crypto.timingSafeEqual(computedBuf, hashBuf)) {
           return true;
         }
       }

@@ -2,7 +2,6 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
-import { Card, SettingRow, Toggle, MockBadge } from '@/components/ccm/ui';
 
 const MODES = [
   { key: 'off', icon: '🚫', label: 'Tắt chế độ phân công' },
@@ -13,27 +12,49 @@ const MODES = [
 
 export default function SettingsRotation() {
   const [mode, setMode] = useState('off');
+  const [view, setView] = useState(true);
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3"><h1 className="text-2xl font-bold text-gray-800">Chế độ xoay vòng</h1><MockBadge /></div>
-        <button className="px-4 py-2 rounded-lg bg-gray-400 text-white text-sm font-medium">Lưu cài đặt</button>
-      </div>
-      <Card title="Cài đặt chế độ" subtitle="Chọn các chế độ chia hội thoại cho nhân viên">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {MODES.map((m) => (
-            <button key={m.key} onClick={() => setMode(m.key)}
-              className={`flex items-center gap-3 p-4 rounded-xl border text-left ${mode === m.key ? 'border-blue-300 bg-blue-50 text-[#3b5bdb]' : 'border-gray-200 hover:bg-gray-50 text-gray-700'}`}>
-              <span className="w-10 h-10 rounded-full bg-white border border-gray-200 grid place-items-center">{m.icon}</span>
-              <span className="font-medium">{m.label}</span>
-              {mode === m.key && <span className="ml-auto text-[#3b5bdb]">✓</span>}
-            </button>
-          ))}
+    <div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5">
+          <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px]">Chế độ xoay vòng</h1>
+          <span className="px-[11px] py-[3px] rounded-full text-[11px] font-bold bg-[#fef3c7] text-[#92400e]">template · mock</span>
         </div>
-      </Card>
-      <Card title="Cấu hình chi tiết" subtitle="Cấu hình cho chế độ chia hội thoại được chọn">
-        <SettingRow icon="👁️" title="Quyền xem" desc="Nhân viên chỉ xem được hội thoại được chia cho mình" control={<Toggle on />} />
-      </Card>
+        <button className="px-[18px] py-2.5 border-none rounded-[11px] bg-[#4f68ee] text-white text-[13.5px] font-bold cursor-pointer hover:bg-[#3c55e6]">Lưu cài đặt</button>
+      </div>
+
+      <div className="bg-white border border-[#e6e9f2] rounded-2xl p-[22px] max-w-[1000px] mt-[18px] mb-4">
+        <div className="text-base font-extrabold">Cài đặt chế độ</div>
+        <div className="text-[13px] text-[#6b7280] my-1 mb-4">Chọn các chế độ chia hội thoại cho nhân viên</div>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-3">
+          {MODES.map((m) => {
+            const active = mode === m.key;
+            return (
+              <div key={m.key} onClick={() => setMode(m.key)}
+                className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl border cursor-pointer hover:border-[#c7d2fe] ${active ? 'border-[#3c55e6] bg-[#e9efff]' : 'border-[#e6e9f2]'}`}>
+                <span className="text-[18px]">{m.icon}</span>
+                <span className={`flex-1 text-[15px] font-bold ${active ? 'text-[#3c55e6]' : ''}`}>{m.label}</span>
+                <span className="text-[#3c55e6] font-extrabold">{active ? '✓' : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-white border border-[#e6e9f2] rounded-2xl p-[22px] max-w-[1000px]">
+        <div className="text-base font-extrabold">Cấu hình chi tiết</div>
+        <div className="text-[13px] text-[#6b7280] my-1 mb-3">Cấu hình cho chế độ chia hội thoại được chọn</div>
+        <div className="flex items-center gap-3.5 py-3">
+          <span className="text-[17px]">👁</span>
+          <div className="flex-1">
+            <div className="text-[15px] font-bold">Quyền xem</div>
+            <div className="text-[13px] text-[#6b7280] mt-0.5">Nhân viên chỉ xem được hội thoại được chia cho mình</div>
+          </div>
+          <span onClick={() => setView((v) => !v)} className={`inline-flex w-11 h-[25px] rounded-full p-0.5 transition-colors shrink-0 cursor-pointer ${view ? 'bg-[#3c55e6]' : 'bg-[#d1d5db]'}`}>
+            <span className={`w-[21px] h-[21px] rounded-full bg-white transition-transform ${view ? 'translate-x-[19px]' : ''}`} />
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

@@ -64,9 +64,15 @@ export class MessengerService {
     const direction = isEcho ? 'OUT' : 'IN';
     const text = m.message.text ?? null;
     const attachments = m.message.attachments ?? undefined;
-    await this.prisma.msgMessage.create({
-      data: { conversationId: conv.id, mid, direction, text, attachments, status: 'DELIVERED' },
-    });
+    try {
+      await this.prisma.msgMessage.create({
+        data: { conversationId: conv.id, mid, direction, text, attachments, status: 'DELIVERED' },
+      });
+    } catch (e) {
+      // Race: Meta gửi trùng cùng mid — bản ghi đã tồn tại (unique mid). Bỏ qua, KHÔNG tăng counter.
+      if ((e as { code?: string }).code === 'P2002') return;
+      throw e;
+    }
     await this.prisma.msgConversation.update({
       where: { id: conv.id },
       data: {
@@ -134,7 +140,7 @@ export class MessengerService {
         assignedUserAvatar: true,
         labels: true,
         star: true,
-        contact: { select: { psid: true, name: true, phone: true, avatarUrl: true, dob: true } },
+        contact: { select: { psid: true, name: true, phone: true, avatarUrl: true, dob: true, gender: true } },
         page: { select: { name: true, externalId: true } },
       },
     });
@@ -179,10 +185,35 @@ export class MessengerService {
     if (!conv) throw new NotFoundException('Không thấy hội thoại');
     const dobDate = dob ? new Date(dob) : null;
     await this.prisma.msgContact.update({ where: { id: conv.contactId }, data: { dob: dobDate } });
+    // Chỉ đồng bộ User.dob khi SĐT khớp DUY NHẤT 1 user — tránh ghi đè nhầm nhiều user trùng số.
     if (conv.contact?.phone) {
-      await this.prisma.user.updateMany({ where: { phone: conv.contact.phone }, data: { dob: dobDate } }).catch(() => {});
+      const matches = await this.prisma.user
+        .findMany({ where: { phone: conv.contact.phone }, select: { id: true }, take: 2 })
+        .catch(() => [] as { id: string }[]);
+      if (matches.length === 1) {
+        await this.prisma.user.update({ where: { id: matches[0].id }, data: { dob: dobDate } }).catch(() => {});
+      }
     }
     return { ok: true, dob: dobDate };
+  }
+
+  /** Đặt giới tính khách (từ 3A). Lưu MsgContact.gender + đồng bộ User.gender nếu khớp SĐT duy nhất. gender ∈ MALE|FEMALE|OTHER|null. */
+  async setContactGender(effectiveStoreId: string | null, convId: string, gender: string | null) {
+    await this.getScopedConversation(effectiveStoreId, convId);
+    const conv = await this.prisma.msgConversation.findUnique({ where: { id: convId }, select: { contactId: true, contact: { select: { phone: true } } } });
+    if (!conv) throw new NotFoundException('Không thấy hội thoại');
+    const g = gender && ['MALE', 'FEMALE', 'OTHER'].includes(gender) ? (gender as 'MALE' | 'FEMALE' | 'OTHER') : null;
+    await this.prisma.msgContact.update({ where: { id: conv.contactId }, data: { gender: g } });
+    // Chỉ đồng bộ User.gender khi SĐT khớp DUY NHẤT 1 user.
+    if (conv.contact?.phone) {
+      const matches = await this.prisma.user
+        .findMany({ where: { phone: conv.contact.phone }, select: { id: true }, take: 2 })
+        .catch(() => [] as { id: string }[]);
+      if (matches.length === 1) {
+        await this.prisma.user.update({ where: { id: matches[0].id }, data: { gender: g } }).catch(() => {});
+      }
+    }
+    return { ok: true, gender: g };
   }
 
   async setLabels(effectiveStoreId: string | null, convId: string, labels: unknown) {
@@ -283,6 +314,17 @@ export class MessengerService {
     if (!conv) throw new NotFoundException('Không tìm thấy hội thoại');
     if (effectiveStoreId && conv.page.storeId !== effectiveStoreId) throw new ForbiddenException('Ngoài phạm vi cửa hàng');
     return conv;
+  }
+
+  // Public: cho module khác (ai-agent) kiểm tra quyền sở hữu theo store trước khi đọc/ghi.
+  async assertConversationInStore(effectiveStoreId: string | null, convId: string) {
+    return this.getScopedConversation(effectiveStoreId, convId);
+  }
+  async assertPageInStore(effectiveStoreId: string | null, pageId: string) {
+    const page = await this.prisma.msgPage.findUnique({ where: { id: pageId } });
+    if (!page) throw new NotFoundException('Không tìm thấy page');
+    if (effectiveStoreId && page.storeId !== effectiveStoreId) throw new ForbiddenException('Ngoài phạm vi cửa hàng');
+    return page;
   }
 
   // ===== Trả lời (Send API + cửa sổ 24h) =====

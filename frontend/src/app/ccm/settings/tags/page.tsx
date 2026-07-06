@@ -26,59 +26,46 @@ export default function TagsSettings() {
   const remove = (id: string) => setTags(tags.filter((t) => t.id !== id));
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center gap-3 mb-1">
-        <h1 className="text-2xl font-bold text-gray-800">Thẻ hội thoại</h1>
-        <span className="text-[11px] px-2 py-0.5 rounded bg-blue-50 text-[#3b5bdb]">nối vào chat</span>
+    <div>
+      <div className="flex items-center gap-2.5">
+        <h1 className="text-2xl font-extrabold tracking-[-0.4px]">Thẻ hội thoại</h1>
+        <span className="px-[11px] py-[3px] rounded-full text-[11.5px] font-bold bg-[#e8ecff] text-[#3c55e6]">nối vào chat</span>
       </div>
-      <p className="text-sm text-gray-500 mb-5">Danh mục thẻ dùng để phân loại hội thoại. Ở khung chat bấm 🏷️ trên đầu hội thoại để gắn các thẻ này.</p>
+      <p className="mt-[7px] mb-[18px] text-[13.5px] text-[#6b7280]">Danh mục thẻ dùng để phân loại hội thoại. Ở khung chat bấm 🏷️ trên đầu hội thoại để gắn các thẻ này.</p>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+      <div className="bg-white border border-[#e6e9f2] rounded-2xl p-[22px] max-w-[1000px]">
         {/* Thêm thẻ */}
-        <div className="flex items-center gap-2 mb-1">
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="Nhập tên thẻ mới rồi bấm Thêm (hoặc Enter)…" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3b5bdb]" />
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2.5 flex-wrap mb-1.5">
+          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} placeholder="Nhập tên thẻ mới rồi bấm Thêm (hoặc Enter)…" className="flex-1 min-w-[220px] px-[14px] py-[11px] border border-[#e5e7eb] rounded-[11px] text-[13.5px] outline-none focus:border-[#3c55e6]" />
+          <div className="flex gap-[5px] flex-wrap">
             {PALETTE.map((c) => (
               <button key={c} title="Chọn màu thẻ" onClick={() => setColor(c)} className={`w-6 h-6 rounded-full ${color === c ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`} style={{ background: c }} />
             ))}
           </div>
           <button onClick={add} disabled={!name.trim()} title={name.trim() ? 'Thêm thẻ' : 'Nhập tên thẻ trước'}
-            className="px-4 py-2 rounded-lg bg-[#3b5bdb] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed">＋ Thêm thẻ</button>
+            className="px-[18px] py-[11px] rounded-[11px] bg-[#8ea2f5] text-white text-[13px] font-bold hover:bg-[#4f68ee] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#8ea2f5]">＋ Thêm thẻ</button>
         </div>
-        <div className="text-xs text-gray-400 mb-3">Gõ tên → chọn màu → <b>Thêm thẻ</b>. Thẻ mới hiện ngay bên dưới và dùng được ở khung chat.</div>
+        <div className="text-[12.5px] text-[#94a3b8] mb-4">Gõ tên → chọn màu → <b>Thêm thẻ</b>. Thẻ mới hiện ngay bên dưới và dùng được ở khung chat.</div>
 
         {/* Danh sách thẻ */}
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-gray-500 text-left">
-            <tr>
-              <th className="px-3 py-2 font-medium w-12">STT</th>
-              <th className="px-3 py-2 font-medium">Tên thẻ</th>
-              <th className="px-3 py-2 font-medium">Màu</th>
-              <th className="px-3 py-2 font-medium w-16"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {tags.length === 0 && <tr><td colSpan={4} className="px-3 py-6 text-center text-gray-400">Chưa có thẻ nào.</td></tr>}
-            {tags.map((t, i) => (
-              <tr key={t.id} className="hover:bg-gray-50">
-                <td className="px-3 py-2 text-gray-400">{i + 1}</td>
-                <td className="px-3 py-2">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full" style={{ background: t.color }} />
-                    <input value={t.name} onChange={(e) => update(t.id, { name: e.target.value })} className="border border-transparent hover:border-gray-200 focus:border-gray-300 rounded px-1 py-0.5 text-gray-800 outline-none" />
-                  </span>
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center gap-1">
-                    {PALETTE.map((c) => <button key={c} onClick={() => update(t.id, { color: c })} className={`w-5 h-5 rounded-full ${t.color === c ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`} style={{ background: c }} />)}
-                  </div>
-                </td>
-                <td className="px-3 py-2"><button onClick={() => remove(t.id)} className="text-red-500 text-xs hover:underline">Xoá</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="text-xs text-gray-400 mt-3">{tags.length} thẻ · lưu trên trình duyệt này.</div>
+        <div className="grid grid-cols-[44px_1fr_2fr_60px] bg-[#f8fafc] rounded-[10px] px-[14px] py-[9px] text-[12px] font-bold text-[#6b7280]">
+          <span>STT</span><span>Tên thẻ</span><span>Màu</span><span></span>
+        </div>
+        {tags.length === 0 && <div className="px-[14px] py-6 text-center text-gray-400 text-sm">Chưa có thẻ nào.</div>}
+        {tags.map((t, i) => (
+          <div key={t.id} className="grid grid-cols-[44px_1fr_2fr_60px] items-center px-[14px] py-[11px] border-b border-[#f1f5f9]">
+            <span className="text-[#9ca3af] text-[13px]">{i + 1}</span>
+            <span className="flex items-center gap-[9px] text-[14px] font-semibold">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color }} />
+              <input value={t.name} onChange={(e) => update(t.id, { name: e.target.value })} className="border border-transparent hover:border-gray-200 focus:border-gray-300 rounded px-1 py-0.5 text-gray-900 outline-none min-w-0" />
+            </span>
+            <span className="flex gap-[5px] flex-wrap">
+              {PALETTE.map((c) => <button key={c} onClick={() => update(t.id, { color: c })} className={`w-5 h-5 rounded-full ${t.color === c ? 'ring-2 ring-offset-1 ring-gray-400' : ''}`} style={{ background: c }} />)}
+            </span>
+            <a onClick={() => remove(t.id)} className="text-[#dc2626] text-[13px] font-semibold cursor-pointer">Xoá</a>
+          </div>
+        ))}
+        <div className="text-[12.5px] text-[#94a3b8] mt-3">{tags.length} thẻ · lưu trên trình duyệt này.</div>
       </div>
     </div>
   );

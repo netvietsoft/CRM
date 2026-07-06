@@ -28,37 +28,31 @@ export default async function VouchersPage() {
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-[18px] flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">Voucher</h1>
-          <p className="text-gray-600 text-sm">Quản lý mã giảm giá và chiến dịch khuyến mãi</p>
+          <h1 className="m-0 text-[24px] font-extrabold tracking-[-0.4px] text-slate-900">Voucher</h1>
+          <p className="mt-1 mb-0 text-[13px] text-[#6b7280]">Quản lý mã giảm giá và chiến dịch khuyến mãi</p>
         </div>
         <VoucherActions />
       </div>
 
       {/* Campaign Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="mb-4 grid grid-cols-1 gap-[14px] md:grid-cols-4">
         {['WELCOME', 'VIP', 'BUNDLE', 'FREESHIP'].map((cat) => {
           const count = vouchers.filter(v => v.campaignCategory === cat && v.isActive).length;
           const info = getCampaignBadge(cat);
           return (
-            <div key={cat} className="bg-white p-6 rounded-xl shadow-sm">
-              <div className="text-sm text-gray-600 mb-2">{info.label}</div>
-              <div className="text-3xl font-bold text-gray-800 mb-2">{count}</div>
-              <div className="text-xs text-gray-600">voucher hoạt động</div>
+            <div key={cat} className="rounded-[14px] border border-[#eceef2] bg-white px-4 py-[15px]">
+              <div className="mb-[5px] text-[12px] text-[#6b7280]">{info.label}</div>
+              <div className="text-[22px] font-extrabold tracking-[-0.3px] text-slate-900">{count}</div>
+              <div className="mt-[3px] text-[11.5px] font-semibold text-[#6b7280]">voucher hoạt động</div>
             </div>
           );
         })}
       </div>
 
       {/* Voucher Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <span className="text-lg font-bold text-gray-800">Tất cả Voucher</span>
-          <span className="text-sm text-gray-500">{vouchers.length} voucher</span>
-        </div>
-        <VoucherTableClient vouchers={vouchers} />
-      </div>
+      <VoucherTableClient vouchers={vouchers} />
     </>
   );
 }

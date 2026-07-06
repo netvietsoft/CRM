@@ -8,10 +8,10 @@ export default function StaffActions() {
     <div className="flex items-center gap-3">
       <Link
         href="/admin/staff/assign"
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-all shadow-lg shadow-blue-200"
+        className="flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-4 py-[9px] rounded-[10px] text-[13px] font-semibold transition-colors"
       >
         <UserPlus size={18} />
-        <span>Thêm Nhân viên</span>
+        <span>Thêm nhân viên</span>
       </Link>
     </div>
   );

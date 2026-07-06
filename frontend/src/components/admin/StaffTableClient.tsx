@@ -110,7 +110,7 @@ export default function StaffTableClient() {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-[#2563eb] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -118,105 +118,109 @@ export default function StaffTableClient() {
   return (
     <>
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+      <div className="bg-white rounded-[14px] border border-[#eceef2] p-4 mb-[14px]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
               <input
                 type="text"
                 placeholder="Tên, Email hoặc SĐT"
-                className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                className="pl-9 pr-3 py-2 border border-[#e5e7eb] rounded-[10px] text-[13px] outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent w-64"
                 value={searchName}
                 onChange={e => setSearchName(e.target.value)}
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={16} />
             </div>
             <div className="relative">
               <input
                 type="text"
                 placeholder="Tên cửa hàng"
-                className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-48"
+                className="pl-9 pr-3 py-2 border border-[#e5e7eb] rounded-[10px] text-[13px] outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent w-48"
                 value={searchStore}
                 onChange={e => setSearchStore(e.target.value)}
               />
-              <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <Store className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={16} />
             </div>
           </div>
 
           <Link
             href="/admin/staff/assign"
-            className="px-5 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center gap-2"
+            className="px-4 py-[9px] bg-[#2563eb] text-white text-[13px] font-semibold rounded-[10px] hover:bg-[#1d4ed8] transition-colors flex items-center gap-2"
           >
             <UserCheck size={16} />
-            Thêm Nhân viên
+            Thêm nhân viên
           </Link>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-[14px] border border-[#eceef2] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse text-[13px] min-w-[760px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Nhân viên</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Số điện thoại</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap text-center">Đơn hàng</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Ngày tham gia</th>
-                <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap text-center">Hành động</th>
+              <tr className="bg-[#f9fafb]">
+                <th className="px-4 py-[10px] text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Nhân viên</th>
+                <th className="px-3 py-[10px] text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Số điện thoại</th>
+                <th className="px-3 py-[10px] text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap text-right">Đơn phụ trách</th>
+                <th className="px-3 py-[10px] text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Vào làm</th>
+                <th className="px-4 py-[10px]"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={5}>
                     <div className="text-center py-20">
-                      <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 bg-[#f9fafb] text-[#d1d5db] rounded-full flex items-center justify-center mx-auto mb-4">
                         <Shield size={32} />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900">Không tìm thấy nhân viên nào</h3>
-                      <p className="text-gray-500 mt-2 text-sm max-w-xs mx-auto">Thử thay đổi bộ lọc hoặc thêm nhân viên mới vào hệ thống.</p>
+                      <h3 className="text-xl font-bold text-[#111827]">Không tìm thấy nhân viên nào</h3>
+                      <p className="text-[#6b7280] mt-2 text-sm max-w-xs mx-auto">Thử thay đổi bộ lọc hoặc thêm nhân viên mới vào hệ thống.</p>
                     </div>
                   </td>
                 </tr>
-              ) : filtered.map((s) => (
-                <tr key={s.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
+              ) : filtered.map((s, i) => (
+                <tr
+                  key={s.id}
+                  className="border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors"
+                  style={{ background: i % 2 === 1 ? '#f7f9fc' : undefined }}
+                >
+                  <td className="px-4 py-[11px] whitespace-nowrap">
+                    <div className="flex items-center gap-[10px]">
+                      <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-[13px] flex-shrink-0">
+                        {(s.name?.trim()?.charAt(0) || '?').toUpperCase()}
+                      </div>
                       <div>
-                        <div className="text-gray-900">{s.name}</div>
-                        <div className="text-xs text-gray-500">{s.email}</div>
+                        <div className="font-semibold text-[#111827] whitespace-nowrap">{s.name}</div>
+                        <div className="text-[11.5px] text-[#9ca3af]">{s.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1 max-w-[300px]">
-                      {s.phone}
-                    </div>
+                  <td className="px-3 py-[11px] text-[#4b5563] whitespace-nowrap">
+                    {s.phone}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 bg-blue-50 text-blue-700 text-sm font-bold rounded-full">
-                      {s._count?.ordersAsSeller ?? 0}
-                    </span>
+                  <td className="px-3 py-[11px] text-right font-semibold text-[#111827]">
+                    {s._count?.ordersAsSeller ?? 0}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
+                  <td className="px-3 py-[11px] whitespace-nowrap text-[#6b7280]">
                     {fmtDate(s.createdAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <div className="flex items-center justify-center gap-2">
+                  <td className="px-4 py-[11px] whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-3">
                       <Link
                         href={`/admin/staff/assign?userId=${s.id}`}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="text-[#2563eb] font-semibold hover:underline flex items-center gap-1.5"
                         title="Chỉnh sửa quyền"
                       >
-                        <Edit2 size={18} />
+                        <Edit2 size={15} />
+                        Phân quyền
                       </Link>
                       <button
                         onClick={() => handleRemoveStaff(s.id, s.name)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-1.5 text-[#dc2626] hover:bg-[#fee2e2] rounded-lg transition-colors"
                         title="Gỡ quyền nhân viên"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>

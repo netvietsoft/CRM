@@ -269,24 +269,24 @@ export default function VoucherActions() {
 
   return (
     <>
-      <button 
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors" 
-        onClick={() => setShowModal(true)} 
+      <button
+        className="rounded-[10px] bg-[#2563eb] px-4 py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+        onClick={() => setShowModal(true)}
         id="add-voucher-btn"
       >
-        + Tạo Voucher
+        + Tạo voucher
       </button>
 
       {showModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Tạo Voucher mới</h2>
-              <button 
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none" 
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#eceef2] p-6">
+              <h2 className="text-xl font-bold text-slate-900">Tạo Voucher mới</h2>
+              <button
+                className="text-2xl leading-none text-gray-400 hover:text-gray-600"
                 onClick={() => setShowModal(false)}
               >
                 ✕
@@ -295,7 +295,7 @@ export default function VoucherActions() {
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-4">
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-lg border border-[#fca5a5] bg-[#fee2e2] px-4 py-3 text-[#dc2626]">
                     <span>⚠</span>
                     <span>{error}</span>
                   </div>
@@ -306,13 +306,13 @@ export default function VoucherActions() {
                     <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="v-code">
                       Mã voucher *
                     </label>
-                    <input 
-                      id="v-code" 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono" 
+                    <input
+                      id="v-code"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono invalid:border-[#dc2626]"
                       required
-                      value={form.code} 
+                      value={form.code}
                       onChange={e => update('code', e.target.value.toUpperCase())}
-                      placeholder="VD: NEW10, VIP20" 
+                      placeholder="VD: NEW10, VIP20"
                     />
                   </div>
                   <div>
@@ -377,14 +377,14 @@ export default function VoucherActions() {
                       <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="v-value">
                         Giá trị {form.type === 'PERCENT' ? '(%)' : '(VNĐ)'} *
                       </label>
-                      <input 
-                        id="v-value" 
-                        type="number" 
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      <input
+                        id="v-value"
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent invalid:border-[#dc2626]"
                         required={form.type !== 'STACK'}
-                        value={form.value} 
+                        value={form.value}
                         onChange={e => update('value', e.target.value)}
-                        placeholder={form.type === 'PERCENT' ? '10' : '50000'} 
+                        placeholder={form.type === 'PERCENT' ? '10' : '50000'}
                       />
                     </div>
                   )}
@@ -823,18 +823,18 @@ export default function VoucherActions() {
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
-                <button 
-                  type="button" 
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors" 
+              <div className="flex items-center justify-end gap-3 border-t border-[#eceef2] p-6">
+                <button
+                  type="button"
+                  className="rounded-[10px] border border-gray-300 px-4 py-[9px] text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                   onClick={() => setShowModal(false)}
                 >
                   Hủy
                 </button>
-                <button 
-                  type="submit" 
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
-                  disabled={loading} 
+                <button
+                  type="submit"
+                  className="rounded-[10px] bg-[#2563eb] px-4 py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={loading}
                   id="save-voucher-btn"
                 >
                   {loading ? 'Đang tạo...' : 'Tạo Voucher'}

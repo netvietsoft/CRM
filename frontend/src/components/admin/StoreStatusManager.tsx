@@ -66,22 +66,23 @@ export default function StoreStatusManager({ storeId, storeName, isActive, isBan
   };
 
   // Current status display
-  let statusColor = 'bg-gray-100 text-gray-700 border-gray-200';
+  let statusColor = 'bg-[#fef3c7] text-[#92400e] border-[#fcd34d]';
   let statusIcon = '⏳';
   let statusLabel = 'Chờ duyệt';
 
   if (isBanned) {
-    statusColor = 'bg-red-50 text-red-700 border-red-200';
+    statusColor = 'bg-[#fee2e2] text-[#dc2626] border-[#fca5a5]';
     statusIcon = '🚫';
     statusLabel = 'Đã bị cấm';
   } else if (isActive) {
+    statusColor = 'bg-[#d1fae5] text-[#047857] border-[#6ee7b7]';
     statusLabel = 'Đang hoạt động';
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Quản lý trạng thái</h2>
-      <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium ${statusColor}`}>
+    <div className="bg-white rounded-[14px] border border-[#eceef2] p-6">
+      <h2 className="text-lg font-extrabold text-gray-900 mb-4">Quản lý trạng thái</h2>
+      <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-[10px] py-[3px] text-[11px] font-semibold ${statusColor}`}>
         <span>{statusIcon}</span>
         <span>{statusLabel}</span>
       </div>
@@ -105,32 +106,32 @@ export default function StoreStatusManager({ storeId, storeName, isActive, isBan
       </div>
 
       {isBanned && bannedReason && (
-        <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100">
-          <p className="text-xs font-bold text-red-400 uppercase tracking-wider mb-1">Lý do cấm:</p>
-          <p className="text-sm text-red-700 leading-relaxed italic">&quot;{bannedReason}&quot;</p>
+        <div className="mt-4 p-3 bg-[#fee2e2] rounded-[10px] border border-[#fca5a5]">
+          <p className="text-[11px] font-bold text-[#dc2626] uppercase tracking-wider mb-1">Lý do cấm:</p>
+          <p className="text-[13px] text-[#dc2626] leading-relaxed italic">&quot;{bannedReason}&quot;</p>
         </div>
       )}
 
       {/* Ban Modal */}
       {showBanModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 bg-red-50">
-              <h3 className="font-bold text-red-800 text-lg">Cấm cửa hàng</h3>
+            <div className="px-6 py-4 border-b border-[#eceef2] bg-[#fee2e2]">
+              <h3 className="font-extrabold text-[#dc2626] text-lg">Cấm cửa hàng</h3>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-800">
+              <div className="bg-[#fee2e2] border border-[#fca5a5] rounded-[10px] p-3">
+                <p className="text-[13px] text-[#dc2626]">
                   Bạn đang cấm cửa hàng <strong>{storeName}</strong>. Cửa hàng sẽ bị vô hiệu hóa hoàn toàn khỏi hệ thống, bao gồm tất cả sản phẩm và đơn hàng mới.
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lý do cấm *</label>
+                <label className="block text-[13px] font-medium text-[#374151] mb-1">Lý do cấm *</label>
                 <textarea
                   value={reason}
                   onChange={e => setReason(e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-red-500 resize-none text-sm"
+                  className="w-full border border-[#e5e7eb] rounded-[10px] px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#dc2626] resize-none text-[13px]"
                   placeholder="VD: Vi phạm chính sách bán hàng, hàng giả, hàng cấm..."
                   required
                 />
@@ -138,14 +139,14 @@ export default function StoreStatusManager({ storeId, storeName, isActive, isBan
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowBanModal(false)}
-                  className="flex-1 px-4 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium transition-colors"
+                  className="flex-1 px-4 py-2.5 text-[#374151] bg-[#f3f4f6] hover:bg-[#e5e7eb] rounded-[10px] font-semibold text-[13px] transition-colors"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={handleBan}
                   disabled={loading}
-                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-[10px] font-bold text-[13px] transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Đang xử lý...' : 'Xác nhận Cấm'}
                 </button>

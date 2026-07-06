@@ -87,16 +87,16 @@ export default function CustomerCareTemplatesClient({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <h1 className="text-2xl font-bold text-gray-900">Template tin nhắn</h1>
-        <p className="mt-1 text-sm text-gray-500">
+    <div className="space-y-3.5">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
+        <h1 className="text-lg font-extrabold text-gray-900">Template tin nhắn</h1>
+        <p className="mt-1 text-[12.5px] text-[#9ca3af]">
           Quản lý mẫu tin cho gửi cá nhân, campaign và tin tự động.
         </p>
       </div>
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="rounded-[14px] border border-[#eceef2] bg-white px-5 py-4">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
           <input
             value={search}
             onChange={(event) => {
@@ -109,78 +109,78 @@ export default function CustomerCareTemplatesClient({
               }
             }}
             placeholder="Tìm theo tên hoặc nội dung"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm lg:max-w-sm"
+            className="w-[280px] max-w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb]"
           />
           <button
             type="button"
             onClick={() => router.push('/admin/customer-care/templates/create')}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            className="rounded-[10px] bg-[#2563eb] px-[18px] py-2.5 text-[13px] font-bold text-white hover:bg-[#1d4ed8]"
           >
             Tạo template
           </button>
         </div>
 
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
             <thead>
-              <tr className="text-left text-sm text-gray-500">
-                <th className="px-4 py-3">Tên</th>
-                <th className="px-4 py-3">Kênh</th>
-                <th className="px-4 py-3">Loại</th>
-                <th className="px-4 py-3">Trạng thái</th>
-                <th className="px-4 py-3">Cập nhật</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
+              <tr className="border-b border-[#f1f5f9] text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">
+                <th className="px-4 py-2.5">Tên</th>
+                <th className="px-4 py-2.5">Kênh</th>
+                <th className="px-4 py-2.5">Loại</th>
+                <th className="px-4 py-2.5">Trạng thái</th>
+                <th className="px-4 py-2.5">Cập nhật</th>
+                <th className="px-4 py-2.5 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className="text-[13px]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                     Đang tải template...
                   </td>
                 </tr>
               ) : templates.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-[#9ca3af]">
                     Chưa có template nào.
                   </td>
                 </tr>
               ) : (
                 templates.map((template) => (
-                  <tr key={template.id} className="align-top">
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-gray-900">{template.name}</div>
-                      <div className="mt-1 max-w-xl line-clamp-2 text-gray-500">
+                  <tr key={template.id} className="border-b border-[#f1f5f9] align-top hover:bg-[#eff6ff]">
+                    <td className="px-4 py-3.5">
+                      <div className="font-bold text-gray-900">{template.name}</div>
+                      <div className="mt-1 line-clamp-2 max-w-xl text-[12px] leading-[1.5] text-[#6b7280]">
                         {template.content}
                       </div>
                     </td>
-                    <td className="px-4 py-4">{template.channel.code}</td>
-                    <td className="px-4 py-4">{template.kind}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3.5 font-semibold">{template.channel.code}</td>
+                    <td className="px-4 py-3.5 font-semibold text-[#64748b]">{template.kind}</td>
+                    <td className="px-4 py-3.5">
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        className={`rounded-full px-2.5 py-[3px] text-[11px] font-bold ${
                           template.isActive
-                            ? 'bg-green-50 text-green-700'
-                            : 'bg-gray-100 text-gray-600'
+                            ? 'bg-[#d1fae5] text-[#047857]'
+                            : 'bg-[#f1f5f9] text-[#64748b]'
                         }`}
                       >
                         {template.isActive ? 'Đang dùng' : 'Tắt'}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-gray-500">{formatDateTime(template.createdAt)}</td>
-                    <td className="px-4 py-4 text-right">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-4 py-3.5 text-[12.5px] text-[#6b7280]">{formatDateTime(template.createdAt)}</td>
+                    <td className="px-4 py-3.5 text-right">
+                      <div className="flex justify-end gap-[7px]">
                         <button
                           type="button"
                           onClick={() => router.push(`/admin/customer-care/templates/${template.id}`)}
-                          className="rounded-lg bg-gray-100 px-3 py-1.5 font-semibold text-gray-700 hover:bg-gray-200"
+                          className="rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#374151] hover:bg-[#f9fafb]"
                         >
                           Sửa
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(template.id)}
-                          className="rounded-lg bg-red-50 px-3 py-1.5 font-semibold text-red-600 hover:bg-red-100"
+                          className="rounded-lg border border-[#fecaca] bg-white px-3 py-1.5 text-[12px] font-bold text-[#dc2626] hover:bg-[#fef2f2]"
                         >
                           Xóa
                         </button>

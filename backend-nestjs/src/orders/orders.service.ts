@@ -459,6 +459,126 @@ export class OrdersService {
     }
   }
 
+  /**
+   * Cộng doanh thu/hoa hồng/soldCount khi đơn giao thành công. Idempotent qua cờ
+   * order.creditsApplied — gọi nhiều lần chỉ cộng đúng 1 lần. Các write trực tiếp
+   * (product.soldCount, user.totalSpent, order.creditsApplied) chạy trong 1 transaction.
+   * Các collaborator (updateUserRank/calculateCommissions/processSuccessfulOrderVoucherRules)
+   * dùng this.prisma nội bộ nên vẫn gọi như cũ (không ép tx vào chúng).
+   */
+  private async applyDeliveredCredits(order: any) {
+    if (order.creditsApplied) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of order.items) {
+        if (!item.isGift) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { soldCount: { increment: item.quantity } },
+          });
+        }
+      }
+
+      if (order.userId) {
+        await tx.user.update({
+          where: { id: order.userId },
+          data: { totalSpent: { increment: order.totalAmount } },
+        });
+      }
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: { creditsApplied: true },
+      });
+    });
+
+    order.creditsApplied = true;
+
+    if (order.userId) {
+      await this.usersService.updateUserRank(order.userId);
+    }
+
+    if (order.user && order.user.referrerId) {
+      const existingCommissions = await this.prisma.commissionLedger.findFirst({
+        where: {
+          orderId: order.id,
+          status: { not: 'CANCELLED' },
+        },
+      });
+
+      if (!existingCommissions) {
+        await this.commissionsService.calculateCommissions(order);
+      }
+    }
+
+    await this.vouchersService.processSuccessfulOrderVoucherRules(order.id);
+  }
+
+  /**
+   * Đảo lại phần đã cộng khi đơn bị huỷ/hoàn/trả sau khi đã giao thành công.
+   * Idempotent qua cờ order.creditsApplied — chỉ đảo khi thực sự đã cộng.
+   */
+  private async revertDeliveredCredits(order: any) {
+    if (!order.creditsApplied) return;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of order.items) {
+        if (!item.isGift) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { soldCount: { decrement: item.quantity } },
+          });
+        }
+      }
+
+      if (order.userId) {
+        await tx.user.update({
+          where: { id: order.userId },
+          data: { totalSpent: { decrement: order.totalAmount } },
+        });
+      }
+
+      await tx.order.update({
+        where: { id: order.id },
+        data: { creditsApplied: false },
+      });
+    });
+
+    order.creditsApplied = false;
+
+    if (order.userId) {
+      await this.usersService.updateUserRank(order.userId);
+    }
+
+    await this.commissionsService.cancelCommissions(order.id);
+  }
+
+  /**
+   * Điểm vào dùng chung cho webhook (VTP/Casso...): nạp đơn kèm items+user rồi
+   * cộng/đảo doanh thu đúng như luồng admin. DELIVERED/PAYMENT_COLLECTED/COMPLETED → cộng;
+   * CANCELLED/REFUNDED/RETURNING → đảo. Idempotent qua order.creditsApplied.
+   */
+  async applyStatusSideEffects(orderId: string, newStatus: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true, user: true },
+    });
+    if (!order) return;
+
+    const isCreditable =
+      newStatus === 'DELIVERED' ||
+      newStatus === 'PAYMENT_COLLECTED' ||
+      newStatus === 'COMPLETED';
+    const isVoid =
+      newStatus === 'CANCELLED' || newStatus === 'REFUNDED' || newStatus === 'RETURNING';
+
+    if (isCreditable) {
+      await this.applyDeliveredCredits(order);
+    } else if (isVoid) {
+      await this.revertDeliveredCredits(order);
+    }
+  }
+
   private async generateUniqueReferralCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -693,6 +813,15 @@ export class OrdersService {
     let totalProductQuantity = 0;
     const currentOrderSource = 'PORTAL_DIRECT';
     const currentSalesChannel = 'ONLINE';
+    // Gom các thao tác trừ kho để chạy trong transaction cùng order.create (C1: atomic).
+    const productStockDecrements: Array<{ productId: string; quantity: number }> = [];
+    const variantStockDecrements: Array<{ variantId: string; quantity: number }> = [];
+    // Gom thao tác voucher (đánh dấu isUsed + usedCount) để chạy trong cùng transaction.
+    const voucherOps: Array<{
+      existingUserVoucherId: string | null;
+      voucherId: string;
+      usedAt: Date;
+    }> = [];
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
@@ -737,17 +866,14 @@ export class OrdersService {
             itemPrice = matchingVariant.price;
           }
 
-          await this.prisma.productVariant.update({
-            where: { id: matchingVariant.id },
-            data: { stock: { decrement: item.quantity } },
+          variantStockDecrements.push({
+            variantId: matchingVariant.id,
+            quantity: item.quantity,
           });
         }
       }
 
-      await this.prisma.product.update({
-        where: { id: product.id },
-        data: { stockQuantity: { decrement: item.quantity } },
-      });
+      productStockDecrements.push({ productId: product.id, quantity: item.quantity });
 
       itemPrice = this.applyCustomerRankDiscount(itemPrice, resolvedRank, rankDiscountPercent);
 
@@ -1028,30 +1154,11 @@ export class OrdersService {
             orderBy: { createdAt: 'asc' },
           });
 
-          if (existingUserVoucher) {
-            const usedVoucher = await this.prisma.userVoucher.update({
-              where: { id: existingUserVoucher.id },
-              data: {
-                isUsed: true,
-                usedAt: now,
-              },
-            });
-            appliedUserVoucherIds.push(usedVoucher.id);
-          } else {
-            const newlyClaimed = await this.prisma.userVoucher.create({
-              data: {
-                userId,
-                voucherId: targetVoucher.id,
-                isUsed: true,
-                usedAt: now,
-              },
-            });
-            appliedUserVoucherIds.push(newlyClaimed.id);
-          }
-
-          await this.prisma.voucher.update({
-            where: { id: targetVoucher.id },
-            data: { usedCount: { increment: 1 } },
+          // Hoãn ghi (isUsed + usedCount) để chạy trong transaction cùng order.create.
+          voucherOps.push({
+            existingUserVoucherId: existingUserVoucher ? existingUserVoucher.id : null,
+            voucherId: targetVoucher.id,
+            usedAt: now,
           });
         }
       }
@@ -1069,10 +1176,7 @@ export class OrdersService {
       if (actualApplicable > 0) {
         commissionDiscount = actualApplicable;
         discountAmount += commissionDiscount;
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data: { commissionBalance: { decrement: commissionDiscount } },
-        });
+        // Hoãn trừ commissionBalance để chạy trong transaction cùng order.create.
       }
     }
 
@@ -1085,52 +1189,102 @@ export class OrdersService {
       paymentMethod === 'VIETQR' ? new Date(Date.now() + 30 * 60 * 1000) : null;
     const vietqrTransactionCode = paymentMethod === 'VIETQR' ? `ORDER:${orderCode}` : null;
 
-    const order = await this.prisma.order.create({
-      data: {
-        userId: user.id,
-        orderCode,
-        shippingName: name || user.name,
-        shippingPhone: phone || user.phone,
-        shippingStreet: addressStreet,
-        shippingWard: addressWard,
-        shippingProvince: addressProvince,
-        subtotal,
-        discountAmount,
-        shippingFee: parsedShippingFee,
-        totalAmount,
-        paymentMethod: paymentMethod as any,
-        paymentStatus: 'UNPAID',
-        note,
-        customerNote: note,
-        source: 'PORTAL_DIRECT',
-        storeId: orderStoreId,
-        ...(vietqrExpiresAt && vietqrTransactionCode
-          ? {
-              metadata: {
-                vietqr: {
-                  expiresAt: vietqrExpiresAt.toISOString(),
-                  transactionCode: vietqrTransactionCode,
-                  amount: totalAmount,
-                  expired: false,
+    // C1: trừ kho/voucher/commissionBalance + order.create chạy trong 1 transaction để
+    // nếu tạo đơn lỗi thì mọi side-effect được rollback (không "cháy" kho/voucher/số dư).
+    const order = await this.prisma.$transaction(async (tx) => {
+      for (const dec of variantStockDecrements) {
+        await tx.productVariant.update({
+          where: { id: dec.variantId },
+          data: { stock: { decrement: dec.quantity } },
+        });
+      }
+
+      for (const dec of productStockDecrements) {
+        await tx.product.update({
+          where: { id: dec.productId },
+          data: { stockQuantity: { decrement: dec.quantity } },
+        });
+      }
+
+      for (const op of voucherOps) {
+        if (op.existingUserVoucherId) {
+          const usedVoucher = await tx.userVoucher.update({
+            where: { id: op.existingUserVoucherId },
+            data: { isUsed: true, usedAt: op.usedAt },
+          });
+          appliedUserVoucherIds.push(usedVoucher.id);
+        } else {
+          const newlyClaimed = await tx.userVoucher.create({
+            data: {
+              userId,
+              voucherId: op.voucherId,
+              isUsed: true,
+              usedAt: op.usedAt,
+            },
+          });
+          appliedUserVoucherIds.push(newlyClaimed.id);
+        }
+
+        await tx.voucher.update({
+          where: { id: op.voucherId },
+          data: { usedCount: { increment: 1 } },
+        });
+      }
+
+      if (commissionDiscount > 0) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { commissionBalance: { decrement: commissionDiscount } },
+        });
+      }
+
+      return tx.order.create({
+        data: {
+          userId: user.id,
+          orderCode,
+          shippingName: name || user.name,
+          shippingPhone: phone || user.phone,
+          shippingStreet: addressStreet,
+          shippingWard: addressWard,
+          shippingProvince: addressProvince,
+          subtotal,
+          discountAmount,
+          shippingFee: parsedShippingFee,
+          totalAmount,
+          paymentMethod: paymentMethod as any,
+          paymentStatus: 'UNPAID',
+          note,
+          customerNote: note,
+          source: 'PORTAL_DIRECT',
+          storeId: orderStoreId,
+          ...(vietqrExpiresAt && vietqrTransactionCode
+            ? {
+                metadata: {
+                  vietqr: {
+                    expiresAt: vietqrExpiresAt.toISOString(),
+                    transactionCode: vietqrTransactionCode,
+                    amount: totalAmount,
+                    expired: false,
+                  },
                 },
-              },
-            }
-          : {}),
-        items: {
-          create: orderItemsToCreate,
+              }
+            : {}),
+          items: {
+            create: orderItemsToCreate,
+          },
+          ...(appliedUserVoucherIds.length > 0
+            ? {
+                appliedVouchers: {
+                  create: appliedUserVoucherIds.map((uvId) => ({
+                    userVoucherId: uvId,
+                    discountApplied:
+                      (discountAmount - commissionDiscount) / appliedUserVoucherIds.length,
+                  })),
+                },
+              }
+            : {}),
         },
-        ...(appliedUserVoucherIds.length > 0
-          ? {
-              appliedVouchers: {
-                create: appliedUserVoucherIds.map((uvId) => ({
-                  userVoucherId: uvId,
-                  discountApplied:
-                    (discountAmount - commissionDiscount) / appliedUserVoucherIds.length,
-                })),
-              },
-            }
-          : {}),
-      },
+      });
     });
 
     if (cartItemIds && Array.isArray(cartItemIds) && cartItemIds.length > 0) {
@@ -1336,6 +1490,7 @@ export class OrdersService {
         customerNote: customerNote || null,
         source: 'ADMIN_MANUAL',
         storeId: orderStoreId || null,
+        conversationId: clientMetadata?.conversationId || null, // I6: cột thật + index (tra CCM không quét JSON)
         assigningSellerId: clientMetadata?.assigningSellerId || null,
         assigningCareId: clientMetadata?.assigningCareId || null,
         metadata: {
@@ -1543,7 +1698,8 @@ export class OrdersService {
   // Đơn tạo từ 1 hội thoại CCM — tra theo metadata.conversationId (không phụ thuộc SĐT, vì khách
   // Messenger thường không có SĐT). Trả về mảng đơn kèm items để card hiển thị.
   async findByConversation(conversationId: string, effectiveStoreId?: string | null) {
-    const where: any = { metadata: { path: '$.conversationId', equals: conversationId } };
+    // I6: tra theo cột conversation_id đã đánh index (thay vì quét JSON metadata → full scan).
+    const where: any = { conversationId };
     if (effectiveStoreId) where.storeId = effectiveStoreId;
     return this.prisma.order.findMany({
       where,
@@ -1888,67 +2044,18 @@ export class OrdersService {
     }
 
     const isCreditable = status === 'COMPLETED' || status === 'DELIVERED';
-    const wasCreditable =
-      currentOrder.status === 'COMPLETED' || currentOrder.status === 'DELIVERED';
 
-    if (isCreditable && !wasCreditable) {
-      for (const item of currentOrder.items) {
-        if (!item.isGift) {
-          await this.prisma.product.update({
-            where: { id: item.productId },
-            data: { soldCount: { increment: item.quantity } },
-          });
-        }
-      }
-
-      if (currentOrder.userId) {
-        await this.prisma.user.update({
-          where: { id: currentOrder.userId },
-          data: { totalSpent: { increment: currentOrder.totalAmount } },
-        });
-        await this.usersService.updateUserRank(currentOrder.userId);
-      }
-
-      if (currentOrder.user && currentOrder.user.referrerId) {
-        const existingCommissions = await this.prisma.commissionLedger.findFirst({
-          where: {
-            orderId: currentOrder.id,
-            status: { not: 'CANCELLED' },
-          },
-        });
-
-        if (!existingCommissions) {
-          await this.commissionsService.calculateCommissions(currentOrder);
-        }
-      }
-
-      await this.vouchersService.processSuccessfulOrderVoucherRules(currentOrder.id);
+    if (isCreditable) {
+      await this.applyDeliveredCredits(currentOrder);
     }
 
-    const isCancelled = status === 'CANCELLED' || status === 'REFUNDED' || status === 'RETURNED';
+    const isCancelled = status === 'CANCELLED' || status === 'REFUNDED' || status === 'RETURNING';
     if (isCancelled && currentOrder.paymentStatus !== 'PAID') {
       await this.releaseAppliedVouchersForOrder(currentOrder.id);
     }
 
-    if (isCancelled && wasCreditable) {
-      for (const item of currentOrder.items) {
-        if (!item.isGift) {
-          await this.prisma.product.update({
-            where: { id: item.productId },
-            data: { soldCount: { decrement: item.quantity } },
-          });
-        }
-      }
-
-      if (currentOrder.userId) {
-        await this.prisma.user.update({
-          where: { id: currentOrder.userId },
-          data: { totalSpent: { decrement: currentOrder.totalAmount } },
-        });
-        await this.usersService.updateUserRank(currentOrder.userId);
-      }
-
-      await this.commissionsService.cancelCommissions(currentOrder.id);
+    if (isCancelled) {
+      await this.revertDeliveredCredits(currentOrder);
     }
 
     if (
@@ -2198,21 +2305,43 @@ export class OrdersService {
       );
     }
 
-    for (const item of order.items) {
-      await this.prisma.product.update({
-        where: { id: item.productId },
-        data: { stockQuantity: { increment: item.quantity } },
-      });
-    }
+    const updated = await this.prisma.$transaction(async (tx) => {
+      for (const item of order.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { increment: item.quantity } },
+        });
 
-    const updated = await this.prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'CANCELLED',
-        customerNote: reason
-          ? `${order.customerNote ? order.customerNote + ' | ' : ''}Lý do hủy: ${reason}`
-          : order.customerNote,
-      },
+        if (item.size || item.color) {
+          const variant = await tx.productVariant.findFirst({
+            where: {
+              productId: item.productId,
+              ...(item.size ? { size: { name: item.size } } : {}),
+              ...(item.color ? { color: { name: item.color } } : {}),
+            },
+            select: { id: true },
+          });
+
+          if (variant) {
+            await tx.productVariant.update({
+              where: { id: variant.id },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
+        }
+      }
+
+      await this.releaseAppliedVouchersForOrder(order.id, tx);
+
+      return tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'CANCELLED',
+          customerNote: reason
+            ? `${order.customerNote ? order.customerNote + ' | ' : ''}Lý do hủy: ${reason}`
+            : order.customerNote,
+        },
+      });
     });
 
     return { success: true, order: updated };

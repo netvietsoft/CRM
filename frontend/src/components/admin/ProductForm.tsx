@@ -480,26 +480,26 @@ export default function ProductForm({
     <div className="py-2">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Link href="/admin/products" className="rounded-full p-2 transition-colors hover:bg-gray-100">
-            <ArrowLeft className="h-5 w-5 text-gray-600" />
+          <Link href="/admin/products" className="rounded-full p-2 transition-colors hover:bg-[#f3f4f6]">
+            <ArrowLeft className="h-5 w-5 text-[#6b7280]" />
           </Link>
-          <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
+          <h1 className="text-[24px] font-extrabold tracking-[-0.4px] text-[#111827]">{title}</h1>
         </div>
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-2.5">
           <Link
             href="/admin/products"
-            className="rounded-lg border border-gray-300 px-6 py-2.5 font-medium text-gray-700 shadow-sm transition-colors hover:bg-white"
+            className="rounded-[10px] border border-[#e5e7eb] bg-white px-4 py-[9px] text-[13px] font-semibold text-[#374151] transition-colors hover:bg-[#f9fafb]"
           >
             Hủy bỏ
           </Link>
           <button
             type="submit"
             form="product-form"
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-8 py-2.5 font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 rounded-[10px] bg-[#2563eb] px-6 py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading}
           >
             {loading && (
-              <svg className="h-5 w-5 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
               </svg>
@@ -511,10 +511,10 @@ export default function ProductForm({
 
       <form id="product-form" onSubmit={handleSubmit}>
         <div className="flex items-stretch gap-6">
-          <div className="flex-1 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex-1 overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
             <div className="space-y-6 p-6 md:p-8">
               {error && (
-                <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                <div className="flex items-center gap-2 rounded-[10px] border border-[#dc2626] bg-[#fee2e2] px-4 py-3 text-[13px] text-[#dc2626] ring-4 ring-[rgba(220,38,38,0.12)]">
                   <span>⚠</span>
                   <span>{error}</span>
                 </div>
@@ -522,12 +522,12 @@ export default function ProductForm({
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-name">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-name">
                     Tên sản phẩm *
                   </label>
                   <input
                     id="prod-name"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     required
                     value={form.name}
                     onChange={(e) => update('name', e.target.value)}
@@ -535,12 +535,12 @@ export default function ProductForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-sku">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-sku">
                     SKU
                   </label>
                   <input
                     id="prod-sku"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 font-mono text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     value={form.sku}
                     onChange={(e) => update('sku', e.target.value)}
                     placeholder="PROD-001"
@@ -549,12 +549,12 @@ export default function ProductForm({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500" htmlFor="prod-slug">
+                <label className="mb-1 block text-[11px] font-medium text-[#9ca3af]" htmlFor="prod-slug">
                   Slug *
                 </label>
                 <input
                   id="prod-slug"
-                  className="w-full max-w-xs rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-600 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="w-full max-w-xs rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-1.5 font-mono text-[11px] text-[#6b7280] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                   required
                   value={form.slug}
                   onChange={(e) => update('slug', e.target.value)}
@@ -564,28 +564,28 @@ export default function ProductForm({
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-production">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-production">
                     Giá sản xuất (VNĐ)
                   </label>
                   <input
                     id="prod-production"
                     type="text"
                     inputMode="numeric"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-right transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-right text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     value={formatPriceInput(form.productionPrice)}
                     onChange={(e) => update('productionPrice', onlyDigits(e.target.value))}
                     placeholder="150.000"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-price">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-price">
                     Giá gốc (VNĐ) *
                   </label>
                   <input
                     id="prod-price"
                     type="text"
                     inputMode="numeric"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-right transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-right text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     required
                     value={formatPriceInput(form.originalPrice)}
                     onChange={(e) => update('originalPrice', onlyDigits(e.target.value))}
@@ -593,14 +593,14 @@ export default function ProductForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-sale">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-sale">
                     Giá sale (VNĐ)
                   </label>
                   <input
                     id="prod-sale"
                     type="text"
                     inputMode="numeric"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-right transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-right text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     value={formatPriceInput(form.salePrice)}
                     onChange={(e) => update('salePrice', onlyDigits(e.target.value))}
                     placeholder="249.000"
@@ -610,26 +610,26 @@ export default function ProductForm({
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-weight">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-weight">
                     Trọng lượng (g)
                   </label>
                   <input
                     id="prod-weight"
                     type="number"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     value={form.weight}
                     onChange={(e) => update('weight', e.target.value)}
                     placeholder="500"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-stock">
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-stock">
                     Tồn kho (Mặc định)
                   </label>
                   <input
                     id="prod-stock"
                     type="number"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                     value={form.stockQuantity}
                     onChange={(e) => update('stockQuantity', e.target.value)}
                     placeholder="100"
@@ -639,7 +639,7 @@ export default function ProductForm({
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Nhà cung cấp</label>
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Nhà cung cấp</label>
                   <Select
                     className="w-full"
                     value={form.supplierId}
@@ -652,7 +652,7 @@ export default function ProductForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Chất liệu</label>
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Chất liệu</label>
                   <Select
                     className="w-full"
                     value={form.materialId}
@@ -665,7 +665,7 @@ export default function ProductForm({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Đơn vị tính</label>
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Đơn vị tính</label>
                   <Select
                     className="w-full"
                     value={form.unitId}
@@ -680,19 +680,19 @@ export default function ProductForm({
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Hình ảnh sản phẩm</label>
-                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-4 transition-colors hover:bg-gray-50">
+                <label className="mb-2 block text-[13px] font-semibold text-[#374151]">Hình ảnh sản phẩm</label>
+                <div className="rounded-[14px] border border-dashed border-[#e5e7eb] bg-[#f9fafb] p-4 transition-colors hover:bg-[#f3f4f6]">
                   <ImageUpload value={form.imageUrl} onChange={(url) => update('imageUrl', url)} endpoint="productImage" />
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="prod-desc">
+                <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-desc">
                   Mô tả chi tiết
                 </label>
                 <textarea
                   id="prod-desc"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 transition-all focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-3 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                   rows={5}
                   value={form.description}
                   onChange={(e) => update('description', e.target.value)}
@@ -701,7 +701,7 @@ export default function ProductForm({
               </div>
 
               <div>
-                <label className="mb-3 block text-sm font-bold text-gray-800">Tag sản phẩm</label>
+                <label className="mb-3 block text-[13px] font-bold text-[#111827]">Tag sản phẩm</label>
                 <div className="flex flex-wrap gap-2">
                   {productTags.map((tag) => {
                     const active = form.tagIds.includes(tag.id);
@@ -710,29 +710,29 @@ export default function ProductForm({
                         key={tag.id}
                         type="button"
                         onClick={() => toggleTag(tag.id)}
-                        className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                        className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
                           active
-                            ? 'border-blue-200 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                            ? 'border-[#2563eb] bg-[#eff6ff] text-[#2563eb]'
+                            : 'border-[#e5e7eb] bg-white text-[#374151] hover:bg-[#f9fafb]'
                         }`}
                       >
                         {tag.name}
                       </button>
                     );
                   })}
-                  {productTags.length === 0 && <span className="text-sm text-gray-500">Chưa có tag sản phẩm</span>}
+                  {productTags.length === 0 && <span className="text-[13px] text-[#6b7280]">Chưa có tag sản phẩm</span>}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex-1 space-y-6 overflow-hidden rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="flex-1 space-y-6 overflow-hidden rounded-[14px] border border-[#eceef2] bg-white p-6">
             {categories.length > 0 && (
               <div>
-                <label className="mb-4 block text-sm font-bold text-gray-800">Phân loại Danh mục</label>
+                <label className="mb-4 block text-[13px] font-bold text-[#111827]">Phân loại Danh mục</label>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">Danh mục gốc</label>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Danh mục gốc</label>
                     <Select
                       className="w-full bg-white"
                       value={form.categoryLevel1}
@@ -742,7 +742,7 @@ export default function ProductForm({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">Danh mục Cấp 2</label>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Danh mục Cấp 2</label>
                     <Select
                       className="w-full bg-white"
                       value={form.categoryLevel2}
@@ -753,7 +753,7 @@ export default function ProductForm({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">Danh mục Cấp 3</label>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Danh mục Cấp 3</label>
                     <Select
                       className="w-full bg-white"
                       value={form.categoryLevel3}
@@ -764,7 +764,7 @@ export default function ProductForm({
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">Danh mục Cấp 4</label>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">Danh mục Cấp 4</label>
                     <Select
                       className="w-full bg-white"
                       value={form.categoryLevel4}
@@ -781,33 +781,33 @@ export default function ProductForm({
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-800">Biến thể sản phẩm (Size / Màu)</h3>
-                  <p className="mt-1 text-xs text-gray-500">Tạo các biến thể để quản lý giá và tồn kho riêng biệt</p>
+                  <h3 className="text-[13px] font-bold text-[#111827]">Biến thể sản phẩm (Size / Màu)</h3>
+                  <p className="mt-1 text-[11px] text-[#6b7280]">Tạo các biến thể để quản lý giá và tồn kho riêng biệt</p>
                 </div>
                 <button
                   type="button"
                   onClick={addVariant}
-                  className="rounded-lg bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 shadow-sm transition-colors hover:bg-blue-100"
+                  className="rounded-[10px] bg-[#eff6ff] px-4 py-2 text-[13px] font-semibold text-[#2563eb] transition-colors hover:bg-[#dbeafe]"
                 >
                   + Thêm biến thể
                 </button>
               </div>
 
               {form.variants.length > 0 && (
-                <div className="mb-6 overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
-                  <table className="w-full text-sm">
-                    <thead className="border-b border-gray-200 bg-gray-50 text-gray-600">
+                <div className="mb-6 overflow-x-auto rounded-[14px] border border-[#eceef2]">
+                  <table className="w-full text-[13px]">
+                    <thead className="border-b border-[#eceef2] bg-[#f9fafb] text-[#6b7280]">
                       <tr>
-                        <th className="p-4 text-left font-semibold">Kích thước</th>
-                        <th className="p-4 text-left font-semibold">Màu sắc</th>
-                        <th className="p-4 text-left font-semibold">Giá bán tùy chọn (VNĐ)</th>
-                        <th className="p-4 text-left font-semibold">Tồn kho</th>
+                        <th className="p-4 text-left text-[11px] font-semibold uppercase tracking-[0.05em]">Kích thước</th>
+                        <th className="p-4 text-left text-[11px] font-semibold uppercase tracking-[0.05em]">Màu sắc</th>
+                        <th className="p-4 text-left text-[11px] font-semibold uppercase tracking-[0.05em]">Giá bán tùy chọn (VNĐ)</th>
+                        <th className="p-4 text-left text-[11px] font-semibold uppercase tracking-[0.05em]">Tồn kho</th>
                         <th className="w-16 p-4"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 bg-white">
+                    <tbody className="divide-y divide-[#f3f4f6] bg-white">
                       {form.variants.map((variant) => (
-                        <tr key={variant.id} className="transition-colors hover:bg-gray-50/50">
+                        <tr key={variant.id} className="transition-colors hover:bg-[#f7f9fc]">
                           <td className="p-3">
                             <Select
                               className="w-full"
@@ -833,7 +833,7 @@ export default function ProductForm({
                               type="text"
                               inputMode="numeric"
                               placeholder="Bỏ trống -> Giá gốc"
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-right transition-all focus:ring-2 focus:ring-blue-500"
+                              className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-right text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                               value={formatPriceInput(variant.price)}
                               onChange={(e) => updateVariant(variant.id, 'price', onlyDigits(e.target.value))}
                             />
@@ -841,7 +841,7 @@ export default function ProductForm({
                           <td className="p-3">
                             <input
                               type="number"
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 transition-all focus:ring-2 focus:ring-blue-500"
+                              className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                               value={variant.stock}
                               onChange={(e) => updateVariant(variant.id, 'stock', e.target.value)}
                             />
@@ -849,7 +849,7 @@ export default function ProductForm({
                           <td className="p-3 text-center">
                             <button
                               type="button"
-                              className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                              className="rounded-lg p-2 text-[#dc2626] transition-colors hover:bg-[#fee2e2]"
                               onClick={() => removeVariant(variant.id)}
                               title="Xóa"
                             >
@@ -865,38 +865,38 @@ export default function ProductForm({
 
               <div className="flex flex-col gap-6 md:flex-row">
                 <div className="flex-1">
-                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-700">Tạo Kích thước mới</p>
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.05em] text-[#374151]">Tạo Kích thước mới</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Tên Size (VD: XL)"
-                      className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                       value={newSizeName}
                       onChange={(e) => setNewSizeName(e.target.value)}
                     />
                     <button
                       type="button"
                       onClick={handleCreateSize}
-                      className="whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
+                      className="whitespace-nowrap rounded-[10px] border border-[#e5e7eb] bg-white px-4 py-2 text-[13px] font-semibold text-[#374151] transition-colors hover:bg-[#f9fafb]"
                     >
                       Thêm
                     </button>
                   </div>
                 </div>
                 <div className="flex-1">
-                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-700">Tạo Màu sắc mới</p>
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.05em] text-[#374151]">Tạo Màu sắc mới</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
                       placeholder="Tên Màu (VD: Đen)"
-                      className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm shadow-sm focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                       value={newColorName}
                       onChange={(e) => setNewColorName(e.target.value)}
                     />
                     <button
                       type="button"
                       onClick={handleCreateColor}
-                      className="whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-gray-50"
+                      className="whitespace-nowrap rounded-[10px] border border-[#e5e7eb] bg-white px-4 py-2 text-[13px] font-semibold text-[#374151] transition-colors hover:bg-[#f9fafb]"
                     >
                       Thêm
                     </button>
@@ -906,16 +906,16 @@ export default function ProductForm({
             </div>
 
             {form.isComboSet && (
-              <div className="border-t border-gray-100 pt-6">
+              <div className="border-t border-[#f3f4f6] pt-6">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-gray-800">Thành phần combo</h3>
-                    <p className="mt-1 text-xs text-gray-500">Chọn các sản phẩm con và số lượng của từng món</p>
+                    <h3 className="text-[13px] font-bold text-[#111827]">Thành phần combo</h3>
+                    <p className="mt-1 text-[11px] text-[#6b7280]">Chọn các sản phẩm con và số lượng của từng món</p>
                   </div>
                   <button
                     type="button"
                     onClick={addComboItem}
-                    className="rounded-lg bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 shadow-sm transition-colors hover:bg-amber-100"
+                    className="rounded-[10px] bg-[#fef3c7] px-4 py-2 text-[13px] font-semibold text-[#92400e] transition-colors hover:bg-[#fde68a]"
                   >
                     + Thêm sản phẩm con
                   </button>
@@ -923,7 +923,7 @@ export default function ProductForm({
 
                 <div className="space-y-3">
                   {form.comboItems.map((item) => (
-                    <div key={item.id} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-200 p-4 md:grid-cols-[1fr_120px_52px]">
+                    <div key={item.id} className="grid grid-cols-1 gap-3 rounded-[14px] border border-[#eceef2] p-4 md:grid-cols-[1fr_120px_52px]">
                       <Select
                         className="w-full"
                         value={item.childProductId}
@@ -934,14 +934,14 @@ export default function ProductForm({
                       <input
                         type="number"
                         min={1}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-all focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-[10px] border border-[#e5e7eb] px-3 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                         value={item.quantity}
                         onChange={(e) => updateComboItem(item.id, 'quantity', e.target.value)}
                         placeholder="Số lượng"
                       />
                       <button
                         type="button"
-                        className="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                        className="rounded-lg p-2 text-[#dc2626] transition-colors hover:bg-[#fee2e2]"
                         onClick={() => removeComboItem(item.id)}
                       >
                         ✕
@@ -949,7 +949,7 @@ export default function ProductForm({
                     </div>
                   ))}
                   {form.comboItems.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-gray-200 px-4 py-3 text-sm text-gray-500">
+                    <div className="rounded-[10px] border border-dashed border-[#e5e7eb] px-4 py-3 text-[13px] text-[#6b7280]">
                       Chưa có sản phẩm con cho combo.
                     </div>
                   )}
@@ -957,48 +957,48 @@ export default function ProductForm({
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-6 md:grid-cols-3">
-              <label className="cursor-pointer rounded-xl border border-gray-200 p-4 transition-colors hover:bg-gray-50">
+            <div className="grid grid-cols-1 gap-4 border-t border-[#f3f4f6] pt-6 md:grid-cols-3">
+              <label className="cursor-pointer rounded-[14px] border border-[#eceef2] p-4 transition-colors hover:bg-[#f9fafb]">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-[#e5e7eb] text-[#2563eb] focus:ring-[#2563eb]"
                     checked={form.isComboSet}
                     onChange={(e) => update('isComboSet', e.target.checked)}
                   />
                   <div>
-                    <span className="block font-medium text-gray-800">Sản phẩm Combo</span>
-                    <span className="block text-xs text-gray-500">Được tạo từ nhiều sản phẩm khác</span>
+                    <span className="block text-[13px] font-semibold text-[#111827]">Sản phẩm Combo</span>
+                    <span className="block text-[11px] text-[#6b7280]">Được tạo từ nhiều sản phẩm khác</span>
                   </div>
                 </div>
               </label>
 
-              <label className="cursor-pointer rounded-xl border border-gray-200 p-4 transition-colors hover:bg-gray-50">
+              <label className="cursor-pointer rounded-[14px] border border-[#eceef2] p-4 transition-colors hover:bg-[#f9fafb]">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-[#e5e7eb] text-[#2563eb] focus:ring-[#2563eb]"
                     checked={form.isGiftItem}
                     onChange={(e) => update('isGiftItem', e.target.checked)}
                   />
                   <div>
-                    <span className="block font-medium text-gray-800">Quà tặng kèm</span>
-                    <span className="block text-xs text-gray-500">Sản phẩm dùng làm quà tặng khuyến mãi</span>
+                    <span className="block text-[13px] font-semibold text-[#111827]">Quà tặng kèm</span>
+                    <span className="block text-[11px] text-[#6b7280]">Sản phẩm dùng làm quà tặng khuyến mãi</span>
                   </div>
                 </div>
               </label>
 
-              <label className="cursor-pointer rounded-xl border border-blue-200 bg-blue-50/50 p-4 transition-colors hover:bg-blue-50">
+              <label className="cursor-pointer rounded-[14px] border border-[#2563eb] bg-[#eff6ff] p-4 transition-colors hover:bg-[#dbeafe]">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    className="h-5 w-5 rounded border-blue-400 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-[#2563eb] text-[#2563eb] focus:ring-[#2563eb]"
                     checked={form.isActive}
                     onChange={(e) => update('isActive', e.target.checked)}
                   />
                   <div>
-                    <span className="block font-medium text-blue-900">Kích hoạt sản phẩm</span>
-                    <span className="block text-xs text-blue-600/70">Hiển thị trên cửa hàng</span>
+                    <span className="block text-[13px] font-semibold text-[#1e3a8a]">Kích hoạt sản phẩm</span>
+                    <span className="block text-[11px] text-[#2563eb]">Hiển thị trên cửa hàng</span>
                   </div>
                 </div>
               </label>

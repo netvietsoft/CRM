@@ -207,7 +207,7 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
 
   if (checking) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
         <div className="flex items-center gap-2 text-gray-400">
           <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
           <span className="text-sm">Đang kiểm tra voucher...</span>
@@ -220,8 +220,8 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
     const voucher = existingVoucher;
 
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 relative">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">🎟️ Voucher QR đơn hàng</h2>
+      <div className="bg-white border border-[#eceef2] rounded-[14px] p-5 relative">
+        <h2 className="text-[15px] font-bold text-gray-900 mb-4">🎟️ Voucher QR đơn hàng</h2>
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -283,8 +283,8 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">{isEditMode ? 'Sửa Voucher Đơn Hàng' : 'Voucher QR đơn hàng'}</h2>
+    <div className="bg-white border border-[#eceef2] rounded-[14px] p-5">
+      <h2 className="text-[15px] font-bold text-gray-900 mb-4">{isEditMode ? 'Sửa Voucher Đơn Hàng' : 'Voucher QR đơn hàng'}</h2>
       {!isEditMode && (
         <p className="text-sm text-gray-500 mb-4">
           Tạo voucher riêng cho đơn hàng này. Khi khách quét QR sẽ nhận được voucher này thay vì voucher mặc định.

@@ -53,11 +53,11 @@ export default function CustomerActions() {
   return (
     <>
       <button
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+        className="rounded-[10px] bg-[#2563eb] px-[16px] py-[9px] text-[13px] font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
         onClick={() => setShowModal(true)}
         id="add-customer-btn"
       >
-        + Tạo mới
+        + Thêm khách hàng
       </button>
 
       {showModal && (
