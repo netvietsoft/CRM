@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-07-06 — Reskin toàn bộ theo handoff + merge main + deploy production + fix login đa subdomain
+
+> ✅ **ĐÃ COMMIT + MERGE main + PUSH origin/main + DEPLOY lên production (lestgoai.com).** Nhánh làm: `feat/ccm-redesign` → merge vào `main`. Gap thiết kế: `docs/design-gap-brief.md`, `docs/design-gap-crm-redesign.md`.
+
+### A. Reskin CCM (cổng `/ccm`) theo `Newdesign/design_handoff_crm_ccm`
+- Tokens CCM vào `globals.css` @theme (`--color-ccm-*`: brand `#3c55e6`, primary `#4f68ee`, app `#eef1f8`, chat `#f6f8fd`, active `#e9efff`, border `#e6e9f2`).
+- Reskin 4 màn: **Hội thoại** (rail 60px + list 318px + panel 300px, bubble OUT `#4f68ee` radius `16 16 5 16`/IN trắng, header, composer + popover, OrderCard stepper), **Đơn hàng · Bài viết · Thống kê**. Giữ nguyên wiring (23+24 useState, mọi handler).
+- **12 tab Cài đặt** reskin (layout sidebar 252px + general/tags/ai/quick-reply/shipping/interface + calls/rotation/sync/tools/permissions/history).
+- **Rail icon đồng nhất**: thay 10 emoji → 10 SVG line lucide (message-square/mail/funnel/star/phone/phone-off/clock/calendar/globe/users).
+- **Map (wire) phần thiết kế còn trống**: badge AI + chip 🎂 header (data sẵn có); **toggle giới tính** (cột MỚI `MsgContact.gender` + endpoint `POST /messenger/conversations/:id/contact-gender` + `setContactGender` sync `User.gender` khi SĐT khớp duy nhất; hook + FE nút xoay ♂/♀/⚧). Migration `20260704140000_msg_contact_gender`.
+
+### B. Reskin toàn bộ CRM admin (`/admin`) theo `Newdesign/handoff_crm_redesign` (~23 màn)
+- Tokens CRM vào @theme (`--color-crm-*`: primary `#2563eb`, app `#f7f8fb`, border `#eceef2`, th `#f9fafb`, zebra `#f7f9fc`, row-hover `#eff6ff`).
+- **Lô 1**: Shell (Sidebar 248px + brand header + lucide icon + footer avatar; topbar ⌘K + menu avatar), Dashboard, Khách hàng, Đơn hàng, Sản phẩm.
+- **Lô 2**: Chi tiết khách/đơn, CustomerSearch (chips) + Actions, Kho&danh mục (MasterDataManager+CategoryTree), Voucher, Cửa hàng+Nguồn đơn, Nhân viên+Ranks, Vòng quay, Hoa hồng/Referral, Analytics/PnL+ad-map, System (QR/my-store).
+- **Lô 3** (khổng lồ): **Ads Meta** (AdsDashboard 2 view + KPI tuỳ chỉnh + cây campaign), **Khách hàng Viettel 5 tab** (+ `_ui.tsx` tab bar, tạo đơn, chi tiết), **CSKH 7 tab** (14 file SMS suite).
+- Giữ nguyên wiring toàn bộ; FE typecheck sạch. Vài chỗ wire thêm bằng endpoint sẵn có: toggle voucher (`PATCH /vouchers/:id`), inline ±/Lưu tỉ lệ vòng quay (`PUT /spin/admin/prizes/:id`), permissions matrix controlled.
+- **GAP** (thiết kế có, thiếu backend — giữ template, ghi trong `docs/design-gap-crm-redesign.md`): ⌘K palette, biểu đồ 7 ngày dashboard, duyệt hoa hồng, điều kiện vòng quay, role/status nhân viên, chi tiêu tháng ad-map, QR VietQR, ghi chú khách, Hủy/In vận đơn, banner/OAuth token Ads, 3 tab Viettel placeholder…
+
+### C. Git + Deploy
+- Commit `5bead69` (reskin + gộp audit-fix 07-04) → merge `06726a4` vào `main` (pull 6 commit deploy của remote, **0 conflict** — khác file). Push `origin/main`.
+- Deploy production qua `deploy.sh` (git reset --hard origin/main + build-on-server + pm2). DB dev local gặp drift migration remote (`create_order_sources...`, `reconcile_schema_drift` báo 1050/1061) → `prisma migrate resolve --applied`.
+- ⚠️ **3 migration mới cần `migrate deploy` trên DB prod**: `credits_applied`, `conversation_id`+**FK orders.user_id Cascade→SetNull**, `msg_contacts.gender`.
+
+### D. Fix login production đa subdomain (commit `6b96ef9`)
+- **Bug**: cookie auth set không có `Domain` → host-only `api.lestgoai.com` → middleware `proxy.ts` ở FE `lestgoai.com` không đọc được → login xong đá về `/login?returnTo=/admin` (loop).
+- **Fix**: `auth.controller.ts` thêm `domain: process.env.COOKIE_DOMAIN` vào mọi `cookie()`/`clearCookie` (local undefined = host-only, giữ nguyên). Prod đặt `COOKIE_DOMAIN=.lestgoai.com` + `CORS=https://lestgoai.com,https://admin.lestgoai.com` trong `.env`. Sau đó `build` + `pm2 restart --update-env`. Verify: `set-cookie` có `Domain=.lestgoai.com` → vào `/admin` OK. Tài khoản admin prod: phone `0909090909`.
+
+---
+
 ## 2026-07-04 (phiên audit-fix) — Sửa 15 lỗi 🔴+🟠 (tiền/đơn · bảo mật · DB)
 
 > ⚠️ **CHƯA COMMIT** — trên `main`. Báo cáo nguồn: `docs/audit-report-2026-07-04.md`. Verify: tsc BE+FE sạch; jest xanh (trừ 1 test VietQR `expireOverdueVietqrOrders` **pre-existing** — fail y hệt trên HEAD sạch, không liên quan).

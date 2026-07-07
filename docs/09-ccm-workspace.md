@@ -1,7 +1,7 @@
 # 09 — CCM WORKSPACE (`/ccm/*`) — Chat · Đơn hàng · Cài đặt
 
-> **Trạng thái (2026-07-03):** Hội thoại + Tạo/Danh sách đơn + Đẩy Viettel Post + **Bài viết (Graph API)** + **Thống kê (số thật)** + một số trang Cài đặt đã **NỐI THẬT**. Vài trang Cài đặt (xoay vòng, lịch sử, phân quyền) còn **template**.
-> Tất cả trên nhánh `main` (working tree — **chưa commit**). Xem `docs/changelog.md` (mục 2026-07-02→07-03).
+> **Trạng thái (2026-07-06):** Hội thoại + Tạo/Danh sách đơn + Đẩy Viettel Post + **Bài viết (Graph API)** + **Thống kê (số thật)** + một số trang Cài đặt đã **NỐI THẬT**. Vài trang Cài đặt (xoay vòng, lịch sử, phân quyền) còn **template**.
+> **Đã RESKIN pixel-perfect** theo `Newdesign/design_handoff_crm_ccm` (tokens CCM + 4 màn + 12 tab Cài đặt + rail SVG); thêm **toggle giới tính** (`MsgContact.gender`). Đã **merge main + deploy production** (lestgoai.com). Xem `docs/changelog.md` (2026-07-06) + `docs/design-gap-crm-redesign.md`.
 
 ---
 
@@ -53,6 +53,7 @@ ccm/
 - `POST /messenger/conversations/:id/assign-user` + `messenger.service.assignToUser` — phân công cho 1 NV cụ thể.
 - `POST /messenger/conversations/:id/star` (`setStar`) — sao ưu tiên (`MsgConversation.star`).
 - `POST /messenger/conversations/:id/contact-dob` (`setContactDob`) — ngày sinh khách (`MsgContact.dob`, sync `User.dob`).
+- `POST /messenger/conversations/:id/contact-gender` (`setContactGender`) — giới tính khách (`MsgContact.gender` MALE/FEMALE/OTHER, sync `User.gender` khi SĐT khớp duy nhất).
 - `GET /messenger/pages/:externalId/posts` (`listPagePosts` + `fetchPagePosts`) — bài viết đã đăng của page.
 - `GET /messenger/stats?days=` (`stats`) — đếm tin/hội thoại thật N ngày.
 - `POST /upload/media` + `GET /upload/media/list` (module `src/upload/`, R2 SigV4) — thư viện media dùng chung.
