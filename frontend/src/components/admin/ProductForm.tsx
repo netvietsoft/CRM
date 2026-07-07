@@ -682,7 +682,7 @@ export default function ProductForm({
               <div>
                 <label className="mb-2 block text-[13px] font-semibold text-[#374151]">Hình ảnh sản phẩm</label>
                 <div className="rounded-[14px] border border-dashed border-[#e5e7eb] bg-[#f9fafb] p-4 transition-colors hover:bg-[#f3f4f6]">
-                  <ImageUpload value={form.imageUrl} onChange={(url) => update('imageUrl', url)} endpoint="productImage" />
+                  <ImageUpload value={form.imageUrl} onChange={(url) => update('imageUrl', url)} />
                 </div>
               </div>
 

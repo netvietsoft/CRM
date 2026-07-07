@@ -1,7 +1,7 @@
 'use client';
 
 import Image from '@/components/ui/AppImage';
-import { useUploadThing } from '@/lib/uploadthing';
+import { uploadToR2 } from '@/lib/uploadR2';
 import { useEffect, useRef, useState } from 'react';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
@@ -9,14 +9,13 @@ import { RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
 interface ImageUploadProps {
   value: string;
   onChange: (url: string) => void;
-  endpoint: 'productImage' | 'categoryImage' | 'storeLogo';
 }
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.25;
 
-export default function ImageUpload({ value, onChange, endpoint }: ImageUploadProps) {
+export default function ImageUpload({ value, onChange }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [isViewerOpen, setIsViewerOpen] = useState(false);
@@ -29,20 +28,6 @@ export default function ImageUpload({ value, onChange, endpoint }: ImageUploadPr
     startY: 0,
     initialX: 0,
     initialY: 0,
-  });
-
-  const { startUpload, isUploading } = useUploadThing(endpoint, {
-    onClientUploadComplete: (res) => {
-      if (res && res[0]) {
-        onChange(res[0].url);
-        setError('');
-      }
-      setUploading(false);
-    },
-    onUploadError: (error: Error) => {
-      setError(error.message);
-      setUploading(false);
-    },
   });
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,9 +48,11 @@ export default function ImageUpload({ value, onChange, endpoint }: ImageUploadPr
     setError('');
 
     try {
-      await startUpload([file]);
-    } catch {
-      setError('Lỗi upload hình ảnh');
+      const { url } = await uploadToR2(file, 'images');
+      onChange(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Lỗi upload hình ảnh');
+    } finally {
       setUploading(false);
     }
   };
@@ -332,7 +319,7 @@ export default function ImageUpload({ value, onChange, endpoint }: ImageUploadPr
       <div className="flex items-center gap-3">
         <label
           className={`flex-1 px-4 py-2 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
-            uploading || isUploading
+            uploading
               ? 'border-blue-300 bg-blue-50 cursor-wait'
               : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
           }`}
@@ -341,11 +328,11 @@ export default function ImageUpload({ value, onChange, endpoint }: ImageUploadPr
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            disabled={uploading || isUploading}
+            disabled={uploading}
             className="hidden"
           />
           <div className="flex flex-col items-center gap-2 py-4">
-            {uploading || isUploading ? (
+            {uploading ? (
               <>
                 <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm text-blue-600 font-medium">Đang upload...</span>

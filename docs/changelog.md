@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-07-07 — Bỏ UploadThing, chuyển toàn bộ upload ảnh sang R2
+
+> **Nguyên nhân:** upload ảnh sản phẩm lỗi `Missing token — UPLOADTHING_TOKEN` (env chưa/không còn cấu hình token UploadThing v7). Chọn hướng tự chủ: dùng chung hệ upload R2 (đã có sẵn cho CCM), bỏ phụ thuộc SaaS ngoài.
+
+- **BE** `upload.controller.ts`: thêm `POST /upload/review-image` — cho **mọi user đã đăng nhập** (không `@Roles` ⇒ RolesGuard cho qua; hợp với ảnh đánh giá của khách), validate ảnh + ≤8MB, đẩy R2 folder `reviews`, **không** ghi thư viện media dùng chung.
+- **FE**:
+  - `lib/uploadR2.ts`: thêm `uploadReviewImageToR2(file)`.
+  - `ImageUpload.tsx` (ảnh sản phẩm/logo, admin): thay `useUploadThing` → `uploadToR2(file,'images')`; bỏ prop `endpoint` (sửa 2 chỗ gọi: ProductForm, StoreProfileForm).
+  - `ReviewImageUploader.tsx` (ảnh đánh giá, khách): upload nhiều ảnh tuần tự qua `uploadReviewImageToR2`, state `isUploading` cục bộ.
+  - **Xoá:** `lib/uploadthing.ts`, `app/api/uploadthing/{core,route}.ts`, `lib/jwt.ts` (orphan). Gỡ `uploadthing`+`@uploadthing/react` khỏi `package.json`.
+  - `next.config.ts`: thêm host R2 `pub-…r2.dev` vào `remotePatterns` (giữ `uploadthing.com` để ảnh cũ vẫn hiển thị).
+- **Không migrate dữ liệu**: ảnh cũ trên UploadThing vẫn hiển thị; ảnh mới đi R2. `UPLOADTHING_TOKEN` không còn cần.
+- Verify: FE `tsc` + `next build` ✅; BE `nest build` ✅.
+- ⚠️ **Deploy**: khi kéo lên VPS, `yarn install` (frontend) sẽ prune 2 package UploadThing; R2 env prod đã có sẵn (`R2_*` trong `backend-nestjs/.env.prod`).
+
+---
+
 ## 2026-07-06 — Reskin toàn bộ theo handoff + merge main + deploy production + fix login đa subdomain
 
 > ✅ **ĐÃ COMMIT + MERGE main + PUSH origin/main + DEPLOY lên production (lestgoai.com).** Nhánh làm: `feat/ccm-redesign` → merge vào `main`. Gap thiết kế: `docs/design-gap-brief.md`, `docs/design-gap-crm-redesign.md`.

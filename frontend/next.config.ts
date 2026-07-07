@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: 'uploadthing.com',
             },
+            {
+                // R2 public bucket — ảnh sản phẩm/logo/đánh giá sau khi chuyển từ UploadThing
+                protocol: 'https',
+                hostname: 'pub-ca26f31996334a31b9b0f3e8ed38ff96.r2.dev',
+            },
         ],
     },
 };

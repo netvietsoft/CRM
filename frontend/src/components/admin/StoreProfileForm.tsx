@@ -360,7 +360,6 @@ export default function StoreProfileForm({ initialData }: { initialData: StorePr
             <ImageUpload
               value={logoUrl}
               onChange={setLogoUrl}
-              endpoint="storeLogo"
             />
           </div>
 

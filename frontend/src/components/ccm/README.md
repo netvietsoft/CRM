@@ -8,7 +8,7 @@ Dùng bởi các route trong `app/ccm/*`. Xem tổng quan: [`app/ccm/README.md`]
 - **`CcmConversations.tsx`** — CCM Chat **thật** (nối `/api/messenger/*` qua hook `src/lib/useMessengerChat.ts`). Cấu trúc xem mục dưới.
 - **`CcmCustomerPanel.tsx`** — [CỘT 4] panel phải: tab **Thông tin** (đơn THẬT của khách theo SĐT — `GET /orders/admin?search=<phone>`) & **Tạo đơn** (form THẬT: picker `GET /products/search` + `POST /orders/admin`). Mỗi đơn có nút 🚚 **Đẩy VTP**. Bật/tắt panel bằng nút ▤ ở header chat.
 - **`CcmViettelPushDialog.tsx`** — modal đẩy 1 đơn CRM sang **Viettel Post**: chọn tỉnh/huyện/xã VTP (`/viettelpost/address/*`, có toggle "Địa danh mới"), tra cước (`POST /viettelpost/price`), đẩy (`POST /viettelpost/orders`). Liên kết CRM↔VTP qua `orderReference = orderCode`. Dùng ở `/ccm/orders` và OrderCard trong panel.
-- **`CcmImagePicker.tsx`** — popup "Thư mục ảnh" (nút 🖼️ composer): upload nhiều ảnh qua **UploadThing** (`productImage`); "Tải lên gần đây"/"Yêu thích" lưu localStorage; chọn nhiều (badge số) → `onSend(urls)` → chat gửi từng ảnh qua `reply({attachmentUrl})`.
+- **`CcmImagePicker.tsx`** — popup "Thư mục ảnh" (nút 🖼️ composer): upload nhiều ảnh lên **R2** (`lib/uploadR2.ts` → `POST /upload/media`); "Tải lên gần đây"/"Yêu thích" lưu localStorage; chọn nhiều (badge số) → `onSend(urls)` → chat gửi từng ảnh qua `reply({attachmentUrl})`.
 
 ## Store & tiện ích (ở `src/lib/`)
 - **`useCcmSettings.ts`** — store dùng chung (localStorage + pub/sub) nối **Cài đặt ↔ Chat**: `quickReplies` (composer ⚡), `tags` (picker 🏷️ + màu chip), `prefs` (giao diện list). `getPrefs()` = đọc non-hook (dùng trong handler realtime). Sửa danh mục ở `app/ccm/settings/{quick-reply,tags,interface,page}`.

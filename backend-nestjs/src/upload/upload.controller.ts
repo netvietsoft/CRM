@@ -45,6 +45,25 @@ export class UploadController {
     return { url, name: file.originalname, type };
   }
 
+  // Upload ảnh đánh giá của KHÁCH lên R2 → trả URL public. Cho mọi user đã đăng nhập
+  // (không @Roles ⇒ RolesGuard cho qua). KHÔNG lưu thư viện media dùng chung (media_assets).
+  @Post('review-image')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Upload ảnh đánh giá (khách) lên R2' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadReviewImage(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /^image\// })
+        .addMaxSizeValidator({ maxSize: 8 * 1024 * 1024 })
+        .build({ fileIsRequired: true, errorHttpStatusCode: HttpStatus.BAD_REQUEST }),
+    )
+    file: { originalname: string; mimetype: string; buffer: Buffer; size?: number },
+  ) {
+    const url = await this.r2.upload(file, 'reviews');
+    return { url, name: file.originalname };
+  }
+
   // Danh sách thư viện media dùng chung (lọc theo store hiện hành + loại + tìm tên).
   @Get('media/list')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')

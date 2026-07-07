@@ -15,3 +15,13 @@ export async function uploadToR2(file: File, folder: 'images' | 'video' | 'file'
 }
 
 export const folderOf = (f: File): 'images' | 'video' | 'file' => (f.type.startsWith('image') ? 'images' : f.type.startsWith('video') ? 'video' : 'file');
+
+// Upload ảnh đánh giá của khách lên R2 (endpoint riêng, mọi user đã đăng nhập) → URL public.
+export async function uploadReviewImageToR2(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${API}/upload/review-image`, { method: 'POST', body: fd, credentials: 'include' });
+  if (!res.ok) throw new Error((await res.text().catch(() => '')) || `Upload thất bại (${res.status})`);
+  const d = (await res.json()) as { url: string };
+  return d.url;
+}

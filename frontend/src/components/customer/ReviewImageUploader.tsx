@@ -1,7 +1,8 @@
 'use client';
 
 import Image from '@/components/ui/AppImage';
-import { useUploadThing } from '@/lib/uploadthing';
+import { useState } from 'react';
+import { uploadReviewImageToR2 } from '@/lib/uploadR2';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { ImagePlus, Loader2, Sparkles, X } from 'lucide-react';
 
@@ -18,19 +19,7 @@ export default function ReviewImageUploader({
   onChange,
   onError,
 }: ReviewImageUploaderProps) {
-  const { startUpload, isUploading } = useUploadThing('imageUploader', {
-    onClientUploadComplete: (result) => {
-      const uploadedImages = (result || []).map((file) => file.url);
-      if (uploadedImages.length === 0) {
-        return;
-      }
-
-      onChange([...images, ...uploadedImages].slice(0, MAX_IMAGES));
-    },
-    onUploadError: (error: Error) => {
-      onError(`Lỗi upload: ${error.message}`);
-    },
-  });
+  const [isUploading, setIsUploading] = useState(false);
 
   const remainingSlots = Math.max(0, MAX_IMAGES - images.length);
 
@@ -61,7 +50,18 @@ export default function ReviewImageUploader({
     }
 
     onError('');
-    await startUpload(selectedFiles);
+    setIsUploading(true);
+    try {
+      const uploadedImages: string[] = [];
+      for (const file of selectedFiles) {
+        uploadedImages.push(await uploadReviewImageToR2(file));
+      }
+      onChange([...images, ...uploadedImages].slice(0, MAX_IMAGES));
+    } catch (error) {
+      onError(`Lỗi upload: ${error instanceof Error ? error.message : 'không rõ'}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (

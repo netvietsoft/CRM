@@ -2,7 +2,7 @@
 > Context cho AI — đọc trước khi sửa code thư mục này. Toàn cục: ../../../../first_readme.txt + docs/03.
 
 ## File / thành phần chính
-- `uploadthing/core.ts` + `route.ts` — handler UploadThing; middleware auth theo role (`authAdmin`/`authStoreOwner`/`authCustomer` — verify token qua `lib/jwt.ts`); endpoint: productImage, categoryImage, storeLogo, imageUploader.
+- Upload ảnh: đã BỎ UploadThing (2026-07-07). Ảnh sản phẩm/logo (admin) + ảnh đánh giá (khách) đều upload lên **R2** qua backend: `POST /upload/media` (admin, `lib/uploadR2.ts#uploadToR2`) và `POST /upload/review-image` (mọi user đã đăng nhập, `lib/uploadR2.ts#uploadReviewImageToR2`). Không còn route handler `uploadthing/` ở FE.
 - `admin/integrations/sync-products/route.ts`, `sync-categories/route.ts` — proxy POST sang backend Pancake (có check ADMIN).
 - `admin/integrations/get-shop-id/route.ts` — đọc `PANCAKE_API_KEY` + trả thông tin shop.
 
