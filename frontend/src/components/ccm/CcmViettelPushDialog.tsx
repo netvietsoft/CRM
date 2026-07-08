@@ -30,6 +30,7 @@ export interface PushableOrder {
   shippingName: string;
   shippingPhone: string;
   items: { name: string; quantity: number }[];
+  note?: string | null;
 }
 
 interface Province { PROVINCE_ID: number; PROVINCE_NAME: string }
@@ -62,7 +63,7 @@ export default function CcmViettelPushDialog({ order, onClose, onPushed }: { ord
   const [dim, setDim] = useState({ length: '', width: '', height: '' });
   const [cod, setCod] = useState(order.paymentMethod === 'COD' ? String(order.totalAmount || 0) : '0');
   const [orderService, setOrderService] = useState('');
-  const [orderNote, setOrderNote] = useState('');
+  const [orderNote, setOrderNote] = useState(order.note ?? '');
 
   const [loadingSvc, setLoadingSvc] = useState(false);
   const [pushing, setPushing] = useState(false);
