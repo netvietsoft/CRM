@@ -1,7 +1,7 @@
 'use client';
 
 import Image from '@/components/ui/AppImage';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import OrderReviewForm from '@/components/customer/OrderReviewForm';
@@ -179,6 +179,19 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [confirmingReceived, setConfirmingReceived] = useState(false);
+  const [rewardVoucher, setRewardVoucher] = useState<{
+    exists: boolean; status: string | null;
+    voucher: { code: string; name: string; type: string; value: number; maxDiscount: number | null } | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiClientClient
+      .get(`/vouchers/order-voucher-status/${order.orderCode}`)
+      .then((res: any) => { if (!cancelled) setRewardVoucher(res); })
+      .catch(() => { if (!cancelled) setRewardVoucher(null); });
+    return () => { cancelled = true; };
+  }, [order.orderCode]);
 
   const isPancake = order.source === 'PANCAKE';
   const m: OrderMetadata = order.metadata || {};
@@ -440,6 +453,26 @@ export default function PortalOrderDetailClient({ order }: { order: PortalOrderD
                 <span className="text-blue-600">{fmt(order.totalAmount)}</span>
               </div>
             </div>
+
+            {rewardVoucher?.exists && rewardVoucher.voucher && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+                <div className="font-semibold text-amber-800">🎁 Voucher thưởng của đơn</div>
+                <div className="mt-1 font-mono text-gray-800">{rewardVoucher.voucher.code}</div>
+                <div className="text-gray-600">
+                  {rewardVoucher.voucher.type === 'PERCENT'
+                    ? `Giảm ${rewardVoucher.voucher.value}%`
+                    : rewardVoucher.voucher.type === 'FREESHIP'
+                      ? 'Miễn phí vận chuyển'
+                      : `Giảm ${fmt(rewardVoucher.voucher.value)}`}
+                </div>
+                <div className="mt-1 font-medium">
+                  {rewardVoucher.status === 'PENDING' && '🕒 Chờ kích hoạt — kích hoạt khi nhận hàng thành công'}
+                  {rewardVoucher.status === 'WAITING_APPROVAL' && '⏳ Chờ cửa hàng duyệt'}
+                  {rewardVoucher.status === 'ACTIVE' && '✅ Đã kích hoạt — dùng được'}
+                  {rewardVoucher.status === 'REJECTED' && '❌ Không đủ điều kiện kích hoạt'}
+                </div>
+              </div>
+            )}
           </div>
 
           {isPancake && partner.trackingCode && (
