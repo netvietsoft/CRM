@@ -149,8 +149,16 @@ export default function ViettelCustomerDetailPage() {
 
   const inputCls = 'w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] bg-white transition-colors';
 
+  // Toàn bộ field từ order/detail-v2 (đã lưu sẵn). Đọc trực tiếp, fallback về cột phẳng.
+  const dp = (vc.detailPayload || {}) as Record<string, unknown>;
+  const s = (v: unknown) => (v === null || v === undefined || v === '' ? '' : String(v));
+  const num = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : money(Number(v) || 0));
+  const PAY: Record<string, string> = { '1': 'Không thu tiền', '2': 'Thu hộ tiền hàng (COD)', '3': 'Thu hộ tiền cước', '4': 'Thu hộ tiền hàng + cước' };
+  const senderAddr = [s(dp.SENDER_ADDRESS), s(dp.SENDER_WARD), s(dp.SENDER_DISTRICT), s(dp.SENDER_PROVINCE)].filter(Boolean).join(', ');
+  const receiverAddr = s(dp.RECEIVER_ADDRESS) || vc.receiverAddress || '';
+
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       <div className="flex items-center gap-3 flex-wrap mb-4">
         <button onClick={() => router.back()} className="px-3.5 py-2 rounded-[9px] bg-[#f3f4f6] hover:bg-[#e5e7eb] text-[13px] font-bold text-[#374151] transition">← Quay lại</button>
         <h1 className="text-[21px] font-extrabold tracking-[-0.3px] text-[#111827] flex items-center gap-2">
@@ -177,25 +185,98 @@ export default function ViettelCustomerDetailPage() {
 
       {error && <div className="p-3 mb-4 bg-[#fee2e2] border border-[#fecaca] rounded-[10px] text-[#dc2626] text-[13px]">{error}</div>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 items-start mb-4">
-        {/* Thông tin (chỉ đọc) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch mb-4">
+        {/* Người gửi */}
         <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
-          <h2 className="text-base font-extrabold text-[#111827] mb-4">Thông tin đơn</h2>
+          <h2 className="text-base font-extrabold text-[#111827] mb-4">Người gửi</h2>
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
-            <Field label="Mã tham chiếu"><span className="font-mono">{vc.orderReference || '—'}</span></Field>
-            <Field label="Sản phẩm">{vc.productName || '—'}</Field>
-            <Field label="COD">{money(vc.cod)}</Field>
-            <Field label="Cước (phí+VAT)">{money((vc.moneyTotalFee || 0) + (vc.moneyTotalVat || 0))}</Field>
-            <Field label="Dịch vụ">{vc.orderService || '—'} {vc.orderServiceAdd || ''}</Field>
-            <Field label="Cân nặng">{vc.productWeight ? `${vc.productWeight} g` : '—'}</Field>
-            <Field label="Giao dự kiến">{vc.expectedDeliveryDate || '—'}</Field>
+            <Field label="Tên">{s(dp.SENDER_FULLNAME) || '—'}</Field>
+            <Field label="Điện thoại"><span className="font-mono">{s(dp.SENDER_PHONE) || '—'}</span></Field>
+            <div className="col-span-2"><Field label="Địa chỉ">{senderAddr || '—'}</Field></div>
+          </dl>
+        </div>
+
+        {/* Người nhận */}
+        <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+          <h2 className="text-base font-extrabold text-[#111827] mb-4">Người nhận</h2>
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <Field label="Tên">{s(dp.RECEIVER_FULLNAME) || vc.receiverFullname || '—'}</Field>
+            <Field label="Điện thoại"><span className="font-mono">{s(dp.RECEIVER_PHONE) || vc.receiverPhone || '—'}</span></Field>
+            <div className="col-span-2"><Field label="Địa chỉ">{receiverAddr || '—'}</Field></div>
+          </dl>
+        </div>
+
+        {/* Thông tin hàng hóa */}
+        <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+          <h2 className="text-base font-extrabold text-[#111827] mb-4">Thông tin hàng hóa</h2>
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <div className="col-span-2"><Field label="Tên hàng">{s(dp.PRODUCT_NAME) || vc.productName || '—'}</Field></div>
+            <Field label="Số lượng">{s(dp.PRODUCT_QUANTITY) || '—'}</Field>
+            <Field label="Khối lượng">{dp.PRODUCT_WEIGHT ? `${dp.PRODUCT_WEIGHT} g` : (vc.productWeight ? `${vc.productWeight} g` : '—')}</Field>
+            <Field label="Giá trị">{num(dp.PRODUCT_PRICE)}</Field>
+            <Field label="Loại hàng">{s(dp.PRODUCT_TYPE) || '—'}</Field>
+            <Field label="Kích thước (cm)">{[dp.PRODUCT_LENGTH, dp.PRODUCT_WIDTH, dp.PRODUCT_HEIGHT].every(x => x != null) ? `${dp.PRODUCT_LENGTH}×${dp.PRODUCT_WIDTH}×${dp.PRODUCT_HEIGHT}` : '—'}</Field>
+            <Field label="Trọng lượng quy đổi">{dp.PRODUCT_EX_WEIGHT ? `${dp.PRODUCT_EX_WEIGHT} g` : '—'}</Field>
+            {s(dp.PRODUCT_DESCRIPTION) && <div className="col-span-2"><Field label="Mô tả">{s(dp.PRODUCT_DESCRIPTION)}</Field></div>}
+          </dl>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start mb-4">
+        {/* Cột 1: Phí & thu hộ, phía dưới là Hành trình đơn (cùng cột, cùng bề rộng) */}
+        <div className="space-y-4">
+          {/* Phí & thu hộ */}
+          <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+            <h2 className="text-base font-extrabold text-[#111827] mb-4">Phí &amp; thu hộ</h2>
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <Field label="Tiền thu hộ (COD)">{num(dp.MONEY_COLLECTION ?? vc.cod)}</Field>
+            <Field label="Tổng cước">{num(dp.MONEY_TOTAL)}</Field>
+            <Field label="Phí chính">{num(dp.MONEY_TOTALFEE)}</Field>
+            <Field label="VAT">{num(dp.MONEY_TOTALVAT)}</Field>
+            <Field label="Phí thu hộ (COD)">{num(dp.MONEY_FEECOD)}</Field>
+            <Field label="Phí dịch vụ cộng thêm">{num(dp.MONEY_FEEVAS)}</Field>
+            <Field label="Phí bảo hiểm">{num(dp.MONEY_FEEINSURRANCE)}</Field>
+            <Field label="Phí khác">{num(dp.MONEY_FEEOTHER)}</Field>
+            <div className="col-span-2"><Field label="Hình thức thu">{PAY[s(dp.ORDER_PAYMENT)] || s(dp.ORDER_PAYMENT) || '—'}</Field></div>
+          </dl>
+          </div>
+
+          {/* Hành trình đơn — ngay dưới Phí & thu hộ, cùng cột & bề rộng */}
+          <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+            <h2 className="text-base font-extrabold text-[#111827] mb-4">Hành trình đơn ({vc.courierHistory?.length || 0})</h2>
+            <ol className="space-y-3">
+              {(vc.courierHistory || []).slice().reverse().map((h, i) => (
+                <li key={i} className="text-[13px] border-l-2 border-[#e5e7eb] pl-3 relative">
+                  <span className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-[#2563eb]" />
+                  <div className="font-bold text-[#111827]">{h.status ?? ''} {h.statusName || ''}</div>
+                  <div className="text-[11.5px] text-[#9ca3af]">{date(h.at)}</div>
+                  {h.note && <div className="text-[#6b7280] mt-0.5">{h.note}</div>}
+                </li>
+              ))}
+              {(!vc.courierHistory || vc.courierHistory.length === 0) && <li className="text-[#9ca3af] text-[13px]">Chưa có hành trình.</li>}
+            </ol>
+          </div>
+        </div>
+
+        {/* Dịch vụ & mốc thời gian */}
+        <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
+          <h2 className="text-base font-extrabold text-[#111827] mb-4">Dịch vụ &amp; thời gian</h2>
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <Field label="Dịch vụ">{s(dp.ORDER_SERVICE) || vc.orderService || '—'}</Field>
+            <Field label="Dịch vụ cộng thêm">{s(dp.ORDER_SERVICE_ADD) || vc.orderServiceAdd || '—'}</Field>
+            <Field label="Mã tham chiếu"><span className="font-mono">{s(dp.ORDER_REFERENCE) || vc.orderReference || '—'}</span></Field>
+            <Field label="Ngày tạo">{date(s(dp.ORDER_SYSTEMDATE) || null)}</Field>
+            <Field label="Ngày nhận hàng">{date(s(dp.ORDER_ACCEPTDATE) || null)}</Field>
+            <Field label="Giao dự kiến">{s(dp.DELIVERY_DATE) || vc.expectedDeliveryDate || '—'}</Field>
+            <Field label="Giao thành công">{date(s(dp.ORDER_SUCCESSDATE) || null)}</Field>
             <Field label="Bưu tá">{vc.employeeName ? `${vc.employeeName}${vc.employeePhone ? ' · ' + vc.employeePhone : ''}` : '—'}</Field>
             <div className="col-span-2"><Field label="Vị trí hiện tại">{vc.locationCurrently || '—'}</Field></div>
+            <div className="col-span-2"><Field label="Ghi chú đơn">{s(dp.ORDER_NOTE) || vc.orderNote || '—'}</Field></div>
             <Field label="Hoàn / Lý do lỗi">{vc.isReturning ? 'Có' : 'Không'}{vc.reasonCode ? ` · ${vc.reasonCode}` : ''}</Field>
           </dl>
         </div>
 
-        {/* Form sửa */}
+        {/* Sửa & cập nhật — cùng hàng với Phí & thu hộ (đổi chỗ với Hành trình) */}
         <div className="bg-white border border-[#eceef2] rounded-[14px] p-[22px]">
           <h2 className="text-base font-extrabold text-[#111827] mb-1.5">Sửa &amp; cập nhật</h2>
           {editable
@@ -230,21 +311,6 @@ export default function ViettelCustomerDetailPage() {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Hành trình */}
-      <div className="bg-white border border-[#eceef2] rounded-[14px] px-[22px] py-5 mb-3.5">
-        <h2 className="text-[15px] font-extrabold text-[#111827] mb-3">Hành trình ({vc.courierHistory?.length || 0})</h2>
-        <ol className="space-y-2">
-          {(vc.courierHistory || []).slice().reverse().map((h, i) => (
-            <li key={i} className="flex gap-3.5 text-[13px] flex-wrap">
-              <span className="text-[#9ca3af] whitespace-nowrap">{date(h.at)}</span>
-              <span className="font-bold text-[#111827]">{h.status ?? ''} {h.statusName || ''}</span>
-              {h.note && <span className="text-[#6b7280]">— {h.note}</span>}
-            </li>
-          ))}
-          {(!vc.courierHistory || vc.courierHistory.length === 0) && <li className="text-[#9ca3af] text-[13px]">Chưa có hành trình.</li>}
-        </ol>
       </div>
 
       {/* Payload gốc */}

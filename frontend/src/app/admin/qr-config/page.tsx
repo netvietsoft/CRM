@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import QRCode from 'qrcode';
 import { apiClientClient } from '@/lib/apiClientClient';
 
 interface QRVoucherConfig {
@@ -75,6 +76,18 @@ export default function QRConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<QRVoucherConfig>(defaultConfig);
+
+  // QR xem trước: dựng URL theo domain thật (client) + sinh ảnh QR bằng lib qrcode.
+  const [previewUrl, setPreviewUrl] = useState('/portal?campaign=qr_claim&orderCode=ORD12345');
+  const [qrPreview, setQrPreview] = useState('');
+
+  useEffect(() => {
+    const url = `${window.location.origin}/portal?campaign=qr_claim&orderCode=ORD12345`;
+    setPreviewUrl(url);
+    QRCode.toDataURL(url, { width: 200, margin: 1, errorCorrectionLevel: 'M' })
+      .then(setQrPreview)
+      .catch(() => setQrPreview(''));
+  }, []);
 
   const loadConfig = useCallback(() => {
     return apiClientClient.get<QRVoucherConfigResponse>('/admin/system-config/qr_voucher_default');
@@ -299,12 +312,17 @@ export default function QRConfigPage() {
                 <p className="font-bold text-[#2563eb] text-[13px]">Tổng tiền: 1.200.000 đ</p>
               </div>
               <div className="flex justify-center">
-                <div className="w-24 h-24 bg-[#f3f4f6] rounded-[10px] flex items-center justify-center text-[#9ca3af] text-[11px]">
-                  [QR Code]
-                </div>
+                {qrPreview ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={qrPreview} alt="QR xem trước" className="w-28 h-28 rounded-[10px]" />
+                ) : (
+                  <div className="w-28 h-28 bg-[#f3f4f6] rounded-[10px] flex items-center justify-center text-[#9ca3af] text-[11px]">
+                    [QR Code]
+                  </div>
+                )}
               </div>
               <p className="text-center text-[11px] text-[#9ca3af] font-mono break-all">
-                https://example.com/portal?campaign=qr_claim&orderCode=ORD12345
+                {previewUrl}
               </p>
               <div className="border-t border-[#eceef2] pt-3">
                 <p className="text-center text-[13px] font-bold text-[#c2410c]">
