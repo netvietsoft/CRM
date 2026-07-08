@@ -41,6 +41,9 @@ export class VouchersService implements OnModuleInit {
   private readonly allowedCustomerRanks = ['MEMBER', 'SILVER', 'GOLD', 'DIAMOND', 'PLATINUM'];
   private readonly allowedCustomerOccasions = ['BIRTHDAY_TODAY', 'BIRTHDAY_MONTH'];
   private readonly allowedPaymentMethods = ['COD', 'VIETQR'];
+  private readonly ORDER_VOUCHER_SUCCESS_STATUSES = ['DELIVERED', 'PAYMENT_COLLECTED', 'COMPLETED'];
+  private readonly ORDER_VOUCHER_REJECT_STATUSES = ['CANCELLED', 'REFUNDED', 'RETURNING', 'EXCHANGING'];
+  private readonly DEFAULT_COD_ACTIVATION_THRESHOLD = 100000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -568,6 +571,71 @@ export class VouchersService implements OnModuleInit {
     };
   }
 
+  async getCodActivationThreshold(): Promise<number> {
+    const config = await this.prisma.systemConfig.findUnique({
+      where: { key: 'order_voucher_config' },
+    });
+    const value = config?.value as { codActivationThreshold?: number } | null;
+    const threshold = Number(value?.codActivationThreshold);
+    return Number.isFinite(threshold) && threshold >= 0
+      ? threshold
+      : this.DEFAULT_COD_ACTIVATION_THRESHOLD;
+  }
+
+  /**
+   * State machine kích hoạt voucher riêng của đơn (UserVoucher theo sourceOrderCode).
+   * Chỉ re-evaluate khi đang PENDING hoặc WAITING_APPROVAL. ACTIVE/REJECTED là chốt.
+   */
+  async syncOrderVoucherActivation(order: {
+    id: string;
+    orderCode: string;
+    status: string;
+    totalAmount: number;
+    isExchange?: boolean;
+  }): Promise<{ changed: boolean; status: string } | null> {
+    const userVoucher = await this.prisma.userVoucher.findUnique({
+      where: { sourceOrderCode: order.orderCode },
+      include: { voucher: true },
+    });
+    if (!userVoucher) return null;
+
+    if (userVoucher.status !== 'PENDING' && userVoucher.status !== 'WAITING_APPROVAL') {
+      return { changed: false, status: userVoucher.status };
+    }
+
+    const isExchange = order.isExchange === true;
+    const isSuccess = this.ORDER_VOUCHER_SUCCESS_STATUSES.includes(order.status);
+
+    let nextStatus: string | null = null;
+    if (isExchange || this.ORDER_VOUCHER_REJECT_STATUSES.includes(order.status)) {
+      nextStatus = 'REJECTED';
+    } else if (isSuccess) {
+      const threshold = await this.getCodActivationThreshold();
+      if (order.totalAmount < threshold) {
+        nextStatus = 'REJECTED';
+      } else {
+        nextStatus = userVoucher.voucher.approvalMode === 'MANUAL' ? 'WAITING_APPROVAL' : 'ACTIVE';
+      }
+    }
+
+    if (!nextStatus || nextStatus === userVoucher.status) {
+      return { changed: false, status: userVoucher.status };
+    }
+
+    const updated = await this.prisma.userVoucher.update({
+      where: { id: userVoucher.id },
+      data: {
+        status: nextStatus,
+        ...(nextStatus === 'ACTIVE' ? { unlockAt: new Date() } : {}),
+      },
+    });
+    await this.emitUserVoucherLifecycle(updated.id, updated.status, 'ORDER_VOUCHER_ACTIVATION', {
+      orderCode: order.orderCode,
+      previousStatus: userVoucher.status,
+    });
+    return { changed: true, status: updated.status };
+  }
+
   /**
    * Create a dedicated voucher for a specific order (Admin only)
    */
@@ -828,7 +896,8 @@ export class VouchersService implements OnModuleInit {
 
     // Mark PENDING vouchers that have passed their unlock date as ACTIVE
     for (const uv of vouchers) {
-      if (uv.status === 'PENDING' && uv.unlockAt && new Date(uv.unlockAt) <= now) {
+      const isOrderVoucher = uv.voucher?.code?.startsWith('QR-ORDER-');
+      if (!isOrderVoucher && uv.status === 'PENDING' && uv.unlockAt && new Date(uv.unlockAt) <= now) {
         await this.prisma.userVoucher.update({
           where: { id: uv.id },
           data: { status: 'ACTIVE' },
