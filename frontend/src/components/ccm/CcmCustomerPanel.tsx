@@ -351,7 +351,7 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
                 <OrderCard key={o.id} o={o} contactName={contactName} contactPhone={contactPhone}
                   onPush={() => setPushOrder({
                     id: o.id, orderCode: o.orderCode, totalAmount: o.totalAmount, paymentMethod: o.paymentMethod,
-                    shippingName: o.shippingName || contactName, shippingPhone: o.shippingPhone || contactPhone,
+                    shippingName: o.shippingName || contactName, shippingPhone: o.shippingPhone || contactPhone, note: o.note ?? null,
                     items: o.items.map((it) => ({ name: it.product?.name || 'SP', quantity: it.quantity })),
                   })} />
               ))}

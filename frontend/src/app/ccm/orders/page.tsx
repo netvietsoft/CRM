@@ -16,7 +16,7 @@ const fmtVnd = (n: number) => (n || 0).toLocaleString('vi-VN') + ' đ';
 
 interface AdminOrder {
   id: string; orderCode: string; status: string; totalAmount: number; paymentMethod: string | null;
-  createdAt: string; shippingName: string | null; shippingPhone: string | null;
+  createdAt: string; shippingName: string | null; shippingPhone: string | null; note?: string | null;
   user: { name: string | null; phone: string | null } | null;
   items: { quantity: number; product: { name: string | null } | null }[];
   metadata?: Record<string, unknown> | null;
@@ -112,7 +112,7 @@ export default function CcmOrders() {
                   <td className="px-[18px] py-3 text-right whitespace-nowrap">
                     <button onClick={() => setPushOrder({
                       id: o.id, orderCode: o.orderCode, totalAmount: o.totalAmount, paymentMethod: o.paymentMethod,
-                      shippingName: cust, shippingPhone: phone === '—' ? '' : phone,
+                      shippingName: cust, shippingPhone: phone === '—' ? '' : phone, note: o.note ?? null,
                       items: o.items.map((it) => ({ name: it.product?.name || 'SP', quantity: it.quantity })),
                     })} className="px-[13px] py-[7px] border border-[#c7d2fe] rounded-[9px] bg-white hover:bg-[#eef2ff] text-[#3c55e6] text-[12.5px] font-bold cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5">
                       <span className="w-4 h-4 rounded-[4px] bg-[#dc2626] text-white inline-flex items-center justify-center text-[7px] font-extrabold">VTP</span>Đẩy VTP
