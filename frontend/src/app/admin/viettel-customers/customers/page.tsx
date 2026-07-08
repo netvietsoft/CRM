@@ -140,6 +140,12 @@ export default function ViettelCustomerListPage() {
     setEditing(g);
   };
 
+  // Click vào vùng trống của dòng → mở chi tiết (lịch sử mua); bỏ qua khi bấm vào control (nút/link…).
+  const openRow = (e: React.MouseEvent, g: CustomerGroup) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    setHistory(g);
+  };
+
   const saveEdit = async () => {
     if (!editing) return;
     setSaving(true); setError('');
@@ -206,7 +212,7 @@ export default function ViettelCustomerListPage() {
                 paged.map((g, i) => {
                   const stt = (pageSafe - 1) * pageSize + i + 1;
                   return (
-                  <tr key={g.phone} className={`${i % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors`}>
+                  <tr key={g.phone} onClick={(e) => openRow(e, g)} className={`${i % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors cursor-pointer`}>
                     <td className="px-4 py-3 text-[#6b7280] whitespace-nowrap">{stt}</td>
                     <td className="px-3 py-3 text-[#111827] font-semibold whitespace-nowrap">{g.name}</td>
                     <td className="px-3 py-3 whitespace-nowrap">

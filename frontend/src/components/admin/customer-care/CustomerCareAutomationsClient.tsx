@@ -115,6 +115,11 @@ export default function CustomerCareAutomationsClient({
     });
   }, [activeFilter, debouncedSearch, rules, triggerType]);
 
+  const openRow = (e: React.MouseEvent, id: string) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    router.push(`/admin/customer-care/automations/${id}`);
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Xóa rule tự động này?')) {
       return;
@@ -211,7 +216,11 @@ export default function CustomerCareAutomationsClient({
                 </tr>
               ) : (
                 filteredRules.map((rule) => (
-                  <tr key={rule.id} className="border-b border-[#f1f5f9] align-top hover:bg-[#eff6ff]">
+                  <tr
+                    key={rule.id}
+                    onClick={(e) => openRow(e, rule.id)}
+                    className="cursor-pointer border-b border-[#f1f5f9] align-top hover:bg-[#eff6ff]"
+                  >
                     <td className="px-4 py-3.5 text-[13px]">
                       <div className="font-bold text-gray-900">{rule.name}</div>
                       <div className="mt-1 text-[12px] text-[#9ca3af]">{rule.channel.code}</div>

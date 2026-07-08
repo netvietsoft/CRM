@@ -132,6 +132,11 @@ export default function MasterDataManager({
     setShowModal(true);
   };
 
+  const openRow = (e: React.MouseEvent, item: MasterRecord) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    openEditModal(item);
+  };
+
   const update = (key: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -296,7 +301,8 @@ export default function MasterDataManager({
               {sortedItems.map((item, index) => (
                 <tr
                   key={item.id}
-                  className="border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff]"
+                  onClick={(e) => openRow(e, item)}
+                  className="cursor-pointer border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff]"
                   style={{ background: index % 2 === 1 ? '#f7f9fc' : undefined }}
                 >
                   {columns.map((column) => {

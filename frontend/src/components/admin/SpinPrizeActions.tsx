@@ -82,6 +82,11 @@ function SpinPrizeTable({ prizes }: { prizes: SpinPrize[] }) {
     setProbs((prev) => ({ ...prev, [id]: Math.max(0, Math.min(100, (prev[id] ?? 0) + delta)) }));
   };
 
+  const openRow = (e: React.MouseEvent<HTMLTableRowElement>) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    e.currentTarget.querySelector<HTMLButtonElement>('[data-row-edit]')?.click();
+  };
+
   const total = prizes.reduce((s, p) => s + (probs[p.id] ?? 0), 0);
   const isValid = total === 100;
   const dirty = prizes.some((p) => (probs[p.id] ?? 0) !== Math.round(p.probability * 100));
@@ -144,7 +149,8 @@ function SpinPrizeTable({ prizes }: { prizes: SpinPrize[] }) {
               return (
                 <tr
                   key={p.id}
-                  className={`border-t border-[#f3f4f6] hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'}`}
+                  onClick={openRow}
+                  className={`border-t border-[#f3f4f6] hover:bg-[#eff6ff] cursor-pointer ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'}`}
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">

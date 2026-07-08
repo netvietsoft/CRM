@@ -135,6 +135,7 @@ export default function SpinPrizeRowActions({ prize }: { prize: SpinPrize }) {
       <div className="inline-flex items-center whitespace-nowrap">
         <button
           type="button"
+          data-row-edit
           onClick={() => setShowEditModal(true)}
           className="text-[#2563eb] font-semibold cursor-pointer text-[12.5px] mr-3 hover:underline"
         >

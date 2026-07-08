@@ -106,6 +106,11 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
     }
   };
 
+  const openRow = (e: React.MouseEvent, voucher: VoucherTableRow) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    setEditVoucher(voucher);
+  };
+
   const handleToggleActive = async (id: string, current: boolean) => {
     setTogglingId(id);
     try {
@@ -160,7 +165,8 @@ export default function VoucherTableClient({ vouchers }: { vouchers: VoucherTabl
               return (
                 <tr
                   key={voucher.id}
-                  className={`border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} ${isDeleting ? 'opacity-50' : ''}`}
+                  onClick={(e) => openRow(e, voucher)}
+                  className={`cursor-pointer border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} ${isDeleting ? 'opacity-50' : ''}`}
                 >
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-[12.5px] font-bold text-[#2140da]">
                     {voucher.code}

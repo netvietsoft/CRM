@@ -72,6 +72,11 @@ export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralV
     }
   };
 
+  const openRow = (e: React.MouseEvent, voucher: ReferralVoucher) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    setEditVoucher(voucher);
+  };
+
   return (
     <>
       <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
@@ -110,7 +115,8 @@ export default function ReferralVoucherTable({ vouchers }: { vouchers: ReferralV
                 return (
                   <tr
                     key={voucher.id}
-                    className={`border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${isDeleting ? 'opacity-50' : ''}`}
+                    onClick={(e) => openRow(e, voucher)}
+                    className={`cursor-pointer border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${isDeleting ? 'opacity-50' : ''}`}
                     style={{ background: idx % 2 === 1 ? '#f7f9fc' : '#fff' }}
                   >
                     <td className="whitespace-nowrap px-4 py-3">

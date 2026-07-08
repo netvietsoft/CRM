@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { Trash2, Shield, Store, UserCheck, Search, Edit2 } from 'lucide-react';
@@ -46,6 +47,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function StaffTableClient() {
+  const router = useRouter();
   const [staff, setStaff] = useState<StaffRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,6 +98,11 @@ export default function StaffTableClient() {
     }
     return list;
   }, [staff, searchName, searchStore]);
+
+  const openRow = (e: React.MouseEvent, id: string) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    router.push(`/admin/staff/assign?userId=${id}`);
+  };
 
   const handleRemoveStaff = async (id: string, name: string | null) => {
     if (!confirm(`Gỡ quyền nhân viên của "${name}"?\nNgười dùng này sẽ trở lại vai trò Khách hàng.`)) return;
@@ -182,7 +189,8 @@ export default function StaffTableClient() {
               ) : filtered.map((s, i) => (
                 <tr
                   key={s.id}
-                  className="border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors"
+                  onClick={(e) => openRow(e, s.id)}
+                  className="border-t border-[#f3f4f6] hover:bg-[#eff6ff] transition-colors cursor-pointer"
                   style={{ background: i % 2 === 1 ? '#f7f9fc' : undefined }}
                 >
                   <td className="px-4 py-[11px] whitespace-nowrap">

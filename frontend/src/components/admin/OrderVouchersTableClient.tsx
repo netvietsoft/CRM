@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -52,6 +53,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function OrderVouchersTableClient() {
+  const router = useRouter();
   const [vouchers, setVouchers] = useState<OrderVoucher[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,6 +106,11 @@ export default function OrderVouchersTableClient() {
     } catch (error) {
       alert(getErrorMessage(error, 'Lỗi cập nhật trạng thái'));
     }
+  };
+
+  const openRow = (e: React.MouseEvent, v: OrderVoucher) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    if (v.orderId) router.push(`/admin/orders/${v.orderId}?from=order-vouchers`);
   };
 
   const handleDelete = async (id: string, code: string) => {
@@ -218,7 +225,11 @@ export default function OrderVouchersTableClient() {
                 const durationLabel = v.durationDays ? `${v.durationDays} ngày` : '—';
 
                 return (
-                  <tr key={v.id} className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50/50 transition-colors`}>
+                  <tr
+                    key={v.id}
+                    onClick={(e) => openRow(e, v)}
+                    className={`${idx % 2 === 1 ? 'bg-gray-100' : 'bg-white'} hover:bg-gray-50/50 transition-colors cursor-pointer`}
+                  >
                     <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap max-w-[180px] truncate" title={v.name}>
                       {v.name}
                     </td>

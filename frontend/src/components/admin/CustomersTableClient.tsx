@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowUpDown } from 'lucide-react';
 import { MessageSquareShare } from 'lucide-react';
 import ZaloZnsModal from './ZaloZnsModal';
@@ -56,7 +57,14 @@ function formatRegion(customer: CustomerSummary) {
 }
 
 export default function CustomersTableClient({ customers, searchParams, isZaloEnabled = false }: CustomersTableClientProps) {
+  const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Click vào vùng trống của dòng → mở chi tiết; bỏ qua khi bấm vào control (checkbox/nút/link…).
+  const openRow = (e: React.MouseEvent, id: string) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    router.push(`/admin/customers/${id}`);
+  };
   const [isZnsModalOpen, setIsZnsModalOpen] = useState(false);
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,7 +168,7 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
                 </tr>
               ) : (
                 customers.map((customer, idx) => (
-                  <tr key={customer.id} className={`border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${selectedIds.has(customer.id) ? 'bg-[#eff6ff]' : (idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white')}`}>
+                  <tr key={customer.id} onClick={(e) => openRow(e, customer.id)} className={`cursor-pointer border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${selectedIds.has(customer.id) ? 'bg-[#eff6ff]' : (idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white')}`}>
                     <td className="px-4 py-2.5">
                       <input
                         type="checkbox"

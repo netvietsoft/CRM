@@ -73,6 +73,11 @@ export default function CustomerCareTemplatesClient({
     };
   }, [debouncedSearch, initialTemplates]);
 
+  const openRow = (e: React.MouseEvent, id: string) => {
+    if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
+    router.push(`/admin/customer-care/templates/${id}`);
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Xóa template này?')) {
       return;
@@ -147,7 +152,11 @@ export default function CustomerCareTemplatesClient({
                 </tr>
               ) : (
                 templates.map((template) => (
-                  <tr key={template.id} className="border-b border-[#f1f5f9] align-top hover:bg-[#eff6ff]">
+                  <tr
+                    key={template.id}
+                    onClick={(e) => openRow(e, template.id)}
+                    className="cursor-pointer border-b border-[#f1f5f9] align-top hover:bg-[#eff6ff]"
+                  >
                     <td className="px-4 py-3.5">
                       <div className="font-bold text-gray-900">{template.name}</div>
                       <div className="mt-1 line-clamp-2 max-w-xl text-[12px] leading-[1.5] text-[#6b7280]">

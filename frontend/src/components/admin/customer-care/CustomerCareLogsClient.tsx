@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { apiClientClient } from '@/lib/apiClientClient';
@@ -71,6 +72,7 @@ function getLogIssueSummary(log: MessageLogRecord) {
 }
 
 export default function CustomerCareLogsClient({ initialData }: CustomerCareLogsClientProps) {
+  const router = useRouter();
   const [logs, setLogs] = useState<MessageLogRecord[]>(initialData.items || []);
   const [pagination, setPagination] = useState(initialData.pagination);
   const [loading, setLoading] = useState((initialData.items || []).length === 0);
@@ -216,6 +218,17 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
     }
   };
 
+  const openRow = (e: React.MouseEvent, logId: string) => {
+    if (
+      (e.target as HTMLElement).closest(
+        'button, a, input, select, textarea, label, [role="button"], [role="switch"]',
+      )
+    ) {
+      return;
+    }
+    router.push(`/admin/customer-care/logs/${logId}`);
+  };
+
   return (
     <div className="space-y-3.5">
       <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
@@ -312,7 +325,11 @@ export default function CustomerCareLogsClient({ initialData }: CustomerCareLogs
                 </tr>
               ) : (
                 logs.map((log) => (
-                  <tr key={log.id} className="border-b border-[#f1f5f9] align-top text-[13px] hover:bg-[#eff6ff]">
+                  <tr
+                    key={log.id}
+                    onClick={(e) => openRow(e, log.id)}
+                    className="cursor-pointer border-b border-[#f1f5f9] align-top text-[13px] hover:bg-[#eff6ff]"
+                  >
                     <td className="px-4 py-3.5">
                       <div className="font-bold text-gray-900">
                         {log.recipientName || 'Không có tên'}
