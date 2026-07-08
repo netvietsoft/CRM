@@ -18,6 +18,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { GetUser } from './decorators/get-user.decorator';
+import { Public } from './decorators/public.decorator';
 
 import { PancakeService } from '../integrations/pancake/pancake.service';
 
@@ -96,6 +97,40 @@ export class AuthController {
       redirect: result.redirect,
       user: result.user,
     };
+  }
+
+  @Post('send-login-otp')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Gửi OTP đăng nhập theo SĐT' })
+  async sendLoginOtp(@Body() body: { phone: string }) {
+    return this.authService.sendLoginOtpProxy(body.phone);
+  }
+
+  @Post('otp-login')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Đăng nhập bằng SĐT + OTP' })
+  async otpLogin(
+    @Body() body: { phone: string; otp: string },
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.loginWithPhoneOtp(body.phone, body.otp);
+    response.cookie('crm_access_token', result.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN,
+      maxAge: 15 * 60 * 1000,
+    });
+    response.cookie('crm_refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      domain: process.env.COOKIE_DOMAIN,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+    return { success: result.success, redirect: result.redirect, user: result.user };
   }
 
   @Post('refresh')

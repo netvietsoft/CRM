@@ -193,6 +193,45 @@ export class AuthService {
     };
   }
 
+  async sendLoginOtpProxy(phone: string) {
+    return this.vouchersService.sendLoginOtp(phone);
+  }
+
+  async loginWithPhoneOtp(phone: string, otp: string) {
+    const normalizedPhone = (phone || '').replace(/[\s-]/g, '');
+    await this.vouchersService.verifyLoginOtp(normalizedPhone, otp);
+
+    let user = await this.prisma.user.findFirst({ where: { phone: normalizedPhone } });
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          phone: normalizedPhone,
+          name: normalizedPhone,
+          role: 'CUSTOMER',
+          isActive: true,
+          referralCode: await this.generateUniqueReferralCode(),
+        },
+      });
+    }
+    if (!user.isActive) throw new UnauthorizedException('Tài khoản đã bị khoá');
+
+    // Nối đơn khách vãng lai theo SĐT (tái dùng pattern register).
+    await this.prisma.order.updateMany({
+      where: { userId: null, shippingPhone: normalizedPhone },
+      data: { userId: user.id },
+    });
+
+    const tokens = await this.generateTokens(user.id, user.role);
+    await this.storeRefreshToken(user.id, tokens.refreshToken);
+
+    return {
+      success: true,
+      user,
+      ...tokens,
+      redirect: '/portal/products',
+    };
+  }
+
   async refreshTokens(userId: string, refreshToken: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

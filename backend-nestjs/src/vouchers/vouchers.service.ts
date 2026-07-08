@@ -265,6 +265,42 @@ export class VouchersService implements OnModuleInit {
     };
   }
 
+  private normalizePhoneForOtp(phone: string): string {
+    return (phone || '').replace(/[\s-]/g, '');
+  }
+
+  async sendLoginOtp(phone: string) {
+    const normalizedPhone = this.normalizePhoneForOtp(phone);
+    if (normalizedPhone.length < 9) {
+      throw new BadRequestException('Số điện thoại không hợp lệ');
+    }
+    const recent = await this.prisma.otpRecord.findFirst({
+      where: { phone: normalizedPhone, isUsed: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (recent && Date.now() - new Date(recent.createdAt).getTime() < 60 * 1000) {
+      throw new BadRequestException('Vui lòng đợi 60 giây trước khi gửi lại OTP');
+    }
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.prisma.otpRecord.create({
+      data: { phone: normalizedPhone, otpCode, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+    });
+    const isSent = await this.smsService.sendOtpSms(normalizedPhone, otpCode);
+    if (!isSent) throw new BadRequestException('Không thể gửi SMS lúc này. Vui lòng thử lại sau.');
+    return { success: true };
+  }
+
+  async verifyLoginOtp(phone: string, otp: string): Promise<boolean> {
+    const normalizedPhone = this.normalizePhoneForOtp(phone);
+    const record = await this.prisma.otpRecord.findFirst({
+      where: { phone: normalizedPhone, otpCode: otp, isUsed: false, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) throw new BadRequestException('Mã OTP không đúng hoặc đã hết hạn');
+    await this.prisma.otpRecord.update({ where: { id: record.id }, data: { isUsed: true } });
+    return true;
+  }
+
   async claimQRVoucher(
     userId: string,
     orderCode: string,

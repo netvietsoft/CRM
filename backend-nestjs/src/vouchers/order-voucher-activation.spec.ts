@@ -199,3 +199,23 @@ describe('getOrderVoucherStatus', () => {
     expect(res.exists).toBe(false);
   });
 });
+
+describe('verifyLoginOtp', () => {
+  it('marks OTP used and returns true when valid', async () => {
+    const prisma: any = {
+      otpRecord: {
+        findFirst: jest.fn(async () => ({ id: 'r1', phone: '0900000000', otpCode: '123456' })),
+        update: jest.fn(async () => ({})),
+      },
+    };
+    const svc = new VouchersService(prisma, {} as any, {} as any, { handleVoucherCreated: jest.fn() } as any);
+    await expect(svc.verifyLoginOtp('0900000000', '123456')).resolves.toBe(true);
+    expect(prisma.otpRecord.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'r1' }, data: { isUsed: true } }));
+  });
+
+  it('throws when OTP invalid', async () => {
+    const prisma: any = { otpRecord: { findFirst: jest.fn(async () => null) } };
+    const svc = new VouchersService(prisma, {} as any, {} as any, { handleVoucherCreated: jest.fn() } as any);
+    await expect(svc.verifyLoginOtp('0900000000', '000000')).rejects.toThrow();
+  });
+});
