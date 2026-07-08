@@ -136,3 +136,34 @@ describe('createOrderVoucher', () => {
     expect(prisma.userVoucher.create).not.toHaveBeenCalled();
   });
 });
+
+describe('approveOrderVoucher', () => {
+  function makeSvc(status: string) {
+    const prisma: any = {
+      userVoucher: {
+        findUnique: jest.fn(async () => ({ id: 'uv1', status })),
+        update: jest.fn(async ({ data }: any) => ({ id: 'uv1', ...data })),
+      },
+    };
+    const svc = new VouchersService(prisma, {} as any, {} as any, {
+      handleVoucherCreated: jest.fn(),
+      handleVoucherActivated: jest.fn(),
+    } as any);
+    return { svc, prisma };
+  }
+
+  it('WAITING_APPROVAL -> ACTIVE with audit fields', async () => {
+    const { svc, prisma } = makeSvc('WAITING_APPROVAL');
+    const res = await svc.approveOrderVoucher('uv1', 'admin1');
+    expect(res).toEqual({ success: true, status: 'ACTIVE' });
+    const arg = prisma.userVoucher.update.mock.calls[0][0].data;
+    expect(arg.status).toBe('ACTIVE');
+    expect(arg.approvedById).toBe('admin1');
+    expect(arg.approvedAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects when not WAITING_APPROVAL', async () => {
+    const { svc } = makeSvc('PENDING');
+    await expect(svc.approveOrderVoucher('uv1', 'admin1')).rejects.toThrow();
+  });
+});

@@ -636,6 +636,22 @@ export class VouchersService implements OnModuleInit {
     return { changed: true, status: updated.status };
   }
 
+  async approveOrderVoucher(userVoucherId: string, adminId: string) {
+    const uv = await this.prisma.userVoucher.findUnique({ where: { id: userVoucherId } });
+    if (!uv) throw new NotFoundException('Không tìm thấy voucher của khách');
+    if (uv.status !== 'WAITING_APPROVAL') {
+      throw new BadRequestException('Voucher không ở trạng thái chờ duyệt');
+    }
+    const updated = await this.prisma.userVoucher.update({
+      where: { id: userVoucherId },
+      data: { status: 'ACTIVE', approvedAt: new Date(), approvedById: adminId, unlockAt: new Date() },
+    });
+    await this.emitUserVoucherLifecycle(updated.id, 'ACTIVE', 'ORDER_VOUCHER_MANUAL_APPROVED', {
+      approvedById: adminId,
+    });
+    return { success: true, status: updated.status };
+  }
+
   /**
    * Create a dedicated voucher for a specific order (Admin only)
    */

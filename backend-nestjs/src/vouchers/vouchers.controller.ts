@@ -187,6 +187,18 @@ export class VouchersController {
     return this.vouchersService.createOrderVoucher(data, user, effectiveStoreId);
   }
 
+  @Post('order-voucher/:userVoucherId/approve')
+  @Roles('ADMIN', 'MODERATOR')
+  @Permissions(Permission.VOUCHERS_MANAGE)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Duyệt voucher đơn (WAITING_APPROVAL -> ACTIVE)' })
+  async approveOrderVoucher(
+    @Param('userVoucherId') userVoucherId: string,
+    @GetUser('id') adminId: string,
+  ) {
+    return this.vouchersService.approveOrderVoucher(userVoucherId, adminId);
+  }
+
   @Post('referral-voucher')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
   @Permissions(Permission.VOUCHERS_MANAGE)
