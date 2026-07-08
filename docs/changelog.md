@@ -20,6 +20,16 @@
 - Verify: FE `tsc` + `next build` ✅; BE `nest build` ✅.
 - ⚠️ **Deploy**: khi kéo lên VPS, `yarn install` (frontend) sẽ prune 2 package UploadThing; R2 env prod đã có sẵn (`R2_*` trong `backend-nestjs/.env.prod`).
 
+### Dọn ảnh mồ côi R2 (chính sách B — xóa tức thì khi thay/gỡ ảnh)
+- `R2Service`: thêm `keyFromUrl(url)` (tách key, bỏ qua URL ngoài R2) + `deleteObject(key)` (SigV4 DELETE, 404 coi như OK).
+- `MediaCleanupService` (mới, `src/upload/media-cleanup.service.ts`): `deleteImageIfUnreferenced(url, {productId?})` — bỏ qua URL không thuộc R2; nếu còn **product khác** hoặc **store** nào trỏ tới URL → GIỮ; ngược lại xóa record `media_assets` + file R2. Best-effort (lỗi R2 chỉ log, không ném — không làm hỏng luồng lưu/xóa).
+- Hook (server-side, chạy SAU khi commit — tránh xóa sớm khi user bấm Hủy):
+  - `products.service.update` — khi `imageUrl` đổi → dọn ảnh cũ.
+  - `products.service.remove` — sản phẩm bị xóa → dọn ảnh.
+  - `stores.service.update` — khi `logoUrl` đổi → dọn logo cũ.
+- Wiring: `UploadModule` export `MediaCleanupService`; `ProductsModule` + `StoresModule` import `UploadModule`.
+- **Giới hạn đã biết**: kiểm tra tham chiếu chỉ soi `product.imageUrl` + `store.logoUrl` — KHÔNG soi ảnh đính kèm trong chat/nơi khác. Vì mỗi lần upload sinh file uuid riêng nên trùng thực tế hiếm; nếu sau này cần chặt hơn thì bổ sung điều kiện tham chiếu.
+
 ---
 
 ## 2026-07-06 — Reskin toàn bộ theo handoff + merge main + deploy production + fix login đa subdomain

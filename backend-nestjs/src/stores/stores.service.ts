@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 
 import { MailService } from '../mail/mail.service';
 import { AdminNotificationsService } from '../modules/admin-notifications/admin-notifications.service';
+import { MediaCleanupService } from '../upload/media-cleanup.service';
 
 @Injectable()
 export class StoresService implements OnModuleInit {
@@ -11,6 +12,7 @@ export class StoresService implements OnModuleInit {
     private prisma: PrismaService,
     private mailService: MailService,
     private adminNotificationsService: AdminNotificationsService,
+    private mediaCleanup: MediaCleanupService,
   ) {}
 
   async onModuleInit() {
@@ -257,7 +259,7 @@ export class StoresService implements OnModuleInit {
       isActive,
     } = data;
 
-    return this.prisma.store.update({
+    const updated = await this.prisma.store.update({
       where: { id: store.id },
       data: {
         name: name || store.name,
@@ -276,6 +278,13 @@ export class StoresService implements OnModuleInit {
         isActive: isActive !== undefined ? isActive : store.isActive,
       },
     });
+
+    // Logo bị thay/gỡ → xóa file R2 cũ (nếu không còn product/store khác dùng).
+    if (logoUrl !== undefined && logoUrl !== store.logoUrl) {
+      await this.mediaCleanup.deleteImageIfUnreferenced(store.logoUrl);
+    }
+
+    return updated;
   }
 
   /**

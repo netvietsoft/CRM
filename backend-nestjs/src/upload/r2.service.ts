@@ -66,6 +66,42 @@ export class R2Service {
     }
   }
 
+  // Tách object key từ URL public (chỉ URL thuộc bucket của ta). null nếu URL ngoài R2.
+  keyFromUrl(url: string): string | null {
+    if (!this.publicBase || !url) return null;
+    const prefix = `${this.publicBase}/`;
+    return url.startsWith(prefix) ? url.slice(prefix.length) : null;
+  }
+
+  // Xóa 1 object trên R2 (SigV4 DELETE, body rỗng). Ném lỗi nếu R2 trả non-2xx.
+  async deleteObject(key: string): Promise<void> {
+    if (!this.isConfigured()) throw new BadRequestException('Chưa cấu hình R2.');
+    const url = new URL(`${this.endpoint}/${this.bucket}/${key}`);
+    const host = url.host;
+    const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const dateStamp = amzDate.slice(0, 8);
+    const payloadHash = sha256hex(''); // body rỗng
+    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date';
+    const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
+    const canonicalUri = `/${this.bucket}/${key}`;
+    const canonicalRequest = `DELETE\n${canonicalUri}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+    const scope = `${dateStamp}/auto/s3/aws4_request`;
+    const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${sha256hex(canonicalRequest)}`;
+    const kSigning = hmac(hmac(hmac(hmac('AWS4' + this.secretAccessKey, dateStamp), 'auto'), 's3'), 'aws4_request');
+    const signature = createHmac('sha256', kSigning).update(stringToSign).digest('hex');
+    const authorization = `AWS4-HMAC-SHA256 Credential=${this.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: authorization, 'x-amz-date': amzDate, 'x-amz-content-sha256': payloadHash },
+    });
+    // R2 trả 204 khi xóa OK; 404 (đã không còn) coi như thành công.
+    if (!res.ok && res.status !== 404) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`R2 DELETE ${res.status}: ${body.slice(0, 300)}`);
+    }
+  }
+
   private extFromMime(mime: string): string {
     const map: Record<string, string> = {
       'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',

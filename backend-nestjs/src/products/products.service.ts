@@ -3,10 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductDto } from './dto/filter-product.dto';
+import { MediaCleanupService } from '../upload/media-cleanup.service';
 
 @Injectable()
 export class ProductsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mediaCleanup: MediaCleanupService,
+  ) {}
 
   async create(role: string, effectiveStoreId: string | null, createProductDto: CreateProductDto) {
     const {
@@ -654,6 +658,11 @@ export class ProductsService {
       }
     });
 
+    // Ảnh sản phẩm bị thay/gỡ → xóa file R2 cũ (nếu không còn product/store khác dùng).
+    if (productData.imageUrl !== undefined && productData.imageUrl !== existingProduct.imageUrl) {
+      await this.mediaCleanup.deleteImageIfUnreferenced(existingProduct.imageUrl, { productId: id });
+    }
+
     return this.findOne(id);
   }
 
@@ -695,6 +704,9 @@ export class ProductsService {
       // Delete the product (Prisma auto-cleans the implicit join table)
       await tx.product.delete({ where: { id } });
     });
+
+    // Sản phẩm đã xóa → dọn ảnh R2 (nếu không còn product/store khác dùng).
+    await this.mediaCleanup.deleteImageIfUnreferenced(existingProduct.imageUrl);
 
     return { success: true, message: 'Sản phẩm đã được xóa vĩnh viễn' };
   }
