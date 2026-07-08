@@ -98,3 +98,41 @@ describe('syncOrderVoucherActivation', () => {
     expect(res).toEqual({ changed: true, status: 'REJECTED' });
   });
 });
+
+describe('createOrderVoucher', () => {
+  function makeSvc() {
+    const created: any = {};
+    const prisma: any = {
+      order: { findUnique: jest.fn(async () => ({ id: 'o1', orderCode: 'ORD1', totalAmount: 200000, storeId: null, userId: 'u1' })) },
+      voucher: {
+        findUnique: jest.fn(async () => null),
+        create: jest.fn(async ({ data }: any) => { created.voucher = data; return { id: 'v1', ...data }; }),
+      },
+      userVoucher: { create: jest.fn(async ({ data }: any) => { created.userVoucher = data; return { id: 'uv1', ...data }; }) },
+      systemConfig: { findUnique: jest.fn(async () => null) },
+    };
+    const svc = new VouchersService(prisma, {} as any, {} as any, { handleVoucherCreated: jest.fn(), handleVoucherActivated: jest.fn() } as any);
+    return { svc, prisma, created };
+  }
+
+  it('MANUAL: stores approvalMode on voucher and creates PENDING UserVoucher', async () => {
+    const { svc, created, prisma } = makeSvc();
+    await svc.createOrderVoucher({ orderId: 'o1', type: 'PERCENT', value: 10, approvalMode: 'MANUAL' });
+    expect(created.voucher.approvalMode).toBe('MANUAL');
+    expect(prisma.userVoucher.create).toHaveBeenCalledTimes(1);
+    expect(created.userVoucher).toEqual(expect.objectContaining({ userId: 'u1', voucherId: 'v1', sourceOrderCode: 'ORD1', status: 'PENDING', isUsed: false }));
+  });
+
+  it('defaults approvalMode to AUTO', async () => {
+    const { svc, created } = makeSvc();
+    await svc.createOrderVoucher({ orderId: 'o1', type: 'FIXED_AMOUNT', value: 50000 });
+    expect(created.voucher.approvalMode).toBe('AUTO');
+  });
+
+  it('skips UserVoucher when order has no userId', async () => {
+    const { svc, prisma } = makeSvc();
+    prisma.order.findUnique = jest.fn(async () => ({ id: 'o1', orderCode: 'ORD1', totalAmount: 200000, storeId: null, userId: null }));
+    await svc.createOrderVoucher({ orderId: 'o1', type: 'FIXED_AMOUNT', value: 50000 });
+    expect(prisma.userVoucher.create).not.toHaveBeenCalled();
+  });
+});

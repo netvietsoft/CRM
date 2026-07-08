@@ -650,6 +650,7 @@ export class VouchersService implements OnModuleInit {
       durationDays?: number;
       perCustomerLimit?: number;
       stackTiers?: any;
+      approvalMode?: 'AUTO' | 'MANUAL';
     },
     user?: any,
     effectiveStoreId?: string | null,
@@ -664,12 +665,13 @@ export class VouchersService implements OnModuleInit {
       durationDays,
       perCustomerLimit,
       stackTiers,
+      approvalMode,
     } = data;
 
     // Find the order
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, orderCode: true, totalAmount: true, storeId: true },
+      select: { id: true, orderCode: true, totalAmount: true, storeId: true, userId: true },
     });
 
     if (!order) {
@@ -727,12 +729,33 @@ export class VouchersService implements OnModuleInit {
         totalUsageLimit: perCustomerLimit ?? 1,
         isActive: true,
         storeId: order.storeId || null,
+        approvalMode: approvalMode === 'MANUAL' ? 'MANUAL' : 'AUTO',
       },
     });
 
     this.logger.log(
       `🎟️ Created order-specific voucher ${voucher.code} (${voucherValue}) for order #${order.orderCode}`,
     );
+
+    // Voucher tự vào ví khách ở trạng thái CHỜ (chỉ khi đơn đã gắn User).
+    if (order.userId) {
+      const expiresAt = durationDays
+        ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
+        : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+      const userVoucher = await this.prisma.userVoucher.create({
+        data: {
+          userId: order.userId,
+          voucherId: voucher.id,
+          sourceOrderCode: order.orderCode,
+          status: 'PENDING',
+          expiresAt,
+          isUsed: false,
+        },
+      });
+      await this.emitUserVoucherLifecycle(userVoucher.id, 'PENDING', 'ORDER_VOUCHER_CREATED', {
+        orderCode: order.orderCode,
+      });
+    }
 
     return {
       success: true,
@@ -752,7 +775,15 @@ export class VouchersService implements OnModuleInit {
       },
     });
 
-    return { exists: !!voucher, voucher: voucher || null };
+    let userVoucher: { id: string; status: string; approvedAt: Date | null } | null = null;
+    if (voucher) {
+      userVoucher = await this.prisma.userVoucher.findUnique({
+        where: { sourceOrderCode: orderCode },
+        select: { id: true, status: true, approvedAt: true },
+      });
+    }
+
+    return { exists: !!voucher, voucher: voucher || null, userVoucher };
   }
 
   /**

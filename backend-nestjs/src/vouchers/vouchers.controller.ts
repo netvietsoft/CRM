@@ -181,6 +181,7 @@ export class VouchersController {
       durationDays?: number;
       perCustomerLimit?: number;
       stackTiers?: any;
+      approvalMode?: 'AUTO' | 'MANUAL';
     },
   ) {
     return this.vouchersService.createOrderVoucher(data, user, effectiveStoreId);
