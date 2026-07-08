@@ -37,11 +37,13 @@ interface OrderVoucher {
   durationDays?: number | null;
   perCustomerLimit?: number | null;
   stackTiers?: StackTier[] | null;
+  approvalMode?: 'AUTO' | 'MANUAL';
 }
 
 interface OrderVoucherLookupResponse {
   exists: boolean;
   voucher: OrderVoucher | null;
+  userVoucher: { id: string; status: string; approvedAt: string | null } | null;
 }
 
 interface CreateOrderVoucherResponse {
@@ -59,6 +61,7 @@ interface VoucherMutationPayload {
   durationDays?: number | null;
   perCustomerLimit?: number | null;
   stackTiers?: StackTier[];
+  approvalMode?: 'AUTO' | 'MANUAL';
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -81,6 +84,8 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
   const [customMaxDiscount, setCustomMaxDiscount] = useState('');
   const [customDurationDays, setCustomDurationDays] = useState('');
   const [customUsageLimit, setCustomUsageLimit] = useState('');
+  const [customApprovalMode, setCustomApprovalMode] = useState<'AUTO' | 'MANUAL'>('AUTO');
+  const [orderUserVoucher, setOrderUserVoucher] = useState<{ id: string; status: string } | null>(null);
 
   const defaultStackTiers: StackTier[] = [
     { conditionType: 'products', minProducts: 1, minAmount: 0, discount: 200000, type: 'FIXED_AMOUNT', maxDiscount: 0 },
@@ -101,10 +106,12 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
       .then((res) => {
         if (isCancelled) return;
         setExistingVoucher(res.exists ? res.voucher : null);
+        setOrderUserVoucher(res.exists ? res.userVoucher : null);
       })
       .catch(() => {
         if (!isCancelled) {
           setExistingVoucher(null);
+          setOrderUserVoucher(null);
         }
       })
       .finally(() => {
@@ -132,6 +139,7 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
         body.durationDays = customDurationDays ? Number(customDurationDays) : null;
         body.perCustomerLimit = customUsageLimit ? Number(customUsageLimit) : null;
         if (customType === 'STACK') body.stackTiers = stackTiers;
+        body.approvalMode = customApprovalMode;
 
         const res = await apiClientClient.patch<OrderVoucher, VoucherMutationPayload>(
           `/vouchers/${existingVoucher.id}`,
@@ -150,6 +158,7 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
         if (customDurationDays) body.durationDays = Number(customDurationDays);
         if (customUsageLimit) body.perCustomerLimit = Number(customUsageLimit);
         if (customType === 'STACK') body.stackTiers = stackTiers;
+        body.approvalMode = customApprovalMode;
         const res = await apiClientClient.post<CreateOrderVoucherResponse, VoucherMutationPayload>(
           '/vouchers/create-order-voucher',
           body,
@@ -192,6 +201,7 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
     setCustomMaxDiscount(existingVoucher.maxDiscount?.toString() || '');
     setCustomDurationDays(existingVoucher.durationDays?.toString() || '');
     setCustomUsageLimit(existingVoucher.perCustomerLimit?.toString() || '');
+    setCustomApprovalMode(existingVoucher.approvalMode || 'AUTO');
     if (existingVoucher.type === 'STACK' && existingVoucher.stackTiers?.length) {
       setStackTiers(existingVoucher.stackTiers);
     } else {
@@ -204,6 +214,27 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
     setShowForm(false);
     setIsEditMode(false);
   }
+
+  async function handleApprove() {
+    if (!orderUserVoucher) return;
+    setLoading(true);
+    try {
+      await apiClientClient.post(`/vouchers/order-voucher/${orderUserVoucher.id}/approve`, {});
+      alert('Đã duyệt voucher!');
+      setOrderUserVoucher({ ...orderUserVoucher, status: 'ACTIVE' });
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, 'Lỗi duyệt voucher'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const STATUS_LABEL: Record<string, string> = {
+    PENDING: '🕒 Chờ kích hoạt',
+    WAITING_APPROVAL: '⏳ Chờ duyệt',
+    ACTIVE: '✅ Đã kích hoạt',
+    REJECTED: '❌ Từ chối',
+  };
 
   if (checking) {
     return (
@@ -277,6 +308,25 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
               </div>
             )}
           </div>
+          {orderUserVoucher && (
+            <div className="flex items-center justify-between border-t border-green-200 pt-2 mt-2">
+              <span className="text-gray-600 text-sm">Trạng thái ví khách:</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-800">
+                  {STATUS_LABEL[orderUserVoucher.status] || orderUserVoucher.status}
+                </span>
+                {orderUserVoucher.status === 'WAITING_APPROVAL' && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={loading}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-md disabled:opacity-50"
+                  >
+                    Duyệt
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -492,6 +542,18 @@ export default function CreateOrderVoucherButton({ orderId, orderCode }: Props) 
                     onChange={(e) => setCustomUsageLimit(e.target.value)}
                     placeholder="Không giới hạn"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Chế độ duyệt</label>
+                  <Select
+                    value={customApprovalMode}
+                    onChange={(val) => setCustomApprovalMode(val as 'AUTO' | 'MANUAL')}
+                    className="w-full bg-white"
+                    options={[
+                      { value: 'AUTO', label: 'Tự động (khi giao thành công)' },
+                      { value: 'MANUAL', label: 'Thủ công (admin duyệt)' },
+                    ]}
                   />
                 </div>
               </div>

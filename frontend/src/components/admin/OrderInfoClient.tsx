@@ -33,6 +33,7 @@ interface OrderInfoOrder {
   assigningSellerId?: string | null;
   assigningCareId?: string | null;
   createdAt?: string | Date | null;
+  isExchange?: boolean | null;
 }
 
 interface OrderInfoClientProps {
@@ -109,6 +110,7 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
   // Reason & Delay State
   const [reasonValue, setReasonValue] = useState(m.reasonValue || '');
   const [delayValue, setDelayValue] = useState(m.delayValue || '');
+  const [isExchange, setIsExchange] = useState<boolean>(order.isExchange === true);
   const [isReasonOpen, setIsReasonOpen] = useState(false);
   const [hoveredReasonGroup, setHoveredReasonGroup] = useState<string | null>(null);
   const reasonRef = useRef<HTMLDivElement>(null);
@@ -142,9 +144,10 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
         reasonValue,
         delayValue,
         tags,
+        isExchange,
       });
     });
-  }, [delayValue, order.id, reasonValue, registerSaveAction, tags]);
+  }, [delayValue, order.id, reasonValue, registerSaveAction, tags, isExchange]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -414,6 +417,16 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
             ))}
           </div>
         </div>
+
+        <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isExchange}
+            onChange={(e) => { setIsExchange(e.target.checked); setHasChanges(true); }}
+            className="w-4 h-4 accent-amber-500"
+          />
+          <span className="text-sm text-gray-700">Đơn đổi (chặn kích hoạt voucher + ghép ghi chú)</span>
+        </label>
 
       </div>
     </div>
