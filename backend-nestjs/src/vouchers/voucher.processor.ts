@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessagingAutomationService } from '../messaging/messaging-automation.service';
+import { VouchersService } from './vouchers.service';
 import axios from 'axios';
 
 interface ShippingStatus {
@@ -17,6 +18,7 @@ export class VoucherProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly messagingAutomationService: MessagingAutomationService,
+    private readonly vouchersService: VouchersService,
   ) {
     super();
   }
@@ -174,7 +176,7 @@ export class VoucherProcessor extends WorkerHost {
       const now = new Date();
       const pendingVouchers = await this.prisma.userVoucher.findMany({
         where: {
-          status: 'PENDING',
+          status: { in: ['PENDING', 'WAITING_APPROVAL'] },
           unlockAt: {
             lte: now,
           },
@@ -266,45 +268,22 @@ export class VoucherProcessor extends WorkerHost {
     const orderCode = userVoucher.sourceOrderCode;
 
     try {
-      // Check shipping status via ViettelPost API
-      const shippingStatus = await this.checkShippingStatus(orderCode);
-
-      let newStatus: string;
-
-      if (shippingStatus.status === 'COMPLETED' && (await this.isDeliveredPaidOrder(orderCode))) {
-        // Order delivered successfully - activate voucher
-        newStatus = 'ACTIVE';
-        await this.prisma.userVoucher.update({
-          where: { id: userVoucher.id },
-          data: { status: 'ACTIVE' },
-        });
-        await this.messagingAutomationService.handleVoucherActivated(
-          userVoucher.id,
-          'VOUCHER_VERIFY_JOB',
-          { orderCode },
-        );
-
-        this.logger.log(
-          `✅ Voucher ${userVoucher.id} ACTIVATED for user ${userVoucher.user.name} (Order: ${orderCode})`,
-        );
-      } else if (shippingStatus.status === 'RETURNED' || shippingStatus.status === 'CANCELLED') {
-        // Order returned or cancelled - reject voucher
-        newStatus = 'REJECTED';
-        await this.prisma.userVoucher.update({
-          where: { id: userVoucher.id },
-          data: { status: 'REJECTED' },
-        });
-
-        this.logger.log(
-          `❌ Voucher ${userVoucher.id} REJECTED for user ${userVoucher.user.name} (Order: ${orderCode}, Status: ${shippingStatus.status})`,
-        );
-      } else {
-        // Still in transit - keep as PENDING
-        newStatus = 'PENDING';
-        this.logger.log(
-          `⏳ Voucher ${userVoucher.id} still PENDING (Order: ${orderCode}, Status: ${shippingStatus.status})`,
-        );
+      // Uỷ quyền cho state machine chuẩn (đọc order.status + totalAmount + isExchange + approvalMode).
+      const order = await this.prisma.order.findFirst({
+        where: { orderCode },
+        select: { id: true, orderCode: true, status: true, totalAmount: true, isExchange: true },
+      });
+      if (!order) {
+        this.logger.log(`⏳ Voucher ${userVoucher.id} still PENDING (order ${orderCode} not found)`);
+        return userVoucher.status;
       }
+
+      const result = await this.vouchersService.syncOrderVoucherActivation(order);
+      const newStatus = result?.status ?? userVoucher.status;
+
+      this.logger.log(
+        `🔄 Voucher ${userVoucher.id} (Order: ${orderCode}) synced to ${newStatus}${result?.changed ? '' : ' (no change)'}`,
+      );
 
       return newStatus;
     } catch (error) {

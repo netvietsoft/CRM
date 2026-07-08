@@ -2058,6 +2058,21 @@ export class OrdersService {
       await this.revertDeliveredCredits(currentOrder);
     }
 
+    // Đồng bộ kích hoạt voucher riêng của đơn (nguồn chính — không phụ thuộc Redis/cron).
+    try {
+      await this.vouchersService.syncOrderVoucherActivation({
+        id: updatedOrder.id,
+        orderCode: updatedOrder.orderCode,
+        status: updatedOrder.status,
+        totalAmount: updatedOrder.totalAmount,
+        isExchange: (updatedOrder as any).isExchange === true,
+      });
+    } catch (err) {
+      this.logger.error(
+        `syncOrderVoucherActivation failed for order ${updatedOrder.orderCode}: ${this.getErrorMessage(err)}`,
+      );
+    }
+
     if (
       (status && status !== currentOrder.status) ||
       (paymentStatus && paymentStatus !== currentOrder.paymentStatus)

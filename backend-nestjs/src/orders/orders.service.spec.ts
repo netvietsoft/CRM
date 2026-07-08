@@ -144,3 +144,44 @@ describe('OrdersService VietQR expiry', () => {
     });
   });
 });
+
+describe('updateStatus -> order voucher activation', () => {
+  it('calls syncOrderVoucherActivation with the updated order', async () => {
+    const updatedOrder = {
+      id: 'o1',
+      orderCode: 'ORD1',
+      status: 'DELIVERED',
+      totalAmount: 200000,
+      isExchange: false,
+      paymentStatus: 'UNPAID',
+    };
+    const prisma: any = {
+      order: {
+        update: jest.fn(async () => updatedOrder),
+      },
+    };
+    const vouchersService: any = { syncOrderVoucherActivation: jest.fn(async () => ({ changed: true, status: 'ACTIVE' })) };
+    const messaging: any = { handleOrderStateChange: jest.fn(), handleVoucherCreated: jest.fn() };
+    const adminNotif: any = { createNotification: jest.fn() };
+    const svc = new OrdersService(
+      prisma,
+      vouchersService,
+      {} as any,
+      {} as any,
+      adminNotif,
+      messaging,
+      {} as any,
+    );
+    // stub các phương thức phụ để cô lập
+    (svc as any).findOne = jest.fn(async () => ({ ...updatedOrder, status: 'SHIPPED', paymentStatus: 'UNPAID' }));
+    (svc as any).applyDeliveredCredits = jest.fn(async () => undefined);
+    (svc as any).releaseAppliedVouchersForOrder = jest.fn(async () => undefined);
+    (svc as any).revertDeliveredCredits = jest.fn(async () => undefined);
+
+    await svc.updateStatus('o1', { status: 'DELIVERED' } as any, 'admin1', 'ADMIN', null);
+
+    expect(vouchersService.syncOrderVoucherActivation).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'o1', orderCode: 'ORD1', status: 'DELIVERED', totalAmount: 200000, isExchange: false }),
+    );
+  });
+});
