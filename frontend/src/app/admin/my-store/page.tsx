@@ -31,7 +31,7 @@ export default async function MyStorePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="w-full p-4 md:p-8">
       <div className="mb-[18px]">
         <h1 className="text-[24px] font-extrabold text-gray-900 tracking-[-0.4px] m-0">Cửa hàng của tôi</h1>
         <p className="mt-1 text-[13px] text-[#6b7280]">Thông tin hiển thị với khách hàng trên website và hóa đơn.</p>
