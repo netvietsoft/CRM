@@ -201,7 +201,12 @@ export class AuthService {
     const normalizedPhone = (phone || '').replace(/[\s-]/g, '');
     await this.vouchersService.verifyLoginOtp(normalizedPhone, otp);
 
-    let user = await this.prisma.user.findFirst({ where: { phone: normalizedPhone } });
+    const existingUser = await this.prisma.user.findFirst({ where: { phone: normalizedPhone } });
+    if (existingUser && existingUser.role !== 'CUSTOMER') {
+      throw new UnauthorizedException('Số điện thoại này không dùng đăng nhập OTP');
+    }
+
+    let user = existingUser;
     if (!user) {
       user = await this.prisma.user.create({
         data: {

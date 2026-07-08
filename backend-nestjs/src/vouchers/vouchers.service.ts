@@ -800,6 +800,7 @@ export class VouchersService implements OnModuleInit {
           voucherId: voucher.id,
           sourceOrderCode: order.orderCode,
           status: 'PENDING',
+          unlockAt: new Date(),
           expiresAt,
           isUsed: false,
         },

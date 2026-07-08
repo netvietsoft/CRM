@@ -13,6 +13,12 @@ function LoginForm() {
   const [success, setSuccess] = useState('');
   const searchParams = useSearchParams();
 
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
+  const [otpPhone, setOtpPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+
   const [formData, setFormData] = useState({
     phone: '',
     password: '',
@@ -138,6 +144,65 @@ function LoginForm() {
     }
   };
 
+  const handleSendOtp = async () => {
+    setError('');
+    setSuccess('');
+    setOtpSending(true);
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const res = await fetch(`${backendUrl}/auth/send-login-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: otpPhone }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || data.message || 'Không thể gửi mã OTP');
+        return;
+      }
+
+      setOtpSent(true);
+      setSuccess('Mã OTP đã được gửi đến số điện thoại của bạn.');
+    } catch {
+      setError('Lỗi kết nối. Vui lòng thử lại.');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleOtpLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const res = await fetch(`${backendUrl}/auth/otp-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: otpPhone, otp: otpCode }),
+        credentials: 'include',
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || data.message || 'Đăng nhập thất bại');
+        return;
+      }
+
+      const returnTo = searchParams.get('returnTo');
+      const finalRedirect = returnTo || data.redirect || '/portal/products';
+      window.location.href = finalRedirect;
+    } catch {
+      setError('Lỗi kết nối. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 relative overflow-hidden">
       {/* Decorative orbs */}
@@ -180,7 +245,7 @@ function LoginForm() {
               ? 'text-indigo-600 border-b-2 border-indigo-600 font-semibold'
               : 'text-gray-400 border-b-2 border-transparent hover:text-gray-600'
               }`}
-            onClick={() => { setIsLogin(true); setError(''); setSuccess(''); }}
+            onClick={() => { setIsLogin(true); setLoginMode('password'); setOtpSent(false); setError(''); setSuccess(''); }}
             type="button"
           >
             Đăng nhập
@@ -190,12 +255,29 @@ function LoginForm() {
               ? 'text-indigo-600 border-b-2 border-indigo-600 font-semibold'
               : 'text-gray-400 border-b-2 border-transparent hover:text-gray-600'
               }`}
-            onClick={() => { setIsLogin(false); setError(''); setSuccess(''); }}
+            onClick={() => { setIsLogin(false); setLoginMode('password'); setOtpSent(false); setError(''); setSuccess(''); }}
             type="button"
           >
             Đăng ký
           </button>
         </div>
+
+        {isLogin && (
+          <div className="flex justify-end mb-3">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode((prev) => (prev === 'password' ? 'otp' : 'password'));
+                setOtpSent(false);
+                setError('');
+                setSuccess('');
+              }}
+              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            >
+              {loginMode === 'password' ? 'Đăng nhập bằng OTP' : 'Đăng nhập bằng mật khẩu'}
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="flex items-start gap-3 p-4 mb-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm animate-slideIn">
@@ -211,6 +293,79 @@ function LoginForm() {
           </div>
         )}
 
+        {isLogin && loginMode === 'otp' ? (
+          <form onSubmit={handleOtpLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="otpPhone">
+                Số điện thoại
+              </label>
+              <input
+                id="otpPhone"
+                name="otpPhone"
+                type="text"
+                className="w-full px-4 py-3 bg-white/70 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition disabled:bg-gray-100"
+                placeholder="0912 345 678"
+                value={otpPhone}
+                onChange={(e) => { setOtpPhone(e.target.value); setError(''); }}
+                disabled={otpSent}
+                required
+              />
+            </div>
+
+            {!otpSent ? (
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={otpSending || !otpPhone}
+                className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+              >
+                {otpSending ? 'Đang gửi...' : 'Gửi mã OTP'}
+              </button>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="otpCode">
+                    Mã OTP
+                  </label>
+                  <input
+                    id="otpCode"
+                    name="otpCode"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    className="w-full px-4 py-3 bg-white/70 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    placeholder="Nhập mã 6 số"
+                    value={otpCode}
+                    onChange={(e) => { setOtpCode(e.target.value); setError(''); }}
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Đang xử lý...
+                    </span>
+                  ) : 'Đăng nhập'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={otpSending}
+                  className="w-full text-sm text-indigo-600 hover:text-indigo-700 font-medium disabled:opacity-50"
+                >
+                  {otpSending ? 'Đang gửi lại...' : 'Gửi lại mã OTP'}
+                </button>
+              </>
+            )}
+          </form>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="phone">
@@ -289,6 +444,7 @@ function LoginForm() {
             ) : isLogin ? 'Đăng nhập' : 'Đăng ký tài khoản'}
           </button>
         </form>
+        )}
 
         {/* Google Login */}
         <div className="mt-6">

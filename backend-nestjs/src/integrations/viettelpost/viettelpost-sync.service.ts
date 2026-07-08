@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ViettelpostAuthService } from './viettelpost-auth.service';
 import { ViettelCustomerService } from './viettel-customer.service';
+import { VouchersService } from '../../vouchers/vouchers.service';
 
 /**
  * Cron RECONCILE đơn ViettelPost (mỗi 10 phút).
@@ -35,6 +36,7 @@ export class ViettelpostSyncService {
     private readonly prisma: PrismaService,
     private readonly authService: ViettelpostAuthService,
     private readonly customerService: ViettelCustomerService,
+    private readonly vouchersService: VouchersService,
   ) {}
 
   // Map mã trạng thái VTP → OrderStatus (đồng nhất với webhooks.service.mapVtpStatusToOrderStatus).
@@ -102,7 +104,25 @@ export class ViettelpostSyncService {
       const vtpStatus = Number(detail.ORDER_STATUS);
       const mapped = Number.isNaN(vtpStatus) ? null : this.mapVtpStatus(vtpStatus);
       if (mapped && mapped !== order.status) {
-        await this.prisma.order.update({ where: { id: order.id }, data: { status: mapped as any } });
+        const updatedOrder = await this.prisma.order.update({
+          where: { id: order.id },
+          data: { status: mapped as any },
+        });
+
+        // Đồng bộ kích hoạt voucher riêng của đơn (best-effort — không làm hỏng cron reconcile).
+        try {
+          await this.vouchersService.syncOrderVoucherActivation({
+            id: updatedOrder.id,
+            orderCode: updatedOrder.orderCode,
+            status: updatedOrder.status,
+            totalAmount: updatedOrder.totalAmount,
+            isExchange: (updatedOrder as any).isExchange === true,
+          });
+        } catch (err: any) {
+          this.logger.error(
+            `[VTP] syncOrderVoucherActivation failed for order ${updatedOrder.orderCode}: ${err?.message || err}`,
+          );
+        }
       }
       updated++;
     }

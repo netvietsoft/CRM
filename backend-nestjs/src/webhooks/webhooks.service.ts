@@ -276,6 +276,21 @@ export class WebhooksService {
         data: updateData,
       });
 
+      // Đồng bộ kích hoạt voucher riêng của đơn (best-effort — không làm hỏng luồng webhook VTP).
+      try {
+        await this.vouchersService.syncOrderVoucherActivation({
+          id: updatedOrder.id,
+          orderCode: updatedOrder.orderCode,
+          status: updatedOrder.status,
+          totalAmount: updatedOrder.totalAmount,
+          isExchange: (updatedOrder as any).isExchange === true,
+        });
+      } catch (err: any) {
+        this.logger.error(
+          `[VTP] syncOrderVoucherActivation failed for order ${updatedOrder.orderCode}: ${err?.message || err}`,
+        );
+      }
+
       this.logger.log(
         `✅ Order ${order.orderCode} updated: status → ${newOrderStatus || '(unchanged)'}, courier update added`,
       );
