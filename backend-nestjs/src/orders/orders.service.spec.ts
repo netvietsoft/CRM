@@ -185,3 +185,37 @@ describe('updateStatus -> order voucher activation', () => {
     );
   });
 });
+
+describe('updateAdminFields -> isExchange', () => {
+  function makeSvc(order: any) {
+    const captured: any = {};
+    const prisma: any = {
+      order: {
+        findUnique: jest.fn(async () => order),
+        update: jest.fn(async ({ data }: any) => { captured.data = data; return { ...order, ...data }; }),
+      },
+    };
+    const svc = new OrdersService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    return { svc, captured };
+  }
+
+  it('sets isExchange and prepends marker to note (once)', async () => {
+    const { svc, captured } = makeSvc({ id: 'o1', storeId: null, subtotal: 0, shippingFee: 0, discountAmount: 0, metadata: {}, note: 'Giao giờ hành chính' });
+    await svc.updateAdminFields('o1', { isExchange: true }, 'admin1', 'ADMIN', null);
+    expect(captured.data.isExchange).toBe(true);
+    expect(captured.data.note).toBe('[ĐƠN ĐỔI] Giao giờ hành chính');
+  });
+
+  it('does not duplicate the marker', async () => {
+    const { svc, captured } = makeSvc({ id: 'o1', storeId: null, subtotal: 0, shippingFee: 0, discountAmount: 0, metadata: {}, note: '[ĐƠN ĐỔI] Giao giờ hành chính' });
+    await svc.updateAdminFields('o1', { isExchange: true }, 'admin1', 'ADMIN', null);
+    expect(captured.data.note).toBe('[ĐƠN ĐỔI] Giao giờ hành chính');
+  });
+
+  it('removes marker when isExchange=false', async () => {
+    const { svc, captured } = makeSvc({ id: 'o1', storeId: null, subtotal: 0, shippingFee: 0, discountAmount: 0, metadata: {}, note: '[ĐƠN ĐỔI] Giao giờ hành chính' });
+    await svc.updateAdminFields('o1', { isExchange: false }, 'admin1', 'ADMIN', null);
+    expect(captured.data.isExchange).toBe(false);
+    expect(captured.data.note).toBe('Giao giờ hành chính');
+  });
+});

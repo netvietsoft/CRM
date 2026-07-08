@@ -1593,6 +1593,7 @@ export class OrdersService {
       delayValue?: string;
       tags?: string[];
       customerTags?: string[];
+      isExchange?: boolean;
     },
     userId: string,
     role: string,
@@ -1659,6 +1660,16 @@ export class OrdersService {
     }
 
     updateData.metadata = existingMeta;
+
+    const EXCHANGE_MARKER = '[ĐƠN ĐỔI] ';
+    if (body.isExchange !== undefined) {
+      updateData.isExchange = body.isExchange;
+      const currentNote = order.note || '';
+      const stripped = currentNote.startsWith(EXCHANGE_MARKER)
+        ? currentNote.slice(EXCHANGE_MARKER.length)
+        : currentNote;
+      updateData.note = body.isExchange ? `${EXCHANGE_MARKER}${stripped}` : stripped;
+    }
 
     await this.prisma.order.update({
       where: { id: orderId },
