@@ -7,6 +7,7 @@ import { Menu, Search } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import AdminNotifications from './AdminNotifications';
 import AdminTopNav from './AdminTopNav';
+import ChangePasswordModal from './ChangePasswordModal';
 
 interface AdminHeaderProps {
   user: {
@@ -20,6 +21,7 @@ interface AdminHeaderProps {
 export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps) {
   const router = useRouter();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -108,6 +110,12 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
                 Cấu hình QR
               </Link>
               <button
+                onClick={() => { setUserMenuOpen(false); setPwOpen(true); }}
+                className="block w-full text-left px-3 py-2 rounded-[9px] text-[13px] font-semibold text-[#374151] hover:bg-[#f3f4f6]"
+              >
+                Đổi mật khẩu
+              </button>
+              <button
                 onClick={handleLogout}
                 disabled={loggingOut}
                 className="block w-full text-left px-3 py-2 rounded-[9px] text-[13px] font-semibold text-[#dc2626] hover:bg-[#fef2f2] disabled:opacity-50"
@@ -118,6 +126,8 @@ export default function AdminHeader({ user, onToggleSidebar }: AdminHeaderProps)
           )}
         </div>
       </div>
+
+      <ChangePasswordModal open={pwOpen} onClose={() => setPwOpen(false)} />
     </header>
   );
 }
