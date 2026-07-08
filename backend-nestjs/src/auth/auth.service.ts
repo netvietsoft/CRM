@@ -142,14 +142,17 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { phone, password } = loginDto;
 
-    // Support login by email or phone
-    const isEmail = phone.includes('@');
+    // Định danh đăng nhập: email (có @), hoặc SĐT, hoặc tên đăng nhập (username)
+    const identifier = phone.trim();
+    const isEmail = identifier.includes('@');
     const user = await this.prisma.user.findFirst({
-      where: isEmail ? { email: phone } : { phone },
+      where: isEmail
+        ? { email: identifier }
+        : { OR: [{ phone: identifier }, { username: identifier }] },
     });
 
     if (!user || !user.password) {
-      throw new UnauthorizedException('Số điện thoại / email hoặc mật khẩu không chính xác');
+      throw new UnauthorizedException('Số điện thoại / email / tên đăng nhập hoặc mật khẩu không chính xác');
     }
 
     // Check if account is active

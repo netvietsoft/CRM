@@ -2,10 +2,12 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { clearSavedReferralCode, getReferralCodeFromSearchParams, getSavedReferralCode, persistReferralCode } from '@/lib/referral-client';
 
 function LoginForm() {
   const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -212,7 +214,7 @@ function LoginForm() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="phone">
-              Số điện thoại hoặc Email
+              Số điện thoại, Email hoặc Tên đăng nhập
             </label>
             <input
               id="phone"
@@ -230,17 +232,28 @@ function LoginForm() {
             <label className="block text-sm font-semibold text-gray-700 mb-2" htmlFor="password">
               Mật khẩu
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              className="w-full px-4 py-3 bg-white/70 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              minLength={6}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                className="w-full px-4 py-3 pr-12 bg-white/70 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+              >
+                {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
+              </button>
+            </div>
             {!isLogin && (
               <p className="text-xs text-gray-400 mt-1.5">Mật khẩu tối thiểu 6 ký tự</p>
             )}

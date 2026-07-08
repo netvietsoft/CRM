@@ -3,7 +3,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
-import { User, Lock, Mail, Phone, Check, AlertCircle, Loader2, UserPlus, Eye, EyeOff, ArrowLeft, Store } from 'lucide-react';
+import { User, Lock, Mail, Phone, Check, AlertCircle, Loader2, UserPlus, Eye, EyeOff, ArrowLeft, Store, AtSign } from 'lucide-react';
 
 interface StoreSummary {
   id: string;
@@ -67,6 +67,7 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
     name: '',
     phone: '',
     email: '',
+    username: '',
     password: ''
   });
 
@@ -86,6 +87,7 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
             name: user.name || '',
             phone: user.phone || '',
             email: user.email || '',
+            username: '',
             password: ''
           });
           if (user.staffStoreId) setSelectedStoreId(user.staffStoreId);
@@ -283,6 +285,24 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={18} />
               </div>
             </div>
+
+            {!editUserId && (
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider ml-1">Tên đăng nhập</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="nhanvien01"
+                    autoComplete="off"
+                    className="w-full pl-10 pr-4 py-3 bg-[#f9fafb] border border-[#e5e7eb] rounded-[10px] focus:ring-2 focus:ring-[#2563eb] focus:bg-white transition-all outline-none text-sm"
+                  />
+                  <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={18} />
+                </div>
+                <p className="text-[11px] text-[#9ca3af] ml-1">Tùy chọn — nhân viên có thể đăng nhập bằng tên đăng nhập này.</p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider ml-1">{editUserId ? 'Mật khẩu (Để trống nếu không đổi)' : 'Mật khẩu'}</label>

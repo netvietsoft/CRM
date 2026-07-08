@@ -684,6 +684,7 @@ export class AdminService {
 
   async createStaff(dto: CreateStaffDto) {
     const { name, email, phone, password, storeId } = dto;
+    const username = dto.username?.trim() || undefined;
 
     if (!storeId) {
       throw new BadRequestException('Vui lòng chọn cửa hàng cho nhân viên');
@@ -705,6 +706,14 @@ export class AdminService {
       throw new ConflictException('Phone number already exists');
     }
 
+    // Check if username already exists
+    if (username) {
+      const existingUsername = await this.prisma.user.findUnique({ where: { username } });
+      if (existingUsername) {
+        throw new ConflictException('Tên đăng nhập đã tồn tại');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const staffPermissions = [
       'CUSTOMERS_VIEW',
@@ -722,6 +731,7 @@ export class AdminService {
         name,
         email: email?.toLowerCase(),
         phone,
+        username,
         password: hashedPassword,
         role: 'STAFF',
         staffStoreId: storeId || null,

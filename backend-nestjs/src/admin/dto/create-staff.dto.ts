@@ -11,6 +11,11 @@ export class CreateStaffDto {
   @IsOptional()
   email?: string;
 
+  @ApiProperty({ required: false, description: 'Tên đăng nhập — đăng nhập được bằng username này' })
+  @IsString()
+  @IsOptional()
+  username?: string;
+
   @ApiProperty()
   @IsString()
   @MinLength(10)
