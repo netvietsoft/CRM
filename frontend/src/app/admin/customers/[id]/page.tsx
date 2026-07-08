@@ -31,6 +31,9 @@ interface CustomerVoucher {
   isUsed: boolean;
   usedAt?: string | Date | null;
   createdAt: string | Date;
+  status?: string | null;
+  sourceOrderCode?: string | null;
+  unlockAt?: string | Date | null;
   voucher?: {
     code: string;
     type: string;
@@ -352,25 +355,37 @@ export default async function CustomerDetailPage(props: {
           {customer.userVouchers?.length > 0 && (
             <div className="rounded-[14px] border border-[#eceef2] bg-white p-5">
               <div className="mb-3 text-[15px] font-bold text-[#111827]">Voucher</div>
-              {customer.userVouchers.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-4 border-t border-[#f3f4f6] py-[9px]">
-                  <div>
-                    <span className="font-mono text-[12.5px] font-semibold text-[#111827]">{item.voucher?.code}</span>
-                    <div className="text-[11.5px] text-[#9ca3af]">
-                      {item.voucher?.type === 'PERCENTAGE'
-                        ? `Giảm ${item.voucher.value}%`
-                        : `Giảm ${formatMoney(item.voucher?.value || 0)}`}
-                      {item.voucher?.validTo ? ` · HSD ${formatDate(item.voucher.validTo)}` : ''}
+              {customer.userVouchers.map((item) => {
+                const STATUS: Record<string, { label: string; bg: string; color: string }> = {
+                  PENDING: { label: '🕒 Chờ kích hoạt', bg: '#fef3c7', color: '#b45309' },
+                  WAITING_APPROVAL: { label: '⏳ Chờ duyệt', bg: '#fef3c7', color: '#b45309' },
+                  ACTIVE: { label: 'Chưa dùng', bg: '#d1fae5', color: '#047857' },
+                  REJECTED: { label: '❌ Từ chối', bg: '#fee2e2', color: '#b91c1c' },
+                };
+                const st = item.isUsed
+                  ? { label: 'Đã dùng', bg: '#f3f4f6', color: '#6b7280' }
+                  : STATUS[item.status || 'ACTIVE'] || STATUS.ACTIVE;
+                return (
+                  <div key={item.id} className="flex items-center justify-between gap-4 border-t border-[#f3f4f6] py-[9px]">
+                    <div>
+                      <span className="font-mono text-[12.5px] font-semibold text-[#111827]">{item.voucher?.code}</span>
+                      <div className="text-[11.5px] text-[#9ca3af]">
+                        {item.voucher?.type === 'PERCENT'
+                          ? `Giảm ${item.voucher.value}%`
+                          : `Giảm ${formatMoney(item.voucher?.value || 0)}`}
+                        {item.voucher?.validTo ? ` · HSD ${formatDate(item.voucher.validTo)}` : ''}
+                      </div>
+                      {item.sourceOrderCode ? <div className="text-[11px] text-[#9ca3af]">Từ đơn #{item.sourceOrderCode}</div> : null}
                     </div>
+                    <span
+                      className="whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
+                      style={{ background: st.bg, color: st.color }}
+                    >
+                      {st.label}
+                    </span>
                   </div>
-                  <span
-                    className="whitespace-nowrap rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
-                    style={item.isUsed ? { background: '#f3f4f6', color: '#6b7280' } : { background: '#d1fae5', color: '#047857' }}
-                  >
-                    {item.isUsed ? 'Đã dùng' : 'Chưa dùng'}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
