@@ -49,7 +49,7 @@ export default function ExportQRButton({ selectedOrders }: { selectedOrders: Sel
 
       for (let i = 0; i < selectedOrders.length; i++) {
         const order = selectedOrders[i];
-        const url = `${baseUrl}/portal?campaign=qr_claim&orderCode=${order.orderCode}`;
+        const url = `${baseUrl}/portal/voucher-status?orderCode=${order.orderCode}`;
 
         // Generate QR code as data URL
         const qrDataUrl = await QRCode.toDataURL(url, {
