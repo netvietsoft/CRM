@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-07-08 — Voucher theo Đơn hàng: vòng đời tạo/kích hoạt/hiển thị (feat lớn, đã merge + push main)
+
+> Spec: `docs/superpowers/specs/2026-07-08-order-voucher-lifecycle-design.md` · Plan: `docs/superpowers/plans/2026-07-08-order-voucher-lifecycle.md` · Bản đồ nền: `docs/voucher-system-map.md`.
+> Làm theo subagent-driven-development trên nhánh `feat/order-voucher-lifecycle` (13 task + review cuối opus fix 3 bug) → merge fast-forward vào `main`, đã push `origin/main` (`5e48995`). **Chưa deploy prod.**
+
+**Yêu cầu nghiệp vụ (chốt với chủ dự án):** NV tự tạo voucher qua form dưới mỗi đơn (không auto-sinh); voucher tự vào ví khách trạng thái CHỜ ngay; chỉ **kích hoạt khi đơn giao thành công + COD ≥ ngưỡng (mặc định 100k, cấu hình được)**; cột duyệt **Auto/Manual** (Manual = admin bấm Duyệt); đơn hủy/hoàn/đổi/giao-thất-bại → **không kích hoạt**; mỗi đơn 1 voucher + QR riêng; QR = link xem trạng thái (bảo vệ đăng nhập); khách định danh SĐT + OTP lần đầu.
+
+**Data model (migration `20260708100000_order_voucher_lifecycle`, additive):** `Voucher.approvalMode` (enum `ApprovalMode` AUTO|MANUAL); `UserVoucher.approvedAt/approvedById` + tập status chuẩn hoá `PENDING|WAITING_APPROVAL|ACTIVE|REJECTED`; `Order.isExchange`; `SystemConfig.order_voucher_config` = `{ codActivationThreshold }` (100000).
+
+**Backend:**
+- `VouchersService.syncOrderVoucherActivation(order)` — state machine: PENDING/WAITING_APPROVAL → ACTIVE | WAITING_APPROVAL | REJECTED. Điều kiện ACTIVE: `order.status ∈ {DELIVERED,PAYMENT_COLLECTED,COMPLETED}` + `totalAmount ≥ codThreshold` + `!isExchange`; MANUAL → WAITING_APPROVAL. Reject: `{CANCELLED,REFUNDED,RETURNING,EXCHANGING}` | isExchange | COD < ngưỡng. Idempotent (ACTIVE/REJECTED là chốt).
+- Hook engine ở **3 nơi ghi status**: `orders.service.updateStatus` (admin), `webhooks.service` (webhook VTP), `viettelpost-sync.service.reconcileOpenOrders` (cron) — best-effort. `voucher.processor` (cron) delegate sang engine (lưới an toàn; UserVoucher tạo với `unlockAt=now`).
+- `createOrderVoucher` +`approvalMode` + auto tạo `UserVoucher` PENDING theo `order.userId`. `getOrderVoucher` trả kèm `userVoucher`. `POST /vouchers/order-voucher/:userVoucherId/approve` (duyệt manual). `GET /vouchers/order-voucher-status/:orderCode` (scoped theo user). `order.isExchange` → prepend `[ĐƠN ĐỔI]` vào note + đẩy VTP.
+- Định danh khách: `POST /auth/send-login-otp` + `/auth/otp-login` (tái dùng OTP; cookie đa subdomain; **chỉ role CUSTOMER**).
+
+**Frontend:** form voucher admin (Auto/Manual + trạng thái ví khách + nút Duyệt) + ô "Đơn đổi" (OrderInfoClient); block "🎁 Voucher thưởng" ở chi tiết đơn khách; hồ sơ khách admin hiện status/nguồn + **fix bug hiển thị voucher % (`'PERCENTAGE'`→`'PERCENT'`)**; ví khách nhãn "⏳ Chờ cửa hàng duyệt"; trang `/portal/voucher-status` (bảo vệ portal layout); QR (ExportQRButton) trỏ trang status thay `campaign=qr_claim`; UI đăng nhập SĐT+OTP ở `/login`.
+
+**Verify:** 20 unit test (state machine/threshold/approve/status) + 4 kịch bản E2E thật với DB local (AUTO→ACTIVE, MANUAL→WAITING_APPROVAL→ACTIVE, COD<100k→REJECTED, đơn đổi→REJECTED) + FE/BE tsc sạch + review cuối opus.
+
+**Còn lại (minor, ngoài phạm vi):** E2 chưa auto edit-push VTP cho đơn đã đẩy (chỉ ghép note + prefill dialog); `handleUnlockVoucher` cũ (claim-QR) còn sót nhưng không dùng cho order-voucher. Deploy prod: migrate additive an toàn, nhớ `migrate status` (còn 3 migration 2026-07-06 nếu prod chưa chạy).
+
+---
+
 ## 2026-07-07 — Bỏ UploadThing, chuyển toàn bộ upload ảnh sang R2
 
 > **Nguyên nhân:** upload ảnh sản phẩm lỗi `Missing token — UPLOADTHING_TOKEN` (env chưa/không còn cấu hình token UploadThing v7). Chọn hướng tự chủ: dùng chung hệ upload R2 (đã có sẵn cho CCM), bỏ phụ thuộc SaaS ngoài.

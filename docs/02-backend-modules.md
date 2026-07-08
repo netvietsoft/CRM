@@ -208,17 +208,25 @@ Tạo đơn, vòng đời trạng thái, voucher, hoa hồng, VietQR, sync khác
 | DELETE | /orders/:id | Xoá cứng | ADMIN/MOD |
 | PATCH | /orders/:id/note | Sửa ghi chú | + ORDERS_MANAGE |
 | PATCH | /orders/:id/assign-staff | Gán NV bán/CSKH | + ORDERS_MANAGE |
-| PATCH | /orders/:id/admin-update | Sửa shippingFee/discount/surcharge/points/tags... | + ORDERS_MANAGE |
+| PATCH | /orders/:id/admin-update | Sửa shippingFee/discount/surcharge/points/tags/**isExchange**... | + ORDERS_MANAGE |
 
 **Luồng tạo đơn (`orders.service.ts`)** — đọc kỹ trước khi sửa:
 1. Validate: giỏ không rỗng, SP active.
 2. **Mọi item phải cùng storeId** (hoặc null), trộn store → throw.
 3. Tính rank KH từ totalSpent → áp discount theo rank lên giá item.
 4. Biến thể: nếu có size/color → tìm variant, dùng variant.price, trừ variant.stock + stockQuantity.
-5. **Voucher**: hiện tối đa 1 voucher/đơn. Validate active/trong hạn/còn lượt/khớp điều kiện
-   (source/channel/segment/rank/dịp/tỉnh/payment/category/min-count). Voucher QR-ORDER kiểm tra
-   trạng thái đơn nguồn (ACTIVE nếu giao ≥7 ngày, PENDING nếu chưa giao, LOCKED nếu huỷ/hoàn).
-   Hỗ trợ STACK + PERCENT/FIXED, cap maxDiscount, cap 25% subtotal. Đánh dấu đã dùng + tăng usedCount.
+5. **Voucher (áp vào đơn)**: hiện tối đa 1 voucher/đơn. Validate active/trong hạn/còn lượt/khớp điều kiện
+   (source/channel/segment/rank/dịp/tỉnh/payment/category/min-count). Hỗ trợ STACK + PERCENT/FIXED,
+   cap maxDiscount, cap 25% subtotal. Đánh dấu đã dùng + tăng usedCount. (Phần này KHÔNG đổi.)
+
+**Voucher THƯỞNG theo đơn — vòng đời (2026-07-08, module vouchers):** NV tạo qua form dưới đơn
+(`POST /vouchers/create-order-voucher` +`approvalMode` AUTO|MANUAL) → tạo Voucher(QR-ORDER-{code}) +
+UserVoucher **PENDING** vào ví khách. Kích hoạt: `syncOrderVoucherActivation` gọi ở `updateStatus` +
+webhook VTP + cron reconcile — khi `status ∈ {DELIVERED,PAYMENT_COLLECTED,COMPLETED}` + `totalAmount ≥
+codThreshold` (SystemConfig `order_voucher_config`, 100k) + `!isExchange` → AUTO=ACTIVE / MANUAL=
+WAITING_APPROVAL (`POST /vouchers/order-voucher/:userVoucherId/approve`). Hủy/hoàn/return/đổi/COD-thiếu →
+REJECTED. QR = `GET /vouchers/order-voucher-status/:orderCode` (scoped user) hiển thị ở `/portal/voucher-status`.
+Định danh khách: `POST /auth/send-login-otp` + `/auth/otp-login` (chỉ CUSTOMER).
 6. **Điểm hoa hồng**: useCommissionPoints → đổi 1:1 thành giảm giá, trừ commissionBalance.
 7. Tổng = subtotal - discount + shippingFee (min 0).
 8. **VietQR**: tạo hạn 30 phút + ảnh QR (vietqr.io), lưu expiresAt/transactionCode vào metadata.

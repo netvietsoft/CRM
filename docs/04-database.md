@@ -36,7 +36,8 @@ Provider client: prisma-client-js. **Đây là NGUỒN SỰ THẬT** — nếu t
 
 ## 4. Thương mại
 - **Order** — userId, orderCode(unique), status(OrderStatus), paymentMethod, paymentStatus,
-  subtotal, discountAmount, shippingFee, totalAmount, paidAt, storeId, assigningSellerId, assigningCareId.
+  subtotal, discountAmount, shippingFee, totalAmount, paidAt, storeId, assigningSellerId, assigningCareId,
+  **isExchange** (cờ "đơn đổi" — chặn kích hoạt voucher + ghép marker `[ĐƠN ĐỔI]` vào note đẩy VTP, 2026-07-08).
   Quan hệ: user, store, assigningSeller/assigningCare(User), items, appliedVouchers, commissions.
 - **OrderItem** — orderId, productId, quantity, price, isGift, size, color (size/color lưu chuỗi snapshot).
 - **OrderVoucher** — orderId, userVoucherId, discountApplied (voucher đã áp lên đơn).
@@ -46,8 +47,10 @@ Provider client: prisma-client-js. **Đây là NGUỒN SỰ THẬT** — nếu t
 
 ## 5. Voucher & khuyến mãi
 - **Voucher** — code(unique), name, type(VoucherType), value, campaignCategory(CampaignCategory),
-  minOrderValue, maxDiscount, totalUsageLimit, perCustomerLimit, usedCount, validFrom, validTo, isStackable, storeId.
-- **UserVoucher** — userId, voucherId, isUsed, usedAt, expiresAt, status, unlockAt (voucher của 1 user).
+  minOrderValue, maxDiscount, totalUsageLimit, perCustomerLimit, usedCount, validFrom, validTo, isStackable, storeId,
+  **approvalMode**(ApprovalMode AUTO|MANUAL — voucher đơn: AUTO tự kích hoạt / MANUAL chờ admin duyệt, 2026-07-08).
+- **UserVoucher** — userId, voucherId, isUsed, usedAt, expiresAt, status, unlockAt, **approvedAt, approvedById** (voucher của 1 user).
+  status (order-voucher): `PENDING | WAITING_APPROVAL | ACTIVE | REJECTED` (2026-07-08; còn giá trị legacy claim-QR như EXPIRED).
 - **PromotionRule** — name, type(PromotionType), minOrderValue, rewardVoucherId, giftProductId, giftQuantity.
 
 ## 6. Gamification
@@ -74,7 +77,7 @@ MessageAuditLog, MessageLog, MessageAutomationExecution.
 
 ## 10. Hệ thống
 - **SystemConfig** — key(unique), value(Json). Kho cấu hình động (vd lockDurationDays, referral_rewards,
-  qr_voucher_default, ZALO_ACCESS_TOKEN...).
+  qr_voucher_default, **order_voucher_config** `{ codActivationThreshold }` mặc định 100000, ZALO_ACCESS_TOKEN...).
 
 ---
 
@@ -90,6 +93,7 @@ MessageAuditLog, MessageLog, MessageAutomationExecution.
 **PaymentStatus**: UNPAID, PAID, PARTIALLY_PAID, REFUNDED
 
 **VoucherType**: PERCENT, FIXED_AMOUNT, FREESHIP, STACK
+**ApprovalMode**: AUTO, MANUAL (chế độ duyệt voucher đơn, 2026-07-08)
 **CampaignCategory**: WELCOME, VIP, BUNDLE, FREESHIP, GAMIFICATION, REFERRAL, BIRTHDAY
 **PromotionType**: CASHBACK_VOUCHER_SPLIT, GIFT_WITH_PURCHASE
 

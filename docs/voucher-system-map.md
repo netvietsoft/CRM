@@ -155,3 +155,16 @@ giá item → (−giảm theo rank khách, cấp item) → Σ = subtotal
 ---
 
 **File gốc để tra:** schema `prisma/schema.prisma` (Voucher 390, UserVoucher 431, OrderVoucher 355, enum 1091); `vouchers/vouchers.service.ts` + `voucher.processor.ts` + controller; `orders/orders.service.ts` (create 924-1288, release 424-460); `spin/spin.service.ts`; `frontend/src/app/admin/{vouchers,order-vouchers,referral-vouchers,qr-config}/`; `frontend/src/app/portal/{checkout,vouchers,orders/[id]}/`; tích hợp: `portal/orders/[id]/OrderDetailClient.tsx` (404-443), `admin/customers/[id]/page.tsx` (351-375, bug 360).
+
+---
+
+## 9. CẬP NHẬT 2026-07-08 — Order-voucher lifecycle (đã triển khai, trên `main`)
+
+Tài liệu mục 1-8 mô tả hiện trạng TRƯỚC. Feat "Voucher theo đơn hàng" (spec/plan `docs/superpowers/{specs,plans}/2026-07-08-order-voucher-lifecycle*`) đã đổi vòng đời voucher-đơn:
+
+**Thêm:** `Voucher.approvalMode` (enum `ApprovalMode` AUTO|MANUAL); `UserVoucher.approvedAt/approvedById` + status chuẩn hoá `PENDING|WAITING_APPROVAL|ACTIVE|REJECTED`; `Order.isExchange`; `SystemConfig.order_voucher_config` (codActivationThreshold=100k). Migration `20260708100000_order_voucher_lifecycle`.
+
+**Vòng đời mới (thay §3 cho order-voucher):** NV tạo voucher (form dưới đơn) → UserVoucher **PENDING** ngay. `syncOrderVoucherActivation` (gọi ở `updateStatus` + webhook VTP + cron reconcile) → giao thành công {DELIVERED,PAYMENT_COLLECTED,COMPLETED} + `totalAmount≥ngưỡng` + `!isExchange` ⇒ AUTO=ACTIVE / MANUAL=WAITING_APPROVAL (admin Duyệt→ACTIVE); hủy/hoàn/return/đổi/COD-thiếu ⇒ REJECTED. QR = trang xem trạng thái `/portal/voucher-status` (bảo vệ đăng nhập); định danh khách qua SĐT+OTP (`/auth/otp-login`, chỉ CUSTOMER).
+
+**Gap §8 đã xử lý:** #1 bug `'PERCENTAGE'`→`'PERCENT'` **ĐÃ FIX** (Task 10). #7 unlock PENDING không phụ thuộc chỉ cron nữa — đã hook đồng bộ ở 3 điểm ghi status (Redis-independent) + set `unlockAt` cho lưới cron. #4 trang chi tiết đơn khách nay có block "🎁 Voucher thưởng" + trạng thái. #2/#3 (mã voucher trên đơn) một phần: order-voucher-status trả `voucher.code`.
+**Gap còn lại:** #5 stacking (vẫn 1 voucher/đơn), #6 đơn PAID hủy không hoàn, E2 chưa auto edit-push VTP (chỉ ghép note), `handleUnlockVoucher` cũ còn sót (không dùng cho order-voucher).
