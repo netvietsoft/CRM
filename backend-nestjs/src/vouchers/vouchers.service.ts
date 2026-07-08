@@ -802,6 +802,34 @@ export class VouchersService implements OnModuleInit {
     return { exists: !!voucher, voucher: voucher || null, userVoucher };
   }
 
+  async getOrderVoucherStatus(orderCode: string, userId: string) {
+    const empty = {
+      exists: false,
+      status: null as string | null,
+      sourceOrderCode: null as string | null,
+      unlockAt: null as Date | null,
+      expiresAt: null as Date | null,
+      voucher: null as
+        | { code: string; name: string; type: string; value: number; maxDiscount: number | null }
+        | null,
+    };
+    const uv = await this.prisma.userVoucher.findUnique({
+      where: { sourceOrderCode: orderCode },
+      include: {
+        voucher: { select: { code: true, name: true, type: true, value: true, maxDiscount: true } },
+      },
+    });
+    if (!uv || uv.userId !== userId) return empty;
+    return {
+      exists: true,
+      status: uv.status,
+      sourceOrderCode: uv.sourceOrderCode,
+      unlockAt: uv.unlockAt,
+      expiresAt: uv.expiresAt,
+      voucher: uv.voucher,
+    };
+  }
+
   /**
    * Get all order-specific vouchers for admin management
    */

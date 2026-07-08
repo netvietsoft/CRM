@@ -167,3 +167,35 @@ describe('approveOrderVoucher', () => {
     await expect(svc.approveOrderVoucher('uv1', 'admin1')).rejects.toThrow();
   });
 });
+
+describe('getOrderVoucherStatus', () => {
+  function makeSvc(uv: any) {
+    const prisma: any = { userVoucher: { findUnique: jest.fn(async () => uv) } };
+    const svc = new VouchersService(prisma, {} as any, {} as any, { handleVoucherCreated: jest.fn() } as any);
+    return svc;
+  }
+
+  it('returns status for the owner', async () => {
+    const svc = makeSvc({
+      userId: 'u1', status: 'PENDING', sourceOrderCode: 'ORD1', unlockAt: null, expiresAt: null,
+      voucher: { code: 'QR-ORDER-ORD1', name: 'V', type: 'PERCENT', value: 10, maxDiscount: null },
+    });
+    const res = await svc.getOrderVoucherStatus('ORD1', 'u1');
+    expect(res.exists).toBe(true);
+    expect(res.status).toBe('PENDING');
+    expect(res.voucher?.code).toBe('QR-ORDER-ORD1');
+  });
+
+  it('hides voucher from non-owner', async () => {
+    const svc = makeSvc({ userId: 'other', status: 'ACTIVE', voucher: { code: 'QR-ORDER-ORD1' } });
+    const res = await svc.getOrderVoucherStatus('ORD1', 'u1');
+    expect(res.exists).toBe(false);
+    expect(res.voucher).toBeNull();
+  });
+
+  it('exists=false when none', async () => {
+    const svc = makeSvc(null);
+    const res = await svc.getOrderVoucherStatus('ORD1', 'u1');
+    expect(res.exists).toBe(false);
+  });
+});

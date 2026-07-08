@@ -112,6 +112,16 @@ export class VouchersController {
     return this.vouchersService.getOrderVoucher(orderCode, user, effectiveStoreId);
   }
 
+  @Get('order-voucher-status/:orderCode')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Khách xem trạng thái voucher riêng của đơn (theo phiên đăng nhập)' })
+  async getOrderVoucherStatus(
+    @Param('orderCode') orderCode: string,
+    @GetUser('id') userId: string,
+  ) {
+    return this.vouchersService.getOrderVoucherStatus(orderCode, userId);
+  }
+
   // --- :id routes MUST be last among GETs ---
   @Get(':id')
   @Public()
