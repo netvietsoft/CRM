@@ -62,13 +62,14 @@ export default async function PortalVouchersPage() {
   // Separate PENDING vouchers from available ones
   const pendingVouchers = userVouchers.filter(v => {
     if (v.isUsed) return false;
-    if (v.status === 'PENDING') return true;
+    if (v.status === 'PENDING' || v.status === 'WAITING_APPROVAL') return true;
     return false;
   });
 
   const available = userVouchers.filter(v => {
     if (v.isUsed) return false;
     if (v.status === 'PENDING') return false; // Exclude PENDING from available
+    if (v.status === 'WAITING_APPROVAL') return false; // Exclude WAITING_APPROVAL from available
     if (v.status === 'REJECTED') return false;
     if (!v.expiresAt) return true;
     return new Date(v.expiresAt) > now;
@@ -167,7 +168,11 @@ export default async function PortalVouchersPage() {
           <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-center gap-2 text-sm">
               <span className="text-amber-500">🔒</span>
-              {days > 0 ? (
+              {uv.status === 'WAITING_APPROVAL' ? (
+                <span className="text-amber-700 font-medium">
+                  ⏳ Chờ cửa hàng duyệt
+                </span>
+              ) : days > 0 ? (
                 <span className="text-amber-700 font-medium">
                   Khả dụng sau <strong>{days} ngày</strong>
                   <span className="text-gray-500 font-normal"> ({formatVnDate(uv.unlockAt ?? null)})</span>
