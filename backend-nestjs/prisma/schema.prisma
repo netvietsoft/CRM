@@ -316,6 +316,7 @@ model Order {
   discountAmount              Float                        @default(0) @map("discount_amount")
   shippingFee                 Float                        @default(0) @map("shipping_fee")
   shippingDiscount            Float                        @default(0) @map("shipping_discount")
+  isExchange                  Boolean                      @default(false) @map("is_exchange")
   totalAmount                 Float                        @map("total_amount")
   status                      OrderStatus                  @default(PENDING)
   paymentMethod               PaymentMethod?               @map("payment_method")
@@ -416,6 +417,7 @@ model Voucher {
   stackTiers         Json?            @map("stack_tiers")
   isActive           Boolean          @default(true) @map("is_active")
   status             String           @default("AUTO")
+  approvalMode       ApprovalMode     @default(AUTO) @map("approval_mode")
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
   promotionRules     PromotionRule[]  @relation("CashbackVoucher")
@@ -438,6 +440,8 @@ model UserVoucher {
   sourceOrderCode String?        @unique @map("source_order_code")
   unlockAt        DateTime?      @map("unlock_at")
   status          String         @default("ACTIVE")
+  approvedAt      DateTime?      @map("approved_at")
+  approvedById    String?        @map("approved_by_id")
   createdAt       DateTime       @default(now())
   appliedOrders   OrderVoucher[]
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1086,6 +1090,11 @@ enum Rank {
   GOLD
   DIAMOND
   PLATINUM
+}
+
+enum ApprovalMode {
+  AUTO
+  MANUAL
 }
 
 enum VoucherType {
