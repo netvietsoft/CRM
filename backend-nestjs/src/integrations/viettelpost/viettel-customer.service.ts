@@ -339,10 +339,21 @@ export class ViettelCustomerService {
     };
   }
 
-  /** Chi tiết 1 khách/đơn theo mã vận đơn. */
+  /** Chi tiết 1 khách/đơn theo mã vận đơn. Đơn chưa có detail (import từ portal/webhook cũ) → tự bồi từ VTP lần xem đầu. */
   async getOne(trackingCode: string) {
-    const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } });
+    let row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } });
     if (!row) throw new NotFoundException('Không tìm thấy đơn ViettelPost');
+    if (!row.detailEnrichedAt && !trackingCode.startsWith('DRAFT-')) {
+      try {
+        const json = await this.authService.get(`order/detail-v2?o=${encodeURIComponent(trackingCode)}`);
+        if (json?.status === 200 && json?.data) {
+          await this.enrichFromDetail(trackingCode, json.data);
+          row = (await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } })) ?? row;
+        }
+      } catch (e: any) {
+        this.logger.warn(`[VTP] lazy-enrich ${trackingCode} lỗi (trả dữ liệu hiện có): ${e?.message || e}`);
+      }
+    }
     return row;
   }
 
