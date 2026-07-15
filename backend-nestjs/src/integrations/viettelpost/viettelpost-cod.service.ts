@@ -110,11 +110,6 @@ export class ViettelpostCodService {
     const token = await this.getWebToken();
     if (!token) return { ok: false, total: 0, updated: 0, error: 'NO_TOKEN' };
 
-    const to = new Date();
-    const from = new Date(to.getTime() - windowDays * 24 * 60 * 60 * 1000);
-    const fromS = this.fmtDate(from);
-    const toS = this.fmtDate(to);
-
     // trackingCode CRM cần khớp (bỏ nháp).
     const ours = await this.prisma.viettelCustomer.findMany({
       where: { trackingCode: { not: { startsWith: 'DRAFT-' } } },
@@ -123,43 +118,54 @@ export class ViettelpostCodService {
     const wanted = new Set(ours.map((r) => r.trackingCode));
     if (wanted.size === 0) return { ok: true, total: 0, updated: 0 };
 
+    const DAY_MS = 24 * 60 * 60 * 1000;
     const pageSize = 50;
-    let pageIndex = 1;
     let total = 0;
     let updated = 0;
     const now = new Date();
 
-    while (pageIndex <= 40) {
-      const json = await this.fetchPage(token, pageIndex, pageSize, fromS, toS);
-      if (!json) break;
-      if (json.error && (json.messageKey === 'EXPIRED_TOKEN' || /hết hạn|đăng nhập/i.test(json.message || ''))) {
-        this.logger.warn('[VTP-COD] Token WEB hết hạn — cần dán lại token mới.');
-        return { ok: false, total, updated, tokenExpired: true, error: 'EXPIRED_TOKEN' };
-      }
-      const inner = json?.data?.data;
-      const list: any[] = Array.isArray(inner?.LIST_ORDER) ? inner.LIST_ORDER : [];
-      total = Number(inner?.TOTAL) || total;
-      if (list.length === 0) break;
+    // VTP chỉ cho lọc tối đa 31 ngày/lần ("Chỉ cho phép lọc trong 31 ngày") → cắt thành khúc 30 ngày.
+    for (let offset = 0; offset < windowDays; offset += 30) {
+      const to = new Date(now.getTime() - offset * DAY_MS);
+      const from = new Date(now.getTime() - Math.min(offset + 30, windowDays) * DAY_MS);
+      let pageIndex = 1;
 
-      for (const o of list) {
-        const code = o?.ORDER_NUMBER;
-        if (!code || !wanted.has(code)) continue;
-        await this.prisma.viettelCustomer.updateMany({
-          where: { trackingCode: code },
-          data: {
-            codPayStatus: o.COD_STATUS || null,
-            codPayStatusName: o.COD_STATUS_NAME || null,
-            codPaySyncedAt: now,
-          },
-        });
-        updated++;
-      }
+      while (pageIndex <= 40) {
+        const json = await this.fetchPage(token, pageIndex, pageSize, this.fmtDate(from), this.fmtDate(to));
+        if (!json) break;
+        if (json.error) {
+          if (json.messageKey === 'EXPIRED_TOKEN' || /hết hạn|đăng nhập/i.test(json.message || '')) {
+            this.logger.warn('[VTP-COD] Token WEB hết hạn — cần dán lại token mới.');
+            return { ok: false, total, updated, tokenExpired: true, error: 'EXPIRED_TOKEN' };
+          }
+          this.logger.warn(`[VTP-COD] VTP trả lỗi (${this.fmtDate(from)}→${this.fmtDate(to)} p${pageIndex}): ${json.message || JSON.stringify(json).slice(0, 200)}`);
+          break;
+        }
+        const inner = json?.data?.data;
+        const list: any[] = Array.isArray(inner?.LIST_ORDER) ? inner.LIST_ORDER : [];
+        if (list.length === 0) break;
+        total += list.length;
 
-      if (pageIndex * pageSize >= (Number(inner?.TOTAL) || 0)) break;
-      pageIndex++;
+        for (const o of list) {
+          const code = o?.ORDER_NUMBER;
+          if (!code || !wanted.has(code)) continue;
+          await this.prisma.viettelCustomer.updateMany({
+            where: { trackingCode: code },
+            data: {
+              codPayStatus: o.COD_STATUS || null,
+              codPayStatusName: o.COD_STATUS_NAME || null,
+              codPaySyncedAt: now,
+            },
+          });
+          updated++;
+        }
+
+        if (pageIndex * pageSize >= (Number(inner?.TOTAL) || 0)) break;
+        pageIndex++;
+      }
     }
 
-    this.logger.log(`[VTP-COD] Sync COD_STATUS: ${updated}/${wanted.size} đơn cập nhật (VTP total ${total}).`);
+    this.logger.log(`[VTP-COD] Sync COD_STATUS: ${updated}/${wanted.size} đơn cập nhật (đã quét ${total} đơn VTP).`);
     return { ok: true, total, updated };
   }
 
