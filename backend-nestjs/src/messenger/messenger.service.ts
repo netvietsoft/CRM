@@ -453,7 +453,10 @@ export class MessengerService {
     if (!page.accessToken) throw new BadRequestException('Page thiếu access token');
     // Chạy NỀN: page nhiều hội thoại kéo >2 phút, Cloudflare cắt HTTP ~100s (524). Kết quả xem log + lastSyncedAt.
     void this.runBackfill(page, externalId)
-      .then((r) => this.logger.log(`[Backfill] ${externalId}: ${r.conversations} hội thoại, ${r.messages} tin mới.`))
+      .then((r) => {
+        this.logger.log(`[Backfill] ${externalId}: ${r.conversations} hội thoại, ${r.messages} tin mới.`);
+        this.gateway.emitMessengerBackfill({ externalId, conversations: r.conversations, messages: r.messages });
+      })
       .catch((e) => this.logger.error(`[Backfill] ${externalId} lỗi: ${(e as Error).message}`));
     return { started: true };
   }

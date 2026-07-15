@@ -72,6 +72,11 @@ export default function AdminNotifications() {
     const newSocket = io(`${baseUrl}/admin`, {
       transports: ['polling'],
       reconnection: true,
+      withCredentials: true,
+      // nginx prod không forward Cookie tới /socket.io → xác thực bằng vé 60s (gọi lại mỗi lần reconnect).
+      auth: (cb: (data: object) => void) => {
+        apiClientClient.get<{ token: string }>('/auth/socket-ticket').then((t) => cb({ token: t.token })).catch(() => cb({}));
+      },
     });
 
     newSocket.on('connect', () => {

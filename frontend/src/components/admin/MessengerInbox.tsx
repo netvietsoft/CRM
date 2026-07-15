@@ -71,7 +71,15 @@ export default function MessengerInbox() {
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3901/api';
     const baseUrl = apiUrl.replace(/\/api\/?$/, '');
-    const socket: Socket = io(`${baseUrl}/admin`, { transports: ['polling'], reconnection: true, withCredentials: true });
+    const socket: Socket = io(`${baseUrl}/admin`, {
+      transports: ['polling'],
+      reconnection: true,
+      withCredentials: true,
+      // nginx prod không forward Cookie tới /socket.io → xác thực bằng vé 60s (gọi lại mỗi lần reconnect).
+      auth: (cb: (data: object) => void) => {
+        apiClientClient.get<{ token: string }>('/auth/socket-ticket').then((t) => cb({ token: t.token })).catch(() => cb({}));
+      },
+    });
     socket.on('messenger:message', (p: { conversationId: string }) => {
       void loadConversations();
       if (p.conversationId === activeIdRef.current) void apiClientClient.get<Message[]>(`/messenger/conversations/${p.conversationId}/messages`).then(setMessages).catch(() => {});

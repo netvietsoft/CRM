@@ -374,6 +374,12 @@ export class AuthService {
     };
   }
 
+  /** Vé JWT 60 giây cho handshake socket.io — nginx không forward Cookie tới /socket.io nên FE gửi vé qua auth payload. */
+  async issueSocketTicket(userId: string, role: string) {
+    const token = await this.jwtService.signAsync({ userId, role }, { expiresIn: '60s' });
+    return { token };
+  }
+
   private async generateTokens(userId: string, role: string) {
     const payload = { userId, role };
 

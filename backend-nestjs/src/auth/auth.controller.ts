@@ -30,6 +30,13 @@ export class AuthController {
     private pancakeService: PancakeService,
   ) {}
 
+  @Get('socket-ticket')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Vé 60s để FE xác thực socket.io (nginx không forward Cookie tới /socket.io)' })
+  socketTicket(@GetUser() user: { id: string; role: string }) {
+    return this.authService.issueSocketTicket(user.id, user.role);
+  }
+
   @Post('register')
   @ApiOperation({ summary: 'Register new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })

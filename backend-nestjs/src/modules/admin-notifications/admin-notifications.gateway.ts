@@ -98,4 +98,9 @@ export class AdminNotificationsGateway implements OnGatewayConnection, OnGateway
   emitMessengerMessage(payload: { conversationId: string; storeId: string | null; direction: string }) {
     this.server.emit('messenger:message', payload);
   }
+
+  /** Backfill nền chạy xong → FE inbox tự reload + báo số liệu (khỏi F5). */
+  emitMessengerBackfill(payload: { externalId: string; conversations: number; messages: number }) {
+    this.server.emit('messenger:backfill', payload);
+  }
 }

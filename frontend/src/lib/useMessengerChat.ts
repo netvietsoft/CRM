@@ -71,7 +71,16 @@ export function useMessengerChat() {
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3901/api';
     const baseUrl = apiUrl.replace(/\/api\/?$/, '');
-    const socket: Socket = io(`${baseUrl}/admin`, { transports: ['polling'], reconnection: true, withCredentials: true });
+    const socket: Socket = io(`${baseUrl}/admin`, {
+      transports: ['polling'],
+      reconnection: true,
+      withCredentials: true,
+      // nginx prod không forward Cookie tới /socket.io → xác thực bằng vé 60s xin qua API.
+      // auth dạng hàm = socket.io gọi lại MỖI lần reconnect → vé luôn mới (kiêm luôn refresh cookie hết hạn).
+      auth: (cb) => {
+        apiClientClient.get<{ token: string }>('/auth/socket-ticket').then((t) => cb({ token: t.token })).catch(() => cb({}));
+      },
+    });
     socket.on('messenger:message', (p: { conversationId: string; direction?: string }) => {
       // Phát âm thông báo khi có TIN ĐẾN (bỏ qua tin mình gửi đi). Bật/tắt ở Cài đặt chung.
       const pr = getPrefs();
@@ -81,9 +90,14 @@ export function useMessengerChat() {
         void apiClientClient.get<Message[]>(`/messenger/conversations/${p.conversationId}/messages`).then(setMessages).catch(() => {});
       }
     });
+    socket.on('messenger:backfill', (p: { conversations: number; messages: number }) => {
+      flash(`✅ Kéo xong lịch sử: ${p.conversations} hội thoại, ${p.messages} tin mới.`, 10000);
+      void loadPages();
+      void loadConversations();
+    });
     socket.on('connect_error', () => {});
     return () => { socket.disconnect(); };
-  }, [loadConversations]);
+  }, [loadConversations, loadPages, flash]);
 
   // Trả về true nếu gửi thật thành công; false nếu lỗi (để UI hiện preview local khi cần).
   const reply = useCallback(async (body: { text?: string; attachmentUrl?: string }): Promise<boolean> => {
