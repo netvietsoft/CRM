@@ -92,13 +92,17 @@ const DirIcon = ({ dir }: { dir: string | null }) =>
 const ROW_BASE = 'w-full text-left px-3 py-3 flex gap-3 cursor-pointer transition-colors border-l-[3px]';
 const rowCls = (active: boolean) => `${ROW_BASE} ${active ? 'bg-[#e9efff] border-l-[#3c55e6]' : 'border-l-transparent hover:bg-[#f3f6ff]'}`;
 
-// Chuẩn hoá attachment (Meta trả mảng {type,payload:{url}}) → ảnh / tệp để render.
+// Chuẩn hoá attachment → ảnh / tệp để render. Hai shape:
+// - webhook realtime: [{type,payload:{url}}]
+// - Graph conversations (backfill): {data:[{mime_type,image_data:{url,preview_url},file_url,video_data:{url}}]}
 function mediaOf(att: unknown): { images: string[]; files: string[] } {
   const images: string[] = []; const files: string[] = [];
   const raw = Array.isArray(att) ? att : (att && typeof att === 'object' && Array.isArray((att as { data?: unknown[] }).data) ? (att as { data: unknown[] }).data : []);
-  for (const a of raw as Array<{ type?: string; url?: string; payload?: { url?: string } }>) {
-    const url = a?.payload?.url || a?.url; if (!url) continue;
-    if (a?.type === 'image' || /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url)) images.push(url); else files.push(url);
+  for (const a of raw as Array<{ type?: string; url?: string; mime_type?: string; payload?: { url?: string }; image_data?: { url?: string; preview_url?: string }; video_data?: { url?: string }; file_url?: string }>) {
+    const url = a?.payload?.url || a?.image_data?.url || a?.image_data?.preview_url || a?.video_data?.url || a?.file_url || a?.url;
+    if (!url) continue;
+    const isImg = a?.type === 'image' || !!a?.image_data || (a?.mime_type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url);
+    if (isImg) images.push(url); else files.push(url);
   }
   return { images, files };
 }

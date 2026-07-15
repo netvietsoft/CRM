@@ -84,7 +84,7 @@ export class MessengerService {
       },
     });
 
-    if (!contact.name) await this.enrichContact(page, contact.id, psid);
+    if (!contact.name || !contact.avatarUrl) await this.enrichContact(page, contact.id, psid);
     // Trích SĐT khách tự cung cấp trong tin đến (nếu contact chưa có).
     if (direction === 'IN' && text && !(contact as { phone?: string }).phone) {
       const phone = extractPhone(text);
@@ -293,12 +293,14 @@ export class MessengerService {
 
   async listMessages(effectiveStoreId: string | null, convId: string) {
     await this.getScopedConversation(effectiveStoreId, convId);
-    return this.prisma.msgMessage.findMany({
+    // Cửa sổ 500 tin MỚI NHẤT (desc rồi đảo lại asc) — asc+take lấy nhầm 500 tin cũ nhất, hội thoại dài mất tin mới.
+    const rows = await this.prisma.msgMessage.findMany({
       where: { conversationId: convId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       take: 500,
       select: { id: true, direction: true, text: true, attachments: true, status: true, sentByUserId: true, createdAt: true },
     });
+    return rows.reverse();
   }
 
   async markRead(effectiveStoreId: string | null, convId: string) {
@@ -442,6 +444,8 @@ export class MessengerService {
         create: { pageId: page.id, psid: String(other.id), name: other.name ?? null },
         update: { name: other.name ?? undefined },
       });
+      // Backfill có sẵn tên từ participants nên enrich theo avatar (ingest chỉ enrich khi thiếu tên → avatar mãi trống).
+      if (!contact.avatarUrl) await this.enrichContact(page, contact.id, String(other.id));
       const conv = await this.prisma.msgConversation.upsert({
         where: { pageId_contactId: { pageId: page.id, contactId: contact.id } },
         create: { pageId: page.id, contactId: contact.id },
@@ -452,7 +456,7 @@ export class MessengerService {
         if (!msg?.id || (await this.prisma.msgMessage.findUnique({ where: { mid: msg.id } }))) continue;
         const direction = String(msg.from?.id) === externalId ? 'OUT' : 'IN';
         await this.prisma.msgMessage.create({
-          data: { conversationId: conv.id, mid: msg.id, direction, text: msg.message ?? null, status: 'DELIVERED', createdAt: msg.created_time ? new Date(msg.created_time) : undefined },
+          data: { conversationId: conv.id, mid: msg.id, direction, text: msg.message ?? null, attachments: msg.attachments ?? undefined, status: 'DELIVERED', createdAt: msg.created_time ? new Date(msg.created_time) : undefined },
         });
         messages++;
       }

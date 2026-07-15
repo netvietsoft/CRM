@@ -74,7 +74,7 @@ export class MetaMessengerClient {
   }
 
   async fetchMessages(pageToken: string, conversationId: string): Promise<any[]> {
-    return this.getEdge(`${conversationId}/messages?fields=id,message,from,to,created_time&limit=50`, pageToken);
+    return this.getEdge(`${conversationId}/messages?fields=id,message,from,to,created_time,attachments{id,mime_type,name,file_url,image_data,video_data}&limit=50`, pageToken);
   }
 
   /** Bài viết đã đăng của page (cần quyền pages_read_engagement). */
