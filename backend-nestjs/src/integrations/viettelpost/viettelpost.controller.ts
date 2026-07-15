@@ -6,6 +6,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { ViettelpostSyncService } from './viettelpost-sync.service';
 import { ViettelCustomerService } from './viettel-customer.service';
 import { ViettelpostAuthService } from './viettelpost-auth.service';
+import { ViettelpostCodService } from './viettelpost-cod.service';
 
 @ApiTags('ViettelPost')
 @Controller('viettelpost')
@@ -16,7 +17,30 @@ export class ViettelpostController {
     private readonly viettelpostSyncService: ViettelpostSyncService,
     private readonly viettelCustomerService: ViettelCustomerService,
     private readonly authService: ViettelpostAuthService,
+    private readonly codService: ViettelpostCodService,
   ) {}
+
+  // ===== Đối soát COD (token WEB portal viettelpost.vn — admin dán thủ công) =====
+  @Get('cod-token')
+  @Roles('ADMIN', 'STAFF')
+  @ApiOperation({ summary: 'Trạng thái token WEB đối soát COD (hasToken/expiresAt/expired)' })
+  codTokenStatus() {
+    return this.codService.tokenStatus();
+  }
+
+  @Post('cod-token')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Lưu token WEB (dán từ DevTools portal viettelpost.vn)' })
+  setCodToken(@Body() body: { token?: string }) {
+    return this.codService.setWebToken(body?.token || '');
+  }
+
+  @Post('cod-sync')
+  @Roles('ADMIN', 'STAFF')
+  @ApiOperation({ summary: 'Đồng bộ trạng thái đối soát COD ngay' })
+  codSync() {
+    return this.codService.syncCodStatuses();
+  }
 
   // Cấu hình ĐVVC (read-only) cho trang Cài đặt CCM — KHÔNG lộ username/password/token.
   @Get('config')
