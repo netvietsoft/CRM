@@ -453,7 +453,15 @@ export class MessengerService {
       });
       const msgs = await this.client.fetchMessages(page.accessToken, c.id);
       for (const msg of msgs) {
-        if (!msg?.id || (await this.prisma.msgMessage.findUnique({ where: { mid: msg.id } }))) continue;
+        if (!msg?.id) continue;
+        const existing = await this.prisma.msgMessage.findUnique({ where: { mid: msg.id }, select: { id: true, attachments: true } });
+        if (existing) {
+          // Tin cũ lưu trước khi backfill biết xin attachments → bổ sung ảnh khi re-backfill.
+          if (!existing.attachments && msg.attachments) {
+            await this.prisma.msgMessage.update({ where: { id: existing.id }, data: { attachments: msg.attachments } });
+          }
+          continue;
+        }
         const direction = String(msg.from?.id) === externalId ? 'OUT' : 'IN';
         await this.prisma.msgMessage.create({
           data: { conversationId: conv.id, mid: msg.id, direction, text: msg.message ?? null, attachments: msg.attachments ?? undefined, status: 'DELIVERED', createdAt: msg.created_time ? new Date(msg.created_time) : undefined },
