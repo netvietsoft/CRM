@@ -30,10 +30,17 @@ export class FacebookService {
       client_id: process.env.META_APP_ID || '',
       redirect_uri: process.env.META_OAUTH_REDIRECT_URI || '',
       state,
-      scope: SCOPES,
       response_type: 'code',
-      auth_type: 'rerequest',
     });
+    // App kiểu mới (use-case/Business) từ chối scope= (dialog tự đóng về /dialog/close):
+    // bắt buộc thêm sản phẩm "Facebook Login for Business" + truyền config_id.
+    const configId = process.env.META_LOGIN_CONFIG_ID || '';
+    if (configId) {
+      qs.set('config_id', configId);
+    } else {
+      qs.set('scope', SCOPES);
+      qs.set('auth_type', 'rerequest');
+    }
     return `https://www.facebook.com/${GRAPH_DIALOG}/dialog/oauth?${qs}`;
   }
 
