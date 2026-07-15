@@ -1,6 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
+
+const numOrNull = (v: any): number | null => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 
 /**
  * Đồng bộ TRẠNG THÁI THANH TOÁN COD (đối soát) của ViettelPost vào bảng `viettel_customers`.
@@ -167,6 +172,100 @@ export class ViettelpostCodService {
 
     this.logger.log(`[VTP-COD] Sync COD_STATUS: ${updated}/${wanted.size} đơn cập nhật (đã quét ${total} đơn VTP).`);
     return { ok: true, total, updated };
+  }
+
+  /** Kick import lịch sử đơn (chạy NỀN — hàng nghìn đơn mất vài phút, Cloudflare cắt HTTP ~100s). */
+  async startImportHistory(windowDays = 180): Promise<{ started: boolean; windowDays: number }> {
+    const token = await this.getWebToken();
+    if (!token) throw new BadRequestException('Chưa có token WEB — dán qua POST /viettelpost/cod-token trước.');
+    void this.importHistory(windowDays)
+      .then((r) => this.logger.log(`[VTP-IMPORT] Xong: quét ${r.scanned} đơn VTP → tạo mới ${r.created}, cập nhật ${r.updated}.`))
+      .catch((e) => this.logger.error(`[VTP-IMPORT] Lỗi: ${(e as Error).message}`));
+    return { started: true, windowDays };
+  }
+
+  /**
+   * Import lịch sử đơn từ portal VTP về `viettel_customers`:
+   * - Đơn CRM CHƯA có → tạo mới với dữ liệu list (người nhận, COD, dịch vụ, ngày gửi…).
+   * - Đơn ĐÃ có → chỉ cập nhật trạng thái đối soát COD (webhook/reconcile là nguồn giàu hơn cho phần còn lại).
+   */
+  async importHistory(windowDays = 180): Promise<{ ok: boolean; scanned: number; created: number; updated: number; tokenExpired?: boolean; error?: string }> {
+    const token = await this.getWebToken();
+    if (!token) return { ok: false, scanned: 0, created: 0, updated: 0, error: 'NO_TOKEN' };
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const pageSize = 50;
+    let scanned = 0;
+    let created = 0;
+    let updated = 0;
+    const now = new Date();
+
+    for (let offset = 0; offset < windowDays; offset += 30) {
+      const to = new Date(now.getTime() - offset * DAY_MS);
+      const from = new Date(now.getTime() - Math.min(offset + 30, windowDays) * DAY_MS);
+      let pageIndex = 1;
+
+      while (pageIndex <= 100) {
+        const json = await this.fetchPage(token, pageIndex, pageSize, this.fmtDate(from), this.fmtDate(to));
+        if (!json) break;
+        if (json.error) {
+          if (json.messageKey === 'EXPIRED_TOKEN' || /hết hạn|đăng nhập/i.test(json.message || '')) {
+            this.logger.warn('[VTP-IMPORT] Token WEB hết hạn — cần dán lại token mới.');
+            return { ok: false, scanned, created, updated, tokenExpired: true, error: 'EXPIRED_TOKEN' };
+          }
+          this.logger.warn(`[VTP-IMPORT] VTP trả lỗi (${this.fmtDate(from)}→${this.fmtDate(to)} p${pageIndex}): ${json.message || JSON.stringify(json).slice(0, 200)}`);
+          break;
+        }
+        const inner = json?.data?.data;
+        const list: any[] = Array.isArray(inner?.LIST_ORDER) ? inner.LIST_ORDER : [];
+        if (list.length === 0) break;
+
+        for (const o of list) {
+          const code = o?.ORDER_NUMBER ? String(o.ORDER_NUMBER) : null;
+          if (!code) continue;
+          scanned++;
+          const codFields = {
+            codPayStatus: o.COD_STATUS || null,
+            codPayStatusName: o.COD_STATUS_NAME || null,
+            codPaySyncedAt: now,
+          };
+          const existing = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode: code }, select: { id: true } });
+          if (existing) {
+            await this.prisma.viettelCustomer.update({ where: { id: existing.id }, data: codFields });
+            updated++;
+          } else {
+            const sysDate = o.ORDER_SYSTEMDATE ? new Date(o.ORDER_SYSTEMDATE) : null;
+            await this.prisma.viettelCustomer.create({
+              data: {
+                trackingCode: code,
+                orderReference: o.ORDER_REFERENCE || null,
+                status: numOrNull(o.ORDER_STATUS),
+                statusDate: sysDate,
+                sendDate: sysDate,
+                receiverFullname: o.RECEIVER_FULLNAME || null,
+                receiverPhone: o.RECEIVER_PHONE ? String(o.RECEIVER_PHONE) : null,
+                receiverAddress: o.RECEIVER_ADDRESS || null,
+                productName: o.PRODUCT_NAME || null,
+                cod: numOrNull(o.MONEY_COLLECTION) ?? 0,
+                moneyTotal: numOrNull(o.MONEY_TOTAL),
+                orderService: o.ORDER_SERVICE || null,
+                orderServiceAdd: o.ORDER_SERVICE_ADD || null,
+                orderPayment: numOrNull(o.ORDER_PAYMENT),
+                detailPayload: o,
+                ...codFields,
+              },
+            });
+            created++;
+          }
+        }
+
+        if (pageIndex * pageSize >= (Number(inner?.TOTAL) || 0)) break;
+        pageIndex++;
+      }
+    }
+
+    this.logger.log(`[VTP-IMPORT] Quét ${scanned} đơn VTP → tạo mới ${created}, cập nhật COD ${updated}.`);
+    return { ok: true, scanned, created, updated };
   }
 
   // Cron mỗi giờ — chỉ chạy nếu có token & chưa hết hạn.

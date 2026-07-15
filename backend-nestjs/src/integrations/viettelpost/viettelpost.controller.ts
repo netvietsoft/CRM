@@ -42,6 +42,14 @@ export class ViettelpostController {
     return this.codService.syncCodStatuses();
   }
 
+  @Post('import-history')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Import lịch sử đơn từ portal VTP về viettel_customers (chạy nền, cần token WEB)' })
+  importHistory(@Body() body: { days?: number }) {
+    const days = Number(body?.days);
+    return this.codService.startImportHistory(Number.isFinite(days) && days > 0 ? Math.min(days, 365) : 180);
+  }
+
   // Cấu hình ĐVVC (read-only) cho trang Cài đặt CCM — KHÔNG lộ username/password/token.
   @Get('config')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
