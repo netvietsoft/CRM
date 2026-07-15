@@ -339,12 +339,15 @@ export class ViettelCustomerService {
     };
   }
 
-  /** Hành trình đơn từ API tra cứu CÔNG KHAI của VTP (không cần token, khác detail-v2 vốn không có hành trình). */
+  /** Hành trình đơn từ API portal VTP (detail-v2 không có hành trình). CẦN token WEB (SystemConfig VIETTEL_WEB_TOKEN — cùng token COD sync); thiếu/hết hạn → null, bỏ qua êm. */
   private async fetchJourney(trackingCode: string): Promise<any[] | null> {
     try {
+      const cfg = await this.prisma.systemConfig.findUnique({ where: { key: 'VIETTEL_WEB_TOKEN' } });
+      const token = (cfg?.value as any)?.token;
+      if (!token || typeof token !== 'string') return null;
       const res = await fetch(
         `https://api.viettelpost.vn/api/setting/listOrderTracking?Type=2&OrderNumber=${encodeURIComponent(trackingCode)}`,
-        { signal: AbortSignal.timeout(15_000) },
+        { headers: { token, accept: 'application/json, text/plain, */*' }, signal: AbortSignal.timeout(15_000) },
       );
       const json: any = await res.json().catch(() => null);
       return Array.isArray(json) && json.length ? json : null;
