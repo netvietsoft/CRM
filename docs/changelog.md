@@ -5,6 +5,43 @@
 
 ---
 
+## 2026-07-15 — Kết nối Fanpage→CCM chạy thật trên prod (lestgoai.com) + chuỗi fix Messenger/CCM + wire VTP COD
+
+> Phiên deploy + debug live trên prod. Tất cả commit đã push `origin/main`, mới nhất `ad6b753`. **Server cần `git reset --hard origin/main` + build BE/FE + pm2 restart nếu chưa làm đợt cuối.**
+
+**Hạ tầng / env (KHÔNG trong git — file local `backend-nestjs/.env.prod` + `frontend/.env.prod`, scp lên server thành `.env`):**
+- Import DB local → server (dump `customer_crm-2026-07-15.zip`, kèm 45 migration history).
+- BE env thêm: `COOKIE_DOMAIN=.lestgoai.com` (**BẮT BUỘC** — thiếu là login bật về /login vì cookie host-only), `JWT_SECRET` mới (thay placeholder dev; FE .env.prod đồng bộ cùng giá trị), `META_APP_ID=2422763314901404`, `META_APP_SECRET`, `MESSENGER_VERIFY_TOKEN`, `META_OAUTH_REDIRECT_URI=https://api.lestgoai.com/api/integrations/facebook/oauth/callback`, `META_LOGIN_CONFIG_ID=2552635305185272` (Facebook Login for Business config), `TOKEN_ENC_KEY`.
+- Meta App "CRM" (id 2422763314901404): webhook Messenger đã verify (`https://api.lestgoai.com/api/messenger/webhook`, fields messages/postbacks/echoes), FB Login for Business config tạo xong, redirect URI whitelist. **App đang Dev mode** → profile/avatar khách thật bị Meta chặn; muốn đủ phải App Review lên Live.
+
+**Fix/feat theo commit (đều đã push):**
+- `28f8f1c` fb-oauth: app use-case từ chối `scope=` (dialog tự đóng /dialog/close) → dùng `config_id` khi có `META_LOGIN_CONFIG_ID`.
+- `5b1896a` FE socket admin-notifications: `replace('/api','')` ăn nhầm `/api` trong hostname `api.lestgoai.com` → URL rác `https://https/socket.io`; đổi regex neo cuối.
+- `7d9add0` fb-discovery: `msgPage.upsert` ghi field chỉ có ở `ad_pages` (category/fanCount/raw…) → PrismaValidationError khi connect OAuth. (Spread `...data` né excess-property-check nên tsc không bắt.)
+- `a7a0c65` messenger `registerPages` (+Page): đọc thêm token từ `FbConnection` OAuth (trước chỉ StoreIntegration META_ADS/env → báo "Chưa cấu hình token Meta").
+- `0b00d5b` CCM: nút "Bật webhook" ngay toolbar hội thoại; nhãn preview lỗi → "⚠ GỬI THẤT BẠI — khách không nhận được".
+- `46d44c5`+`0fdd314` messenger: enrich avatar cả khi thiếu avatarUrl (trước chỉ khi thiếu tên → backfill không bao giờ có avatar); `listMessages` lấy 500 tin MỚI nhất (trước asc+take = 500 tin cũ nhất); backfill xin field `attachments` từ Graph + FE `mediaOf` hiểu shape `image_data/file_url/video_data`; re-backfill bổ sung attachments cho tin cũ đã lưu thiếu.
+- `4e631de` CCM: reply BE lưu attachments (trước gửi ảnh chỉ lưu text=null → "[đính kèm]"); cuộn đáy chắc chắn (double rAF + re-scroll khi ảnh load); **thu hồi tin nhắn** — nút ⋮ trên bong bóng OUT → `POST /messenger/conversations/:id/messages/:mid/recall` → status `RECALLED`. ⚠ Meta KHÔNG có API unsend cho page → chỉ ẨN TRÊN CRM, khách vẫn thấy (confirm ghi rõ).
+- `ec5e1bd` CCM: backfill trích SĐT khách từ lịch sử tin + set `lastMessageDir` (trước null); avatar fallback edge `/{psid}/picture`; danh sách hội thoại: tin cuối IN = tên đậm + preview đen + chấm đỏ.
+- `b011e1c` backfill chạy NỀN (trả `{started:true}` ngay) — Cloudflare cắt HTTP ~100s (524) khi page nhiều hội thoại; kết quả xem `pm2 logs | grep Backfill`.
+- `ad6b753` VTP COD: `ViettelpostCodService` viết sẵn nhưng CHƯA đăng ký provider (cron COD chưa từng chạy) + chưa có route → wire vào module + thêm `GET/POST /viettelpost/cod-token`, `POST /viettelpost/cod-sync`.
+
+**Trạng thái kết nối:**
+- Fanpage CHY → CCM: ĐÃ THÔNG 2 chiều (nhận realtime + trả lời trong cửa sổ 24h). Backfill lịch sử OK.
+- Meta Ads: account list có; chi tiết cần bấm "Đồng bộ ngay" /admin/ads (chạy queue nền).
+- VTP outbound: OK (test 63 tỉnh, token/tài khoản 0966500911 trong env).
+- VTP COD: routes đã có sau deploy `ad6b753`; **token WEB user đã đưa (exp ~22/7)** — việc tiếp: POST cod-token + chạy cod-sync (Claude làm từ xa bằng admin login được).
+
+**Việc còn treo:**
+1. Deploy đợt cuối (`ad6b753`) nếu chưa: reset + build BE/FE + restart.
+2. Lưu token COD + chạy cod-sync đầu tiên.
+3. VTP webhook inbound: đặt secret ở `/admin/integrations/viettelpost` + đăng ký URL `https://api.lestgoai.com/api/viettelpost/webhook` với cổng VTP (user tự làm với VTP).
+4. Sau deploy bấm ⟳ backfill page CHY để điền avatar/SĐT/ảnh cho dữ liệu cũ.
+5. App Review Meta (pages_messaging Advanced) để: avatar/tên khách thật + nhắn khách ngoài role app.
+6. Khuyến nghị bảo mật: App Secret + VTP web token đã dán trong chat phiên này → khi ổn định nên reset App Secret (Meta) và để token VTP tự hết hạn.
+
+---
+
 ## 2026-07-08 — Voucher theo Đơn hàng: vòng đời tạo/kích hoạt/hiển thị (feat lớn, đã merge + push main)
 
 > Spec: `docs/superpowers/specs/2026-07-08-order-voucher-lifecycle-design.md` · Plan: `docs/superpowers/plans/2026-07-08-order-voucher-lifecycle.md` · Bản đồ nền: `docs/voucher-system-map.md`.
