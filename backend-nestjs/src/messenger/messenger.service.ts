@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MetaMessengerClient } from './meta-messenger.client';
 import { AdminNotificationsGateway } from '../modules/admin-notifications/admin-notifications.gateway';
 import { AiAgentService } from '../ai-agent/ai-agent.service';
+import { decryptToken } from '../integrations/facebook/token-vault';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -354,24 +355,43 @@ export class MessengerService {
   }
 
   // ===== Đăng ký page + subscribe + backfill =====
-  /** Lấy page (token có quyền MESSAGING) từ StoreIntegration META_ADS → upsert MsgPage kèm page access token. */
+  /** Lấy page (token có quyền MESSAGING) từ StoreIntegration META_ADS + FbConnection OAuth → upsert MsgPage kèm page access token. */
   async registerPages(): Promise<{ registered: number }> {
+    // Nguồn token: dán tay (StoreIntegration/env) + mọi kết nối OAuth ACTIVE (giải mã từ vault).
+    const sources: { token: string; storeId: string | null }[] = [];
     const integ = await this.prisma.storeIntegration.findFirst({ where: { platform: 'META_ADS', isActive: true } });
-    const userToken = integ?.accessToken || process.env.META_ADS_ACCESS_TOKEN || null;
-    if (!userToken) throw new BadRequestException('Chưa cấu hình token Meta (StoreIntegration META_ADS).');
-    const storeId = integ?.storeId ?? null;
+    const integToken = integ?.accessToken || process.env.META_ADS_ACCESS_TOKEN || null;
+    if (integToken) sources.push({ token: integToken, storeId: integ?.storeId ?? null });
+    const conns = await this.prisma.fbConnection.findMany({ where: { status: 'ACTIVE' } });
+    for (const c of conns) {
+      try {
+        sources.push({ token: decryptToken({ enc: c.tokenEnc, iv: c.tokenIv, tag: c.tokenTag }), storeId: c.storeId ?? null });
+      } catch (e) {
+        this.logger.warn(`Không giải mã được token FbConnection ${c.id}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+    if (!sources.length) {
+      throw new BadRequestException('Chưa cấu hình token Meta (kết nối Facebook OAuth ở /admin/integrations hoặc dán token ở thẻ Meta Ads).');
+    }
 
-    const pages = await this.client.fetchManagedPages(userToken);
+    const seen = new Set<string>();
     let registered = 0;
-    for (const pg of pages) {
-      const tasks: string[] = Array.isArray(pg.tasks) ? pg.tasks : [];
-      if (!pg?.id || !pg.access_token || !tasks.includes('MESSAGING')) continue;
-      await this.prisma.msgPage.upsert({
-        where: { platform_externalId: { platform: 'META', externalId: String(pg.id) } },
-        create: { platform: 'META', externalId: String(pg.id), name: pg.name ?? null, accessToken: pg.access_token, storeId: storeId ?? undefined },
-        update: { name: pg.name ?? null, accessToken: pg.access_token, ...(storeId ? { storeId } : {}) },
+    for (const src of sources) {
+      const pages = await this.client.fetchManagedPages(src.token).catch((e) => {
+        this.logger.warn(`fetchManagedPages lỗi: ${e instanceof Error ? e.message : e}`);
+        return [] as any[];
       });
-      registered++;
+      for (const pg of pages) {
+        const tasks: string[] = Array.isArray(pg.tasks) ? pg.tasks : [];
+        if (!pg?.id || !pg.access_token || !tasks.includes('MESSAGING') || seen.has(String(pg.id))) continue;
+        seen.add(String(pg.id));
+        await this.prisma.msgPage.upsert({
+          where: { platform_externalId: { platform: 'META', externalId: String(pg.id) } },
+          create: { platform: 'META', externalId: String(pg.id), name: pg.name ?? null, accessToken: pg.access_token, storeId: src.storeId ?? undefined },
+          update: { name: pg.name ?? null, accessToken: pg.access_token, ...(src.storeId ? { storeId: src.storeId } : {}) },
+        });
+        registered++;
+      }
     }
     return { registered };
   }
