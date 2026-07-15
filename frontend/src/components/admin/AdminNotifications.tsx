@@ -67,7 +67,8 @@ export default function AdminNotifications() {
 
     // Init Socket
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
-    const baseUrl = apiUrl.replace('/api', '');
+    // Neo cuối chuỗi — replace('/api','') ăn nhầm '/api' trong hostname api.lestgoai.com
+    const baseUrl = apiUrl.replace(/\/api\/?$/, '');
     const newSocket = io(`${baseUrl}/admin`, {
       transports: ['polling'],
       reconnection: true,
