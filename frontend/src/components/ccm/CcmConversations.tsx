@@ -435,17 +435,18 @@ export default function CcmConversations() {
                   style={{ color: STAR_COLORS[cv.star || ''] || '#ffffff', opacity: cv.star ? 1 : 0.5, textShadow: '0 0 2px rgba(0,0,0,.65)' }}>★</button>
               </div>
               <div className="min-w-0 flex-1">
-                {/* [B] HÀNG-TÊN: tên khách · 📞 SĐT · giờ tin cuối */}
+                {/* [B] HÀNG-TÊN: tên khách · 📞 SĐT · giờ tin cuối. Chưa trả lời (tin cuối IN) = tên đậm. */}
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="min-w-0 flex items-baseline gap-1.5">
-                    <span className="font-bold text-[14px] text-gray-900 truncate">{cv.contact.name || cv.contact.psid}</span>
+                    <span className={`text-[14px] truncate ${cv.lastMessageDir === 'IN' ? 'font-bold text-gray-900' : 'font-medium text-gray-600'}`}>{cv.contact.name || cv.contact.psid}</span>
                     {prefs.showPhone && cv.contact.phone && <span className="text-[11px] text-blue-600 shrink-0">📞 {cv.contact.phone}</span>}
                   </span>
                   <span className="text-[11px] text-gray-400 shrink-0 whitespace-nowrap">{fmtTime(cv.lastMessageAt)}</span>
                 </div>
-                {/* [C] HÀNG-PREVIEW: icon chiều tin + trích nội dung tin cuối */}
-                <div className="text-[12px] text-gray-400 truncate flex items-center gap-1.5 mt-[3px]">
+                {/* [C] HÀNG-PREVIEW: icon chiều tin + trích tin cuối. Chưa trả lời = text đen + chấm đỏ cuối. */}
+                <div className={`text-[12px] truncate flex items-center gap-1.5 mt-[3px] ${cv.lastMessageDir === 'IN' ? 'text-gray-900' : 'text-gray-400'}`}>
                   <DirIcon dir={cv.lastMessageDir} /><span className="truncate">{cv.lastMessageText || ''}</span>
+                  {cv.lastMessageDir === 'IN' && <span title="Tin mới chưa trả lời" className="w-2 h-2 rounded-full bg-red-500 shrink-0" />}
                 </div>
                 {/* [D] HÀNG-META: chip nhân viên (avatar+tên) + chip nhãn */}
                 <div className="flex items-center gap-1 flex-wrap mt-[5px]">

@@ -486,11 +486,19 @@ export class MessengerService {
         });
         messages++;
       }
+      // Trích SĐT khách nhắn trong lịch sử (webhook chỉ trích tin realtime; msgs Graph trả mới nhất trước).
+      if (!contact.phone) {
+        for (const msg of msgs) {
+          if (String(msg.from?.id) === externalId || !msg.message) continue;
+          const phone = extractPhone(msg.message);
+          if (phone) { await this.prisma.msgContact.update({ where: { id: contact.id }, data: { phone } }); break; }
+        }
+      }
       const last = msgs[0];
       if (last) {
         await this.prisma.msgConversation.update({
           where: { id: conv.id },
-          data: { lastMessageAt: last.created_time ? new Date(last.created_time) : new Date(), lastMessageText: last.message ?? '[đính kèm]' },
+          data: { lastMessageAt: last.created_time ? new Date(last.created_time) : new Date(), lastMessageText: last.message ?? '[đính kèm]', lastMessageDir: String(last.from?.id) === externalId ? 'OUT' : 'IN' },
         });
       }
     }

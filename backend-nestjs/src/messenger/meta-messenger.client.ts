@@ -44,7 +44,13 @@ export class MetaMessengerClient {
 
   /** Hồ sơ công khai của khách theo PSID (name, ảnh). Lỗi/thiếu quyền → {}. */
   async getProfile(pageToken: string, psid: string): Promise<{ name?: string; profile_pic?: string }> {
-    return this.call(`${psid}?fields=name,profile_pic`, { method: 'GET' }, pageToken).catch(() => ({}));
+    const p: any = await this.call(`${psid}?fields=name,profile_pic`, { method: 'GET' }, pageToken).catch(() => ({}));
+    if (!p?.profile_pic) {
+      // Fallback: edge /picture (quyền khác field profile_pic) — trả URL CDN dùng được không cần token.
+      const pic: any = await this.call(`${psid}/picture?redirect=false&width=200`, { method: 'GET' }, pageToken).catch(() => null);
+      if (pic?.data?.url && !pic?.data?.is_silhouette) p.profile_pic = pic.data.url;
+    }
+    return p;
   }
 
   /** Đăng ký app nhận webhook cho page. */
