@@ -162,4 +162,16 @@ export class MessengerController {
   ) {
     return this.service.reply(storeId, userId, id, body || {});
   }
+
+  @Post('conversations/:id/messages/:messageId/recall')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_SEND)
+  @ApiOperation({ summary: 'Thu hồi tin đã gửi (chỉ ẩn trên CRM — khách vẫn thấy trên Messenger)' })
+  recall(
+    @GetEffectiveStoreId() storeId: string | null,
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
+  ) {
+    return this.service.recallMessage(storeId, id, messageId);
+  }
 }

@@ -141,6 +141,16 @@ export function useMessengerChat() {
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi lưu giới tính'); void loadConversations(); }
   }, [flash, loadConversations]);
 
+  // Thu hồi tin đã gửi (chỉ ẩn trên CRM — Meta không cho page unsend phía khách).
+  const recall = useCallback(async (messageId: string) => {
+    const convId = activeIdRef.current;
+    if (!convId) return;
+    try {
+      await apiClientClient.post(`/messenger/conversations/${convId}/messages/${messageId}/recall`, {});
+      setMessages(await apiClientClient.get<Message[]>(`/messenger/conversations/${convId}/messages`));
+    } catch (e) { flash(e instanceof Error ? e.message : 'Lỗi thu hồi'); }
+  }, [flash]);
+
   const register = useCallback(async () => {
     try { const r = await apiClientClient.post<{ registered: number }>('/messenger/pages/register', {}); flash(`Đã đăng ký ${r.registered} page có quyền nhắn tin.`); await loadPages(); }
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi đăng ký page'); }
@@ -159,6 +169,6 @@ export function useMessengerChat() {
 
   return {
     pages, pageId, setPageId, conversations, activeId, messages, search, setSearch, sending, loadingMsgs, msg,
-    active, selectedPage, staff, open, reply, toggleAssign, assignTo, setLabels, setStar, setContactDob, setContactGender, register, subscribe, backfill, loadConversations,
+    active, selectedPage, staff, open, reply, recall, toggleAssign, assignTo, setLabels, setStar, setContactDob, setContactGender, register, subscribe, backfill, loadConversations,
   };
 }

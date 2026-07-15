@@ -346,13 +346,31 @@ export class MessengerService {
 
     const r = await this.client.sendMessage(conv.page.accessToken, conv.contact.psid, p);
     await this.prisma.msgMessage.create({
-      data: { conversationId: convId, mid: r.message_id, direction: 'OUT', text: p.text ?? null, status: 'SENT', sentByUserId: userId },
+      data: {
+        conversationId: convId, mid: r.message_id, direction: 'OUT', text: p.text ?? null,
+        // Lưu attachment cùng shape webhook để FE render ảnh (echo về sau bị bỏ qua vì trùng mid).
+        attachments: p.attachmentUrl ? [{ type: 'image', payload: { url: p.attachmentUrl } }] : undefined,
+        status: 'SENT', sentByUserId: userId,
+      },
     });
     await this.prisma.msgConversation.update({
       where: { id: convId },
       data: { lastMessageAt: new Date(), lastMessageText: p.text ?? '[đính kèm]', lastMessageDir: 'OUT' },
     });
     this.gateway.emitMessengerMessage({ conversationId: convId, storeId: conv.page.storeId, direction: 'OUT' });
+    return { ok: true };
+  }
+
+  /** Thu hồi tin đã gửi = ẩn phía CRM (Meta KHÔNG có API unsend cho page — khách vẫn thấy trên Messenger). */
+  async recallMessage(effectiveStoreId: string | null, convId: string, messageId: string) {
+    await this.getScopedConversation(effectiveStoreId, convId);
+    const msg = await this.prisma.msgMessage.findUnique({
+      where: { id: messageId },
+      select: { id: true, conversationId: true, direction: true },
+    });
+    if (!msg || msg.conversationId !== convId) throw new NotFoundException('Không tìm thấy tin nhắn');
+    if (msg.direction !== 'OUT') throw new BadRequestException('Chỉ thu hồi được tin do shop gửi');
+    await this.prisma.msgMessage.update({ where: { id: msg.id }, data: { status: 'RECALLED' } });
     return { ok: true };
   }
 

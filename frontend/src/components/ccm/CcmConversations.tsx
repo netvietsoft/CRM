@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useMessengerChat } from '@/lib/useMessengerChat';
 import { useCcmSettings } from '@/lib/useCcmSettings';
 import { apiClientClient } from '@/lib/apiClientClient';
@@ -108,17 +108,32 @@ function mediaOf(att: unknown): { images: string[]; files: string[] } {
 }
 
 // 1 bong bóng tin: render ảnh (inline) + tệp (link) + text. `local` = preview chưa gửi thật.
-function Bubble({ out, text, images, files, time, status, local }: {
+// `recalled` = tin đã thu hồi (ẩn nội dung); `onRecall` = hiện nút ⋮ thu hồi (chỉ tin OUT).
+function Bubble({ out, text, images, files, time, status, local, recalled, onRecall, onMediaLoad }: {
   out: boolean; text?: string | null; images: string[]; files: string[]; time: string; status?: string | null; local?: boolean;
+  recalled?: boolean; onRecall?: () => void; onMediaLoad?: () => void;
 }) {
+  if (recalled) {
+    return (
+      <div className={`flex ${out ? 'justify-end' : 'justify-start'}`}>
+        <div className="max-w-[70%] px-3.5 py-2 text-xs italic text-gray-400 border border-dashed border-gray-300 rounded-[16px]">
+          Tin nhắn đã thu hồi · {time}
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className={`flex ${out ? 'justify-end' : 'justify-start'}`}>
+    <div className={`group flex items-center gap-1.5 ${out ? 'justify-end' : 'justify-start'}`}>
+      {out && onRecall && (
+        <button onClick={onRecall} title="Thu hồi tin nhắn (chỉ ẩn trên CRM — khách vẫn thấy trên Messenger)"
+          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 w-6 h-6 grid place-items-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-700 text-base leading-none">⋮</button>
+      )}
       <div
         className={`max-w-[70%] px-3.5 py-2.5 text-[13.5px] leading-relaxed ${out ? 'text-white' : 'text-gray-800'}`}
         style={out
           ? { background: '#4f68ee', borderRadius: '16px 16px 5px 16px' }
           : { background: '#fff', border: '1px solid #e6e9f2', borderRadius: '16px 16px 16px 5px' }}>
-        {images.map((u, i) => <img key={i} src={u} alt="" className="rounded-lg max-w-full max-h-60 mb-1 block" />)}
+        {images.map((u, i) => <img key={i} src={u} alt="" onLoad={onMediaLoad} className="rounded-lg max-w-full max-h-60 mb-1 block" />)}
         {files.map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer" className={`block underline text-xs mb-1 ${out ? 'text-blue-100' : 'text-blue-600'}`}>📎 {u.split('/').pop()?.slice(0, 28) || 'tệp'}</a>)}
         {text && <div className="whitespace-pre-wrap break-words">{text}</div>}
         {!text && images.length === 0 && files.length === 0 && <span className="italic opacity-70">[đính kèm]</span>}
@@ -165,7 +180,9 @@ export default function CcmConversations() {
     document.body.style.userSelect = 'none';
   };
   // Tự cuộn xuống cuối THREAD (FRAME 3B) khi có tin mới.
-  useEffect(() => { threadRef.current?.scrollTo(0, threadRef.current.scrollHeight); }, [c.messages, previews]);
+  const scrollBottom = useCallback(() => { const el = threadRef.current; if (el) el.scrollTo(0, el.scrollHeight); }, []);
+  // Cuộn xuống tin mới nhất khi: mở hội thoại / tải xong / có tin mới. Double rAF chờ DOM vẽ xong; ảnh load muộn cuộn lại qua onMediaLoad.
+  useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(scrollBottom)); }, [c.activeId, c.loadingMsgs, c.messages, previews, scrollBottom]);
   // Ô nhập tự cao theo nội dung (đẩy lên trên), tối đa 140px rồi cuộn — chạy mỗi khi draft đổi (gõ/chèn/xoá).
   useEffect(() => {
     const el = inputRef.current; if (!el) return;
@@ -612,7 +629,13 @@ export default function CcmConversations() {
               {c.loadingMsgs ? <div className="text-center text-gray-400 text-sm">Đang tải…</div> : (
                 <>
                   {c.messages.map((m) => { const md = mediaOf(m.attachments); return (
-                    <Bubble key={m.id} out={m.direction === 'OUT'} text={m.text} images={md.images} files={md.files} time={fmtTime(m.createdAt)} status={m.direction === 'OUT' ? m.status : null} />
+                    <Bubble key={m.id} out={m.direction === 'OUT'} text={m.text} images={md.images} files={md.files} time={fmtTime(m.createdAt)}
+                      status={m.direction === 'OUT' ? m.status : null}
+                      recalled={m.status === 'RECALLED'}
+                      onMediaLoad={scrollBottom}
+                      onRecall={m.direction === 'OUT' && m.status !== 'RECALLED'
+                        ? () => { if (window.confirm('Thu hồi tin nhắn này?\n\nLưu ý: tin chỉ ẨN TRÊN CRM — khách VẪN thấy trên Messenger (Meta không cho page thu hồi phía khách).')) void c.recall(m.id); }
+                        : undefined} />
                   ); })}
                   {(previews[c.activeId] || []).map((p) => (
                     <Bubble key={p.id} out text={p.text} images={p.image ? [p.image] : []} files={p.file ? [p.file] : []} time={fmtTime(p.createdAt)} local />
