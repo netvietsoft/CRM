@@ -446,12 +446,23 @@ export class MessengerService {
     }));
   }
 
-  async backfill(effectiveStoreId: string | null, externalId: string): Promise<{ conversations: number; messages: number }> {
+  async backfill(effectiveStoreId: string | null, externalId: string): Promise<{ started: boolean }> {
     const page = await this.prisma.msgPage.findUnique({ where: { platform_externalId: { platform: 'META', externalId } } });
     if (!page) throw new NotFoundException('Chưa đăng ký page');
     if (effectiveStoreId && page.storeId !== effectiveStoreId) throw new ForbiddenException('Ngoài phạm vi cửa hàng');
     if (!page.accessToken) throw new BadRequestException('Page thiếu access token');
+    // Chạy NỀN: page nhiều hội thoại kéo >2 phút, Cloudflare cắt HTTP ~100s (524). Kết quả xem log + lastSyncedAt.
+    void this.runBackfill(page, externalId)
+      .then((r) => this.logger.log(`[Backfill] ${externalId}: ${r.conversations} hội thoại, ${r.messages} tin mới.`))
+      .catch((e) => this.logger.error(`[Backfill] ${externalId} lỗi: ${(e as Error).message}`));
+    return { started: true };
+  }
 
+  private async runBackfill(
+    page: { id: string; accessToken: string | null; storeId: string | null },
+    externalId: string,
+  ): Promise<{ conversations: number; messages: number }> {
+    if (!page.accessToken) return { conversations: 0, messages: 0 };
     const convs = await this.client.fetchConversations(page.accessToken, externalId);
     let messages = 0;
     for (const c of convs) {

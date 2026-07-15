@@ -160,9 +160,9 @@ export function useMessengerChat() {
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi subscribe'); }
   }, [loadPages, flash]);
   const backfill = useCallback(async (externalId: string) => {
-    try { const r = await apiClientClient.post<{ conversations: number; messages: number }>(`/messenger/pages/${externalId}/backfill`, {}); flash(`Kéo ${r.conversations} hội thoại, ${r.messages} tin.`); await loadConversations(); }
+    try { await apiClientClient.post<{ started: boolean }>(`/messenger/pages/${externalId}/backfill`, {}); flash('Đang kéo lịch sử ở chế độ NỀN (page nhiều hội thoại mất vài phút) — tải lại trang (F5) sau ít phút.', 10000); }
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi backfill'); }
-  }, [loadConversations, flash]);
+  }, [flash]);
 
   const active = conversations.find((c) => c.id === activeId) || null;
   const selectedPage = pages.find((p) => p.id === pageId) || pages.find((p) => p.externalId === active?.page.externalId) || null;

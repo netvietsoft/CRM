@@ -134,7 +134,7 @@ export default function MessengerInbox() {
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi subscribe'); }
   };
   const backfill = async (externalId: string) => {
-    try { const r = await apiClientClient.post<{ conversations: number; messages: number }>(`/messenger/pages/${externalId}/backfill`, {}); flash(`Kéo ${r.conversations} hội thoại, ${r.messages} tin.`); await loadConversations(); }
+    try { await apiClientClient.post<{ started: boolean }>(`/messenger/pages/${externalId}/backfill`, {}); flash('Đang kéo lịch sử ở chế độ nền — tải lại trang sau ít phút.'); }
     catch (e) { flash(e instanceof Error ? e.message : 'Lỗi backfill'); }
   };
 
