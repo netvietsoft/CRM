@@ -64,11 +64,11 @@ export class FacebookDiscoveryService {
     for (const pg of mine) {
       await this.upsertPage(pg, storeId, pageSeen, null, pg.tasks ?? null);
       if (pg?.id && pg.access_token) {
+        // MsgPage chỉ có name/accessToken/lastSyncedAt — metadata giàu (category, fanCount…) đã lưu ở AdPage (upsertPage trên).
         const data = {
-          name: pg.name ?? null, category: pg.category ?? null, tasks: Array.isArray(pg.tasks) ? pg.tasks : undefined,
-          fanCount: int(pg.fan_count), followersCount: int(pg.followers_count), link: pg.link ?? null,
-          verificationStatus: pg.verification_status ?? null, isPublished: typeof pg.is_published === 'boolean' ? pg.is_published : null,
-          accessToken: pg.access_token, lastSyncedAt: new Date(), raw: pg,
+          name: pg.name ?? null,
+          accessToken: pg.access_token,
+          lastSyncedAt: new Date(),
         };
         await this.prisma.msgPage.upsert({
           where: { platform_externalId: { platform: 'META', externalId: String(pg.id) } },
