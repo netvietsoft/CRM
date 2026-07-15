@@ -339,21 +339,74 @@ export class ViettelCustomerService {
     };
   }
 
-  /** Chi tiết 1 khách/đơn theo mã vận đơn. Đơn chưa có detail (import từ portal/webhook cũ) → tự bồi từ VTP lần xem đầu. */
+  /** Hành trình đơn từ API tra cứu CÔNG KHAI của VTP (không cần token, khác detail-v2 vốn không có hành trình). */
+  private async fetchJourney(trackingCode: string): Promise<any[] | null> {
+    try {
+      const res = await fetch(
+        `https://api.viettelpost.vn/api/setting/listOrderTracking?Type=2&OrderNumber=${encodeURIComponent(trackingCode)}`,
+        { signal: AbortSignal.timeout(15_000) },
+      );
+      const json: any = await res.json().catch(() => null);
+      return Array.isArray(json) && json.length ? json : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Map item listOrderTracking → shape courierHistory của webhook (FE render newest-last rồi tự reverse). */
+  private journeyToHistory(items: any[]): any[] {
+    const parseAt = (s: any): string => {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/.exec(String(s || ''));
+      return m ? new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00+07:00`).toISOString() : new Date().toISOString();
+    };
+    return items
+      .map((it) => {
+        const raw = String(it.ORDER_NOTE || '');
+        const m = /^\(\d+\)\s*([^-]*?)\s*-\s*(.*)$/.exec(raw); // "(501)Thành công - Phát thành công: X"
+        return {
+          status: this.num(it.ORDER_STATUS),
+          statusName: m ? m[1].trim() : null,
+          note: [m ? m[2].trim() : raw || null, it.ORDER_REFERENCE || null].filter(Boolean).join(' · ') || null,
+          location: it.ORDER_REFERENCE || null,
+          at: parseAt(it.ORDER_STATUSDATE),
+        };
+      })
+      .sort((a, b) => a.at.localeCompare(b.at));
+  }
+
+  /** Chi tiết 1 khách/đơn theo mã vận đơn. Đơn chưa có detail/hành trình (import từ portal/webhook cũ) → tự bồi từ VTP lần xem đầu. */
   async getOne(trackingCode: string) {
     let row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } });
     if (!row) throw new NotFoundException('Không tìm thấy đơn ViettelPost');
-    if (!row.detailEnrichedAt && !trackingCode.startsWith('DRAFT-')) {
+    if (trackingCode.startsWith('DRAFT-')) return row;
+
+    if (!row.detailEnrichedAt) {
       try {
         const json = await this.authService.get(`order/detail-v2?o=${encodeURIComponent(trackingCode)}`);
         if (json?.status === 200 && json?.data) {
           await this.enrichFromDetail(trackingCode, json.data);
-          row = (await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } })) ?? row;
         }
       } catch (e: any) {
         this.logger.warn(`[VTP] lazy-enrich ${trackingCode} lỗi (trả dữ liệu hiện có): ${e?.message || e}`);
       }
     }
+
+    const hist = Array.isArray(row.courierHistory) ? (row.courierHistory as any[]) : [];
+    if (hist.length === 0) {
+      const items = await this.fetchJourney(trackingCode);
+      if (items) {
+        try {
+          await this.prisma.viettelCustomer.update({
+            where: { id: row.id },
+            data: { courierHistory: this.journeyToHistory(items) },
+          });
+        } catch (e: any) {
+          this.logger.warn(`[VTP] lưu hành trình ${trackingCode} lỗi (bỏ qua): ${e?.message || e}`);
+        }
+      }
+    }
+
+    row = (await this.prisma.viettelCustomer.findUnique({ where: { trackingCode } })) ?? row;
     return row;
   }
 
