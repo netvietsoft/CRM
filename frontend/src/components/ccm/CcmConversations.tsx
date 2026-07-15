@@ -118,7 +118,7 @@ function Bubble({ out, text, images, files, time, status, local }: {
         {files.map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer" className={`block underline text-xs mb-1 ${out ? 'text-blue-100' : 'text-blue-600'}`}>📎 {u.split('/').pop()?.slice(0, 28) || 'tệp'}</a>)}
         {text && <div className="whitespace-pre-wrap break-words">{text}</div>}
         {!text && images.length === 0 && files.length === 0 && <span className="italic opacity-70">[đính kèm]</span>}
-        <div className={`text-[10px] mt-1 ${out ? 'text-blue-100' : 'text-gray-400'}`}>{time}{local ? ' · xem thử (chưa gửi)' : (status ? ` · ${status}` : '')}</div>
+        <div className={`text-[10px] mt-1 ${out ? 'text-blue-100' : 'text-gray-400'}`}>{time}{local ? ' · ⚠ GỬI THẤT BẠI — khách không nhận được' : (status ? ` · ${status}` : '')}</div>
       </div>
     </div>
   );
@@ -380,6 +380,9 @@ export default function CcmConversations() {
             {c.pages.map((p) => <option key={p.id} value={p.id}>{p.name || p.externalId}{p.subscribed ? '' : ' (chưa webhook)'}</option>)}
           </select>
           <button onClick={c.register} title="Đăng ký page có quyền nhắn tin" className="w-[52px] border border-[#e5e7eb] rounded-[9px] bg-white text-[11px] font-semibold text-gray-700 leading-tight hover:bg-gray-50">＋<br />Page</button>
+          {c.selectedPage && !c.selectedPage.subscribed && (
+            <button onClick={() => c.subscribe(c.selectedPage!.externalId)} title="Bật webhook nhận tin mới cho page này" className="px-2 py-2 border border-amber-300 rounded-[9px] bg-amber-50 text-[11px] font-semibold text-amber-700 leading-tight hover:bg-amber-100 whitespace-nowrap">Bật webhook</button>
+          )}
           {c.selectedPage && <button onClick={() => c.backfill(c.selectedPage!.externalId)} title="Kéo lịch sử hội thoại" className="w-[38px] py-2 border border-[#e5e7eb] rounded-[9px] bg-white text-xs hover:bg-gray-50">⟳</button>}
         </div>
 
