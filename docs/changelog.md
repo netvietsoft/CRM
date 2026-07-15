@@ -5,6 +5,29 @@
 
 ---
 
+## 2026-07-15 (tối) — VTP COD/import lịch sử/hành trình + FIX REALTIME SOCKET (vé 60s)
+
+> Tiếp phiên sáng. Mới nhất `11811e4` — **server cần build BE cho commit này** (hành trình đơn), các commit trước đã deploy + verify.
+
+**VTP (đối soát COD + lịch sử + chi tiết):**
+- `008c52e` cod-sync cắt khúc 30 ngày — portal VTP chặn lọc >31 ngày ("Chỉ cho phép lọc trong 31 ngày"), code cũ nuốt lỗi trả total:0. Verify thật: quét 2.470 đơn/180 ngày trong 14s.
+- Token WEB đã dán vào SystemConfig `VIETTEL_WEB_TOKEN` qua `POST /viettelpost/cod-token` — **hạn 22/7/2026**, hết thì lấy lại từ DevTools portal (header `token` của request tới api.viettelpost.vn) và dán lại. Cron COD mỗi giờ đã chạy thật (trước đó service chưa từng được register).
+- `ad4e8e5` **import lịch sử đơn**: `POST /viettelpost/import-history {days?}` (nền, khúc 30 ngày) — đơn chưa có thì tạo mới từ list portal, đơn có thì chỉ update COD. ĐÃ CHẠY: 13 → **2.380 đơn** (501 giao-thành-công 1.358 · 504 hủy/hoàn 527 · 107 hủy 191…). Đơn import chỉ có MÃ trạng thái (portal không trả tên chữ).
+- `43f657d` lazy-enrich chi tiết: mở đơn chưa có detail → `getOne` tự gọi `order/detail-v2` bồi (địa chỉ/tỉnh-xã/SP/detailPayload) + đánh dấu `detailEnrichedAt`. Verify OK.
+- `4715364`+`11811e4` hành trình đơn: detail-v2 KHÔNG có hành trình → dùng portal `GET api.viettelpost.vn/api/setting/listOrderTracking?Type=2&OrderNumber=<mã>` (⚠ **CẦN header `token` = token WEB** — thiếu trả `{"No header"}`; tham số phân biệt hoa thường). Map về shape courierHistory (status/statusName/note·bưu cục/at asc). **CHƯA verify sau build.**
+- Webhook VTP inbound: phát hiện ĐÃ đăng ký + hoạt động sẵn từ đợt prod trước (đơn cập nhật realtime) — KHÔNG cần đăng ký lại; đang chạy KHÔNG xác thực (chưa có webhookSecret — chỉ đặt khi khai được token đồng thời phía VTP, không thì toàn bộ webhook bị từ chối).
+
+**Realtime socket (lỗi nền tảng — ảnh hưởng mọi trang admin):**
+- `547578d` Chẩn đoán bằng handshake tay: connect `/admin` bị đá ngay (`40/admin`→`41/admin`) vì gateway verify JWT từ cookie mà **nginx KHÔNG forward header Cookie cho path `/socket.io`** (chỉ `/api` có cookie). → Thêm `GET /auth/socket-ticket` (vé JWT 60s, xin qua /api) + 3 client socket FE (useMessengerChat/AdminNotifications/MessengerInbox) dùng `auth` DẠNG HÀM — socket.io gọi lại mỗi reconnect → vé luôn mới, kiêm luôn fix access-token 15' hết hạn làm realtime chết khi treo tab. VERIFY OK (connect giữ, không bị đá).
+- Backfill nền xong emit `messenger:backfill` → CCM tự reload + flash số liệu, khỏi F5.
+- `b011e1c` (trước đó) backfill chạy nền vì Cloudflare cắt HTTP ~100s → 524.
+
+**CCM (từ phiên chiều, đã deploy):** `0b00d5b` nút Bật webhook trong toolbar + nhãn "GỬI THẤT BẠI"; `46d44c5`/`0fdd314` avatar enrich + cửa sổ 500 tin mới nhất + attachments backfill (re-backfill bổ sung ảnh tin cũ); `4e631de` reply lưu attachments + cuộn đáy chắc + **thu hồi tin** (⋮, chỉ ẩn CRM — Meta không có API unsend cho page); `ec5e1bd` trích SĐT khi backfill + fallback avatar `/picture` + style đậm/chấm-đỏ hội thoại chưa trả lời.
+
+**Việc còn treo:** (1) build BE `11811e4` + verify hành trình đơn `PKE1389987085`; (2) Pancake CHƯA cấu hình — cần API key + Shop ID từ pos.pages.fm dán vào /admin/integrations/PANCAKE; (3) App Review Meta (avatar khách thật + nhắn khách lạ); (4) dọn token rác trong StoreIntegration VIETTELPOST (accessToken ngắn nghi autofill); (5) token COD hết hạn 22/7 → dán lại.
+
+---
+
 ## 2026-07-15 — Kết nối Fanpage→CCM chạy thật trên prod (lestgoai.com) + chuỗi fix Messenger/CCM + wire VTP COD
 
 > Phiên deploy + debug live trên prod. Tất cả commit đã push `origin/main`, mới nhất `ad6b753`. **Server cần `git reset --hard origin/main` + build BE/FE + pm2 restart nếu chưa làm đợt cuối.**
