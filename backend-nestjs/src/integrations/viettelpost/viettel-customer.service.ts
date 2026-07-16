@@ -283,6 +283,7 @@ export class ViettelCustomerService {
       MONEY_VAT: 0,
       MONEY_TOTAL: 0,
       MONEY_TOTALVAT: 0,
+      EXTRA_MONEY: 0, // VTP bắt buộc từ ~7/2026 ("EXTRA_MONEY cannot be left blank!") — phụ phí, không dùng thì 0.
       LIST_ITEM: listItem,
     };
 
