@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff, X } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { formatVnd } from '@/lib/format';
+import VtpAccountsCard from '@/components/admin/VtpAccountsCard';
 import type {
   Integration,
   IntegrationMetadata,
@@ -524,6 +525,9 @@ export default function IntegrationDetailPage() {
                 <span className="text-sm font-semibold text-indigo-700">📦 Xem bảng đơn đã tải về từ ViettelPost</span>
                 <span className="text-indigo-400">→</span>
               </a>
+
+              {/* Nhiều tài khoản VTP — chỉ đồng bộ về (import lịch sử + COD) */}
+              <VtpAccountsCard />
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Token (ViettelPost)</label>
                 <div className="relative">

@@ -111,8 +111,11 @@ export class ViettelpostCodService {
    * Đồng bộ COD_STATUS cho các đơn CRM có trong cửa sổ ngày (mặc định 180 ngày gần nhất).
    * Chỉ cập nhật dòng có `trackingCode` khớp `ORDER_NUMBER` từ VTP.
    */
-  async syncCodStatuses(windowDays = 180): Promise<{ ok: boolean; total: number; updated: number; tokenExpired?: boolean; error?: string }> {
-    const token = await this.getWebToken();
+  async syncCodStatuses(
+    windowDays = 180,
+    opts?: { token?: string; label?: string },
+  ): Promise<{ ok: boolean; total: number; updated: number; tokenExpired?: boolean; error?: string }> {
+    const token = opts?.token ?? (await this.getWebToken());
     if (!token) return { ok: false, total: 0, updated: 0, error: 'NO_TOKEN' };
 
     // trackingCode CRM cần khớp (bỏ nháp).
@@ -174,13 +177,18 @@ export class ViettelpostCodService {
     return { ok: true, total, updated };
   }
 
-  /** Kick import lịch sử đơn (chạy NỀN — hàng nghìn đơn mất vài phút, Cloudflare cắt HTTP ~100s). */
-  async startImportHistory(windowDays = 180): Promise<{ started: boolean; windowDays: number }> {
-    const token = await this.getWebToken();
+  /** Kick import lịch sử đơn (chạy NỀN — hàng nghìn đơn mất vài phút, Cloudflare cắt HTTP ~100s).
+   *  opts: token/accountId của TÀI KHOẢN PHỤ (mặc định = tài khoản chính, token SystemConfig). */
+  async startImportHistory(
+    windowDays = 180,
+    opts?: { token: string; accountId: string; label?: string },
+  ): Promise<{ started: boolean; windowDays: number }> {
+    const token = opts?.token ?? (await this.getWebToken());
     if (!token) throw new BadRequestException('Chưa có token WEB — dán qua POST /viettelpost/cod-token trước.');
-    void this.importHistory(windowDays)
-      .then((r) => this.logger.log(`[VTP-IMPORT] Xong: quét ${r.scanned} đơn VTP → tạo mới ${r.created}, cập nhật ${r.updated}.`))
-      .catch((e) => this.logger.error(`[VTP-IMPORT] Lỗi: ${(e as Error).message}`));
+    const tag = opts?.label ? ` [${opts.label}]` : '';
+    void this.importHistory(windowDays, opts)
+      .then((r) => this.logger.log(`[VTP-IMPORT]${tag} Xong: quét ${r.scanned} đơn VTP → tạo mới ${r.created}, cập nhật ${r.updated}.`))
+      .catch((e) => this.logger.error(`[VTP-IMPORT]${tag} Lỗi: ${(e as Error).message}`));
     return { started: true, windowDays };
   }
 
@@ -189,8 +197,11 @@ export class ViettelpostCodService {
    * - Đơn CRM CHƯA có → tạo mới với dữ liệu list (người nhận, COD, dịch vụ, ngày gửi…).
    * - Đơn ĐÃ có → chỉ cập nhật trạng thái đối soát COD (webhook/reconcile là nguồn giàu hơn cho phần còn lại).
    */
-  async importHistory(windowDays = 180): Promise<{ ok: boolean; scanned: number; created: number; updated: number; tokenExpired?: boolean; error?: string }> {
-    const token = await this.getWebToken();
+  async importHistory(
+    windowDays = 180,
+    opts?: { token?: string; accountId?: string | null; label?: string },
+  ): Promise<{ ok: boolean; scanned: number; created: number; updated: number; tokenExpired?: boolean; error?: string }> {
+    const token = opts?.token ?? (await this.getWebToken());
     if (!token) return { ok: false, scanned: 0, created: 0, updated: 0, error: 'NO_TOKEN' };
 
     const DAY_MS = 24 * 60 * 60 * 1000;
@@ -231,7 +242,11 @@ export class ViettelpostCodService {
           };
           const existing = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode: code }, select: { id: true } });
           if (existing) {
-            await this.prisma.viettelCustomer.update({ where: { id: existing.id }, data: codFields });
+            await this.prisma.viettelCustomer.update({
+              where: { id: existing.id },
+              // Đơn xuất hiện trong list của tài khoản nào thì thuộc tài khoản đó (không gỡ tag khi chạy TK chính).
+              data: { ...codFields, ...(opts?.accountId ? { vtpAccountId: opts.accountId } : {}) },
+            });
             updated++;
           } else {
             const sysDate = o.ORDER_SYSTEMDATE ? new Date(o.ORDER_SYSTEMDATE) : null;
@@ -252,6 +267,7 @@ export class ViettelpostCodService {
                 orderServiceAdd: o.ORDER_SERVICE_ADD || null,
                 orderPayment: numOrNull(o.ORDER_PAYMENT),
                 detailPayload: o,
+                vtpAccountId: opts?.accountId ?? null,
                 ...codFields,
               },
             });
@@ -268,20 +284,38 @@ export class ViettelpostCodService {
     return { ok: true, scanned, created, updated };
   }
 
-  // Cron mỗi giờ — chỉ chạy nếu có token & chưa hết hạn.
+  // Cron mỗi giờ — tài khoản chính (token SystemConfig) + mọi tài khoản phụ đang active có web token.
   @Cron(process.env.VIETTEL_COD_SYNC_CRON || CronExpression.EVERY_HOUR, { name: 'viettelpost-cod-sync' })
   async handleCron() {
     if (process.env.VIETTEL_COD_SYNC === 'false') return;
     if (this.syncing) return;
-    const status = await this.tokenStatus();
-    if (!status.hasToken || status.expired) return;
     this.syncing = true;
     try {
-      await this.syncCodStatuses();
+      const status = await this.tokenStatus();
+      if (status.hasToken && !status.expired) await this.syncCodStatuses();
+
+      const accounts = await this.prisma.vtpAccount.findMany({
+        where: { isActive: true, webToken: { not: null } },
+        select: { id: true, label: true, webToken: true },
+      });
+      for (const acc of accounts) {
+        if (!acc.webToken || this.decodeToken(acc.webToken).expired) continue;
+        try {
+          await this.syncCodStatuses(180, { token: acc.webToken, label: acc.label });
+        } catch (e: any) {
+          this.logger.error(`[VTP-COD] Cron [${acc.label}] lỗi: ${e?.message || e}`);
+        }
+      }
     } catch (e: any) {
       this.logger.error(`[VTP-COD] Cron lỗi: ${e?.message || e}`);
     } finally {
       this.syncing = false;
     }
+  }
+
+  /** Đọc hạn 1 token WEB bất kỳ (cho tài khoản phụ). */
+  webTokenStatus(token: string | null | undefined) {
+    if (!token) return { hasToken: false, expiresAt: null as string | null, expired: true };
+    return this.decodeToken(token);
   }
 }

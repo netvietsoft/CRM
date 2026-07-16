@@ -6,6 +6,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { ViettelpostSyncService } from './viettelpost-sync.service';
 import { ViettelCustomerService } from './viettel-customer.service';
 import { ViettelpostAuthService } from './viettelpost-auth.service';
+import { VtpAccountsService } from './vtp-accounts.service';
 import { ViettelpostCodService } from './viettelpost-cod.service';
 
 @ApiTags('ViettelPost')
@@ -18,7 +19,45 @@ export class ViettelpostController {
     private readonly viettelCustomerService: ViettelCustomerService,
     private readonly authService: ViettelpostAuthService,
     private readonly codService: ViettelpostCodService,
+    private readonly accountsService: VtpAccountsService,
   ) {}
+
+  // ===== Tài khoản VTP PHỤ (chỉ đồng bộ về: import lịch sử + COD; tạo đơn vẫn dùng TK chính) =====
+  @Get('accounts')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Danh sách tài khoản VTP phụ (đã che secret)' })
+  listAccounts() {
+    return this.accountsService.list();
+  }
+
+  @Post('accounts')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Thêm tài khoản VTP phụ (verify đăng nhập trước khi lưu, mật khẩu mã hoá)' })
+  createAccount(@Body() body: { label?: string; username?: string; password?: string; webToken?: string }) {
+    return this.accountsService.create(body || {});
+  }
+
+  @Post('accounts/:id/web-token')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Dán/đổi web token portal cho tài khoản phụ' })
+  setAccountWebToken(@Param('id') id: string, @Body() body: { token?: string }) {
+    return this.accountsService.setWebToken(id, body?.token || '');
+  }
+
+  @Post('accounts/:id/import-history')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Import lịch sử đơn của tài khoản phụ (chạy nền, tag theo tài khoản)' })
+  importAccountHistory(@Param('id') id: string, @Body() body: { days?: number }) {
+    const days = Number(body?.days);
+    return this.accountsService.startImport(id, Number.isFinite(days) && days > 0 ? Math.min(days, 365) : 180);
+  }
+
+  @Delete('accounts/:id')
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'Xoá kết nối tài khoản phụ (đơn đã import giữ nguyên)' })
+  removeAccount(@Param('id') id: string) {
+    return this.accountsService.remove(id);
+  }
 
   // ===== Đối soát COD (token WEB portal viettelpost.vn — admin dán thủ công) =====
   @Get('cod-token')

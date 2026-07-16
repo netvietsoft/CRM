@@ -1372,11 +1372,30 @@ model ViettelCustomer {
   courierHistory       Json?     @map("courier_history")
   rawPayload           Json?     @map("raw_payload")
   storeId              String?   @map("store_id")
+  vtpAccountId         String?   @map("vtp_account_id") // tài khoản VTP sở hữu đơn (null = tài khoản chính từ env)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   @@index([sendDate])
+  @@index([vtpAccountId])
   @@map("viettel_customers")
+}
+
+// Tài khoản ViettelPost PHỤ — chỉ để ĐỒNG BỘ VỀ (import lịch sử đơn + đối soát COD).
+// Tạo đơn mới vẫn dùng tài khoản chính trong env. Mật khẩu mã hoá AES-256-GCM (token-vault pack()).
+model VtpAccount {
+  id              String    @id @default(uuid())
+  label           String // tên hiển thị (vd "Shop 2")
+  username        String    @unique
+  passwordEnc     String    @map("password_enc") @db.Text
+  webToken        String?   @map("web_token") @db.Text // token WEB portal (import/COD) — hết hạn ~7 ngày, dán lại
+  webTokenSavedAt DateTime? @map("web_token_saved_at")
+  isActive        Boolean   @default(true) @map("is_active")
+  lastImportAt    DateTime? @map("last_import_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("vtp_accounts")
 }
 
 model AdminNotification {
