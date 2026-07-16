@@ -277,7 +277,7 @@ export default function CreateViettelOrderPage() {
     void loadNextRef();
   };
 
-  const inp = 'w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] bg-white transition-colors';
+  const inp = 'w-full border border-[#c7ced9] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#2563eb] bg-white transition-colors';
   const lbl = 'block text-xs text-[#6b7280] font-semibold mb-1.5';
   const card = 'bg-white rounded-[14px] border border-[#eceef2] p-[22px] space-y-4';
   const h2 = 'text-[15px] font-extrabold text-[#111827] flex items-center gap-2';
