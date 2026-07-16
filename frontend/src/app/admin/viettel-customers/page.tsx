@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { formatVndSymbol } from '@/lib/format';
+import { vtpStatusLabel } from '@/lib/vtpStatus';
 import { VtTabs, vtCard } from './_ui';
 
 interface ViettelCustomer {
@@ -18,6 +19,7 @@ interface ViettelCustomer {
   receiverAddress: string | null;
   productName: string | null;
   cod: number;
+  sendDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -32,6 +34,11 @@ function fmtDate(s: string | null) {
   if (!s) return '—';
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('vi-VN', { hour12: false });
+}
+function fmtDateShort(s: string | null) {
+  if (!s) return '—';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN');
 }
 // Pill trạng thái theo design system CRM (hex chốt).
 const STATUS_CLS = (st: number | null) => {
@@ -129,7 +136,7 @@ export default function ViettelCustomersPage() {
           {/* Ô 3 — Trạng thái · rộng: w-[170px] */}
           <select className={`${inputCls} w-[170px] shrink-0`} value={filters.status} onChange={e => setF('status', e.target.value)}>
             <option value="">Tất cả trạng thái</option>
-            {statusOpts.map((s, i) => <option key={`${s.status}-${i}`} value={s.status}>{s.status} · {s.statusName || ''} ({s.count})</option>)}
+            {statusOpts.map((s, i) => <option key={`${s.status}-${i}`} value={s.status}>{vtpStatusLabel(s.status, s.statusName)} ({s.count})</option>)}
           </select>
           {/* Ô 4a — COD từ · rộng: w-[170px] */}
           <input className={`${inputCls} w-[170px] shrink-0 text-right`} type="number" placeholder="COD từ" title="COD từ" value={filters.codMin} onChange={e => setF('codMin', e.target.value)} />
@@ -167,6 +174,7 @@ export default function ViettelCustomersPage() {
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">SĐT</th>
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Địa chỉ</th>
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Sản phẩm</th>
+                <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Ngày tạo</th>
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Trạng thái</th>
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] text-right whitespace-nowrap">COD</th>
                 <th className="px-4 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Cập nhật</th>
@@ -174,9 +182,9 @@ export default function ViettelCustomersPage() {
             </thead>
             <tbody>
               {loading && rows.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-9 text-center text-[#9ca3af]">Đang tải...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-9 text-center text-[#9ca3af]">Đang tải...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-9 text-center text-[#9ca3af]">Không có vận đơn khớp bộ lọc.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-9 text-center text-[#9ca3af]">Không có vận đơn khớp bộ lọc.</td></tr>
               ) : (
                 rows.map((r, i) => {
                   const isDraft = r.trackingCode.startsWith('DRAFT-');
@@ -195,10 +203,11 @@ export default function ViettelCustomersPage() {
                     <td className="px-3 py-3 whitespace-nowrap"><CopyCell label="SĐT" value={r.receiverPhone} /></td>
                     <td className="px-3 py-3 text-[#4b5563] max-w-[210px] truncate" title={r.receiverAddress || ''}>{r.receiverAddress || '—'}</td>
                     <td className="px-3 py-3"><CopyCell label="sản phẩm" value={r.productName} clamp /></td>
+                    <td className="px-3 py-3 text-[#4b5563] text-xs whitespace-nowrap">{fmtDateShort(r.sendDate || r.createdAt)}</td>
                     <td className="px-3 py-3 whitespace-nowrap">
                       {isDraft
                         ? <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#f1f5f9] text-[#64748b]">📝 Nháp</span>
-                        : <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_CLS(r.status)}`}>{r.status ?? '—'} {r.statusName || ''}</span>}
+                        : <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_CLS(r.status)}`}>{vtpStatusLabel(r.status, r.statusName)}</span>}
                     </td>
                     <td className="px-3 py-3 text-right font-bold font-mono whitespace-nowrap text-[#111827]">{fmtMoney(r.cod)}</td>
                     <td className="px-4 py-3 text-[#6b7280] text-xs whitespace-nowrap">{fmtDate(r.statusDate || r.updatedAt)}</td>
