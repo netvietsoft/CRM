@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { SearchIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, SearchIcon } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { getApiErrorMessage } from '@/lib/apiError';
 
@@ -70,6 +70,9 @@ export default function MasterDataManager({
   const [form, setForm] = useState<Record<string, string | boolean>>(() => buildInitialForm(fields));
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  // Sort theo cột (click header): key + hướng.
+  const [sortKey, setSortKey] = useState(defaultSortKey);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const searchableKeys = useMemo(() => {
     return Array.from(new Set(columns.map((column) => column.key).filter((key) => key !== 'isActive')));
@@ -95,11 +98,21 @@ export default function MasterDataManager({
 
   const sortedItems = useMemo(() => {
     return [...filteredItems].sort((left, right) => {
-      const leftValue = String(getItemValue(left, defaultSortKey) ?? '').toLowerCase();
-      const rightValue = String(getItemValue(right, defaultSortKey) ?? '').toLowerCase();
-      return leftValue.localeCompare(rightValue, 'vi');
+      const lv = getItemValue(left, sortKey);
+      const rv = getItemValue(right, sortKey);
+      // Boolean (isActive) và số so trực tiếp; còn lại so chuỗi vi-VN.
+      let r: number;
+      if (typeof lv === 'boolean' || typeof rv === 'boolean') r = Number(lv !== false) - Number(rv !== false);
+      else if (typeof lv === 'number' && typeof rv === 'number') r = lv - rv;
+      else r = String(lv ?? '').toLowerCase().localeCompare(String(rv ?? '').toLowerCase(), 'vi');
+      return sortDir === 'asc' ? r : -r;
     });
-  }, [defaultSortKey, filteredItems]);
+  }, [sortKey, sortDir, filteredItems]);
+
+  const onSort = (key: string) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('asc'); }
+  };
 
   const activeCount = useMemo(() => {
     return items.filter((item) => getItemValue(item, 'isActive') !== false).length;
@@ -279,14 +292,26 @@ export default function MasterDataManager({
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f9fafb]">
-                {columns.map((column) => (
-                  <th
-                    key={column.key}
-                    className="px-4 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]"
-                  >
-                    {column.label}
-                  </th>
-                ))}
+                {columns.map((column) => {
+                  const active = sortKey === column.key;
+                  const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
+                  return (
+                    <th
+                      key={column.key}
+                      className="px-4 py-[10px] text-left text-[11px] font-semibold uppercase tracking-[0.05em]"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onSort(column.key)}
+                        className={`inline-flex items-center gap-1.5 rounded px-1 py-0.5 -ml-1 transition-colors ${active ? 'text-[#2563eb]' : 'text-[#6b7280] hover:text-gray-900'}`}
+                        title={`Sắp xếp theo ${column.label.toLowerCase()}`}
+                      >
+                        <span>{column.label}</span>
+                        <Icon className="h-3.5 w-3.5" />
+                      </button>
+                    </th>
+                  );
+                })}
                 <th className="px-4 py-[10px]"></th>
               </tr>
             </thead>
