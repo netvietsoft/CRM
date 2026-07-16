@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-07-16 — VTP UI/tạo đơn/nháp/đa tài khoản + KẾT NỐI PANCAKE (5.128 đơn lịch sử)
+
+> Mới nhất `414219a`. Các commit VTP UI + Pancake cần build BE+FE (deploy `69e25ca` trở đi CÓ MIGRATION: `npx prisma migrate deploy` trước build).
+
+**Trang danh sách/chi tiết đơn Viettel (`/admin/viettel-customers`):**
+- `047c1a9`+`a9ffe19` Trạng thái chỉ hiện TEXT theo **nhóm chính thức VTP** (lib `vtpStatus.ts`, lấy từ `supperapp/get-list-status-category-code-v2`; 501=Giao thành công, 504=Đã trả/hoàn về shop — 2 nhóm KHÁC nhau); cột Ngày tạo (sendDate); ô ngày 2 dòng (giờ trên/ngày dưới); sort mặc định sendDate desc (Ở BE — take 1000/2380, sort sai là mất đơn mới).
+- `23c0bf5` lọc ngày theo sendDate (trước lọc createdAt=ngày import → "không lọc được"); mặc định khoảng ngày = tháng này; card Kết quả format số mono.
+- `6e8fe17` modal Lịch sử mua: pill trạng thái màu + cột Giao thành công (ORDER_SUCCESSDATE/mốc 501) + ngày 2 dòng.
+- `dbc62a2`+`88bbb42`+`9cf47ac`+`1b118ce` trang tạo đơn: viền ô nhập đậm hơn; fix ô Tên hàng bị w-full bóp thành sliver; Giá trị dàn hết dòng; Giá trị/COD ngăn nghìn VN.
+
+**Tạo đơn VTP — saga `EXTRA_MONEY` (VTP siết API ~7/2026):** thiếu → "cannot be left blank"; =0 → "must be greater than 0"; lớn → "cannot be greater than 5× total fee". Kiểm chứng getPriceAll: KHÔNG ảnh hưởng cước → chốt `EXTRA_MONEY: 1` (`8a2f13a`+`567ce12`+`597a298`). **CHƯA verify tạo đơn thành công sau fix cuối.**
+- `45760fe` wire route địa danh hệ MỚI (`address/provinces-new|wards-new`, authService.getV3 — FE gọi mà BE chưa hề có; verify 34 tỉnh).
+- `567ce12` route NHÁP đơn (`POST/DELETE /viettelpost/drafts`) — FE có nút mà BE thiếu route; nháp lưu local, đẩy VTP xong tự xoá.
+
+**Đa tài khoản ViettelPost (`69e25ca`, MIGRATION `20260716090000_vtp_accounts`):** bảng `vtp_accounts` (mật khẩu AES-256-GCM token-vault; web token dán riêng/tài khoản, hạn ~7 ngày) + cột `viettel_customers.vtp_account_id`. TK phụ CHỈ đồng bộ về (import lịch sử + COD — cron giờ loop mọi TK); routes `/viettelpost/accounts*`; UI card trong trang cấu hình VIETTELPOST (verify login khi thêm). User có ~5 TK — **chưa nhập**.
+- `30cafe2` /admin/integrations: Facebook OAuth thành card vuông trong lưới (modal chi tiết, tự mở khi ?fb=); modal VIETTELPOST có nút sang trang TK phụ.
+
+**PANCAKE — ĐÃ KẾT NỐI (shop 4893018):**
+- Gotcha webhook: user điền URL domain FE (`lestgoai.com/api/...` → 404); URL đúng `https://api.lestgoai.com/api/integrations/pancake/webhook` (đã sửa bên Pancake, kèm header `x-pancake-shop-id: 4893018`).
+- StoreIntegration PANCAKE (shopId+apiKey) user tự lưu qua UI; verify sync-categories: 6 danh mục OK.
+- `414219a` sync TẤT CẢ đơn chạy NỀN (CF 524). ĐÃ CHẠY: **~0 → 5.128 đơn** (theo dõi ~40'). **Webhook realtime chưa verify** (cần 1 đơn/sự kiện thật từ Pancake).
+
+**Việc treo:** (1) verify tạo đơn VTP sau fix EXTRA_MONEY=1; (2) nhập 5 TK VTP phụ + dán token + import từng cái; (3) verify webhook Pancake bằng đơn thật; (4) App Review Meta; (5) token COD chính hết hạn 22/7.
+
+---
+
 ## 2026-07-15 (tối) — VTP COD/import lịch sử/hành trình + FIX REALTIME SOCKET (vé 60s)
 
 > Tiếp phiên sáng. Mới nhất `11811e4` — **server cần build BE cho commit này** (hành trình đơn), các commit trước đã deploy + verify.
