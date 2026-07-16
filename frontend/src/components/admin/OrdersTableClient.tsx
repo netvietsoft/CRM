@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { toast } from 'react-toastify';
@@ -38,6 +38,7 @@ function fmtDate(d: string | Date) {
 
 function OrderDateSortHeader({ field, label }: { field: 'createdAt' | 'updatedAt'; label: string }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname(); // dùng chung cho /admin/orders và /admin/ccm-orders
   const currentField = searchParams.get('dateField') || 'updatedAt';
   const currentSort = searchParams.get('dateSort') || 'desc';
   const isActive = currentField === field;
@@ -51,7 +52,7 @@ function OrderDateSortHeader({ field, label }: { field: 'createdAt' | 'updatedAt
 
   return (
     <Link
-      href={`/admin/orders?${params.toString()}`}
+      href={`${pathname}?${params.toString()}`}
       className={`inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 -ml-1.5 transition-colors ${isActive ? 'text-blue-600 hover:bg-blue-50' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
         }`}
       title={`Sắp xếp ${label.toLowerCase()} ${nextSort === 'desc' ? 'mới nhất' : 'cũ nhất'}`}
@@ -67,6 +68,10 @@ interface OrdersTableClientProps {
   statusCounts: Record<string, number>;
   filteredRevenue?: number;
   totalCount?: number;
+  title?: string; // mặc định "Đơn hàng"; trang CCM truyền "Đơn hàng CCM"
+  subtitle?: string;
+  createSource?: string; // gắn ?source= vào nút Tạo đơn (vd 'CCM')
+  showRevenue?: boolean; // ẩn widget doanh thu toàn cục ở trang nguồn riêng
 }
 
 interface OrderUserSummary {
@@ -131,7 +136,7 @@ function getFirstItemDisplay(order: OrdersTableOrder) {
   return 'Chưa có sản phẩm';
 }
 
-export default function OrdersTableClient({ orders, statusCounts, filteredRevenue = 0, totalCount = 0 }: OrdersTableClientProps) {
+export default function OrdersTableClient({ orders, statusCounts, filteredRevenue = 0, totalCount = 0, title = 'Đơn hàng', subtitle = 'Quản lý và theo dõi hiệu quả kinh doanh', createSource, showRevenue = true }: OrdersTableClientProps) {
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -235,16 +240,16 @@ export default function OrdersTableClient({ orders, statusCounts, filteredRevenu
     <>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-extrabold text-[#111827] tracking-[-0.4px]">Đơn hàng</h1>
-          <p className="text-[#6b7280] mt-1 text-[13px]">Quản lý và theo dõi hiệu quả kinh doanh</p>
+          <h1 className="text-2xl font-extrabold text-[#111827] tracking-[-0.4px]">{title}</h1>
+          <p className="text-[#6b7280] mt-1 text-[13px]">{subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <ExportQRButton selectedOrders={selectedOrders} />
-          <CreateOrderButton />
+          <CreateOrderButton source={createSource} />
         </div>
       </div>
 
-      <RevenueStats defaultPeriod="today" periods={['today', 'yesterday', 'week', 'lastweek', 'month', 'lastmonth']} scope="all" dateField="updatedAt" />
+      {showRevenue && <RevenueStats defaultPeriod="today" periods={['today', 'yesterday', 'week', 'lastweek', 'month', 'lastmonth']} scope="all" dateField="updatedAt" />}
 
       <OrderAdvancedFilter />
 

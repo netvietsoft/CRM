@@ -2,7 +2,7 @@
 
 import Image from '@/components/ui/AppImage';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, Trash2, X, DownloadCloud, Plus, Save } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { passthroughImageLoader } from '@/lib/imageLoader';
@@ -34,6 +34,8 @@ import type {
 
 export default function CreateOrderClient({ currentUser }: { currentUser: { id: string; role: string; name?: string } }) {
   const router = useRouter();
+  // ?source=CCM (từ trang Đơn hàng CCM) → đơn tạo ra gắn nguồn CCM, nằm trong bảng đơn CCM riêng.
+  const orderSource = useSearchParams().get('source') || undefined;
   const hasHydratedCustomerDraftRef = useRef(false);
   const skipSelectedCustomerPrefillRef = useRef(false);
   const pendingWardRestoreRef = useRef<{ province: string; ward: string } | null>(null);
@@ -539,6 +541,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
 
     try {
       await apiClientClient.post('/orders/admin', {
+        source: orderSource,
         userId: selectedCustomer?.id,
         items: orderItems.map((item) => ({
           productId: item.productId,
@@ -571,7 +574,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
       });
 
       window.localStorage.removeItem(CREATE_ORDER_CUSTOMER_DRAFT_KEY);
-      router.push('/admin/orders');
+      router.push(orderSource === 'CCM' ? '/admin/ccm-orders' : '/admin/orders');
       router.refresh();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Không thể tạo đơn hàng');

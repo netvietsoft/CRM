@@ -128,4 +128,9 @@ export class CreateAdminOrderDto {
   @ApiPropertyOptional({ description: 'Additional metadata (staff assignments, carrier, etc.)' })
   @IsOptional()
   metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({ description: "Nguồn đơn — chỉ nhận 'CCM' (trang Đơn hàng CCM); khác/thiếu → ADMIN_MANUAL" })
+  @IsOptional()
+  @IsString()
+  source?: string;
 }

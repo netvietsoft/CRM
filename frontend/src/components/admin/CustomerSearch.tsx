@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import Select from '@/components/ui/Select';
@@ -21,6 +21,7 @@ const RANKS = [
 
 export default function CustomerSearch() {
   const router = useRouter();
+  const pathname = usePathname(); // dùng chung /admin/customers cũ và /admin/pancake-customers
   const searchParams = useSearchParams();
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -74,7 +75,7 @@ export default function CustomerSearch() {
 
     params.delete('page'); // Reset page when searching
 
-    router.push(`/admin/customers?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   }, [debouncedSearch, rank, province, router]);
 
   return (

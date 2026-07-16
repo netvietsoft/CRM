@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { X } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -22,6 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function OrderActiveFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname(); // dùng chung cho /admin/orders và /admin/ccm-orders
 
   const productName = searchParams.get('productName') || '';
   const statuses = (searchParams.get('status') || '')
@@ -41,7 +42,7 @@ export default function OrderActiveFilters() {
     const params = new URLSearchParams(searchParams.toString());
     keys.forEach((k) => params.delete(k));
     params.delete('page');
-    router.push(`/admin/orders?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   if (productName) {

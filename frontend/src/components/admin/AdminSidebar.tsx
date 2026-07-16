@@ -69,10 +69,11 @@ const navItems: NavGroup[] = [
   {
     label: 'Quản lý',
     items: [
-      { name: 'Khách hàng', href: '/admin/customers', roles: ADMIN_STAFF, icon: Users },
+      { name: 'Khách hàng Pancake', href: '/admin/pancake-customers', roles: ADMIN_STAFF, icon: Users },
       { name: 'Nhân viên', href: '/admin/staff', roles: ADMIN_MODERATOR, icon: Users },
       { name: 'Cửa hàng', href: '/admin/stores', roles: ADMIN_ONLY, icon: Store },
       { name: 'Đơn hàng', href: '/admin/orders', roles: ALL_ROLES, icon: ShoppingBag },
+      { name: 'Đơn hàng CCM', href: '/admin/ccm-orders', roles: ALL_ROLES, icon: MessagesSquare },
       { name: 'Tin nhắn', href: '/admin/messenger', roles: ALL_ROLES, icon: MessageSquare },
       { name: 'CCM', href: '/ccm/conversations', roles: ALL_ROLES, icon: MessagesSquare },
       {

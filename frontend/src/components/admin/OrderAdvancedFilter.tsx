@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarDays, Filter, X } from 'lucide-react';
 import Select from '@/components/ui/Select';
 
@@ -23,6 +23,7 @@ function getInputType(filterType: DateFilterType) {
 export default function OrderAdvancedFilter() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname(); // dùng chung cho /admin/orders và /admin/ccm-orders
 
   const [isOpen, setIsOpen] = useState(false);
   const [dateField, setDateField] = useState<DateField>(
@@ -75,7 +76,7 @@ export default function OrderAdvancedFilter() {
     }
 
     params.delete('page');
-    router.push(`/admin/orders?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
     setIsOpen(false);
   };
 
@@ -91,7 +92,7 @@ export default function OrderAdvancedFilter() {
     setDateSort('desc');
     setDateFilterType('');
     setDateValue('');
-    router.push(`/admin/orders?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
     setIsOpen(false);
   };
 

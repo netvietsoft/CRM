@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ArrowUpDown } from 'lucide-react';
 import { MessageSquareShare } from 'lucide-react';
 import ZaloZnsModal from './ZaloZnsModal';
@@ -58,6 +58,7 @@ function formatRegion(customer: CustomerSummary) {
 
 export default function CustomersTableClient({ customers, searchParams, isZaloEnabled = false }: CustomersTableClientProps) {
   const router = useRouter();
+  const pathname = usePathname(); // dùng chung /admin/customers cũ và /admin/pancake-customers
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Click vào vùng trống của dòng → mở chi tiết; bỏ qua khi bấm vào control (checkbox/nút/link…).
@@ -103,7 +104,7 @@ export default function CustomersTableClient({ customers, searchParams, isZaloEn
     params.set('sortBy', sortBy);
     params.set('sortOrder', nextSortOrder);
 
-    return `/admin/customers?${params.toString()}`;
+    return `${pathname}?${params.toString()}`;
   };
 
   const renderSortLabel = (label: string, sortBy: 'rank' | 'totalSpent' | 'orders' | 'commissionBalance') => {

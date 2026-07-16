@@ -1371,6 +1371,10 @@ export class OrdersService {
       throw new BadRequestException('Shipping name and phone are required for guest orders');
     }
 
+    // Nguồn đơn: gắn CCM khi tạo từ hội thoại CCM (AI chốt / nhân viên tạo từ chat) hoặc form khai rõ source=CCM.
+    const orderSource =
+      (createOrderDto as any).source === 'CCM' || clientMetadata?.conversationId ? 'CCM' : 'ADMIN_MANUAL';
+
     const user = await this.resolveAdminOrderCustomer({
       userId,
       name: shippingName,
@@ -1488,7 +1492,7 @@ export class OrdersService {
         paymentStatus: 'UNPAID',
         note: adminNote || null,
         customerNote: customerNote || null,
-        source: 'ADMIN_MANUAL',
+        source: orderSource,
         storeId: orderStoreId || null,
         conversationId: clientMetadata?.conversationId || null, // I6: cột thật + index (tra CCM không quét JSON)
         assigningSellerId: clientMetadata?.assigningSellerId || null,
@@ -1507,7 +1511,7 @@ export class OrdersService {
 
     await this.messagingAutomationService.handleOrderCreated(order.id, 'ADMIN_ORDER_CREATED', {
       paymentMethod: paymentMethod || 'COD',
-      source: 'ADMIN_MANUAL',
+      source: orderSource,
     });
 
     return { success: true, orderId: order.id, orderCode: order.orderCode };
@@ -1727,6 +1731,7 @@ export class OrdersService {
     status?: string;
     search?: string;
     paymentMethod?: string;
+    source?: string; // lọc theo nguồn đơn (vd 'CCM' cho trang Đơn hàng CCM)
     dateField?: string;
     dateSort?: string;
     dateFilterType?: string;
@@ -1738,6 +1743,7 @@ export class OrdersService {
     const search = params.search || '';
     const status = params.status;
     const paymentMethod = params.paymentMethod;
+    const source = params.source;
     const dateField = params.dateField === 'createdAt' ? 'createdAt' : 'updatedAt';
     const dateSort = params.dateSort === 'asc' ? 'asc' : 'desc';
     const dateFilterType = params.dateFilterType;
@@ -1767,6 +1773,10 @@ export class OrdersService {
 
     if (status) where.status = status;
     if (paymentMethod) where.paymentMethod = paymentMethod;
+    if (source) {
+      where.source = source;
+      baseWhere.source = source; // counts theo trạng thái cũng phải trong phạm vi nguồn
+    }
 
     if (dateFilterType && dateValue) {
       const range = this.getOrderDateRange(dateFilterType, dateValue);

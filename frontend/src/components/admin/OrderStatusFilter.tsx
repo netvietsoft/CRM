@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
@@ -26,6 +26,7 @@ const extraStatuses = {
 
 export default function OrderStatusFilter({ counts = {} }: { counts?: Record<string, number> }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname(); // dùng chung cho /admin/orders và /admin/ccm-orders
   const currentStatus = searchParams.get('status') || null;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -50,7 +51,7 @@ export default function OrderStatusFilter({ counts = {} }: { counts?: Record<str
       params.delete('status');
     }
     params.delete('page');
-    return `/admin/orders?${params.toString()}`;
+    return `${pathname}?${params.toString()}`;
   };
 
   const chipClass = (active: boolean) =>
