@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -126,6 +126,21 @@ export class ViettelpostController {
   @Roles('ADMIN', 'STAFF')
   async createOrder(@Body() dto: any) {
     return this.viettelCustomerService.createOnVtp(dto);
+  }
+
+  // ===== Nháp đơn: chỉ lưu local CRM (sửa/xoá được, đẩy VTP sau bằng nút Tạo đơn) =====
+  @Post('drafts')
+  @Roles('ADMIN', 'STAFF')
+  @ApiOperation({ summary: 'Lưu/cập nhật nháp đơn (local CRM, không đẩy VTP)' })
+  saveDraft(@Body() body: any) {
+    return this.viettelCustomerService.saveDraft(body);
+  }
+
+  @Delete('drafts/:code')
+  @Roles('ADMIN', 'STAFF')
+  @ApiOperation({ summary: 'Xoá nháp đơn' })
+  deleteDraft(@Param('code') code: string) {
+    return this.viettelCustomerService.deleteDraft(code);
   }
 
   // Cập nhật trạng thái vận đơn (UpdateOrder) — TYPE: 1 Duyệt/2 Duyệt hoàn/3 Phát tiếp/4 Hủy/5 Gửi lại/11 Xóa.

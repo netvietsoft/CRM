@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ViettelpostAuthService } from './viettelpost-auth.service';
 
@@ -283,7 +283,9 @@ export class ViettelCustomerService {
       MONEY_VAT: 0,
       MONEY_TOTAL: 0,
       MONEY_TOTALVAT: 0,
-      EXTRA_MONEY: 0, // VTP bắt buộc từ ~7/2026 ("EXTRA_MONEY cannot be left blank!") — phụ phí, không dùng thì 0.
+      // VTP bắt buộc >0 từ ~7/2026 (thiếu: "cannot be left blank"; 0: "must be greater than 0").
+      // Đã kiểm chứng qua getPriceAll: KHÔNG ảnh hưởng cước → dùng giá trị khai báo hàng (fallback COD, tối thiểu 1).
+      EXTRA_MONEY: totalPrice > 0 ? totalPrice : Number(dto.cod) > 0 ? Number(dto.cod) : 1,
       LIST_ITEM: listItem,
     };
 
@@ -319,6 +321,13 @@ export class ViettelCustomerService {
       });
     } catch (e: any) {
       this.logger.warn(`[VTP] tạo đơn OK nhưng lưu DB lỗi: ${e?.message || e}`);
+    }
+
+    // Đơn tạo từ nháp → dọn nháp (best-effort).
+    if (typeof (dto as any).draftCode === 'string' && (dto as any).draftCode.startsWith('DRAFT-')) {
+      await this.prisma.viettelCustomer
+        .deleteMany({ where: { trackingCode: (dto as any).draftCode } })
+        .catch((e) => this.logger.warn(`[VTP] xoá nháp ${(dto as any).draftCode} lỗi: ${e?.message || e}`));
     }
 
     return { trackingCode: String(trackingCode), fee: Number(data?.MONEY_TOTAL || 0) };
@@ -382,6 +391,50 @@ export class ViettelCustomerService {
         };
       })
       .sort((a, b) => a.at.localeCompare(b.at));
+  }
+
+  // ===== NHÁP đơn (chỉ lưu local CRM — không đẩy VTP; đẩy sau bằng nút Tạo đơn kèm draftCode) =====
+
+  /** Lưu/cập nhật nháp: dòng viettel_customers với trackingCode 'DRAFT-...', form đầy đủ trong detailPayload.dto. */
+  async saveDraft(dto: any): Promise<{ draftCode: string }> {
+    const draftCode =
+      typeof dto?.draftCode === 'string' && dto.draftCode.startsWith('DRAFT-')
+        ? dto.draftCode
+        : `DRAFT-${Date.now()}`;
+    const { draftCode: _omit, ...form } = dto || {};
+    const items: any[] = Array.isArray(form.items) ? form.items : [];
+    const totalWeight = items.reduce((s, it) => s + (Number(it?.weight) || 0) * (Number(it?.quantity) || 1), 0);
+    const data = {
+      orderReference: form.orderReference || null,
+      status: null,
+      statusName: 'Nháp',
+      receiverFullname: form.receiverFullname || null,
+      receiverPhone: form.receiverPhone ? String(form.receiverPhone) : null,
+      receiverAddress: form.receiverAddress || null,
+      receiverProvinceId: this.num(form.receiverProvince),
+      receiverDistrictId: this.num(form.receiverDistrict),
+      receiverWardId: this.num(form.receiverWard),
+      productName: items.map((i) => i?.name).filter(Boolean).join(', ') || null,
+      productWeight: totalWeight || null,
+      cod: this.num(form.cod) ?? 0,
+      orderService: form.orderService || null,
+      orderServiceAdd: Array.isArray(form.serviceAdd) ? form.serviceAdd.filter(Boolean).join(',') : form.serviceAdd || null,
+      orderPayment: this.num(form.orderPayment),
+      orderNote: form.orderNote || null,
+      detailPayload: { dto: form },
+    };
+    await this.prisma.viettelCustomer.upsert({
+      where: { trackingCode: draftCode },
+      update: data,
+      create: { trackingCode: draftCode, ...data },
+    });
+    return { draftCode };
+  }
+
+  async deleteDraft(code: string): Promise<{ ok: boolean }> {
+    if (!code?.startsWith('DRAFT-')) throw new BadRequestException('Chỉ xoá được nháp (mã DRAFT-...)');
+    await this.prisma.viettelCustomer.deleteMany({ where: { trackingCode: code } });
+    return { ok: true };
   }
 
   /** Chi tiết 1 khách/đơn theo mã vận đơn. Đơn chưa có detail/hành trình (import từ portal/webhook cũ) → tự bồi từ VTP lần xem đầu. */
