@@ -172,9 +172,11 @@ export class ViettelCustomerService {
       if (codMax !== undefined && !Number.isNaN(codMax)) where.cod.lte = codMax;
     }
     if (q.dateFrom || q.dateTo) {
-      where.createdAt = {};
-      if (q.dateFrom) where.createdAt.gte = new Date(`${q.dateFrom}T00:00:00`);
-      if (q.dateTo) where.createdAt.lte = new Date(`${q.dateTo}T23:59:59.999`);
+      // Lọc theo NGÀY TẠO ĐƠN thật (sendDate); dòng thiếu sendDate (webhook cũ) fallback createdAt.
+      const range: Record<string, Date> = {};
+      if (q.dateFrom) range.gte = new Date(`${q.dateFrom}T00:00:00`);
+      if (q.dateTo) range.lte = new Date(`${q.dateTo}T23:59:59.999`);
+      where.AND = [...(where.AND || []), { OR: [{ sendDate: range }, { sendDate: null, createdAt: range }] }];
     }
     // Mặc định: ngày tạo đơn (sendDate) mới nhất trước. MySQL DESC tự xếp NULL cuối
     // (option nulls:'last' của Prisma không hỗ trợ MySQL); null rơi xuống sort phụ createdAt.

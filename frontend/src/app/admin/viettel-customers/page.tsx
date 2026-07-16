@@ -25,7 +25,14 @@ interface ViettelCustomer {
 }
 interface StatusOpt { status: number; statusName: string | null; count: number }
 
-const EMPTY = { search: '', productName: '', status: '', codMin: '', codMax: '', dateFrom: '', dateTo: '' };
+// Bộ lọc mặc định: khoảng ngày = THÁNG NÀY (mùng 1 → hôm nay).
+const defaultFilters = () => {
+  const now = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  const ym = `${now.getFullYear()}-${p(now.getMonth() + 1)}`;
+  return { search: '', productName: '', status: '', codMin: '', codMax: '', dateFrom: `${ym}-01`, dateTo: `${ym}-${p(now.getDate())}` };
+};
+type Filters = ReturnType<typeof defaultFilters>;
 
 function fmtMoney(n: number | null) {
   return formatVndSymbol(n);
@@ -60,10 +67,10 @@ export default function ViettelCustomersPage() {
   const [error, setError] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState('');
-  const [filters, setFilters] = useState(EMPTY);
+  const [filters, setFilters] = useState<Filters>(defaultFilters);
   const setF = (k: string, v: string) => setFilters(p => ({ ...p, [k]: v }));
 
-  const load = useCallback(async (flt: typeof EMPTY) => {
+  const load = useCallback(async (flt: Filters) => {
     setLoading(true); setError('');
     try {
       const params: Record<string, string> = {};
@@ -75,7 +82,7 @@ export default function ViettelCustomersPage() {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(EMPTY); }, [load]);
+  useEffect(() => { void load(defaultFilters()); }, [load]);
   useEffect(() => { void apiClientClient.get<StatusOpt[]>('/viettelpost/statuses').then(setStatusOpts).catch(() => {}); }, []);
 
   const copy = useCallback((label: string, value: string | null) => {
@@ -149,14 +156,14 @@ export default function ViettelCustomersPage() {
           {/* Ô 4d — Đến ngày · rộng: w-[150px] */}
           <input className={`${inputCls} w-[150px] shrink-0`} type="date" title="Đến ngày" value={filters.dateTo} onChange={e => setF('dateTo', e.target.value)} />
           <button onClick={() => load(filters)} className="px-[18px] py-2.5 rounded-[10px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-bold shrink-0 transition-colors">Lọc</button>
-          <button onClick={() => { setFilters(EMPTY); void load(EMPTY); }} className="px-3.5 py-2.5 rounded-[10px] bg-white border border-[#e5e7eb] hover:bg-[#f9fafb] text-[#374151] text-[13px] font-semibold shrink-0 transition-colors">Xóa</button>
+          <button onClick={() => { const d = defaultFilters(); setFilters(d); void load(d); }} className="px-3.5 py-2.5 rounded-[10px] bg-white border border-[#e5e7eb] hover:bg-[#f9fafb] text-[#374151] text-[13px] font-semibold shrink-0 transition-colors">Xóa</button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-[760px] mb-3.5">
         <div className={`${vtCard} px-[18px] py-[15px]`}>
           <div className="text-xs text-[#6b7280] mb-1">Kết quả</div>
-          <div className="text-[22px] font-extrabold tracking-[-0.3px] text-[#111827]">{rows.length} đơn</div>
+          <div className="text-[22px] font-extrabold tracking-[-0.3px] text-[#111827] font-mono">{new Intl.NumberFormat('vi-VN').format(rows.length)} <span className="text-[15px]">đơn</span></div>
         </div>
         <div className={`${vtCard} px-[18px] py-[15px]`}>
           <div className="text-xs text-[#6b7280] mb-1">Tổng COD (kết quả)</div>
