@@ -59,21 +59,8 @@ export default async function CategoriesPage() {
           <span className="text-lg font-bold text-gray-800">Tất cả danh mục</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tên danh mục</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Danh mục cha</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sản phẩm</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Thứ tự</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng thái</th>
-                <th className="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              <CategoryTree categories={categories} />
-            </tbody>
-          </table>
+          {/* CategoryTree tự render cả bảng (header sort được + zebra + click hàng để sửa). */}
+          <CategoryTree categories={categories} />
         </div>
       </div>
     </>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
@@ -19,6 +19,8 @@ interface Category {
 interface CategoryRowActionsProps {
   category: Category;
   allCategories: { id: string; name: string; parentId?: string | null }[];
+  /** Tăng giá trị → mở modal Sửa (dùng cho click vào hàng của bảng). */
+  openEditSignal?: number;
 }
 
 interface ApiErrorLike {
@@ -39,12 +41,17 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export default function CategoryRowActions({ category, allCategories }: CategoryRowActionsProps) {
+export default function CategoryRowActions({ category, allCategories, openEditSignal = 0 }: CategoryRowActionsProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  // Click vào hàng (CategoryTree tăng signal) → mở modal Sửa.
+  useEffect(() => {
+    if (openEditSignal > 0) setShowEditModal(true);
+  }, [openEditSignal]);
 
   // Calculate level based on parentId
   const calculateLevel = (cat: Category) => {
