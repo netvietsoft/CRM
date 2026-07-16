@@ -401,15 +401,19 @@ export default function CreateViettelOrderPage() {
             </div>
             {/* Danh sách hàng */}
             <div className="space-y-2">
-              {items.map((it, i) => (
+              {items.map((it, i) => {
+                // Bỏ w-full của class chung — w-full đè width cố định làm ô Tên hàng bị bóp dí thành sliver.
+                const rowInp = inp.replace('w-full ', '');
+                return (
                 <div key={i} className="flex gap-1.5 items-center">
-                  <input className={`${inp} flex-[2] min-w-0`} placeholder={`Tên hàng ${i + 1}`} value={it.name} onChange={e => setItem(i, 'name', e.target.value)} />
-                  <input className={`${inp} w-[46px] px-1.5 text-center`} type="number" placeholder="SL" title="Số lượng" value={it.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} />
-                  <input className={`${inp} w-[60px] px-1.5 text-right`} type="number" placeholder="g" title="Trọng lượng (g)" value={it.weight} onChange={e => setItem(i, 'weight', e.target.value)} />
-                  <input className={`${inp} w-[80px] px-2 text-right`} type="number" placeholder="Giá trị" title="Giá trị (đ)" value={it.price} onChange={e => setItem(i, 'price', e.target.value)} />
+                  <input className={`${rowInp} flex-1 min-w-0`} placeholder={`Tên hàng ${i + 1}`} value={it.name} onChange={e => setItem(i, 'name', e.target.value)} />
+                  <input className={`${rowInp} w-[52px] shrink-0 px-1.5 text-center`} type="number" placeholder="SL" title="Số lượng" value={it.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} />
+                  <input className={`${rowInp} w-[70px] shrink-0 px-1.5 text-right`} type="number" placeholder="g" title="Trọng lượng (g)" value={it.weight} onChange={e => setItem(i, 'weight', e.target.value)} />
+                  <input className={`${rowInp} w-[90px] shrink-0 px-2 text-right`} type="number" placeholder="Giá trị" title="Giá trị (đ)" value={it.price} onChange={e => setItem(i, 'price', e.target.value)} />
                   <button onClick={() => delItem(i)} className="text-[#dc2626] hover:brightness-90 text-lg font-bold shrink-0" title="Xóa">✕</button>
                 </div>
-              ))}
+                );
+              })}
               <button onClick={addItem} className="text-[#2563eb] hover:text-[#1d4ed8] text-[12.5px] font-bold">+ Thêm hàng hóa</button>
             </div>
             <div className="flex justify-between text-[13px] text-[#4b5563] border-t border-[#f3f4f6] pt-2.5">
