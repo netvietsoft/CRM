@@ -47,11 +47,12 @@ interface VC {
 const money = formatVndSymbol;
 const date = (s: string | null) => { if (!s) return '—'; const d = new Date(s); return Number.isNaN(d.getTime()) ? s : d.toLocaleString('vi-VN', { hour12: false }); };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// `normal` = chữ thường (cho khối văn bản dài: địa chỉ, ghi chú, mô tả — in đậm cả đoạn khó đọc).
+function Field({ label, children, normal }: { label: string; children: React.ReactNode; normal?: boolean }) {
   return (
     <div>
       <dt className="text-xs text-[#9ca3af]">{label}</dt>
-      <dd className="mt-0.5 text-sm font-bold text-[#111827] break-words">{children}</dd>
+      <dd className={`mt-0.5 text-sm ${normal ? 'font-normal text-[#374151]' : 'font-bold text-[#111827]'} break-words`}>{children}</dd>
     </div>
   );
 }
@@ -192,7 +193,7 @@ export default function ViettelCustomerDetailPage() {
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
             <Field label="Tên">{s(dp.SENDER_FULLNAME) || '—'}</Field>
             <Field label="Điện thoại"><span className="font-mono">{s(dp.SENDER_PHONE) || '—'}</span></Field>
-            <div className="col-span-2"><Field label="Địa chỉ">{senderAddr || '—'}</Field></div>
+            <div className="col-span-2"><Field label="Địa chỉ" normal>{senderAddr || '—'}</Field></div>
           </dl>
         </div>
 
@@ -202,7 +203,7 @@ export default function ViettelCustomerDetailPage() {
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
             <Field label="Tên">{s(dp.RECEIVER_FULLNAME) || vc.receiverFullname || '—'}</Field>
             <Field label="Điện thoại"><span className="font-mono">{s(dp.RECEIVER_PHONE) || vc.receiverPhone || '—'}</span></Field>
-            <div className="col-span-2"><Field label="Địa chỉ">{receiverAddr || '—'}</Field></div>
+            <div className="col-span-2"><Field label="Địa chỉ" normal>{receiverAddr || '—'}</Field></div>
           </dl>
         </div>
 
@@ -217,7 +218,7 @@ export default function ViettelCustomerDetailPage() {
             <Field label="Loại hàng">{s(dp.PRODUCT_TYPE) || '—'}</Field>
             <Field label="Kích thước (cm)">{[dp.PRODUCT_LENGTH, dp.PRODUCT_WIDTH, dp.PRODUCT_HEIGHT].every(x => x != null) ? `${dp.PRODUCT_LENGTH}×${dp.PRODUCT_WIDTH}×${dp.PRODUCT_HEIGHT}` : '—'}</Field>
             <Field label="Trọng lượng quy đổi">{dp.PRODUCT_EX_WEIGHT ? `${dp.PRODUCT_EX_WEIGHT} g` : '—'}</Field>
-            {s(dp.PRODUCT_DESCRIPTION) && <div className="col-span-2"><Field label="Mô tả">{s(dp.PRODUCT_DESCRIPTION)}</Field></div>}
+            {s(dp.PRODUCT_DESCRIPTION) && <div className="col-span-2"><Field label="Mô tả" normal>{s(dp.PRODUCT_DESCRIPTION)}</Field></div>}
           </dl>
         </div>
       </div>
@@ -271,7 +272,7 @@ export default function ViettelCustomerDetailPage() {
             <Field label="Giao thành công">{date(s(dp.ORDER_SUCCESSDATE) || null)}</Field>
             <Field label="Bưu tá">{vc.employeeName ? `${vc.employeeName}${vc.employeePhone ? ' · ' + vc.employeePhone : ''}` : '—'}</Field>
             <div className="col-span-2"><Field label="Vị trí hiện tại">{vc.locationCurrently || '—'}</Field></div>
-            <div className="col-span-2"><Field label="Ghi chú đơn">{s(dp.ORDER_NOTE) || vc.orderNote || '—'}</Field></div>
+            <div className="col-span-2"><Field label="Ghi chú đơn" normal>{s(dp.ORDER_NOTE) || vc.orderNote || '—'}</Field></div>
             <Field label="Hoàn / Lý do lỗi">{vc.isReturning ? 'Có' : 'Không'}{vc.reasonCode ? ` · ${vc.reasonCode}` : ''}</Field>
           </dl>
         </div>

@@ -30,15 +30,17 @@ const EMPTY = { search: '', productName: '', status: '', codMin: '', codMax: '',
 function fmtMoney(n: number | null) {
   return formatVndSymbol(n);
 }
-function fmtDate(s: string | null) {
-  if (!s) return '—';
+// Ô ngày 2 dòng: giờ hh:mm:ss trên, ngày dd/mm/yyyy dưới (nhạt).
+function DateCell({ s }: { s: string | null }) {
+  if (!s) return <>—</>;
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('vi-VN', { hour12: false });
-}
-function fmtDateShort(s: string | null) {
-  if (!s) return '—';
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('vi-VN');
+  if (Number.isNaN(d.getTime())) return <>—</>;
+  return (
+    <div className="leading-tight">
+      <div className="text-[#111827]">{d.toLocaleTimeString('vi-VN', { hour12: false })}</div>
+      <div className="text-[11px] text-[#9ca3af]">{d.toLocaleDateString('vi-VN')}</div>
+    </div>
+  );
 }
 // Pill trạng thái theo design system CRM (hex chốt).
 const STATUS_CLS = (st: number | null) => {
@@ -203,14 +205,14 @@ export default function ViettelCustomersPage() {
                     <td className="px-3 py-3 whitespace-nowrap"><CopyCell label="SĐT" value={r.receiverPhone} /></td>
                     <td className="px-3 py-3 text-[#4b5563] max-w-[210px] truncate" title={r.receiverAddress || ''}>{r.receiverAddress || '—'}</td>
                     <td className="px-3 py-3"><CopyCell label="sản phẩm" value={r.productName} clamp /></td>
-                    <td className="px-3 py-3 text-[#4b5563] text-xs whitespace-nowrap">{fmtDateShort(r.sendDate || r.createdAt)}</td>
+                    <td className="px-3 py-3 text-xs whitespace-nowrap"><DateCell s={r.sendDate || r.createdAt} /></td>
                     <td className="px-3 py-3 whitespace-nowrap">
                       {isDraft
                         ? <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#f1f5f9] text-[#64748b]">📝 Nháp</span>
                         : <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_CLS(r.status)}`}>{vtpStatusLabel(r.status, r.statusName)}</span>}
                     </td>
                     <td className="px-3 py-3 text-right font-bold font-mono whitespace-nowrap text-[#111827]">{fmtMoney(r.cod)}</td>
-                    <td className="px-4 py-3 text-[#6b7280] text-xs whitespace-nowrap">{fmtDate(r.statusDate || r.updatedAt)}</td>
+                    <td className="px-4 py-3 text-xs whitespace-nowrap"><DateCell s={r.statusDate || r.updatedAt} /></td>
                   </tr>
                   );
                 })

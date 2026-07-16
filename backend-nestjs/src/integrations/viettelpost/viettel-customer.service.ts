@@ -176,7 +176,13 @@ export class ViettelCustomerService {
       if (q.dateFrom) where.createdAt.gte = new Date(`${q.dateFrom}T00:00:00`);
       if (q.dateTo) where.createdAt.lte = new Date(`${q.dateTo}T23:59:59.999`);
     }
-    return this.prisma.viettelCustomer.findMany({ where, orderBy: { updatedAt: 'desc' }, take: 1000 });
+    // Mặc định: ngày tạo đơn (sendDate) mới nhất trước. MySQL DESC tự xếp NULL cuối
+    // (option nulls:'last' của Prisma không hỗ trợ MySQL); null rơi xuống sort phụ createdAt.
+    return this.prisma.viettelCustomer.findMany({
+      where,
+      orderBy: [{ sendDate: 'desc' }, { createdAt: 'desc' }],
+      take: 1000,
+    });
   }
 
   /** Danh sách trạng thái (mã + tên) đang có trong bảng — cho dropdown lọc. */
