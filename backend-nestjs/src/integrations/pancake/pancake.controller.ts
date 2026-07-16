@@ -74,6 +74,14 @@ export class PancakeController {
       syncAll?: boolean;
     },
   ) {
+    // syncAll (từ 2010 → nay) chạy hàng chục phút — Cloudflare cắt HTTP ~100s → chạy NỀN, kết quả xem log.
+    if (data?.syncAll) {
+      void this.pancakeService
+        .syncAllOrders(data?.storeId, undefined, undefined, undefined, true)
+        .then((r) => this.logger.log(`[Pancake] Sync ALL xong: ${JSON.stringify(r)}`))
+        .catch((e) => this.logger.error(`[Pancake] Sync ALL lỗi: ${e?.message || e}`));
+      return { success: true, started: true, message: 'Đồng bộ TẤT CẢ đang chạy nền — theo dõi số đơn tăng dần trong trang Đơn hàng.' };
+    }
     const result = await this.pancakeService.syncAllOrders(
       data?.storeId,
       data?.startDate,

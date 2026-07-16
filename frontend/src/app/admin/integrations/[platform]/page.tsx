@@ -266,13 +266,15 @@ export default function IntegrationDetailPage() {
     setSyncMessage('Đang quét và đồng bộ TOÀN BỘ đơn hàng từ trước đến nay...');
 
     try {
-      const data = await apiClientClient.post<IntegrationSyncResponse>('/integrations/pancake/sync-all-orders', {
+      const data = await apiClientClient.post<IntegrationSyncResponse & { started?: boolean }>('/integrations/pancake/sync-all-orders', {
         storeId: selectedStoreId,
         syncAll: true,
       });
 
-      setSyncMessage(`Đã đồng bộ ${data.synced} đơn hàng mới. Tổng tiền: ${formatVnd(data.totalAmount)}`);
-      setTimeout(() => setSyncMessage(''), 8000);
+      setSyncMessage(data.started
+        ? '⏳ Đồng bộ TẤT CẢ đang chạy NỀN (mất nhiều phút) — theo dõi số đơn tăng dần trong trang Đơn hàng.'
+        : `Đã đồng bộ ${data.synced} đơn hàng mới. Tổng tiền: ${formatVnd(data.totalAmount)}`);
+      setTimeout(() => setSyncMessage(''), 15000);
     } catch (error) {
       console.error(error);
       setSyncMessage(error instanceof Error ? error.message : 'Lỗi khi đồng bộ toàn bộ đơn hàng');
