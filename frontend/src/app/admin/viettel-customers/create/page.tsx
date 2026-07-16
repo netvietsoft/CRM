@@ -35,6 +35,13 @@ const normWard = (w: any): Ward => ({ WARDS_ID: w.WARDS_ID ?? w.WARD_ID ?? w.id 
 
 const emptyR = { fullname: '', phone: '', address: '', province: '', district: '', ward: '' };
 
+// Ô tiền: hiển thị ngăn nghìn kiểu VN (1.000.000), state giữ chuỗi số thô (cùng pattern ProductForm).
+const onlyDigits = (value: string) => value.replace(/\D/g, '');
+const formatPriceInput = (rawDigits: string) => {
+  const digits = onlyDigits(rawDigits);
+  return digits ? new Intl.NumberFormat('vi-VN').format(Number(digits)) : '';
+};
+
 export default function CreateViettelOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -406,13 +413,12 @@ export default function CreateViettelOrderPage() {
                 const rowInp = inp.replace('w-full ', '');
                 return (
                 <div key={i} className="flex gap-1.5 items-center">
-                  {/* Tên hàng flex-4 + spacer flex-1 cuối dòng = ô tên chiếm 80% không gian co giãn (thu 20% theo yêu cầu). */}
+                  {/* Tên hàng : Giá trị = 4 : 1 phần không gian co giãn; Giá trị dàn hết phần còn lại của dòng. */}
                   <input className={`${rowInp} flex-[4] min-w-0`} placeholder={`Tên hàng ${i + 1}`} value={it.name} onChange={e => setItem(i, 'name', e.target.value)} />
                   <input className={`${rowInp} w-[52px] shrink-0 px-1.5 text-center`} type="number" placeholder="SL" title="Số lượng" value={it.quantity} onChange={e => setItem(i, 'quantity', e.target.value)} />
                   <input className={`${rowInp} w-[70px] shrink-0 px-1.5 text-right`} type="number" placeholder="g" title="Trọng lượng (g)" value={it.weight} onChange={e => setItem(i, 'weight', e.target.value)} />
-                  <input className={`${rowInp} w-[90px] shrink-0 px-2 text-right`} type="number" placeholder="Giá trị" title="Giá trị (đ)" value={it.price} onChange={e => setItem(i, 'price', e.target.value)} />
+                  <input className={`${rowInp} flex-1 min-w-[90px] px-2 text-right`} type="text" inputMode="numeric" placeholder="Giá trị" title="Giá trị (đ)" value={formatPriceInput(it.price)} onChange={e => setItem(i, 'price', onlyDigits(e.target.value))} />
                   <button onClick={() => delItem(i)} className="text-[#dc2626] hover:brightness-90 text-lg font-bold shrink-0" title="Xóa">✕</button>
-                  <span className="flex-1" />
                 </div>
                 );
               })}
@@ -446,7 +452,7 @@ export default function CreateViettelOrderPage() {
           <div className={card}>
             <h2 className={h2}>💰 Tiền thu hộ & cước</h2>
             <div className="grid grid-cols-[1.3fr_1fr] gap-3">
-              <div><label className={lbl}>COD (tiền thu hộ, đ) — mặc định = tổng giá trị</label><input className={`${inp} text-right`} type="number" placeholder={String(totalValue || '')} value={cod} onChange={e => { setCod(e.target.value); setCodTouched(true); }} /></div>
+              <div><label className={lbl}>COD (tiền thu hộ, đ) — mặc định = tổng giá trị</label><input className={`${inp} text-right`} type="text" inputMode="numeric" placeholder={formatPriceInput(String(totalValue || ''))} value={formatPriceInput(cod)} onChange={e => { setCod(onlyDigits(e.target.value)); setCodTouched(true); }} /></div>
               <div>
                 <span className={lbl}>Người trả cước</span>
                 <div className="flex items-center gap-3 pt-1.5 text-[13px] font-semibold">
