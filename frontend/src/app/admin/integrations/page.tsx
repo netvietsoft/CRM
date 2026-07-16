@@ -17,7 +17,7 @@ const PLATFORMS = [
   { id: 'SHOPEE', name: 'Shopee', icon: '🛍️', color: 'bg-orange-600', desc: 'Đồng bộ tự động đơn hàng Shopee' },
   { id: 'TIKTOK', name: 'TikTok Shop', icon: '🎵', color: 'bg-black', desc: 'Kết nối kho vận TikTok Shop' },
   { id: 'ZALO', name: 'Zalo OA', icon: '💬', color: 'bg-blue-500', desc: 'Gửi tin nhắn chăm sóc tự động' },
-  { id: 'VIETTELPOST', name: 'ViettelPost', icon: '📦', color: 'bg-red-600', desc: 'Tính phí vận chuyển & đẩy đơn' },
+  { id: 'VIETTELPOST', name: 'ViettelPost', icon: '📦', color: 'bg-red-600', desc: 'Vận chuyển & đẩy đơn · nhiều tài khoản đồng bộ về CRM' },
   { id: 'META_ADS', name: 'Meta Ads', icon: '📣', color: 'bg-blue-600', desc: 'Kéo chiến dịch & chỉ số quảng cáo Facebook/Instagram' },
 ];
 
@@ -39,6 +39,17 @@ export default function IntegrationsPage() {
   const [formMetadata, setFormMetadata] = useState<IntegrationMetadata>({});
   const [isSaving, setIsSaving] = useState(false);
   const [showFields, setShowFields] = useState<Record<string, boolean>>({});
+
+  // Facebook OAuth: card vuông trong lưới, bấm mở modal chi tiết (FacebookConnectCard).
+  const [fbOpen, setFbOpen] = useState(false);
+  const [fbActive, setFbActive] = useState(false);
+  useEffect(() => {
+    apiClientClient.get<Array<{ status: string }>>('/integrations/facebook/connections')
+      .then(cs => setFbActive(Array.isArray(cs) && cs.some(c => c.status === 'ACTIVE')))
+      .catch(() => setFbActive(false));
+    // FB redirect về kèm ?fb=ok|error → mở sẵn modal để thấy thông báo.
+    if (window.location.search.includes('fb=')) setFbOpen(true);
+  }, []);
 
   const toggleField = (field: string) => {
     setShowFields(prev => ({ ...prev, [field]: !prev[field] }));
@@ -177,21 +188,44 @@ export default function IntegrationsPage() {
     );
   };
 
+  // Card vuông Facebook (đồng bộ layout với renderPlatformCard) — bấm mở modal chi tiết.
+  const facebookCard = (
+    <div
+      key="FACEBOOK_OAUTH"
+      onClick={() => setFbOpen(true)}
+      className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all flex flex-col h-full group"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-14 h-14 rounded-2xl bg-[#1877f2] flex items-center justify-center text-2xl text-white font-bold shadow-md group-hover:scale-105 transition-transform">f</div>
+        {fbActive ? (
+          <span className="px-3 py-1 rounded-full text-xs font-bold border bg-green-50 text-green-700 border-green-200">• HOẠT ĐỘNG</span>
+        ) : (
+          <span className="px-3 py-1 bg-gray-50 text-gray-500 rounded-full text-xs font-semibold border border-gray-200">Sẵn sàng</span>
+        )}
+      </div>
+      <h3 className="font-bold text-gray-900 text-lg">Facebook (OAuth)</h3>
+      <p className="text-sm text-gray-500 mt-1 mb-6 flex-1">Đa BM: Page · Ads · Messenger. Token lưu mã hoá.</p>
+      <button
+        onClick={(e) => { e.stopPropagation(); setFbOpen(true); }}
+        className="w-full py-2.5 rounded-xl font-semibold transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+      >
+        ⚙️ Cấu hình
+      </button>
+    </div>
+  );
+
   return (
     <div className="w-full space-y-8">
-      <FacebookConnectCard />
-
-      {/* Connected Platforms */}
-      {connectedPlatforms.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            Cấu hình
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
-            {connectedPlatforms.map(renderPlatformCard)}
-          </div>
+      {/* Connected Platforms (+ Facebook OAuth card) */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          Cấu hình
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          {facebookCard}
+          {connectedPlatforms.map(renderPlatformCard)}
         </div>
-      )}
+      </div>
 
       {/* Available Platforms */}
       {availablePlatforms.length > 0 && (
@@ -201,6 +235,16 @@ export default function IntegrationsPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 opacity-90">
             {availablePlatforms.map(renderPlatformCard)}
+          </div>
+        </div>
+      )}
+
+      {/* Facebook OAuth Modal (card chi tiết: kết nối + danh sách connection) */}
+      {fbOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setFbOpen(false); }}>
+          <div className="w-full max-w-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button onClick={() => setFbOpen(false)} className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-white shadow-md text-gray-500 hover:text-gray-800 grid place-items-center">✕</button>
+            <FacebookConnectCard />
           </div>
         </div>
       )}
@@ -277,6 +321,15 @@ export default function IntegrationsPage() {
 
               {['VIETTELPOST'].includes(activePlatform) && (
                 <>
+                  {/* Lối vào trang đầy đủ: quản lý NHIỀU tài khoản VTP (đồng bộ lịch sử + COD về CRM) */}
+                  <button
+                    type="button"
+                    onClick={() => { setIsModalOpen(false); router.push('/admin/integrations/viettelpost'); }}
+                    className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 transition-colors"
+                  >
+                    <span className="text-sm font-semibold text-indigo-700">👥 Tài khoản VTP phụ — đồng bộ nhiều shop về CRM</span>
+                    <span className="text-indigo-400">→</span>
+                  </button>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Token (ViettelPost)</label>
                     <div className="relative">
