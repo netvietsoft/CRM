@@ -316,39 +316,51 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <label
-          className={`flex-1 px-4 py-2 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
-            uploading
-              ? 'border-blue-300 bg-blue-50 cursor-wait'
-              : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
-          }`}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            disabled={uploading}
-            className="hidden"
-          />
-          <div className="flex flex-col items-center gap-2 py-4">
-            {uploading ? (
-              <>
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm text-blue-600 font-medium">Đang upload...</span>
-              </>
-            ) : (
-              <>
-                <span className="text-3xl">📸</span>
-                <span className="text-sm text-gray-600 font-medium">
-                  {value ? 'Thay đổi hình ảnh' : 'Chọn hình ảnh'}
-                </span>
-                <span className="text-xs text-gray-500">PNG, JPG, GIF (tối đa 4MB)</span>
-              </>
-            )}
+      {/* Đã có ảnh → ẩn vùng upload/URL; muốn thay ảnh chỉ cần bấm ✕ trên ảnh là vùng này hiện lại. */}
+      {!value && (
+        <>
+          <div className="flex items-center gap-3">
+            <label
+              className={`flex-1 px-4 py-2 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
+                uploading
+                  ? 'border-blue-300 bg-blue-50 cursor-wait'
+                  : 'border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+              }`}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                disabled={uploading}
+                className="hidden"
+              />
+              <div className="flex flex-col items-center gap-2 py-4">
+                {uploading ? (
+                  <>
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-blue-600 font-medium">Đang upload...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl">📸</span>
+                    <span className="text-sm text-gray-600 font-medium">Chọn hình ảnh</span>
+                    <span className="text-xs text-gray-500">PNG, JPG, GIF (tối đa 4MB)</span>
+                  </>
+                )}
+              </div>
+            </label>
           </div>
-        </label>
-      </div>
+
+          <div className="text-xs text-gray-500 text-center">hoặc</div>
+          <input
+            type="url"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Nhập URL hình ảnh"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          />
+        </>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
@@ -356,15 +368,6 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
           <span>{error}</span>
         </div>
       )}
-
-      <div className="text-xs text-gray-500 text-center">hoặc</div>
-      <input
-        type="url"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Nhập URL hình ảnh"
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-      />
     </div>
   );
 }
