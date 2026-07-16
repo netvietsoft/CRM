@@ -33,3 +33,13 @@ export function vtpStatusLabel(status: number | null | undefined, fallback?: str
   if (fallback) return fallback;
   return status != null ? `Mã ${status}` : '—';
 }
+
+/** Màu pill theo nhóm trạng thái (xanh = thành công, đỏ = hủy/hoàn, cam = tồn/chờ, xanh dương = đang xử lý). */
+export function vtpStatusCls(status: number | null | undefined): string {
+  if (status == null) return 'bg-[#f1f5f9] text-[#64748b]';
+  if ([500, 501, 515].includes(status)) return 'bg-[#d1fae5] text-[#047857]';
+  if ([101, 102, 107, 201, 502, 503, 504, 510].includes(status)) return 'bg-[#fee2e2] text-[#dc2626]';
+  if ([505, 506, 507, 508, 509, 550, 551].includes(status)) return 'bg-[#ffedd5] text-[#c2410c]';
+  if ([100, 103, 104, 105, 200, 202, 300, 301, 302, 303, 320, 400].includes(status)) return 'bg-[#dbeafe] text-[#1d4ed8]';
+  return 'bg-[#fef3c7] text-[#92400e]';
+}

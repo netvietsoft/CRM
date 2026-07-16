@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { formatVndSymbol } from '@/lib/format';
+import { vtpStatusCls, vtpStatusLabel } from '@/lib/vtpStatus';
 import { VtTabs, vtCard } from '../_ui';
 
 interface VCRow {
@@ -20,6 +21,8 @@ interface VCRow {
   cod: number;
   createdAt: string;
   updatedAt: string;
+  detailPayload?: { ORDER_SUCCESSDATE?: string | null } | null;
+  courierHistory?: Array<{ status: number | null; at: string | null }> | null;
 }
 
 interface CustomerGroup {
@@ -40,6 +43,26 @@ const fmtDate = (s: string | null) => {
   if (!s) return '—';
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('vi-VN', { hour12: false });
+};
+
+// Ô ngày 2 dòng: giờ trên, ngày dưới. `iso` = chuỗi ISO; `raw` = chuỗi VTP sẵn dạng "HH:mm:ss d/M/yyyy".
+function TwoLineDate({ iso, raw }: { iso?: string | null; raw?: string | null }) {
+  if (raw) {
+    const m = /^(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)$/.exec(raw.trim());
+    if (m) return <div className="leading-tight"><div className="text-[#111827]">{m[1]}</div><div className="text-[11px] text-[#9ca3af]">{m[2]}</div></div>;
+    return <>{raw}</>;
+  }
+  if (!iso) return <>—</>;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return <>—</>;
+  return <div className="leading-tight"><div className="text-[#111827]">{d.toLocaleTimeString('vi-VN', { hour12: false })}</div><div className="text-[11px] text-[#9ca3af]">{d.toLocaleDateString('vi-VN')}</div></div>;
+}
+
+// Thời điểm giao thành công: ORDER_SUCCESSDATE từ detail-v2, fallback mốc 501 trong hành trình.
+const successAt = (o: VCRow): { iso?: string | null; raw?: string | null } => {
+  if (o.detailPayload?.ORDER_SUCCESSDATE) return { raw: o.detailPayload.ORDER_SUCCESSDATE };
+  const h = Array.isArray(o.courierHistory) ? o.courierHistory.find((x) => x?.status === 501) : null;
+  return { iso: h?.at || null };
 };
 
 const rateCls = (rate: number | null) => {
@@ -294,7 +317,7 @@ export default function ViettelCustomerListPage() {
       {/* Modal: lịch sử mua */}
       {history && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.5)] p-4" onClick={(e) => { if (e.target === e.currentTarget) setHistory(null); }}>
-          <div className="bg-white rounded-[16px] shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+          <div className="bg-white rounded-[16px] shadow-xl w-full max-w-4xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#eceef2] p-5">
               <h2 className="text-lg font-extrabold text-[#111827]">Lịch sử mua — {history.name} · {history.phone}</h2>
               <button className="text-2xl leading-none text-[#9ca3af] hover:text-[#6b7280]" onClick={() => setHistory(null)}>✕</button>
@@ -307,6 +330,7 @@ export default function ViettelCustomerListPage() {
                     <th className="px-3 py-2 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Sản phẩm</th>
                     <th className="px-3 py-2 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Trạng thái</th>
                     <th className="px-3 py-2 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] text-right">COD</th>
+                    <th className="px-3 py-2 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Giao thành công</th>
                     <th className="px-3 py-2 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em]">Cập nhật</th>
                   </tr>
                 </thead>
@@ -317,9 +341,10 @@ export default function ViettelCustomerListPage() {
                         <Link href={`/admin/viettel-customers/${encodeURIComponent(o.trackingCode)}`} className="font-mono text-[#2563eb] hover:underline">{o.trackingCode}</Link>
                       </td>
                       <td className="px-3 py-2 text-[#4b5563] max-w-[200px] truncate" title={o.productName || ''}>{o.productName || '—'}</td>
-                      <td className="px-3 py-2 text-[#4b5563] whitespace-nowrap">{o.status ?? '—'} {o.statusName || ''}</td>
+                      <td className="px-3 py-2 whitespace-nowrap"><span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${vtpStatusCls(o.status)}`}>{vtpStatusLabel(o.status, o.statusName)}</span></td>
                       <td className="px-3 py-2 text-right whitespace-nowrap font-mono">{money(o.cod)}</td>
-                      <td className="px-3 py-2 text-[#6b7280] whitespace-nowrap">{fmtDate(o.statusDate || o.updatedAt)}</td>
+                      <td className="px-3 py-2 text-xs whitespace-nowrap"><TwoLineDate {...successAt(o)} /></td>
+                      <td className="px-3 py-2 text-xs whitespace-nowrap"><TwoLineDate iso={o.statusDate || o.updatedAt} /></td>
                     </tr>
                   ))}
                 </tbody>
