@@ -283,9 +283,10 @@ export class ViettelCustomerService {
       MONEY_VAT: 0,
       MONEY_TOTAL: 0,
       MONEY_TOTALVAT: 0,
-      // VTP bắt buộc >0 từ ~7/2026 (thiếu: "cannot be left blank"; 0: "must be greater than 0").
-      // Đã kiểm chứng qua getPriceAll: KHÔNG ảnh hưởng cước → dùng giá trị khai báo hàng (fallback COD, tối thiểu 1).
-      EXTRA_MONEY: totalPrice > 0 ? totalPrice : Number(dto.cod) > 0 ? Number(dto.cod) : 1,
+      // VTP validate 3 tầng (~7/2026): thiếu → "cannot be left blank"; 0 → "must be greater than 0";
+      // lớn → "cannot be greater than 5 times the total fee". Là khoản THU THÊM (shop không dùng)
+      // → 1đ là giá trị hợp lệ tối thiểu, không ảnh hưởng cước (đã kiểm chứng getPriceAll).
+      EXTRA_MONEY: 1,
       LIST_ITEM: listItem,
     };
 
