@@ -85,6 +85,28 @@ export class ViettelpostAuthService {
     }
   }
 
+  /** GET trên host v3 (địa danh hệ MỚI sau 1/7/2025: categories/listProvinceNew, listWardsNew). */
+  async getV3(pathWithQuery: string): Promise<any | null> {
+    const token = await this.getToken();
+    if (!token) return null;
+    const base = this.apiUrl.replace(/\/v2$/, '/v3');
+    try {
+      const res = await fetch(`${base}/${pathWithQuery.replace(/^\//, '')}`, {
+        method: 'GET',
+        headers: { Token: token, 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) {
+        this.logger.warn(`[VTP] GET(v3) ${pathWithQuery} → HTTP ${res.status}`);
+        return null;
+      }
+      return await res.json().catch(() => null);
+    } catch (e: any) {
+      this.logger.warn(`[VTP] GET(v3) ${pathWithQuery} lỗi: ${e?.message || e}`);
+      return null;
+    }
+  }
+
   /** GET một endpoint VTP có kèm token (dùng cho detail-v2, list...). Trả JSON hoặc null. */
   async get(pathWithQuery: string): Promise<any | null> {
     const token = await this.getToken();

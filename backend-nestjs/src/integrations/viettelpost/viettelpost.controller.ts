@@ -92,6 +92,21 @@ export class ViettelpostController {
     return r?.data || [];
   }
 
+  // Hệ địa giới MỚI 2 cấp (sau 1/7/2025): tỉnh (34) → phường/xã gắn thẳng tỉnh. Host v3.
+  @Get('address/provinces-new')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  async provincesNew() {
+    const r = await this.authService.getV3('categories/listProvinceNew');
+    return r?.data || [];
+  }
+
+  @Get('address/wards-new')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  async wardsNew(@Query('provinceId') provinceId: string) {
+    const r = await this.authService.getV3(`categories/listWardsNew?provinceId=${encodeURIComponent(provinceId || '')}`);
+    return r?.data || [];
+  }
+
   // Lấy danh sách dịch vụ + cước cho tuyến (getPriceAll theo ID).
   @Post('price')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
