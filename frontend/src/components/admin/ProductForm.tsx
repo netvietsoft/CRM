@@ -237,7 +237,9 @@ export default function ProductForm({
   const [productOptions, setProductOptions] = useState<ComboProductOption[]>([]);
 
   const [newSizeName, setNewSizeName] = useState('');
+  const [newSizeQty, setNewSizeQty] = useState('');
   const [newColorName, setNewColorName] = useState('');
+  const [newColorQty, setNewColorQty] = useState('');
 
   const getCategoryPath = (categoryId: string): string[] => {
     const path: string[] = [];
@@ -321,12 +323,30 @@ export default function ProductForm({
       .catch(console.error);
   }, [initialData?.id]);
 
+  // Khi có biến thể: tồn kho sản phẩm LUÔN = tổng tồn kho các biến thể (đồng bộ tự động, ô nhập bị khoá).
+  const variantStockTotal = form.variants.reduce((s, v) => s + (parseInt(v.stock, 10) || 0), 0);
+  useEffect(() => {
+    if (form.variants.length > 0 && form.stockQuantity !== String(variantStockTotal)) {
+      setForm((prev) => ({ ...prev, stockQuantity: String(variantStockTotal) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantStockTotal, form.variants.length]);
+
   const handleCreateSize = async () => {
     if (!newSizeName.trim()) return;
     try {
       const newSize = await apiClientClient.post<Size, { name: string }>('/sizes', { name: newSizeName });
       setSizes((prev) => [...prev, newSize]);
+      // Có nhập số lượng → sinh luôn biến thể size này với tồn kho tương ứng.
+      const qty = parseInt(newSizeQty, 10);
+      if (Number.isFinite(qty) && newSizeQty !== '') {
+        setForm((prev) => ({
+          ...prev,
+          variants: [...prev.variants, { id: `variant-${Date.now()}`, sizeId: newSize.id, colorId: '', price: '', stock: String(qty) }],
+        }));
+      }
       setNewSizeName('');
+      setNewSizeQty('');
     } catch (fetchError: unknown) {
       alert(getErrorMessage(fetchError, 'Failed to create size'));
     }
@@ -337,7 +357,16 @@ export default function ProductForm({
     try {
       const newColor = await apiClientClient.post<Color, { name: string }>('/colors', { name: newColorName });
       setColors((prev) => [...prev, newColor]);
+      // Có nhập số lượng → sinh luôn biến thể màu này với tồn kho tương ứng.
+      const qty = parseInt(newColorQty, 10);
+      if (Number.isFinite(qty) && newColorQty !== '') {
+        setForm((prev) => ({
+          ...prev,
+          variants: [...prev.variants, { id: `variant-${Date.now()}`, sizeId: '', colorId: newColor.id, price: '', stock: String(qty) }],
+        }));
+      }
       setNewColorName('');
+      setNewColorQty('');
     } catch (fetchError: unknown) {
       alert(getErrorMessage(fetchError, 'Failed to create color'));
     }
@@ -629,11 +658,15 @@ export default function ProductForm({
                   <input
                     id="prod-stock"
                     type="number"
-                    className="w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
+                    disabled={form.variants.length > 0}
+                    className={`w-full rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)] ${form.variants.length > 0 ? 'bg-gray-100 text-gray-500' : ''}`}
                     value={form.stockQuantity}
                     onChange={(e) => update('stockQuantity', e.target.value)}
                     placeholder="100"
                   />
+                  {form.variants.length > 0 && (
+                    <p className="mt-1 text-[11px] text-[#6b7280]">= tổng tồn kho {form.variants.length} biến thể (tự đồng bộ)</p>
+                  )}
                 </div>
               </div>
 
@@ -874,6 +907,14 @@ export default function ProductForm({
                       value={newSizeName}
                       onChange={(e) => setNewSizeName(e.target.value)}
                     />
+                    <input
+                      type="number"
+                      placeholder="SL"
+                      title="Số lượng tồn kho — nhập thì tự sinh biến thể size này"
+                      className="w-[76px] rounded-[10px] border border-[#e5e7eb] px-2.5 py-2 text-right text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
+                      value={newSizeQty}
+                      onChange={(e) => setNewSizeQty(e.target.value)}
+                    />
                     <button
                       type="button"
                       onClick={handleCreateSize}
@@ -892,6 +933,14 @@ export default function ProductForm({
                       className="flex-1 rounded-[10px] border border-[#e5e7eb] px-3.5 py-2 text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
                       value={newColorName}
                       onChange={(e) => setNewColorName(e.target.value)}
+                    />
+                    <input
+                      type="number"
+                      placeholder="SL"
+                      title="Số lượng tồn kho — nhập thì tự sinh biến thể màu này"
+                      className="w-[76px] rounded-[10px] border border-[#e5e7eb] px-2.5 py-2 text-right text-[13px] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
+                      value={newColorQty}
+                      onChange={(e) => setNewColorQty(e.target.value)}
                     />
                     <button
                       type="button"

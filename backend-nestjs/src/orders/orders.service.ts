@@ -2162,6 +2162,8 @@ export class OrdersService {
       throw new NotFoundException('Sản phẩm không còn kinh doanh');
     }
 
+    // Chính sách kho: CHO PHÉP ÂM (bán trước khi kịp sản xuất) — không chặn đặt hàng khi thiếu tồn.
+    // Chỉ chặn khi phân loại KHÔNG TỒN TẠI; thiếu hàng trả backorder=true để FE hiển thị nếu cần.
     if (size || color) {
       const dbVariant = await this.prisma.productVariant.findFirst({
         where: {
@@ -2171,13 +2173,14 @@ export class OrdersService {
         },
       });
 
-      if (!dbVariant || dbVariant.stock < quantity) {
-        throw new BadRequestException('Phân loại sản phẩm này đã hết hàng');
+      if (!dbVariant) {
+        throw new BadRequestException('Không có phân loại này của sản phẩm');
       }
-    } else {
-      if (product.stockQuantity < quantity) {
-        throw new BadRequestException('Sản phẩm đã hết hàng hạn mức');
+      if (dbVariant.stock < quantity) {
+        return { success: true, backorder: true, message: 'Thiếu tồn kho — nhận đặt trước (kho sẽ âm)' };
       }
+    } else if (product.stockQuantity < quantity) {
+      return { success: true, backorder: true, message: 'Thiếu tồn kho — nhận đặt trước (kho sẽ âm)' };
     }
 
     return { success: true, message: 'Đủ tồn kho' };
