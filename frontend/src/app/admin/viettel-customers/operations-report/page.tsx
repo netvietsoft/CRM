@@ -5,7 +5,10 @@ export const dynamic = 'force-dynamic';
 import { useCallback, useEffect, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { formatVndSymbol } from '@/lib/format';
-import { VtTabs, vtCard, vtInput } from '../_ui';
+import { VtTabs, vtCard } from '../_ui';
+
+// KHÔNG dùng vtInput ở thanh lọc — nó chứa w-full đè width cố định làm ô nở toàn hàng.
+const inp = 'px-3 py-2.5 border border-[#e5e7eb] rounded-[10px] text-[13px] outline-none focus:border-[#2563eb] transition-colors bg-white';
 
 interface Report {
   totalOrders: number;
@@ -70,10 +73,10 @@ export default function ViettelOperationsReportPage() {
       {/* Thanh lọc */}
       <div className={`${vtCard} p-3 mb-3.5`}>
         <div className="flex items-center gap-2 overflow-x-auto">
-          <input className={`${vtInput} w-[280px] shrink-0`} placeholder="Tên sản phẩm (để trống = tất cả)" value={filters.productName}
+          <input className={`${inp} w-[280px] shrink-0`} placeholder="Tên sản phẩm (để trống = tất cả)" value={filters.productName}
             onChange={e => setFilters(p => ({ ...p, productName: e.target.value }))} onKeyDown={e => e.key === 'Enter' && load(filters)} />
-          <input className={`${vtInput} w-[150px] shrink-0`} type="date" title="Từ ngày" value={filters.dateFrom} onChange={e => setFilters(p => ({ ...p, dateFrom: e.target.value }))} />
-          <input className={`${vtInput} w-[150px] shrink-0`} type="date" title="Đến ngày" value={filters.dateTo} onChange={e => setFilters(p => ({ ...p, dateTo: e.target.value }))} />
+          <input className={`${inp} w-[150px] shrink-0`} type="date" title="Từ ngày" value={filters.dateFrom} onChange={e => setFilters(p => ({ ...p, dateFrom: e.target.value }))} />
+          <input className={`${inp} w-[150px] shrink-0`} type="date" title="Đến ngày" value={filters.dateTo} onChange={e => setFilters(p => ({ ...p, dateTo: e.target.value }))} />
           <button onClick={() => load(filters)} className="px-[18px] py-2.5 rounded-[10px] bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-[13px] font-bold shrink-0 transition-colors">Lọc ngay</button>
           <button onClick={() => { const d = defaultRange(); setFilters(d); void load(d); }} className="px-3.5 py-2.5 rounded-[10px] bg-white border border-[#e5e7eb] hover:bg-[#f9fafb] text-[#374151] text-[13px] font-semibold shrink-0 transition-colors">Xóa</button>
         </div>
