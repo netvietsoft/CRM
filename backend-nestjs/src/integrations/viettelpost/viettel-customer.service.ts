@@ -145,6 +145,7 @@ export class ViettelCustomerService {
     search?: string; // người nhận / mã vận đơn / SĐT
     productName?: string;
     status?: string | number;
+    statuses?: string; // nhiều mã, ngăn phẩy (vd "505,506,507,509" cho Đơn cần xử lý)
     codMin?: string | number;
     codMax?: string | number;
     dateFrom?: string;
@@ -160,7 +161,10 @@ export class ViettelCustomerService {
       ];
     }
     if (q.productName?.trim()) where.productName = { contains: q.productName.trim() };
-    if (q.status !== undefined && q.status !== '' && q.status !== null) {
+    if (q.statuses?.trim()) {
+      const list = q.statuses.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n));
+      if (list.length) where.status = { in: list };
+    } else if (q.status !== undefined && q.status !== '' && q.status !== null) {
       const st = Number(q.status);
       if (!Number.isNaN(st)) where.status = st;
     }
@@ -185,6 +189,54 @@ export class ViettelCustomerService {
       orderBy: [{ sendDate: 'desc' }, { createdAt: 'desc' }],
       take: 1000,
     });
+  }
+
+  /**
+   * Báo cáo vận hành — tính TRONG DB (bảng >5k đơn, list bị cap 1000).
+   * Phân nhóm theo nhóm chính thức VTP: 501 giao thành công; 505/506/507/509 chờ xử lý/phát lại;
+   * 101/102/107/201/502/503/504/510/515/551 hoàn-huỷ; còn lại = đang xử lý (nhận/vận chuyển/đang giao).
+   */
+  async operationsReport(q: { productName?: string; dateFrom?: string; dateTo?: string } = {}) {
+    const where: any = { trackingCode: { not: { startsWith: 'DRAFT-' } } };
+    if (q.productName?.trim()) where.productName = { contains: q.productName.trim() };
+    if (q.dateFrom || q.dateTo) {
+      const range: Record<string, Date> = {};
+      if (q.dateFrom) range.gte = new Date(`${q.dateFrom}T00:00:00`);
+      if (q.dateTo) range.lte = new Date(`${q.dateTo}T23:59:59.999`);
+      where.AND = [{ OR: [{ sendDate: range }, { sendDate: null, createdAt: range }] }];
+    }
+
+    const rows = await this.prisma.viettelCustomer.groupBy({
+      by: ['status'],
+      where,
+      _count: { _all: true },
+      _sum: { cod: true },
+    });
+
+    const DELIVERED = new Set([501]);
+    const PENDING = new Set([505, 506, 507, 509]); // chờ xử lý + chờ phát lại
+    const RETURN_CANCEL = new Set([101, 102, 107, 201, 502, 503, 504, 510, 515, 551]);
+
+    let totalOrders = 0;
+    let totalCod = 0;
+    let delivered = 0;
+    let deliveredCod = 0;
+    let pending = 0;
+    let returnCancel = 0;
+    for (const r of rows) {
+      const n = r._count._all;
+      const cod = r._sum.cod || 0;
+      totalOrders += n;
+      totalCod += cod;
+      const st = r.status;
+      if (st != null && DELIVERED.has(st)) { delivered += n; deliveredCod += cod; }
+      else if (st != null && PENDING.has(st)) pending += n;
+      else if (st != null && RETURN_CANCEL.has(st)) returnCancel += n;
+    }
+    const processing = totalOrders - delivered - pending - returnCancel;
+    const returnRate = totalOrders > 0 ? Math.round((returnCancel / totalOrders) * 1000) / 10 : 0;
+
+    return { totalOrders, totalCod, delivered, deliveredCod, processing, pending, returnCancel, returnRate };
   }
 
   /** Danh sách trạng thái (mã + tên) đang có trong bảng — cho dropdown lọc. */

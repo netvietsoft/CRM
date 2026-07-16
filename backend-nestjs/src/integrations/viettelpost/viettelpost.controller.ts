@@ -205,12 +205,25 @@ export class ViettelpostController {
     @Query('search') search?: string,
     @Query('productName') productName?: string,
     @Query('status') status?: string,
+    @Query('statuses') statuses?: string,
     @Query('codMin') codMin?: string,
     @Query('codMax') codMax?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
   ) {
-    return this.viettelCustomerService.listCustomers({ search, productName, status, codMin, codMax, dateFrom, dateTo });
+    return this.viettelCustomerService.listCustomers({ search, productName, status, statuses, codMin, codMax, dateFrom, dateTo });
+  }
+
+  // Báo cáo vận hành — số liệu tổng hợp theo trạng thái (tính trong DB).
+  @Get('operations-report')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  @ApiOperation({ summary: 'Báo cáo vận hành: đơn tạo/giao thành công/đang xử lý/chờ phát lại/hoàn-huỷ + tỷ lệ hoàn' })
+  async operationsReport(
+    @Query('productName') productName?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.viettelCustomerService.operationsReport({ productName, dateFrom, dateTo });
   }
 
   // Danh sách trạng thái đang có (cho dropdown lọc). Đặt trước customers/:code để không bị nuốt route.

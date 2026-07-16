@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { formatVndSymbol } from '@/lib/format';
+import { vtpStatusCls, vtpStatusLabel } from '@/lib/vtpStatus';
 
 interface VC {
   id: string;
@@ -169,7 +170,7 @@ export default function ViettelCustomerDetailPage() {
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap mb-4">
-        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${editable ? 'bg-[#fef3c7] text-[#92400e]' : 'bg-[#dbeafe] text-[#1d4ed8]'}`}>{vc.status ?? '—'} {vc.statusName || ''}</span>
+        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${vtpStatusCls(vc.status)}`}>{vtpStatusLabel(vc.status, vc.statusName)}</span>
         <span className="text-[13px] text-[#6b7280]">cập nhật {date(vc.statusDate || vc.updatedAt)}</span>
         {/* Hành động ViettelPost (UpdateOrder) — hiện theo trạng thái đơn */}
         {actions.length > 0 && (
@@ -249,7 +250,7 @@ export default function ViettelCustomerDetailPage() {
               {(vc.courierHistory || []).slice().reverse().map((h, i) => (
                 <li key={i} className="text-[13px] border-l-2 border-[#e5e7eb] pl-3 relative">
                   <span className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-[#2563eb]" />
-                  <div className="font-bold text-[#111827]">{h.status ?? ''} {h.statusName || ''}</div>
+                  <div className="font-bold text-[#111827]">{vtpStatusLabel(h.status, h.statusName)}</div>
                   <div className="text-[11.5px] text-[#9ca3af]">{date(h.at)}</div>
                   {h.note && <div className="text-[#6b7280] mt-0.5">{h.note}</div>}
                 </li>
