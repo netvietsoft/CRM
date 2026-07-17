@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-07-17 — SẢN PHẨM overhaul + HỆ THỐNG KHO + điều tra "DB mất dữ liệu"
+
+> Mới nhất `7b1a3a5`. **Deploy CÓ MIGRATION** (`20260717090000_warehouses`): trên server chạy `npx prisma migrate deploy && npx prisma generate` TRƯỚC `yarn build` BE, rồi build FE, pm2 restart cả 2.
+
+**Điều tra "DB đang mất dữ liệu" (báo sáng 17/7) — KẾT LUẬN: KHÔNG có mất dữ liệu đang diễn ra:**
+- Đo prod 2 lần cách ~20': orders 5.159→5.160 (tăng), viettel_customers 2.408→2.409 (tăng), khách hàng 4.822, categories/sizes/colors/suppliers/CCM nguyên vẹn. Chỉ `products` = **1 bản ghi** (Áo ERIAN).
+- Nguyên nhân products trống: **catalog 104 SP chưa bao giờ lên prod** — bản dump local (`customer_crm-2026-07-15.zip` còn ở repo root, DB local còn nguyên 104 SP + 485 biến thể) **chưa từng được import**; sync đơn Pancake chỉ MATCH product có sẵn chứ không tạo (vì vậy order items mang tên "Mavil/Beryl/Jessica…" đều `productId=null`, riêng "Áo Erian" tạo tay trên prod thì link được).
+- Toàn repo chỉ có 1 đường code xoá product (`DELETE /products/:id`); seed không đụng products; phiên làm việc không gọi DELETE nào.
+- **Khắc phục:** vào `/admin/integrations/pancake` bấm Đồng bộ sản phẩm (`POST /integrations/pancake/sync-products`) — kéo catalog thật từ Pancake (idempotent theo externalId, không xoá gì). Lệnh ghi prod bị permission chặn nên user tự bấm.
+
+**Hệ thống Kho (`7b1a3a5`, MIGRATION `20260717090000_warehouses`):**
+- BE: model `Warehouse` + `WarehouseTransfer` + `Product.warehouseId`; module `warehouses` (CRUD kho — xoá bị chặn nếu còn SP; `GET /warehouses/:id/products` trả nhập/tồn/tổng chuyển + lần nhập-xuất gần nhất; `POST /warehouses/transfer {productIds,toWarehouseId}`); products create/update nhận `warehouseId` (nhớ thêm DTO vì whitelist), đổi kho tự ghi log `WarehouseTransfer`.
+- FE: `/admin/warehouses` (cards + Thêm Kho tên/địa chỉ) → click vào `/admin/warehouses/[id]` bảng STT·Tên SP·Nhập kho·Tồn kho·Chuyển kho·Kho đến·Kho đi (tên kho ×SL dòng 1, giờ+ngày dòng 2); ProductForm thêm select "Kho hàng"; products thêm cột Kho; sidebar Kho → "Danh sách Kho"; toolbar chọn nhiều → modal **Chuyển kho hoạt động thật**.
+
+**Sản phẩm overhaul (tối 16/7, các commit sau `ffd7934`):**
+- `7e74d60` tạo nhanh Size/Màu kèm Ô SỐ LƯỢNG → tự sinh biến thể; tồn kho SP = tổng tồn biến thể (input khoá, tự đồng bộ); **cho phép tồn kho ÂM** (bán chưa kịp sản xuất — checkStock trả backorder thay vì chặn).
+- `9e7e3f0` fix 500 khi lưu 2 biến thể trùng Size+Màu (chặn FE + BadRequestException BE nêu rõ cặp trùng).
+- `9e1e675` bảng products: cột đầu checkbox + nút [+] mở panel chi tiết (dl + mini-table biến thể); toggle bán/ngừng trước ảnh (PATCH isActive optimistic); toolbar hàng loạt (copy 🚧 · chuyển kho ✅ · gift → vouchers · xoá thật); tách cột **Tổng nhập** (tồn + đã bán) / **Đã bán** / **Tồn kho** (đỏ + badge Hết/Âm khi ≤0).
+- `00cf5e1` viền ô nhập TOÀN CRM #c7ced9 (globals.css + Select).
+- `86f44de` nguồn đơn CCM riêng: `/admin/ccm-orders` (source=CCM theo metadata.conversationId), KH Pancake → `/admin/pancake-customers`; `1c51b1e`+`a21e11c` VTP Đơn cần xử lý + Báo cáo vận hành; `dfae6f3`+`af03e8d`+`6f2550c` sort danh mục kho/categories + ẩn dropzone khi có ảnh.
+
+**Lưu ý kỹ thuật:** 2 file spec BE (`viettel-customer.revenue.spec.ts`, `viettelpost-sync.service.spec.ts`) đang lệch chữ ký sau đợt VTP đa tài khoản — `tsc --noEmit` full báo lỗi nhưng KHÔNG chặn build/deploy (tsconfig.build.json exclude spec). Sửa khi rảnh.
+
+**Việc treo:** như 16/7 (+ user bấm sync-products Pancake để đổ catalog; cân nhắc import dump local nếu muốn giữ SKU/tồn kho cũ).
+
+---
+
 ## 2026-07-16 — VTP UI/tạo đơn/nháp/đa tài khoản + KẾT NỐI PANCAKE (5.128 đơn lịch sử)
 
 > Mới nhất `414219a`. Các commit VTP UI + Pancake cần build BE+FE (deploy `69e25ca` trở đi CÓ MIGRATION: `npx prisma migrate deploy` trước build).
