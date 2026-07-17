@@ -49,3 +49,13 @@ body {
   @apply bg-gray-400;
 }
 
+
+/* ===== Viền ô nhập TOÀN CRM rõ nét hơn (2026-07-17) =====
+   Các class border-[#e5e7eb]/border-gray-300 quá nhạt trên nền trắng.
+   Chỉ áp cho form control CHƯA focus (focus giữ nguyên viền xanh của từng nơi);
+   không đụng checkbox/radio; card/divider vẫn giữ viền nhạt. */
+input:not(:focus):not([type='checkbox']):not([type='radio']):not([type='range']),
+select:not(:focus),
+textarea:not(:focus) {
+  border-color: #c7ced9 !important;
+}

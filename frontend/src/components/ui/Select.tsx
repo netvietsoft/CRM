@@ -113,7 +113,7 @@ export default function Select({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={`w-full ${sizeClasses[size]} transition-shadow flex items-center justify-between
           ${!hasRounded ? 'rounded-lg' : ''}
-          ${!hasBorder ? 'border border-gray-200' : ''}
+          ${!hasBorder ? 'border border-[#c7ced9]' : ''}
           ${!hasBg ? 'bg-white hover:bg-gray-50' : ''}
           ${!hasTextColor ? 'text-gray-700' : ''}
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
