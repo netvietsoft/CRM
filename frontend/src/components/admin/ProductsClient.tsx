@@ -43,6 +43,7 @@ type Product = {
     color?: { name: string } | null;
   }>;
   store?: { id: string; name: string } | null;
+  warehouse?: { id: string; name: string } | null;
   _count: { orderItems: number };
 };
 
@@ -195,6 +196,9 @@ export default function ProductsClient({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModal, setBulkModal] = useState<'copy' | 'move' | 'gift' | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string }>>([]);
+  const [moveTargetId, setMoveTargetId] = useState('');
+  const [moving, setMoving] = useState(false);
   const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
 
   const effectiveActive = (p: Product) => activeOverrides[p.id] ?? p.isActive;
@@ -229,6 +233,33 @@ export default function ProductsClient({
     clearSelection();
     router.refresh();
     if (errors.length) alert(`Có ${errors.length} sản phẩm xóa lỗi:\n${errors.join('\n')}`);
+  };
+
+  // Mở modal Chuyển kho → nạp danh sách kho để chọn kho đích.
+  useEffect(() => {
+    if (bulkModal !== 'move') return;
+    apiClientClient.get<Array<{ id: string; name: string }>>('/warehouses')
+      .then(setWarehouses)
+      .catch(() => setWarehouses([]));
+  }, [bulkModal]);
+
+  const moveSelected = async () => {
+    if (selectedIds.size === 0 || !moveTargetId) return;
+    setMoving(true);
+    try {
+      await apiClientClient.post('/warehouses/transfer', {
+        productIds: [...selectedIds],
+        toWarehouseId: moveTargetId,
+      });
+      setBulkModal(null);
+      setMoveTargetId('');
+      clearSelection();
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Chuyển kho thất bại');
+    } finally {
+      setMoving(false);
+    }
   };
 
   const updateUrl = useCallback((updates: Record<string, string | undefined>, resetPage = true) => {
@@ -602,6 +633,9 @@ export default function ProductsClient({
                 <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">
                   Nhà cung cấp
                 </th>
+                <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]" title="Sản phẩm đang ở kho nào">
+                  Kho
+                </th>
                 <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">
                   <button type="button" onClick={() => handleSort('status')} className="flex items-center gap-1.5 transition-colors hover:text-[#2563eb]">
                     <span>Đang bán</span>
@@ -614,7 +648,7 @@ export default function ProductsClient({
             <tbody>
               {sortedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={10}>
+                  <td colSpan={11}>
                     <div className="px-5 py-11 text-center">
                       <div className="mb-2.5 text-[40px]">{appliedFilterCount > 0 ? '🔍' : '📦'}</div>
                       <div className="mb-1 text-[15px] font-bold text-[#111827]">
@@ -763,6 +797,13 @@ export default function ProductsClient({
                     <td className="whitespace-nowrap px-3 py-3 text-[#4b5563]">
                       {product.supplier?.name || '—'}
                     </td>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      {product.warehouse ? (
+                        <span className="rounded-lg bg-[#f0fdf4] px-[9px] py-[3px] text-[11px] font-semibold text-[#15803d]">🏬 {product.warehouse.name}</span>
+                      ) : (
+                        <span className="text-[#d1d5db]">—</span>
+                      )}
+                    </td>
                     <td className="px-3 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
@@ -782,7 +823,7 @@ export default function ProductsClient({
                   {/* Panel xem nhanh (nút +): toàn bộ thông tin + tồn theo size/màu */}
                   {expandedIds.has(product.id) && (
                     <tr className="border-t border-[#dbeafe] bg-[#f8faff]" onClick={(e) => e.stopPropagation()}>
-                      <td colSpan={10} className="px-6 py-4">
+                      <td colSpan={11} className="px-6 py-4">
                         <div className="flex flex-wrap items-start gap-6">
                           {product.imageUrl ? (
                             <Image
@@ -887,7 +928,7 @@ export default function ProductsClient({
         </div>
       </div>
 
-      {/* Modal thao tác hàng loạt — copy/chuyển kho là khung chờ (bổ sung chi tiết sau) */}
+      {/* Modal thao tác hàng loạt — chuyển kho hoạt động thật; copy là khung chờ (bổ sung chi tiết sau) */}
       {bulkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setBulkModal(null); }}>
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
@@ -902,7 +943,26 @@ export default function ProductsClient({
               <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">🚧 Tính năng sao chép sản phẩm sẽ bổ sung chi tiết sau.</p>
             )}
             {bulkModal === 'move' && (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">🚧 Chuyển sản phẩm sang kho khác — chờ thiết lập danh sách kho.</p>
+              warehouses.length === 0 ? (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Chưa có kho nào — tạo kho ở <a href="/admin/warehouses" className="font-bold underline">Danh sách Kho</a> trước.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1 block text-[12px] font-semibold text-gray-700">Chuyển đến kho</label>
+                    <select value={moveTargetId} onChange={(e) => setMoveTargetId(e.target.value)}
+                      className="w-full rounded-xl border border-[#c7ced9] bg-white px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+                      <option value="">— Chọn kho đích —</option>
+                      {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    </select>
+                  </div>
+                  <button onClick={() => void moveSelected()} disabled={!moveTargetId || moving}
+                    className="w-full rounded-xl bg-[#2563eb] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-50">
+                    {moving ? 'Đang chuyển…' : `🔁 Chuyển ${selectedIds.size} sản phẩm`}
+                  </button>
+                </div>
+              )
             )}
             {bulkModal === 'gift' && (
               <div className="space-y-3">

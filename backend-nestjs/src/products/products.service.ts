@@ -202,6 +202,7 @@ export class ProductsService {
           supplier: { select: { id: true, name: true, code: true } },
           material: { select: { id: true, name: true, code: true } },
           unit: { select: { id: true, name: true, code: true } },
+          warehouse: { select: { id: true, name: true } },
           tagMaps: {
             include: {
               tag: true,
@@ -327,6 +328,7 @@ export class ProductsService {
           supplier: { select: { id: true, name: true, code: true } },
           material: { select: { id: true, name: true, code: true } },
           unit: { select: { id: true, name: true, code: true } },
+          warehouse: { select: { id: true, name: true } },
           tagMaps: {
             include: {
               tag: true,
@@ -604,6 +606,21 @@ export class ProductsService {
     });
 
     await this.prisma.$transaction(async (tx) => {
+      // Đổi kho qua form sửa → ghi log chuyển kho (cho cột Kho đến/Kho đi của trang Danh sách kho).
+      if (
+        productData.warehouseId !== undefined &&
+        productData.warehouseId !== existingProduct.warehouseId
+      ) {
+        await tx.warehouseTransfer.create({
+          data: {
+            productId: id,
+            fromWarehouseId: existingProduct.warehouseId,
+            toWarehouseId: productData.warehouseId || null,
+            quantity: existingProduct.stockQuantity,
+          },
+        });
+      }
+
       await tx.product.update({
         where: { id },
         data: {

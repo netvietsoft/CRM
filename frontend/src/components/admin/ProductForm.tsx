@@ -120,6 +120,7 @@ interface ProductFormInitialData {
   supplier?: { id: string } | null;
   material?: { id: string } | null;
   unit?: { id: string } | null;
+  warehouse?: { id: string } | null;
   categories?: InitialCategory[] | null;
   tagMaps?: InitialTagMap[] | null;
   comboItems?: InitialComboItem[] | null;
@@ -156,6 +157,7 @@ interface ProductSubmitPayload {
   supplierId?: string;
   materialId?: string;
   unitId?: string;
+  warehouseId?: string;
   categoryIds: string[];
   tagIds?: string[];
   variants?: ProductSubmitVariant[];
@@ -176,6 +178,7 @@ interface ProductFormState {
   supplierId: string;
   materialId: string;
   unitId: string;
+  warehouseId: string;
   categoryLevel1: string;
   categoryLevel2: string;
   categoryLevel3: string;
@@ -231,6 +234,7 @@ export default function ProductForm({
   const [sizes, setSizes] = useState<Size[]>([]);
   const [colors, setColors] = useState<Color[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [warehouses, setWarehouses] = useState<Array<{ id: string; name: string }>>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [productTags, setProductTags] = useState<ProductTag[]>([]);
@@ -282,6 +286,7 @@ export default function ProductForm({
     supplierId: initialData?.supplier?.id || '',
     materialId: initialData?.material?.id || '',
     unitId: initialData?.unit?.id || '',
+    warehouseId: initialData?.warehouse?.id || '',
     ...initCategoryLevels(),
     tagIds: (initialData?.tagMaps || []).map((item) => item.tag?.id || item.tagId || '').filter(Boolean),
     isComboSet: initialData?.isComboSet || false,
@@ -310,8 +315,9 @@ export default function ProductForm({
       apiClientClient.get<Unit[]>('/units'),
       apiClientClient.get<ProductTag[]>('/product-tags'),
       apiClientClient.get<AdminProductsResponse>('/products/admin', { params: { limit: 1000 } }),
+      apiClientClient.get<Array<{ id: string; name: string }>>('/warehouses').catch(() => []),
     ])
-      .then(([sizesRes, colorsRes, suppliersRes, materialsRes, unitsRes, tagsRes, productsRes]) => {
+      .then(([sizesRes, colorsRes, suppliersRes, materialsRes, unitsRes, tagsRes, productsRes, warehousesRes]) => {
         setSizes(sizesRes);
         setColors(colorsRes);
         setSuppliers(suppliersRes);
@@ -319,6 +325,7 @@ export default function ProductForm({
         setUnits(unitsRes);
         setProductTags(tagsRes);
         setProductOptions((productsRes.data || []).filter((product) => product.id !== initialData?.id));
+        setWarehouses(warehousesRes || []);
       })
       .catch(console.error);
   }, [initialData?.id]);
@@ -409,6 +416,7 @@ export default function ProductForm({
       supplierId: form.supplierId || undefined,
       materialId: form.materialId || undefined,
       unitId: form.unitId || undefined,
+      warehouseId: form.warehouseId || undefined,
       categoryIds,
       tagIds: form.tagIds.length > 0 ? form.tagIds : undefined,
       variants:
@@ -723,6 +731,19 @@ export default function ProductForm({
                       label: `${unit.name} (${unit.code})`,
                     }))}
                   />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Kho hàng</label>
+                  <Select
+                    className="w-full"
+                    value={form.warehouseId}
+                    onChange={(value) => update('warehouseId', value)}
+                    placeholder="Chọn kho chứa sản phẩm"
+                    options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
+                  />
+                  {warehouses.length === 0 && (
+                    <p className="mt-1 text-[11px] text-[#9ca3af]">Chưa có kho — tạo ở Kho → Danh sách Kho.</p>
+                  )}
                 </div>
               </div>
 

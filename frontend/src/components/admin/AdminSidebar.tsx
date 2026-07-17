@@ -78,6 +78,7 @@ const navItems: NavGroup[] = [
       { name: 'CCM', href: '/ccm/conversations', roles: ALL_ROLES, icon: MessagesSquare },
       {
         name: 'Kho', roles: ALL_ROLES, icon: Package, children: [
+          { name: 'Danh sách Kho', href: '/admin/warehouses', roles: ALL_ROLES },
           { name: 'Sản phẩm', href: '/admin/products', roles: ALL_ROLES },
           { name: 'Danh mục', href: '/admin/categories', roles: ALL_ROLES },
           { name: 'Nhà cung cấp', href: '/admin/suppliers', roles: ALL_ROLES },

@@ -146,6 +146,11 @@ export class CreateProductDto {
   @IsString()
   unitId?: string;
 
+  @ApiPropertyOptional({ description: 'Kho chứa sản phẩm' })
+  @IsOptional()
+  @IsString()
+  warehouseId?: string;
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()

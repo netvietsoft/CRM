@@ -40,6 +40,7 @@ import { MaterialsModule } from './materials/materials.module';
 import { UnitsModule } from './units/units.module';
 import { ProductTagsModule } from './product-tags/product-tags.module';
 import { OrderSourcesModule } from './order-sources/order-sources.module';
+import { WarehousesModule } from './warehouses/warehouses.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 
 const logger = new Logger('AppModule');
@@ -132,6 +133,7 @@ function getQueueModules(): any[] {
     UnitsModule,
     ProductTagsModule,
     OrderSourcesModule,
+    WarehousesModule,
     AnalyticsModule,
   ],
 })

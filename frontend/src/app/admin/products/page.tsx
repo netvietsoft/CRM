@@ -35,6 +35,7 @@ interface AdminProduct {
     color?: { name: string } | null;
   }>;
   store?: { id: string; name: string } | null;
+  warehouse?: { id: string; name: string } | null;
   _count: { orderItems: number };
 }
 
