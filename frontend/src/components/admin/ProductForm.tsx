@@ -659,8 +659,9 @@ export default function ProductForm({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div>
+              {/* 1 hàng: Trọng lượng 30% · Tồn kho 30% · Nhà cung cấp 40% */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-10">
+                <div className="md:col-span-3">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-weight">
                     Trọng lượng (g)
                   </label>
@@ -673,7 +674,7 @@ export default function ProductForm({
                     placeholder="500"
                   />
                 </div>
-                <div>
+                <div className="md:col-span-3">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-stock">
                     Tồn kho (Mặc định)
                   </label>
@@ -690,10 +691,7 @@ export default function ProductForm({
                     <p className="mt-1 text-[11px] text-[#6b7280]">= tổng tồn kho {form.variants.length} biến thể (tự đồng bộ)</p>
                   )}
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <div>
+                <div className="md:col-span-4">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Nhà cung cấp</label>
                   <Select
                     className="w-full"
@@ -706,7 +704,11 @@ export default function ProductForm({
                     }))}
                   />
                 </div>
-                <div>
+              </div>
+
+              {/* 1 hàng: Chất liệu 30% · Đơn vị tính 30% · Kho hàng 40% */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-10">
+                <div className="md:col-span-3">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Chất liệu</label>
                   <Select
                     className="w-full"
@@ -719,7 +721,7 @@ export default function ProductForm({
                     }))}
                   />
                 </div>
-                <div>
+                <div className="md:col-span-3">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Đơn vị tính</label>
                   <Select
                     className="w-full"
@@ -732,7 +734,7 @@ export default function ProductForm({
                     }))}
                   />
                 </div>
-                <div>
+                <div className="md:col-span-4">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]">Kho hàng</label>
                   <Select
                     className="w-full"

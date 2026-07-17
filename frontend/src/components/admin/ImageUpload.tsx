@@ -1,7 +1,7 @@
 'use client';
 
 import Image from '@/components/ui/AppImage';
-import { uploadToR2 } from '@/lib/uploadR2';
+import { deleteFromR2, uploadToR2 } from '@/lib/uploadR2';
 import { useEffect, useRef, useState } from 'react';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-react';
@@ -39,8 +39,8 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
       return;
     }
 
-    if (file.size > 4 * 1024 * 1024) {
-      setError('Kích thước file không được vượt quá 4MB');
+    if (file.size > 20 * 1024 * 1024) {
+      setError('Kích thước file không được vượt quá 20MB');
       return;
     }
 
@@ -58,6 +58,8 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
   };
 
   const handleRemove = () => {
+    // Gỡ file trên R2 nếu không còn nơi nào dùng (ảnh vừa up chưa lưu → xóa thật; ảnh đã lưu vào SP → BE giữ lại, sẽ dọn khi lưu thay đổi).
+    void deleteFromR2(value);
     onChange('');
     setError('');
     setIsViewerOpen(false);
@@ -344,7 +346,7 @@ export default function ImageUpload({ value, onChange }: ImageUploadProps) {
                   <>
                     <span className="text-3xl">📸</span>
                     <span className="text-sm text-gray-600 font-medium">Chọn hình ảnh</span>
-                    <span className="text-xs text-gray-500">PNG, JPG, GIF (tối đa 4MB)</span>
+                    <span className="text-xs text-gray-500">PNG, JPG, GIF (tối đa 20MB)</span>
                   </>
                 )}
               </div>

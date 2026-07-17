@@ -16,6 +16,14 @@ export async function uploadToR2(file: File, folder: 'images' | 'video' | 'file'
 
 export const folderOf = (f: File): 'images' | 'video' | 'file' => (f.type.startsWith('image') ? 'images' : f.type.startsWith('video') ? 'video' : 'file');
 
+// Gỡ file trên R2 theo URL (BE chỉ xóa khi không còn product/store nào dùng). Best-effort — không ném lỗi.
+export async function deleteFromR2(url: string): Promise<void> {
+  if (!url) return;
+  try {
+    await fetch(`${API}/upload/media?url=${encodeURIComponent(url)}`, { method: 'DELETE', credentials: 'include' });
+  } catch { /* bỏ qua — không chặn luồng UI */ }
+}
+
 // Upload ảnh đánh giá của khách lên R2 (endpoint riêng, mọi user đã đăng nhập) → URL public.
 export async function uploadReviewImageToR2(file: File): Promise<string> {
   const fd = new FormData();

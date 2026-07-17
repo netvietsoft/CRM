@@ -1,6 +1,6 @@
 import {
-  Body, Controller, Get, HttpCode, HttpStatus, ParseFilePipeBuilder,
-  Post, Query, UploadedFile, UseGuards, UseInterceptors,
+  BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus,
+  ParseFilePipeBuilder, Post, Query, UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -11,13 +11,29 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 import { GetEffectiveStoreId } from '../auth/decorators/get-effective-store-id.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { R2Service } from './r2.service';
+import { MediaCleanupService } from './media-cleanup.service';
 
 @ApiTags('Upload')
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UploadController {
-  constructor(private readonly r2: R2Service, private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly r2: R2Service,
+    private readonly prisma: PrismaService,
+    private readonly mediaCleanup: MediaCleanupService,
+  ) {}
+
+  // Gỡ file R2 khi user bấm ✕ ảnh vừa upload (chưa lưu vào entity nào) — tránh file mồ côi.
+  // An toàn: chỉ xóa khi không còn product/store nào tham chiếu URL; URL ngoài R2 bị bỏ qua.
+  @Delete('media')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @ApiOperation({ summary: 'Xóa media trên R2 theo URL (nếu không còn nơi nào dùng)' })
+  async deleteMedia(@Query('url') url?: string) {
+    if (!url?.trim()) throw new BadRequestException('Thiếu url');
+    await this.mediaCleanup.deleteImageIfUnreferenced(url.trim());
+    return { success: true };
+  }
 
   // Upload ảnh/tệp/video lên R2 → lưu vào THƯ VIỆN dùng chung (media_assets) → trả URL public.
   @Post('media')
