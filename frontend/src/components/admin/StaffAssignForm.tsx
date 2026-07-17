@@ -38,7 +38,8 @@ function getInitialStoreId(currentUser: CurrentUser, stores: StoreSummary[]) {
     return currentUser.store.id;
   }
 
-  if (currentUser.role === 'MODERATOR' && stores.length > 0) {
+  // ADMIN/MODERATOR không gắn store: mặc định store đầu tiên (ADMIN đổi được bằng dropdown).
+  if (stores.length > 0) {
     return stores[0].id;
   }
 
@@ -222,12 +223,25 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
           <div className="space-y-2 px-8">
             <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider ml-1">Cửa hàng</label>
             <div className="relative">
-              <input
-                type="text"
-                readOnly
-                value={stores.find(s => s.id === selectedStoreId)?.name || (selectedStoreId ? 'Đang tải...' : 'Chưa xác định')}
-                className="w-full pl-10 pr-4 py-3 bg-[#f3f4f6] border border-[#e5e7eb] rounded-[10px] text-[#6b7280] text-sm cursor-not-allowed font-medium"
-              />
+              {currentUser.role === 'ADMIN' && stores.length > 0 ? (
+                <select
+                  value={selectedStoreId}
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-[#e5e7eb] rounded-[10px] text-sm font-medium outline-none focus:ring-2 focus:ring-[#2563eb] appearance-none cursor-pointer"
+                >
+                  {!selectedStoreId && <option value="">— Chọn cửa hàng —</option>}
+                  {stores.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name || s.id}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  readOnly
+                  value={stores.find(s => s.id === selectedStoreId)?.name || (selectedStoreId ? 'Đang tải...' : 'Chưa xác định')}
+                  className="w-full pl-10 pr-4 py-3 bg-[#f3f4f6] border border-[#e5e7eb] rounded-[10px] text-[#6b7280] text-sm cursor-not-allowed font-medium"
+                />
+              )}
               <Store className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" size={18} />
             </div>
           </div>

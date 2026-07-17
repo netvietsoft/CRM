@@ -12,6 +12,7 @@ interface StaffRecord {
   email: string | null;
   phone: string | null;
   createdAt: string | Date;
+  staffPermissions?: string[] | null;
   staffStore?: {
     name?: string | null;
   } | null;
@@ -19,6 +20,19 @@ interface StaffRecord {
     ordersAsSeller?: number;
   };
 }
+
+// Bảng quyền theo module: mỗi hàng 1 module, cột Xem / Sửa / Xoá (ô null = không áp dụng).
+const PERM_MODULES: Array<{ name: string; view: string | null; manage: string | null; del: string | null; note?: string }> = [
+  { name: 'Đơn hàng', view: 'ORDERS_VIEW', manage: 'ORDERS_MANAGE', del: 'ORDERS_DELETE' },
+  { name: 'Sản phẩm', view: 'PRODUCTS_VIEW', manage: 'PRODUCTS_MANAGE', del: 'PRODUCTS_DELETE' },
+  { name: 'Danh mục', view: 'CATEGORIES_VIEW', manage: 'CATEGORIES_MANAGE', del: 'CATEGORIES_DELETE' },
+  { name: 'Khách hàng', view: 'CUSTOMERS_VIEW', manage: 'CUSTOMERS_MANAGE', del: 'CUSTOMERS_DELETE' },
+  { name: 'Voucher / Khuyến mãi', view: 'VOUCHERS_VIEW', manage: 'VOUCHERS_MANAGE', del: 'VOUCHERS_DELETE' },
+  { name: 'Tin nhắn CCM (inbox)', view: 'MESSENGER_VIEW', manage: 'MESSENGER_SEND', del: null, note: 'Sửa = được trả lời tin khách' },
+  { name: 'CSKH chiến dịch', view: 'MESSAGING_VIEW', manage: 'MESSAGING_MANAGE', del: null },
+  { name: 'Tích hợp', view: 'INTEGRATIONS_VIEW', manage: 'INTEGRATIONS_MANAGE', del: null },
+  { name: 'Cài đặt cửa hàng', view: null, manage: 'STORE_SETTINGS', del: null },
+];
 
 interface ApiErrorLike {
   message?: string;
@@ -102,6 +116,34 @@ export default function StaffTableClient() {
   const openRow = (e: React.MouseEvent, id: string) => {
     if ((e.target as HTMLElement).closest('button, a, input, select, textarea, label, [role="button"], [role="switch"]')) return;
     router.push(`/admin/staff/assign?userId=${id}`);
+  };
+
+  // Modal bảng quyền: chọn NV → tick Xem/Sửa/Xoá theo module → lưu (ghi đè staffPermissions).
+  const [permStaff, setPermStaff] = useState<StaffRecord | null>(null);
+  const [permSet, setPermSet] = useState<Set<string>>(new Set());
+  const [permSaving, setPermSaving] = useState(false);
+
+  const openPerm = (s: StaffRecord) => {
+    setPermStaff(s);
+    setPermSet(new Set(Array.isArray(s.staffPermissions) ? s.staffPermissions : []));
+  };
+  const togglePerm = (key: string | null) => {
+    if (!key) return;
+    setPermSet((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+  };
+  const savePerm = async () => {
+    if (!permStaff) return;
+    setPermSaving(true);
+    try {
+      const permissions = [...permSet];
+      await apiClientClient.post(`/admin/staff/${permStaff.id}/permissions`, { permissions });
+      setStaff((prev) => prev.map((s) => (s.id === permStaff.id ? { ...s, staffPermissions: permissions } : s)));
+      setPermStaff(null);
+    } catch (error) {
+      alert(getErrorMessage(error, 'Lưu quyền thất bại'));
+    } finally {
+      setPermSaving(false);
+    }
   };
 
   const handleRemoveStaff = async (id: string, name: string | null) => {
@@ -215,13 +257,21 @@ export default function StaffTableClient() {
                   </td>
                   <td className="px-4 py-[11px] whitespace-nowrap">
                     <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => openPerm(s)}
+                        className="text-[#7c3aed] font-semibold hover:underline flex items-center gap-1.5"
+                        title="Bảng quyền theo module (Xem/Sửa/Xoá)"
+                      >
+                        <Shield size={15} />
+                        Phân quyền
+                      </button>
                       <Link
                         href={`/admin/staff/assign?userId=${s.id}`}
                         className="text-[#2563eb] font-semibold hover:underline flex items-center gap-1.5"
-                        title="Chỉnh sửa quyền"
+                        title="Sửa thông tin nhân viên"
                       >
                         <Edit2 size={15} />
-                        Phân quyền
+                        Sửa
                       </Link>
                       <button
                         onClick={() => handleRemoveStaff(s.id, s.name)}
@@ -238,6 +288,66 @@ export default function StaffTableClient() {
           </table>
         </div>
       </div>
+
+      {/* Modal bảng quyền nhân viên — matrix module × Xem/Sửa/Xoá */}
+      {permStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setPermStaff(null); }}>
+          <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#f3f4f6] px-6 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-[#111827]">🛡 Bảng quyền: {permStaff.name}</h3>
+                <p className="text-[12px] text-[#6b7280]">Tick quyền theo từng module — Xem / Sửa (tạo + cập nhật) / Xoá.</p>
+              </div>
+              <button onClick={() => setPermStaff(null)} className="text-2xl leading-none text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
+              <table className="w-full border-collapse text-[13px]">
+                <thead>
+                  <tr className="bg-[#f8fafc]">
+                    <th className="px-3 py-2 text-left text-[11.5px] font-bold text-[#374151]">Module</th>
+                    {['Xem', 'Sửa', 'Xoá'].map((c) => (
+                      <th key={c} className="w-[64px] px-2 py-2 text-center text-[11.5px] font-bold text-[#374151]">{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERM_MODULES.map((m, i) => (
+                    <tr key={m.name} className={`border-t border-[#f1f5f9] ${i % 2 === 1 ? 'bg-[#f9fafb]' : ''}`}>
+                      <td className="px-3 py-2 font-semibold text-[#111827]">
+                        {m.name}
+                        {m.note && <div className="text-[10.5px] font-normal text-[#9ca3af]">{m.note}</div>}
+                      </td>
+                      {[m.view, m.manage, m.del].map((key, ci) => (
+                        <td key={ci} className="px-2 py-2 text-center">
+                          {key ? (
+                            <span
+                              onClick={() => togglePerm(key)}
+                              className={`inline-flex h-[22px] w-[22px] cursor-pointer select-none items-center justify-center rounded-md text-[12px] font-bold ${permSet.has(key) ? 'bg-[#3c55e6] text-white' : 'bg-[#f1f5f9] text-[#9ca3af]'}`}
+                            >
+                              {permSet.has(key) ? '✓' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-[#e5e7eb]">—</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between border-t border-[#f3f4f6] px-6 py-4">
+              <div className="flex gap-2">
+                <button onClick={() => setPermSet(new Set(PERM_MODULES.flatMap((m) => [m.view, m.manage, m.del].filter(Boolean) as string[])))} className="rounded-lg bg-[#f3f4f6] px-3 py-1.5 text-[12px] font-semibold text-[#374151] hover:bg-[#e5e7eb]">Chọn tất cả</button>
+                <button onClick={() => setPermSet(new Set())} className="rounded-lg bg-[#f3f4f6] px-3 py-1.5 text-[12px] font-semibold text-[#374151] hover:bg-[#e5e7eb]">Bỏ hết</button>
+              </div>
+              <button onClick={() => void savePerm()} disabled={permSaving} className="rounded-[10px] bg-[#2563eb] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-50">
+                {permSaving ? 'Đang lưu…' : '💾 Lưu quyền'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

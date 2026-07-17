@@ -70,7 +70,7 @@ export class CategoriesController {
 
   @Delete(':id')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
-  @Permissions(Permission.CATEGORIES_MANAGE)
+  @Permissions(Permission.CATEGORIES_DELETE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete category' })
   remove(

@@ -88,6 +88,19 @@ export class StaffController {
     return this.adminService.getStoreStaff(effectiveStoreId);
   }
 
+  // Bảng quyền nhân viên: ghi đè danh sách staffPermissions (matrix Xem/Sửa/Xoá theo module).
+  @Post(':id/permissions')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Update staff permissions (matrix per module)' })
+  async updatePermissions(
+    @GetUser() user: any,
+    @Param('id') staffId: string,
+    @Body() body: { permissions: string[] },
+  ) {
+    const storeId = user.role === 'MODERATOR' ? user.store?.id : undefined;
+    return this.adminService.updateStaffPermissions(staffId, body?.permissions || [], storeId);
+  }
+
   @Delete(':id')
   @Roles('ADMIN', 'MODERATOR')
   @ApiOperation({ summary: 'Remove staff from a store' })

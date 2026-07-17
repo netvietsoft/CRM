@@ -136,9 +136,10 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Roles('ADMIN', 'MODERATOR')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.PRODUCTS_DELETE)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete product (Admin/Owner only)' })
+  @ApiOperation({ summary: 'Delete product (Admin/Owner/Staff có quyền xoá)' })
   @ApiResponse({ status: 200, description: 'Product deleted successfully' })
   remove(
     @GetUser() user: any,

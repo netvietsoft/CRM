@@ -233,8 +233,9 @@ export class OrdersController {
 
   @Delete(':id')
   @UseGuards(RolesGuard, PermissionsGuard)
-  @Roles('ADMIN', 'MODERATOR')
-  @ApiOperation({ summary: 'Hard delete order (Admin/Owner only)' })
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.ORDERS_DELETE)
+  @ApiOperation({ summary: 'Hard delete order (Admin/Owner/Staff có quyền xoá)' })
   @ApiResponse({ status: 200, description: 'Order deleted permanently' })
   hardDelete(
     @Param('id') id: string,

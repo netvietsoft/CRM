@@ -246,7 +246,7 @@ export class VouchersController {
 
   @Delete(':id')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
-  @Permissions(Permission.VOUCHERS_MANAGE)
+  @Permissions(Permission.VOUCHERS_DELETE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a voucher' })
   async remove(

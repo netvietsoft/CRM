@@ -4,6 +4,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { Permission } from '../auth/enums/permissions.enum';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { GetEffectiveStoreId } from '../auth/decorators/get-effective-store-id.decorator';
 import { AdminService } from './admin.service';
@@ -24,6 +26,33 @@ export class AdminController {
     @GetEffectiveStoreId() effectiveStoreId: string | null,
   ) {
     return this.adminService.getDashboardStats(user, effectiveStoreId);
+  }
+
+  // Doanh thu theo kỳ (FE RevenueStats). scope=delivered → chỉ đơn DELIVERED/PAYMENT_COLLECTED.
+  @Get('revenue-stats')
+  @ApiOperation({ summary: 'Revenue stats by period (orders)' })
+  async getRevenueStats(
+    @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @Query('period') period?: string,
+    @Query('scope') scope?: string,
+    @Query('dateField') dateField?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.adminService.getRevenueStats({ period, scope, dateField, startDate, endDate }, effectiveStoreId);
+  }
+
+  // Doanh thu theo NHÂN VIÊN lên đơn (đơn thành công = DELIVERED/PAYMENT_COLLECTED hoặc VTP 501).
+  @Get('revenue-stats/by-staff')
+  @ApiOperation({ summary: 'Revenue per staff (assigningSeller, tracking VTP tới 501)' })
+  async getRevenueByStaff(
+    @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @Query('period') period?: string,
+    @Query('dateField') dateField?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.adminService.getRevenueByStaff({ period, dateField, startDate, endDate }, effectiveStoreId);
   }
 
   @Get('dashboard-meta')
@@ -78,7 +107,8 @@ export class AdminController {
   }
 
   @Delete('customers/:id/soft')
-  @Roles('ADMIN', 'MODERATOR')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.CUSTOMERS_DELETE)
   @ApiOperation({ summary: 'Soft delete (ban) a customer' })
   async softDeleteCustomer(
     @GetUser() user: any,

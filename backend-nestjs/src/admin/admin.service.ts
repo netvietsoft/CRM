@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Permission } from '../auth/enums/permissions.enum';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import * as bcrypt from 'bcryptjs';
@@ -665,6 +666,143 @@ export class AdminService {
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // ----- Doanh thu (đơn hàng CRM) -----
+  // Kỳ báo cáo → [start, end). 'all' → cả hai null.
+  private resolveRevenuePeriod(period: string, startDate?: string, endDate?: string) {
+    const now = new Date();
+    const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const today = day(now);
+    const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+    let start: Date | null = null;
+    let end: Date | null = null;
+    let label = 'Tất cả';
+
+    switch (period) {
+      case 'today': start = today; end = addDays(today, 1); label = 'Hôm nay'; break;
+      case 'yesterday': start = addDays(today, -1); end = today; label = 'Hôm qua'; break;
+      case 'week': {
+        const dow = (today.getDay() + 6) % 7; // T2 đầu tuần
+        start = addDays(today, -dow); end = addDays(start, 7); label = 'Tuần này'; break;
+      }
+      case 'lastweek': {
+        const dow = (today.getDay() + 6) % 7;
+        end = addDays(today, -dow); start = addDays(end, -7); label = 'Tuần trước'; break;
+      }
+      case 'month': start = new Date(now.getFullYear(), now.getMonth(), 1); end = new Date(now.getFullYear(), now.getMonth() + 1, 1); label = 'Tháng này'; break;
+      case 'lastmonth': start = new Date(now.getFullYear(), now.getMonth() - 1, 1); end = new Date(now.getFullYear(), now.getMonth(), 1); label = 'Tháng trước'; break;
+      case 'quarter': {
+        const q = Math.floor(now.getMonth() / 3) * 3;
+        start = new Date(now.getFullYear(), q, 1); end = new Date(now.getFullYear(), q + 3, 1); label = 'Quý này'; break;
+      }
+      case 'custom':
+        if (startDate) start = new Date(`${startDate}T00:00:00`);
+        if (endDate) end = addDays(new Date(`${endDate}T00:00:00`), 1);
+        label = 'Tùy chọn';
+        break;
+      default: break; // 'all'
+    }
+    return { start, end, label };
+  }
+
+  private revenueWhere(q: { period?: string; scope?: string; dateField?: string; startDate?: string; endDate?: string }, effectiveStoreId: string | null) {
+    const { start, end, label } = this.resolveRevenuePeriod(q.period || 'month', q.startDate, q.endDate);
+    const dateField = q.dateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
+    const where: any = {};
+    if (effectiveStoreId) where.storeId = effectiveStoreId;
+    if (start || end) where[dateField] = { ...(start ? { gte: start } : {}), ...(end ? { lt: end } : {}) };
+    // 'delivered' = đơn thành công (đã giao / đã thu COD); 'all' = mọi đơn.
+    if ((q.scope || 'delivered') === 'delivered') where.status = { in: ['DELIVERED', 'PAYMENT_COLLECTED'] };
+    return { where, start, end, label };
+  }
+
+  async getRevenueStats(q: { period?: string; scope?: string; dateField?: string; startDate?: string; endDate?: string }, effectiveStoreId: string | null) {
+    const { where, start, end, label } = this.revenueWhere(q, effectiveStoreId);
+    const agg = await this.prisma.order.aggregate({ where, _sum: { totalAmount: true }, _count: { _all: true } });
+    return {
+      period: q.period || 'month',
+      label,
+      start: start ? start.toISOString() : null,
+      end: end ? end.toISOString() : null,
+      revenue: agg._sum.totalAmount || 0,
+      orderCount: agg._count._all,
+    };
+  }
+
+  // Doanh thu theo NHÂN VIÊN lên đơn (assigningSellerId). Đơn "thành công" = DELIVERED/PAYMENT_COLLECTED
+  // HOẶC có vận đơn Viettel (orderReference = orderCode) đạt 501 — tracking từ lúc tạo đến giao thành công.
+  async getRevenueByStaff(q: { period?: string; dateField?: string; startDate?: string; endDate?: string }, effectiveStoreId: string | null) {
+    const { where, start, end, label } = this.revenueWhere({ ...q, scope: 'all' }, effectiveStoreId);
+    const orders = await this.prisma.order.findMany({
+      where,
+      select: { orderCode: true, totalAmount: true, status: true, assigningSellerId: true },
+      take: 20000,
+    });
+
+    const codes = orders.map((o) => o.orderCode);
+    const vtpDone = new Set<string>(
+      codes.length
+        ? (
+            await this.prisma.viettelCustomer.findMany({
+              where: { orderReference: { in: codes }, status: 501, trackingCode: { not: { startsWith: 'DRAFT-' } } },
+              select: { orderReference: true },
+            })
+          ).map((v) => v.orderReference as string)
+        : [],
+    );
+
+    const byStaff = new Map<string, { ordersCreated: number; ordersDelivered: number; revenue: number }>();
+    for (const o of orders) {
+      const key = o.assigningSellerId || '';
+      const row = byStaff.get(key) || { ordersCreated: 0, ordersDelivered: 0, revenue: 0 };
+      row.ordersCreated += 1;
+      const success = o.status === 'DELIVERED' || o.status === 'PAYMENT_COLLECTED' || vtpDone.has(o.orderCode);
+      if (success) {
+        row.ordersDelivered += 1;
+        row.revenue += o.totalAmount || 0;
+      }
+      byStaff.set(key, row);
+    }
+
+    const staffIds = [...byStaff.keys()].filter(Boolean);
+    const users = staffIds.length
+      ? await this.prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true, phone: true } })
+      : [];
+    const nameOf = new Map(users.map((u) => [u.id, u.name || u.phone || u.id]));
+
+    const rows = [...byStaff.entries()]
+      .map(([staffId, r]) => ({
+        staffId: staffId || null,
+        name: staffId ? nameOf.get(staffId) || staffId : 'Chưa gán nhân viên',
+        ...r,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return { label, start: start ? start.toISOString() : null, end: end ? end.toISOString() : null, rows };
+  }
+
+  // Cập nhật bảng quyền nhân viên (matrix Xem/Sửa/Xoá theo module). Chỉ nhận giá trị thuộc enum Permission.
+  async updateStaffPermissions(staffId: string, permissions: string[], moderatorStoreId?: string) {
+    const staff = await this.prisma.user.findUnique({
+      where: { id: staffId },
+      select: { role: true, staffStoreId: true },
+    });
+    if (!staff || staff.role !== 'STAFF') {
+      throw new BadRequestException('Staff member not found');
+    }
+    if (moderatorStoreId && staff.staffStoreId !== moderatorStoreId) {
+      throw new ForbiddenException('You can only update staff of your own store');
+    }
+
+    const valid = new Set(Object.values(Permission) as string[]);
+    const cleaned = [...new Set((permissions || []).filter((p) => valid.has(p)))];
+
+    return this.prisma.user.update({
+      where: { id: staffId },
+      data: { staffPermissions: cleaned },
+      select: { id: true, name: true, staffPermissions: true },
     });
   }
 
