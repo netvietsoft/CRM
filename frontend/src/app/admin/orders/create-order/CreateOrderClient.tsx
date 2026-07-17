@@ -382,6 +382,7 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
           params: {
             search: productSearch.trim(),
             limit: 8,
+            isActive: 'true', // sản phẩm NGỪNG BÁN không hiện khi lên đơn
           },
         });
         setProducts(data.data || []);

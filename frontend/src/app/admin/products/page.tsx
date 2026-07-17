@@ -27,7 +27,13 @@ interface AdminProduct {
     quantity: number;
     childProduct: { id: string; name: string; sku?: string | null };
   }>;
-  variants: Array<Record<string, unknown>>;
+  variants: Array<{
+    id: string;
+    stock: number;
+    price?: number | null;
+    size?: { name: string } | null;
+    color?: { name: string } | null;
+  }>;
   store?: { id: string; name: string } | null;
   _count: { orderItems: number };
 }

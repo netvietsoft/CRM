@@ -4,11 +4,12 @@ import Image from '@/components/ui/AppImage';
 import React, { useCallback, useEffect, useState } from 'react';
 import ProductActions from '@/components/admin/ProductActions';
 import ProductRowActions from '@/components/admin/ProductRowActions';
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, SearchIcon } from 'lucide-react';
+import { ArrowDown, ArrowLeftRight, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Copy, Gift, SearchIcon, Trash2, X } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { passthroughImageLoader } from '@/lib/imageLoader';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { formatVndSymbol } from '@/lib/format';
+import { apiClientClient } from '@/lib/apiClientClient';
 
 type Product = {
   id: string;
@@ -34,7 +35,13 @@ type Product = {
     quantity: number;
     childProduct: { id: string; name: string; sku?: string | null };
   }>;
-  variants: Array<Record<string, unknown>>;
+  variants: Array<{
+    id: string;
+    stock: number;
+    price?: number | null;
+    size?: { name: string } | null;
+    color?: { name: string } | null;
+  }>;
   store?: { id: string; name: string } | null;
   _count: { orderItems: number };
 };
@@ -182,6 +189,47 @@ export default function ProductsClient({
   const [sortKey, setSortKey] = useState<SortKey | null>(isSortKey(initialFilters.sortBy) ? initialFilters.sortBy : null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(initialFilters.sortOrder === 'desc' ? 'desc' : 'asc');
   const debouncedSearch = useDebounce(searchTerm, 400);
+
+  // Cột đầu: [checkbox chọn nhiều] + [nút + mở chi tiết]; toggle on/off bán hàng (optimistic).
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkModal, setBulkModal] = useState<'copy' | 'move' | 'gift' | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [activeOverrides, setActiveOverrides] = useState<Record<string, boolean>>({});
+
+  const effectiveActive = (p: Product) => activeOverrides[p.id] ?? p.isActive;
+  const toggleExpand = (id: string) =>
+    setExpandedIds((prev) => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => { const s = new Set(prev); if (s.has(id)) s.delete(id); else s.add(id); return s; });
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const toggleActive = async (p: Product) => {
+    const next = !effectiveActive(p);
+    setActiveOverrides((prev) => ({ ...prev, [p.id]: next }));
+    try {
+      await apiClientClient.patch(`/products/${p.id}`, { isActive: next });
+      router.refresh();
+    } catch (err) {
+      setActiveOverrides((prev) => ({ ...prev, [p.id]: !next })); // rollback
+      alert(err instanceof Error ? err.message : 'Không đổi được trạng thái bán');
+    }
+  };
+
+  const deleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Xóa ${selectedIds.size} sản phẩm đã chọn?\nHành động này không thể hoàn tác.`)) return;
+    setBulkDeleting(true);
+    const errors: string[] = [];
+    for (const id of selectedIds) {
+      try { await apiClientClient.delete(`/products/${id}`); }
+      catch (err) { errors.push(err instanceof Error ? err.message : id); }
+    }
+    setBulkDeleting(false);
+    clearSelection();
+    router.refresh();
+    if (errors.length) alert(`Có ${errors.length} sản phẩm xóa lỗi:\n${errors.join('\n')}`);
+  };
 
   const updateUrl = useCallback((updates: Record<string, string | undefined>, resetPage = true) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -498,11 +546,26 @@ export default function ProductsClient({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+      <div className="relative overflow-hidden rounded-[14px] border border-[#eceef2] bg-white">
+        {/* Toolbar chọn nhiều — đè lên dòng tiêu đề khi có sản phẩm được tick */}
+        {selectedIds.size > 0 && (
+          <div className="absolute inset-x-0 top-0 z-20 flex items-center gap-3 border-b border-[#bfdbfe] bg-[#eff6ff] px-4 py-[7px]">
+            <span className="text-[13px] font-bold text-[#1d4ed8]">Đã chọn: {selectedIds.size}</span>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setBulkModal('copy')} title="Sao chép sản phẩm" className="grid h-8 w-8 place-items-center rounded-lg border border-[#bfdbfe] bg-white text-[#2563eb] transition-colors hover:bg-[#dbeafe]"><Copy className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setBulkModal('move')} title="Chuyển sản phẩm sang kho khác" className="grid h-8 w-8 place-items-center rounded-lg border border-[#bfdbfe] bg-white text-[#2563eb] transition-colors hover:bg-[#dbeafe]"><ArrowLeftRight className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setBulkModal('gift')} title="Tạo khuyến mãi / voucher" className="grid h-8 w-8 place-items-center rounded-lg border border-[#fbcfe8] bg-white text-[#be185d] transition-colors hover:bg-[#fce7f3]"><Gift className="h-4 w-4" /></button>
+              <button type="button" onClick={() => void deleteSelected()} disabled={bulkDeleting} title="Xóa sản phẩm đã chọn" className="grid h-8 w-8 place-items-center rounded-lg border border-[#fecaca] bg-white text-[#dc2626] transition-colors hover:bg-[#fee2e2] disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+            </div>
+            {bulkDeleting && <span className="text-[12px] text-[#6b7280]">Đang xóa…</span>}
+            <button type="button" onClick={clearSelection} title="Bỏ chọn" className="ml-auto grid h-8 w-8 place-items-center rounded-lg text-[#6b7280] transition-colors hover:bg-white"><X className="h-4 w-4" /></button>
+          </div>
+        )}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] border-collapse text-[13px]">
+          <table className="w-full min-w-[980px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f9fafb]">
+                <th className="w-[72px] px-3 py-2.5"></th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">
                   <button type="button" onClick={() => handleSort('name')} className="flex items-center gap-1.5 transition-colors hover:text-[#2563eb]">
                     <span>Sản phẩm</span>
@@ -521,16 +584,19 @@ export default function ProductsClient({
                     {renderSortIcon('price')}
                   </button>
                 </th>
-                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">
-                  <button type="button" onClick={() => handleSort('stock')} className="ml-auto flex items-center gap-1.5 transition-colors hover:text-[#2563eb]">
-                    <span>Tồn kho</span>
-                    {renderSortIcon('stock')}
-                  </button>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]" title="Số lượng đã nhập kho (tồn hiện tại + đã bán)">
+                  Tổng nhập
                 </th>
                 <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">
                   <button type="button" onClick={() => handleSort('sold')} className="ml-auto flex items-center gap-1.5 transition-colors hover:text-[#2563eb]">
                     <span>Đã bán</span>
                     {renderSortIcon('sold')}
+                  </button>
+                </th>
+                <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]" title="Còn lại sau khi bán (tổng nhập − đã bán)">
+                  <button type="button" onClick={() => handleSort('stock')} className="ml-auto flex items-center gap-1.5 transition-colors hover:text-[#2563eb]">
+                    <span>Tồn kho</span>
+                    {renderSortIcon('stock')}
                   </button>
                 </th>
                 <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#6b7280]">
@@ -548,7 +614,7 @@ export default function ProductsClient({
             <tbody>
               {sortedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={10}>
                     <div className="px-5 py-11 text-center">
                       <div className="mb-2.5 text-[40px]">{appliedFilterCount > 0 ? '🔍' : '📦'}</div>
                       <div className="mb-1 text-[15px] font-bold text-[#111827]">
@@ -562,13 +628,42 @@ export default function ProductsClient({
                 </tr>
               ) : (
                 sortedProducts.map((product, idx) => (
+                  <React.Fragment key={product.id}>
                   <tr
-                    key={product.id}
                     className={`cursor-pointer border-t border-[#f3f4f6] transition-colors hover:bg-[#eff6ff] ${idx % 2 === 1 ? 'bg-[#f7f9fc]' : 'bg-white'} ${navigatingProductId === product.id ? 'bg-[#eff6ff]' : ''}`}
                     onClick={() => handleOpenProduct(product)}
                   >
+                    {/* Cột đầu: tick chọn nhiều + nút [+] xem nhanh toàn bộ thông tin */}
+                    <td className="whitespace-nowrap px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 cursor-pointer accent-[#2563eb]"
+                          checked={selectedIds.has(product.id)}
+                          onChange={() => toggleSelect(product.id)}
+                          title="Chọn để thao tác hàng loạt"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(product.id)}
+                          className="grid h-6 w-6 place-items-center rounded-md border border-[#c7ced9] bg-white text-[13px] font-bold leading-none text-[#2563eb] transition-colors hover:bg-[#eff6ff]"
+                          title={expandedIds.has(product.id) ? 'Thu gọn' : 'Xem nhanh chi tiết'}
+                        >
+                          {expandedIds.has(product.id) ? '−' : '+'}
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-[11px]">
+                        {/* Toggle bật/tắt bán: ON = tìm kiếm/lên đơn/hiện cửa hàng; OFF = ngừng bán toàn hệ thống */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); void toggleActive(product); }}
+                          title={effectiveActive(product) ? 'Đang bán — bấm để NGỪNG bán (ẩn khỏi tìm kiếm/lên đơn/cửa hàng)' : 'Ngừng bán — bấm để MỞ bán lại'}
+                          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${effectiveActive(product) ? 'bg-[#16a34a]' : 'bg-[#d1d5db]'}`}
+                        >
+                          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${effectiveActive(product) ? 'left-[18px]' : 'left-0.5'}`} />
+                        </button>
                         {product.imageUrl ? (
                           <Image
                             loader={passthroughImageLoader}
@@ -641,9 +736,17 @@ export default function ProductsClient({
                         <div className="text-[11px] text-[#9ca3af] line-through">{formatCurrency(product.originalPrice)}</div>
                       )}
                     </td>
+                    {/* Tổng nhập = tồn hiện tại + đã bán (số lượng đã đưa vào kho) */}
+                    <td className="whitespace-nowrap px-3 py-3 text-right text-[#4b5563]">
+                      {product.stockQuantity + product._count.orderItems}
+                    </td>
+                    <td className="px-3 py-3 text-right text-[#4b5563]">
+                      {product._count.orderItems}
+                    </td>
+                    {/* Tồn kho = còn lại sau khi bán (có thể ÂM khi bán trước sản xuất) */}
                     <td
                       className={`whitespace-nowrap px-3 py-3 text-right font-bold ${
-                        product.stockQuantity === 0
+                        product.stockQuantity <= 0
                           ? 'text-[#dc2626]'
                           : product.stockQuantity < 10
                             ? 'text-[#c2410c]'
@@ -653,12 +756,9 @@ export default function ProductsClient({
                       {product.stockQuantity}
                       {product.stockQuantity < 10 && (
                         <span className="ml-1.5 rounded-full bg-[#fef3c7] px-[7px] py-0.5 text-[10px] font-bold text-[#92400e]">
-                          Sắp hết
+                          {product.stockQuantity <= 0 ? 'Hết/Âm' : 'Sắp hết'}
                         </span>
                       )}
-                    </td>
-                    <td className="px-3 py-3 text-right text-[#4b5563]">
-                      {product._count.orderItems}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-[#4b5563]">
                       {product.supplier?.name || '—'}
@@ -666,10 +766,10 @@ export default function ProductsClient({
                     <td className="px-3 py-3">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          product.isActive ? 'bg-[#d1fae5] text-[#047857]' : 'bg-[#fee2e2] text-[#dc2626]'
+                          effectiveActive(product) ? 'bg-[#d1fae5] text-[#047857]' : 'bg-[#fee2e2] text-[#dc2626]'
                         }`}
                       >
-                        {product.isActive ? 'Đang bán' : 'Ngừng bán'}
+                        {effectiveActive(product) ? 'Đang bán' : 'Ngừng bán'}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -678,6 +778,67 @@ export default function ProductsClient({
                       />
                     </td>
                   </tr>
+
+                  {/* Panel xem nhanh (nút +): toàn bộ thông tin + tồn theo size/màu */}
+                  {expandedIds.has(product.id) && (
+                    <tr className="border-t border-[#dbeafe] bg-[#f8faff]" onClick={(e) => e.stopPropagation()}>
+                      <td colSpan={10} className="px-6 py-4">
+                        <div className="flex flex-wrap items-start gap-6">
+                          {product.imageUrl ? (
+                            <Image
+                              loader={passthroughImageLoader}
+                              unoptimized
+                              src={product.imageUrl}
+                              alt={product.name}
+                              width={96}
+                              height={96}
+                              className="h-24 w-24 flex-shrink-0 rounded-[12px] border border-[#eceef2] object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center rounded-[12px] bg-[#eff6ff] text-3xl font-extrabold text-[#2563eb]">
+                              {product.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <dl className="grid flex-1 grid-cols-2 gap-x-8 gap-y-2 text-[13px] sm:grid-cols-3 lg:grid-cols-4">
+                            <div><dt className="text-[11px] text-[#9ca3af]">Mã sản phẩm</dt><dd className="font-mono font-bold text-[#111827]">{product.sku || product.slug}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Giá gốc</dt><dd className="font-bold text-[#111827]">{formatCurrency(product.originalPrice)}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Giá bán</dt><dd className="font-bold text-[#047857]">{formatCurrency(getProductDisplayPrice(product))}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Tổng nhập</dt><dd className="font-bold text-[#111827]">{product.stockQuantity + product._count.orderItems}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Đã bán</dt><dd className="font-bold text-[#111827]">{product._count.orderItems}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Tồn kho (còn lại)</dt><dd className={`font-bold ${product.stockQuantity <= 0 ? 'text-[#dc2626]' : 'text-[#111827]'}`}>{product.stockQuantity}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Danh mục</dt><dd className="text-[#4b5563]">{product.categories.map((c) => c.name).join(', ') || '—'}</dd></div>
+                            <div><dt className="text-[11px] text-[#9ca3af]">Nhà cung cấp</dt><dd className="text-[#4b5563]">{product.supplier?.name || '—'}</dd></div>
+                          </dl>
+                          {product.variants.length > 0 && (
+                            <div className="w-full lg:w-auto lg:min-w-[300px]">
+                              <div className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.05em] text-[#6b7280]">Còn lại theo Size / Màu</div>
+                              <div className="overflow-hidden rounded-[10px] border border-[#e5edff]">
+                                <table className="w-full text-[12.5px]">
+                                  <thead className="bg-white text-[11px] uppercase text-[#9ca3af]">
+                                    <tr>
+                                      <th className="px-3 py-1.5 text-left">Size</th>
+                                      <th className="px-3 py-1.5 text-left">Màu</th>
+                                      <th className="px-3 py-1.5 text-right">Còn lại</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="bg-white">
+                                    {product.variants.map((v) => (
+                                      <tr key={v.id} className="border-t border-[#f3f4f6]">
+                                        <td className="px-3 py-1.5">{v.size?.name || 'Cỡ chung'}</td>
+                                        <td className="px-3 py-1.5">{v.color?.name || 'Màu chung'}</td>
+                                        <td className={`px-3 py-1.5 text-right font-bold ${v.stock <= 0 ? 'text-[#dc2626]' : 'text-[#111827]'}`}>{v.stock}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
@@ -725,6 +886,33 @@ export default function ProductsClient({
           </div>
         </div>
       </div>
+
+      {/* Modal thao tác hàng loạt — copy/chuyển kho là khung chờ (bổ sung chi tiết sau) */}
+      {bulkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setBulkModal(null); }}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-800">
+                {bulkModal === 'copy' ? '📋 Sao chép sản phẩm' : bulkModal === 'move' ? '🔁 Chuyển kho' : '🎁 Tạo khuyến mãi / Voucher'}
+              </h3>
+              <button onClick={() => setBulkModal(null)} className="text-2xl leading-none text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <p className="mb-2 text-sm text-gray-600">Đang chọn <b>{selectedIds.size}</b> sản phẩm.</p>
+            {bulkModal === 'copy' && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">🚧 Tính năng sao chép sản phẩm sẽ bổ sung chi tiết sau.</p>
+            )}
+            {bulkModal === 'move' && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">🚧 Chuyển sản phẩm sang kho khác — chờ thiết lập danh sách kho.</p>
+            )}
+            {bulkModal === 'gift' && (
+              <div className="space-y-3">
+                <p className="rounded-xl border border-pink-200 bg-pink-50 p-3 text-sm text-pink-800">Tạo khuyến mãi/voucher áp cho sản phẩm đã chọn — luồng gắn sản phẩm sẽ bổ sung sau.</p>
+                <button onClick={() => router.push('/admin/vouchers')} className="w-full rounded-xl bg-[#be185d] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:brightness-110">Đến trang Voucher →</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
