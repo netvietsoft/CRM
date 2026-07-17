@@ -571,8 +571,9 @@ export default function ProductForm({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div>
+              {/* 1 dòng: Tên 50% · SKU 25% · Slug 25% */}
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+                <div className="md:col-span-2">
                   <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-name">
                     Tên sản phẩm *
                   </label>
@@ -597,20 +598,19 @@ export default function ProductForm({
                     placeholder="PROD-001"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[11px] font-medium text-[#9ca3af]" htmlFor="prod-slug">
-                  Slug *
-                </label>
-                <input
-                  id="prod-slug"
-                  className="w-full max-w-xs rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-1.5 font-mono text-[11px] text-[#6b7280] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
-                  required
-                  value={form.slug}
-                  onChange={(e) => update('slug', e.target.value)}
-                  placeholder="ao-thun-basic"
-                />
+                <div>
+                  <label className="mb-1 block text-[13px] font-semibold text-[#374151]" htmlFor="prod-slug">
+                    Slug *
+                  </label>
+                  <input
+                    id="prod-slug"
+                    className="w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3.5 py-2 font-mono text-[12px] text-[#6b7280] outline-none transition-all focus:border-[#2563eb] focus:ring-[3px] focus:ring-[rgba(37,99,235,0.12)]"
+                    required
+                    value={form.slug}
+                    onChange={(e) => update('slug', e.target.value)}
+                    placeholder="ao-thun-basic"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
