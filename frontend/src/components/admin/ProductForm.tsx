@@ -374,6 +374,20 @@ export default function ProductForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Chặn 2 biến thể trùng tổ hợp Size+Màu (DB unique — BE sẽ từ chối).
+    const combos = new Set<string>();
+    for (const v of form.variants) {
+      const key = `${v.sizeId}|${v.colorId}`;
+      if (combos.has(key)) {
+        const sizeName = sizes.find((s) => s.id === v.sizeId)?.name || 'Cỡ chung';
+        const colorName = colors.find((c) => c.id === v.colorId)?.name || 'Màu chung';
+        alert(`Biến thể trùng nhau: "${sizeName} / ${colorName}" xuất hiện 2 lần.\nGộp số lượng vào 1 dòng rồi lưu lại.`);
+        return;
+      }
+      combos.add(key);
+    }
+
     const selectedCategoryId =
       form.categoryLevel4 || form.categoryLevel3 || form.categoryLevel2 || form.categoryLevel1;
     const categoryIds = selectedCategoryId ? [selectedCategoryId] : [];

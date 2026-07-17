@@ -735,6 +735,22 @@ export class ProductsService {
   }
 
   private async createVariants(tx: PrismaService | any, productId: string, variants: any[]) {
+    // Chặn trùng tổ hợp Size+Màu (unique trong DB) — báo 400 rõ ràng thay vì crash 500 khi createMany.
+    const seen = new Set<string>();
+    for (const v of variants) {
+      const key = `${v.sizeId || ''}|${v.colorId || ''}`;
+      if (seen.has(key)) {
+        const [size, color] = await Promise.all([
+          v.sizeId ? tx.size.findUnique({ where: { id: v.sizeId }, select: { name: true } }) : null,
+          v.colorId ? tx.color.findUnique({ where: { id: v.colorId }, select: { name: true } }) : null,
+        ]);
+        throw new BadRequestException(
+          `Biến thể trùng nhau: "${size?.name || 'Cỡ chung'} / ${color?.name || 'Màu chung'}" xuất hiện 2 lần — gộp số lượng vào 1 dòng rồi lưu lại.`,
+        );
+      }
+      seen.add(key);
+    }
+
     const variantData = variants.map((v) => ({
       productId,
       sizeId: v.sizeId,
