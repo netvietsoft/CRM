@@ -23,6 +23,7 @@ const numOrNull = (v: any): number | null => {
 export class ViettelpostCodService {
   private readonly logger = new Logger(ViettelpostCodService.name);
   private syncing = false;
+  private recentImporting = false;
 
   private readonly API = 'https://api.viettelpost.vn/api';
   private readonly TOKEN_KEY = 'VIETTEL_WEB_TOKEN';
@@ -242,10 +243,16 @@ export class ViettelpostCodService {
           };
           const existing = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode: code }, select: { id: true } });
           if (existing) {
+            const st = numOrNull(o.ORDER_STATUS);
             await this.prisma.viettelCustomer.update({
               where: { id: existing.id },
               // Đơn xuất hiện trong list của tài khoản nào thì thuộc tài khoản đó (không gỡ tag khi chạy TK chính).
-              data: { ...codFields, ...(opts?.accountId ? { vtpAccountId: opts.accountId } : {}) },
+              // Trạng thái mới nhất từ list cũng được cập nhật (cron 15' giữ đơn gần đây luôn đúng trạng thái).
+              data: {
+                ...codFields,
+                ...(st !== null ? { status: st } : {}),
+                ...(opts?.accountId ? { vtpAccountId: opts.accountId } : {}),
+              },
             });
             updated++;
           } else {
@@ -282,6 +289,39 @@ export class ViettelpostCodService {
 
     this.logger.log(`[VTP-IMPORT] Quét ${scanned} đơn VTP → tạo mới ${created}, cập nhật COD ${updated}.`);
     return { ok: true, scanned, created, updated };
+  }
+
+  // Cron 15 phút — kéo đơn MỚI từ VTP về (cửa sổ 2 ngày gần nhất) cho TK chính + mọi TK phụ.
+  // Đơn đã có trong DB cũng được cập nhật trạng thái mới nhất theo list.
+  @Cron(process.env.VIETTEL_RECENT_SYNC_CRON || '*/15 * * * *', { name: 'viettelpost-recent-import' })
+  async handleRecentImportCron() {
+    if (process.env.VIETTEL_RECENT_SYNC === 'false') return;
+    if (this.recentImporting) return;
+    this.recentImporting = true;
+    try {
+      const status = await this.tokenStatus();
+      if (status.hasToken && !status.expired) {
+        const r = await this.importHistory(2);
+        if (r.created || r.updated) this.logger.log(`[VTP-RECENT] TK chính: +${r.created} đơn mới, cập nhật ${r.updated}.`);
+      }
+      const accounts = await this.prisma.vtpAccount.findMany({
+        where: { isActive: true, webToken: { not: null } },
+        select: { id: true, label: true, webToken: true },
+      });
+      for (const acc of accounts) {
+        if (!acc.webToken || this.decodeToken(acc.webToken).expired) continue;
+        try {
+          const r = await this.importHistory(2, { token: acc.webToken, accountId: acc.id, label: acc.label });
+          if (r.created || r.updated) this.logger.log(`[VTP-RECENT] [${acc.label}]: +${r.created} đơn mới, cập nhật ${r.updated}.`);
+        } catch (e: any) {
+          this.logger.error(`[VTP-RECENT] [${acc.label}] lỗi: ${e?.message || e}`);
+        }
+      }
+    } catch (e: any) {
+      this.logger.error(`[VTP-RECENT] Cron lỗi: ${e?.message || e}`);
+    } finally {
+      this.recentImporting = false;
+    }
   }
 
   // Cron mỗi giờ — tài khoản chính (token SystemConfig) + mọi tài khoản phụ đang active có web token.
