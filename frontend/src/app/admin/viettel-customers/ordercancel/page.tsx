@@ -36,7 +36,18 @@ interface Row {
   sendDate: string | null;
   createdAt: string;
   updatedAt: string;
+  returnCheck: string | null;
+  returnNote: string | null;
 }
+
+// Xác nhận hàng hoàn khi nhận lại.
+const RETURN_CHECK_OPTIONS = [
+  { value: '', label: '— chọn —' },
+  { value: 'RECEIVED_FULL', label: 'Nhận đủ' },
+  { value: 'MISSING', label: 'Thiếu hàng' },
+  { value: 'SWAPPED', label: 'Tráo hàng' },
+  { value: 'LOST', label: 'Mất hàng' },
+];
 
 function DateCell({ s }: { s: string | null }) {
   if (!s) return <>—</>;
@@ -117,6 +128,35 @@ export default function ViettelCancelledOrdersPage() {
     void load(f);
   };
 
+  // Xác nhận hàng hoàn — lưu ngay khi đổi select (optimistic, lỗi thì hoàn tác).
+  const saveCheck = async (row: Row, check: string) => {
+    const prev = row.returnCheck;
+    setRows((list) => list.map((r) => (r.id === row.id ? { ...r, returnCheck: check || null } : r)));
+    try {
+      await apiClientClient.post(`/viettelpost/customers/${encodeURIComponent(row.trackingCode)}/return-check`, { check: check || null });
+    } catch (e) {
+      setRows((list) => list.map((r) => (r.id === row.id ? { ...r, returnCheck: prev } : r)));
+      alert(e instanceof Error ? e.message : 'Lưu xác nhận thất bại');
+    }
+  };
+
+  // Popup ghi chú.
+  const [noteRow, setNoteRow] = useState<Row | null>(null);
+  const [noteText, setNoteText] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const openNote = (row: Row) => { setNoteRow(row); setNoteText(row.returnNote || ''); };
+  const saveNote = async () => {
+    if (!noteRow) return;
+    setNoteSaving(true);
+    try {
+      await apiClientClient.post(`/viettelpost/customers/${encodeURIComponent(noteRow.trackingCode)}/return-check`, { note: noteText });
+      setRows((list) => list.map((r) => (r.id === noteRow.id ? { ...r, returnNote: noteText.trim() || null } : r)));
+      setNoteRow(null);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Lưu ghi chú thất bại');
+    } finally { setNoteSaving(false); }
+  };
+
   return (
     <div>
       <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
@@ -178,13 +218,15 @@ export default function ViettelCancelledOrdersPage() {
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Trạng thái</th>
                 <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] text-right whitespace-nowrap">COD</th>
                 <th className="px-4 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Cập nhật</th>
+                <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap" title="Xác nhận khi nhận lại hàng hoàn">Xác nhận</th>
+                <th className="px-3 py-2.5 text-[11px] font-semibold text-[#6b7280] uppercase tracking-[0.05em] whitespace-nowrap">Ghi chú</th>
               </tr>
             </thead>
             <tbody>
               {loading && rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-9 text-center text-[#9ca3af]">Đang tải...</td></tr>
+                <tr><td colSpan={11} className="px-4 py-9 text-center text-[#9ca3af]">Đang tải...</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-9 text-center text-[#9ca3af]">🎉 Không có đơn hoàn/huỷ nào khớp bộ lọc.</td></tr>
+                <tr><td colSpan={11} className="px-4 py-9 text-center text-[#9ca3af]">🎉 Không có đơn hoàn/huỷ nào khớp bộ lọc.</td></tr>
               ) : (
                 rows.map((r, i) => {
                   const nCancel = r.receiverPhone ? cancelCounts.get(r.receiverPhone) || 0 : 0;
@@ -207,6 +249,23 @@ export default function ViettelCancelledOrdersPage() {
                       <td className="px-3 py-3 whitespace-nowrap"><span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${vtpStatusCls(r.status)}`}>{vtpStatusLabel(r.status, r.statusName)}</span></td>
                       <td className="px-3 py-3 text-right font-bold font-mono whitespace-nowrap text-[#111827]">{formatVndSymbol(r.cod)}</td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap"><DateCell s={r.statusDate || r.updatedAt} /></td>
+                      <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <select value={r.returnCheck || ''} onChange={(e) => void saveCheck(r, e.target.value)}
+                          className={`rounded-[8px] border px-2 py-1.5 text-[12px] outline-none ${r.returnCheck ? 'border-[#86efac] bg-[#f0fdf4] font-semibold text-[#15803d]' : 'border-[#e5e7eb] bg-white text-[#6b7280]'}`}>
+                          {RETURN_CHECK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-3 py-3 max-w-[200px]" onClick={(e) => e.stopPropagation()}>
+                        {r.returnNote ? (
+                          <button onClick={() => openNote(r)} title="Sửa ghi chú"
+                            className="block max-w-[190px] truncate text-left text-[12.5px] font-semibold text-[#dc2626] hover:underline">
+                            {r.returnNote}
+                          </button>
+                        ) : (
+                          <button onClick={() => openNote(r)} title="Thêm ghi chú"
+                            className="grid h-8 w-8 place-items-center rounded-lg text-[#9ca3af] transition-colors hover:bg-[#eef2ff] hover:text-[#3c55e6]">💬</button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
@@ -215,6 +274,31 @@ export default function ViettelCancelledOrdersPage() {
           </table>
         </div>
       </div>
+
+      {/* Popup ghi chú đơn hoàn */}
+      {noteRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setNoteRow(null); }}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-[#111827]">💬 Ghi chú đơn {noteRow.trackingCode}</h3>
+              <button onClick={() => setNoteRow(null)} className="text-2xl leading-none text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+            <p className="mb-2 text-[12.5px] text-[#6b7280]">{noteRow.receiverFullname || '—'} · {noteRow.receiverPhone || '—'}</p>
+            <textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={4} autoFocus
+              placeholder="Nhập ghi chú (VD: khách bom hàng, hàng hoàn thiếu 1 áo…)"
+              className="w-full rounded-[10px] border border-[#c7ced9] px-3.5 py-2.5 text-[13px] outline-none focus:border-[#2563eb]" />
+            <div className="mt-3 flex justify-end gap-2">
+              {noteRow.returnNote && (
+                <button onClick={() => { setNoteText(''); }} className="rounded-[10px] bg-[#f3f4f6] px-4 py-2 text-[13px] font-semibold text-[#6b7280] hover:bg-[#e5e7eb]">Xoá nội dung</button>
+              )}
+              <button onClick={() => void saveNote()} disabled={noteSaving}
+                className="rounded-[10px] bg-[#2563eb] px-5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-50">
+                {noteSaving ? 'Đang lưu…' : '💾 Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

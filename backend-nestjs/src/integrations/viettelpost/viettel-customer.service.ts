@@ -191,6 +191,36 @@ export class ViettelCustomerService {
     });
   }
 
+  /** Xác nhận hàng hoàn (Nhận đủ/Thiếu/Tráo/Mất) + ghi chú cho đơn hoàn/huỷ. */
+  async setReturnCheck(trackingCode: string, body: { check?: string | null; note?: string | null }) {
+    const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode }, select: { id: true } });
+    if (!row) throw new NotFoundException('Không tìm thấy đơn ViettelPost');
+    const VALID = ['RECEIVED_FULL', 'MISSING', 'SWAPPED', 'LOST'];
+    const data: Record<string, string | null> = {};
+    if (body.check !== undefined) data.returnCheck = body.check && VALID.includes(body.check) ? body.check : null;
+    if (body.note !== undefined) data.returnNote = body.note?.trim() ? body.note.trim() : null;
+    if (!Object.keys(data).length) throw new BadRequestException('Không có gì để cập nhật');
+    return this.prisma.viettelCustomer.update({
+      where: { id: row.id },
+      data,
+      select: { trackingCode: true, returnCheck: true, returnNote: true },
+    });
+  }
+
+  /** Blacklist khách hủy (ID = SĐT): đếm số đơn hoàn/huỷ PHÍA KHÁCH — cảnh báo toàn hệ thống khi lên đơn. */
+  async blacklistCheck(phone: string) {
+    const p = (phone || '').trim();
+    if (!p) return { phone: p, cancelCount: 0 };
+    const cancelCount = await this.prisma.viettelCustomer.count({
+      where: {
+        receiverPhone: p,
+        status: { in: [502, 503, 504, 510, 515, 551] },
+        trackingCode: { not: { startsWith: 'DRAFT-' } },
+      },
+    });
+    return { phone: p, cancelCount };
+  }
+
   /**
    * Báo cáo vận hành — tính TRONG DB (bảng >5k đơn, list bị cap 1000).
    * Phân nhóm theo nhóm chính thức VTP: 501 giao thành công; 505/506/507/509 chờ xử lý/phát lại;

@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ChevronDown, MapPin, Search, X } from 'lucide-react';
 import Select from '@/components/ui/Select';
+import { apiClientClient } from '@/lib/apiClientClient';
 import {
   CARRIER_OPTIONS,
   DELAY_OPTIONS,
@@ -15,6 +17,27 @@ import type {
   Customer,
   ReasonGroup,
 } from './createOrder.types';
+
+// Blacklist khách hủy (ID = SĐT): nhập SĐT → cảnh báo "đã hủy đơn x lần" (đếm đơn hoàn/huỷ VTP toàn hệ thống).
+function BlacklistWarning({ phone }: { phone: string }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const p = (phone || '').replace(/\D/g, '');
+    if (p.length < 9) { setCount(0); return; }
+    const t = setTimeout(() => {
+      apiClientClient.get<{ cancelCount: number }>('/viettelpost/blacklist', { params: { phone: p } })
+        .then((r) => setCount(r?.cancelCount || 0))
+        .catch(() => setCount(0));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [phone]);
+  if (!count) return null;
+  return (
+    <div className="text-[12px] font-semibold text-[#dc2626]">
+      ⚠ Khách này đã hủy/hoàn đơn {count} lần — cân nhắc trước khi lên đơn.
+    </div>
+  );
+}
 
 interface CreateOrderSidebarProps {
   status: string;
@@ -382,6 +405,7 @@ export default function CreateOrderSidebar({
               placeholder="SĐT"
             />
           </div>
+          <BlacklistWarning phone={shippingPhone} />
           <div className="grid grid-cols-2 gap-3">
             <input
               value={customerEmail}

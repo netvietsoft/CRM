@@ -35,6 +35,23 @@ const normWard = (w: any): Ward => ({ WARDS_ID: w.WARDS_ID ?? w.WARD_ID ?? w.id 
 
 const emptyR = { fullname: '', phone: '', address: '', province: '', district: '', ward: '' };
 
+// Blacklist khách hủy (ID = SĐT): nhập SĐT → cảnh báo "đã hủy đơn x lần".
+function BlacklistWarning({ phone }: { phone: string }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const p = (phone || '').replace(/\D/g, '');
+    if (p.length < 9) { setCount(0); return; }
+    const t = setTimeout(() => {
+      apiClientClient.get<{ cancelCount: number }>('/viettelpost/blacklist', { params: { phone: p } })
+        .then((res) => setCount(res?.cancelCount || 0))
+        .catch(() => setCount(0));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [phone]);
+  if (!count) return null;
+  return <p className="text-xs font-semibold text-[#dc2626]">⚠ Khách này đã hủy/hoàn đơn {count} lần — cân nhắc trước khi lên đơn.</p>;
+}
+
 // Ô tiền: hiển thị ngăn nghìn kiểu VN (1.000.000), state giữ chuỗi số thô (cùng pattern ProductForm).
 const onlyDigits = (value: string) => value.replace(/\D/g, '');
 const formatPriceInput = (rawDigits: string) => {
@@ -354,6 +371,7 @@ export default function CreateViettelOrderPage() {
               <div><label className={lbl}>SĐT <span className="text-[#dc2626]">*</span></label><input className={inp} value={r.phone} onChange={e => setRv('phone', e.target.value)} /></div>
               <div><label className={lbl}>Họ tên <span className="text-[#dc2626]">*</span></label><input className={inp} value={r.fullname} onChange={e => setRv('fullname', e.target.value)} /></div>
             </div>
+            <BlacklistWarning phone={r.phone} />
             <div className={`grid gap-2.5 ${useNewAddress ? 'grid-cols-2' : 'grid-cols-3'}`}>
               <div>
                 <label className={lbl}>Tỉnh/TP <span className="text-[#dc2626]">*</span></label>

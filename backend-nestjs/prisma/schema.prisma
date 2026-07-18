@@ -1398,6 +1398,8 @@ model ViettelCustomer {
   employeePhone        String?   @map("employee_phone")
   isReturning          Boolean   @default(false) @map("is_returning")
   reasonCode           String?   @map("reason_code")
+  returnCheck          String?   @map("return_check") // xác nhận hàng hoàn: RECEIVED_FULL | MISSING | SWAPPED | LOST
+  returnNote           String?   @map("return_note") @db.Text // ghi chú đơn hoàn (hiển thị đỏ)
   groupAddressId       String?   @map("group_address_id")
   detail               Json?
   pod                  Json?

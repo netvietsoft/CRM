@@ -214,6 +214,25 @@ export class ViettelpostController {
     return this.viettelCustomerService.listCustomers({ search, productName, status, statuses, codMin, codMax, dateFrom, dateTo });
   }
 
+  // Xác nhận hàng hoàn + ghi chú (trang Đơn hàng đã huỷ).
+  @Post('customers/:code/return-check')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  @ApiOperation({ summary: 'Cập nhật xác nhận hàng hoàn (Nhận đủ/Thiếu/Tráo/Mất) + ghi chú' })
+  async setReturnCheck(
+    @Param('code') code: string,
+    @Body() body: { check?: string | null; note?: string | null },
+  ) {
+    return this.viettelCustomerService.setReturnCheck(code, body || {});
+  }
+
+  // Blacklist khách hủy (ID = SĐT) — cảnh báo khi lên đơn: "đã hủy đơn x lần".
+  @Get('blacklist')
+  @Roles('ADMIN', 'STAFF', 'MODERATOR')
+  @ApiOperation({ summary: 'Đếm số lần khách (SĐT) có đơn hoàn/huỷ' })
+  async blacklist(@Query('phone') phone?: string) {
+    return this.viettelCustomerService.blacklistCheck(phone || '');
+  }
+
   // Báo cáo vận hành — số liệu tổng hợp theo trạng thái (tính trong DB).
   @Get('operations-report')
   @Roles('ADMIN', 'STAFF', 'MODERATOR')
