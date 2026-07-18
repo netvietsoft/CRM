@@ -1,86 +1,127 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+// Phân quyền THẬT — cùng dữ liệu staffPermissions với /admin/staff.
+// Hàng = nhân viên, cột = module; mỗi ô 3 nút X (Xem) / S (Sửa) / D (Xoá) tick trực tiếp, lưu ngay.
+import { useEffect, useMemo, useState } from 'react';
+import { apiClientClient } from '@/lib/apiClientClient';
+import { PERM_MODULES } from '@/lib/staffPermissions';
 
-const COLS = ['Tải SĐT', 'Tải BL', 'TN hội thoại', 'Cuộc gọi', 'TT khách', 'Cài đặt chung', 'Cài đặt thẻ', 'Hỗ trợ trả lời', 'Xoay vòng', 'Quảng cáo', 'Khác', 'Media'];
-const ROLES = [
-  { name: 'Quản trị viên', all: true },
-  { name: 'Biên tập viên', all: false },
-  { name: 'Người kiểm duyệt', all: true },
-  { name: 'Mất quyền', none: true },
-];
-const STAFF = ['Nguyễn', 'Nguyễn Văn Hào', 'Nguyễn Ngọc Ánhh'];
-
-/** perm[rowKey][colIndex] = boolean — staff cells là toggle được (giữ hành vi cũ). */
-function initialPerm() {
-  const p: Record<string, boolean[]> = {};
-  STAFF.forEach((s) => { p[s] = COLS.map((_, i) => i !== 8); });
-  return p;
+interface StaffRecord {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  staffPermissions?: string[] | null;
 }
 
 export default function SettingsPermissions() {
-  const [perm, setPerm] = useState<Record<string, boolean[]>>(initialPerm);
-  const toggle = (row: string, col: number) =>
-    setPerm((prev) => ({ ...prev, [row]: prev[row].map((v, i) => (i === col ? !v : v)) }));
+  const [staff, setStaff] = useState<StaffRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState('');
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    apiClientClient.get<StaffRecord[]>('/admin/staff')
+      .then((rows) => setStaff(rows || []))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Không tải được danh sách nhân viên'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return staff;
+    return staff.filter((u) => u.name?.toLowerCase().includes(s) || u.phone?.includes(s) || u.email?.toLowerCase().includes(s));
+  }, [staff, q]);
+
+  const permsOf = (u: StaffRecord) => new Set(Array.isArray(u.staffPermissions) ? u.staffPermissions : []);
+
+  // Tick 1 quyền → lưu ngay (optimistic, lỗi thì hoàn tác).
+  const toggle = async (u: StaffRecord, key: string) => {
+    const cur = permsOf(u);
+    if (cur.has(key)) cur.delete(key); else cur.add(key);
+    const next = [...cur];
+    const prev = u.staffPermissions;
+    setStaff((list) => list.map((x) => (x.id === u.id ? { ...x, staffPermissions: next } : x)));
+    setSavingId(u.id); setErr('');
+    try {
+      await apiClientClient.post(`/admin/staff/${u.id}/permissions`, { permissions: next });
+    } catch (e) {
+      setStaff((list) => list.map((x) => (x.id === u.id ? { ...x, staffPermissions: prev } : x))); // hoàn tác
+      setErr(e instanceof Error ? e.message : 'Lưu quyền thất bại');
+    } finally { setSavingId(null); }
+  };
+
+  const Cell = ({ u, k, label, tip }: { u: StaffRecord; k: string | null; label: string; tip: string }) => {
+    if (!k) return <span className="inline-block w-[22px] text-center text-[#e5e7eb]">·</span>;
+    const on = permsOf(u).has(k);
+    return (
+      <span onClick={() => void toggle(u, k)} title={`${tip}${on ? ' — đang BẬT' : ' — đang tắt'}`}
+        className={`inline-flex h-[21px] w-[22px] cursor-pointer select-none items-center justify-center rounded-md text-[10.5px] font-bold transition-colors ${on ? 'bg-[#3c55e6] text-white' : 'bg-[#eef1f6] text-[#b0b7c3] hover:bg-[#e2e6ee]'}`}>
+        {label}
+      </span>
+    );
+  };
 
   return (
     <div>
       <div className="flex items-center gap-2.5">
         <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px]">Phân quyền</h1>
-        <span className="px-[11px] py-[3px] rounded-full text-[11px] font-bold bg-[#fef3c7] text-[#92400e]">template · mock</span>
       </div>
+      <p className="mt-1 text-[13px] text-[#6b7280]">
+        Tick trực tiếp — lưu ngay. Mỗi module 3 quyền: <b>X</b> Xem · <b>S</b> Sửa (tạo/cập nhật) · <b>D</b> Xoá.
+        Cùng dữ liệu với trang <a href="/admin/staff" className="font-semibold text-[#3c55e6] underline">Quản trị → Nhân viên</a>.
+      </p>
+      {err && <div className="mt-3 rounded-[10px] border border-[#fecaca] bg-[#fee2e2] px-4 py-2.5 text-[13px] text-[#dc2626]">{err}</div>}
+
       <div className="bg-white border border-[#e6e9f2] rounded-2xl p-5 mt-[18px] overflow-x-auto">
-        <div className="flex items-center gap-[18px] flex-wrap mb-4">
+        <div className="mb-4 flex items-center gap-[18px] flex-wrap">
           <div className="flex items-center gap-2 border border-[#e5e7eb] rounded-[10px] px-[13px] py-[9px] text-[#9ca3af] w-[300px]">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
-            <input placeholder="Tìm kiếm tài khoản" className="flex-1 border-none outline-none text-[13px] bg-transparent min-w-0 text-[#111827]" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên / SĐT / email" className="flex-1 border-none outline-none text-[13px] bg-transparent min-w-0 text-[#111827]" />
           </div>
-          <label className="flex items-center gap-[7px] text-[13.5px] font-semibold cursor-pointer">
-            <input type="checkbox" defaultChecked className="w-[15px] h-[15px] accent-[#3c55e6]" /> Chọn quyền cá nhân
-          </label>
-          <span className="flex items-center gap-[7px] text-[13.5px] font-semibold">
-            <span className="w-3 h-3 rounded-full bg-[#16a34a]" /> Quyền theo vai trò
-          </span>
+          {savingId && <span className="text-[12.5px] font-semibold text-[#3c55e6]">Đang lưu…</span>}
         </div>
-        <table className="border-collapse text-[13px] min-w-[900px]">
-          <thead>
-            <tr className="bg-[#f8fafc]">
-              <th className="px-3.5 py-[9px] text-left text-[12px] font-bold text-[#374151] min-w-[180px]">Vai trò người dùng</th>
-              {COLS.map((c) => <th key={c} className="px-2.5 py-[9px] text-[11.5px] font-bold text-[#374151] whitespace-nowrap">{c}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {ROLES.map((r) => (
-              <tr key={r.name} className="border-t border-[#f1f5f9]">
-                <td className="px-3.5 py-2.5 font-semibold whitespace-nowrap">▸ {r.name}</td>
-                {COLS.map((c) => (
-                  <td key={c} className="p-2.5 text-center">
-                    {r.none
-                      ? <span className="text-[#e5e7eb]">○</span>
-                      : <span className="text-[#9ca3af]">◉</span>}
-                  </td>
+
+        {loading ? (
+          <div className="py-10 text-center text-[13px] text-[#9ca3af]">Đang tải…</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-10 text-center text-[13px] text-[#9ca3af]">
+            Chưa có nhân viên nào — tạo ở <a href="/admin/staff/assign" className="font-semibold underline">Quản trị → Nhân viên</a>.
+          </div>
+        ) : (
+          <table className="border-collapse text-[13px] min-w-[980px]">
+            <thead>
+              <tr className="bg-[#f8fafc]">
+                <th className="px-3.5 py-[9px] text-left text-[12px] font-bold text-[#374151] min-w-[180px]">Nhân viên</th>
+                {PERM_MODULES.map((m) => (
+                  <th key={m.name} title={m.note ? `${m.name} — ${m.note}` : m.name}
+                    className="px-2.5 py-[9px] text-[11.5px] font-bold text-[#374151] whitespace-nowrap text-center">{m.short}</th>
                 ))}
               </tr>
-            ))}
-            {STAFF.map((s) => (
-              <tr key={s} className="border-t border-[#f1f5f9] bg-[#f5f8ff]">
-                <td className="px-3.5 py-2.5 font-semibold whitespace-nowrap pl-8">👤 {s}</td>
-                {COLS.map((c, i) => {
-                  const on = perm[s][i];
-                  return (
-                    <td key={c} className="p-2.5 text-center">
-                      <span onClick={() => toggle(s, i)}
-                        className={`inline-flex items-center justify-center w-[22px] h-[22px] rounded-md text-[12px] font-bold cursor-pointer select-none ${on ? 'bg-[#3c55e6] text-white' : 'bg-[#f1f5f9] text-[#9ca3af]'}`}>
-                        {on ? '✓' : ''}
+            </thead>
+            <tbody>
+              {filtered.map((u, i) => (
+                <tr key={u.id} className={`border-t border-[#f1f5f9] ${i % 2 === 1 ? 'bg-[#f9fafb]' : ''} ${savingId === u.id ? 'opacity-70' : ''}`}>
+                  <td className="px-3.5 py-2.5 whitespace-nowrap">
+                    <div className="font-semibold">👤 {u.name || u.phone}</div>
+                    <div className="text-[11px] text-[#9ca3af]">{u.phone}</div>
+                  </td>
+                  {PERM_MODULES.map((m) => (
+                    <td key={m.name} className="p-2 text-center">
+                      <span className="inline-flex gap-[3px]">
+                        <Cell u={u} k={m.view} label="X" tip={`${m.name}: Xem`} />
+                        <Cell u={u} k={m.manage} label="S" tip={`${m.name}: Sửa${m.name.startsWith('Tin nhắn') ? ' (trả lời tin)' : ''}`} />
+                        <Cell u={u} k={m.del} label="D" tip={`${m.name}: Xoá`} />
                       </span>
                     </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
+// Danh mục quyền theo module — dùng chung với /ccm/settings/permissions.
+import { PERM_MODULES } from '@/lib/staffPermissions';
 import { Trash2, Shield, Store, UserCheck, Search, Edit2 } from 'lucide-react';
 
 interface StaffRecord {
@@ -21,19 +23,6 @@ interface StaffRecord {
   };
 }
 
-// Bảng quyền theo module: mỗi hàng 1 module, cột Xem / Sửa / Xoá (ô null = không áp dụng).
-const PERM_MODULES: Array<{ name: string; view: string | null; manage: string | null; del: string | null; note?: string }> = [
-  { name: 'Đơn hàng', view: 'ORDERS_VIEW', manage: 'ORDERS_MANAGE', del: 'ORDERS_DELETE' },
-  { name: 'Đơn hàng — chỉ đơn mình lên', view: 'ORDERS_VIEW_OWN', manage: null, del: null, note: 'NV trực page: chỉ thấy đơn + doanh thu của mình (bỏ tick "Xem" ở hàng trên)' },
-  { name: 'Sản phẩm', view: 'PRODUCTS_VIEW', manage: 'PRODUCTS_MANAGE', del: 'PRODUCTS_DELETE' },
-  { name: 'Danh mục', view: 'CATEGORIES_VIEW', manage: 'CATEGORIES_MANAGE', del: 'CATEGORIES_DELETE' },
-  { name: 'Khách hàng', view: 'CUSTOMERS_VIEW', manage: 'CUSTOMERS_MANAGE', del: 'CUSTOMERS_DELETE' },
-  { name: 'Voucher / Khuyến mãi', view: 'VOUCHERS_VIEW', manage: 'VOUCHERS_MANAGE', del: 'VOUCHERS_DELETE' },
-  { name: 'Tin nhắn CCM (inbox)', view: 'MESSENGER_VIEW', manage: 'MESSENGER_SEND', del: null, note: 'Sửa = được trả lời tin khách' },
-  { name: 'CSKH chiến dịch', view: 'MESSAGING_VIEW', manage: 'MESSAGING_MANAGE', del: null },
-  { name: 'Tích hợp', view: 'INTEGRATIONS_VIEW', manage: 'INTEGRATIONS_MANAGE', del: null },
-  { name: 'Cài đặt cửa hàng', view: null, manage: 'STORE_SETTINGS', del: null },
-];
 
 interface ApiErrorLike {
   message?: string;
