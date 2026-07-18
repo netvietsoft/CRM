@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-07-18 — NHÂN VIÊN/PHÂN QUYỀN/CHIA HỘI THOẠI + VTP hoàn-huỷ/blacklist + cron 15' + avatar
+
+> Mới nhất `9b4822f`. **2 MIGRATION mới**: `20260718080000_msg_assign` + `20260718150000_vtp_return_check` — deploy phải `npx prisma migrate deploy && npx prisma generate` trước build BE. **Deploy FE luôn `rm -rf .next` trước `yarn build`** (xem sự cố ChunkLoadError bên dưới).
+
+**Nhân viên + phân quyền (`b25226d`, `2ecd74d`, `93aeb74`, `4042ba9`):**
+- Fix "không tạo được NV": ADMIN trước không có chỗ chọn cửa hàng (input readOnly) → dropdown. Form NV thêm ô UPLOAD AVATAR; edit mode giờ lưu CẢ hồ sơ (trước chỉ lưu store) qua `POST /admin/staff/:id/profile`; đổi tên/avatar tự đồng bộ vào hội thoại đang phụ trách.
+- Quyền Xoá tách riêng (enum `*_DELETE` 5 module + gắn @Permissions vào DELETE routes); quyền mới `ORDERS_VIEW_OWN` = NV chỉ thấy đơn + doanh thu mình lên (orders/admin, statusCounts, revenue-stats, by-staff đều lọc).
+- Matrix quyền 2 nơi CÙNG dữ liệu (`staffPermissions` + lib chung `staffPermissions.ts`): modal ở `/admin/staff` và bảng `/ccm/settings/permissions` (hết mock — tick X/S/D lưu ngay, optimistic).
+- Avatar NV hiện MỌI NƠI (component `StaffAvatar` + Select hỗ trợ option avatar): inbox CCM (tag + phụ trách bởi + dropdown phân công), bảng NV, bảng quyền, rotation, doanh thu NV, dropdown NV ở tạo đơn/chi tiết đơn.
+- Doanh thu: `GET /admin/revenue-stats` (fix FE gọi 404 từ lâu) + `/by-staff` — đơn thành công = DELIVERED/PAYMENT_COLLECTED **hoặc vận đơn VTP (orderReference=orderCode) đạt 501**; bảng ở `/admin/viettel-customers/revenue`.
+
+**Chia hội thoại / trực page (`8108151` + `a14728a`/`b4bd357`/`93aeb74`/`8ad6993`, MIGRATION msg_assign):**
+- Bảng `msg_page_staff` (NV trực page) + `msg_assign_settings` (mode OFF/SELF/GROUP/STAFF + config + rrState theo page).
+- Engine SWRR chia XEN KẼ theo tỷ lệ % (spec 50/30/20 → A B C A A B A C B A; 100 lượt đúng 50/30/20); online-mode (chỉ trực tuyến/chia đều/ưu tiên — registry online từ socket), shuffle, maxPending; SELF = tự nhận khi trả lời (updateMany chống tranh); quyền xem hội thoại STAFF theo cài đặt. Hook webhook best-effort.
+- `/ccm/settings/rotation` thành trang THẬT: chọn Page trên cùng, NV trực page, nhóm + tỷ lệ (tổng phải =100%, add NV nào chưa có quyền CCM sẽ TỰ CẤP khi lưu), cấu hình 4.1.1–4.1.7 (mục 4.1.3/4.1.4/giờ làm việc: lưu config, engine đợt sau); chống "tưởng đã lưu": pre-validate alert + nút Lưu nổi đỏ nhấp nháy + confirm đổi page + beforeunload.
+
+**VTP (`ab2d9e3`, `e69e352`→`9b4822f`, MIGRATION vtp_return_check):**
+- SỰ CỐ "đơn không tự về" (17-18/07 chỉ 3-6 đơn/ngày vs thực tế mấy chục): từ trước đơn CHỈ về khi bấm import tay (webhook không đưa đơn tạo trên web/app VTP; cron giờ chỉ update COD). Fix: **cron 15'** `viettelpost-recent-import` (importHistory cửa sổ 2 ngày, TK chính + phụ; env VIETTEL_RECENT_SYNC/-_CRON); importHistory giờ update CẢ status đơn đã có. Đã import bù: 17/07 3→36, 18/07 6→31.
+- Trang **Đơn hàng đã huỷ** `/admin/viettel-customers/ordercancel` (menu sidebar + tab + click từ thẻ báo cáo kèm khoảng ngày): lọc người nhận/mã/SĐT + SP + nhóm trạng thái + ngày (mặc định tháng này); cột Người nhận đếm "hủy/hoàn N lần" (⚠ đỏ khi ≥2).
+- Nghiệp vụ hoàn/huỷ = CHỈ PHÍA KHÁCH (502,503,504,510,515,551); hủy lấy chủ động (101,102,107,201) tách bucket `cancelledPickup` riêng ở báo cáo, không tính tỷ lệ hoàn.
+- Cột **Xác nhận** (Nhận đủ/Thiếu/Tráo/Mất) + **Ghi chú** (icon 💬 → popup, text đỏ) — CHỈ active khi đơn 504 Đã trả về shop (FE ẩn + BE chặn 400). Cột mới `return_check`/`return_note`.
+- **Blacklist khách hủy (ID = SĐT)**: `GET /viettelpost/blacklist?phone=` đếm đơn hoàn/huỷ phía khách → nhập SĐT ở tạo Đơn hàng + tạo đơn Viettel hiện text đỏ "đã hủy/hoàn x lần" (debounce, đếm live — không cần bảng riêng).
+
+**Sự cố hạ tầng trong ngày:**
+- Trang tạo SP prod "This page couldn't load": build FE đè `.next` gây lệch chunk (chunk 500 → ChunkLoadError, React unmount cả form — tưởng lỗi tính năng Kho). Fix chuẩn: `rm -rf .next` trước build. Đã browser-test 4 trang chính OK.
+- **pm2 daemon bị reset** (server reboot?): chỉ còn 2 app CRM sau khi start lại — ~42 app khác down + `pm2 save` đã đè dump. Cứu: `cp ~/.pm2/dump.pm2.bak ~/.pm2/dump.pm2 && pm2 resurrect && pm2 save` + **cấu hình `pm2 startup`** (chưa xác nhận user đã chạy).
+
+**Việc treo:** (1) user chạy pm2 resurrect + pm2 startup (nếu chưa); (2) nhập ~5 TK VTP phụ + token — hiện 0 TK phụ, đơn ở tài khoản khác KHÔNG về được; (3) ~22/7 dán lại token VTP chính; (4) rotation phase 2: phân công thêm theo timer/offline, nhiều tài khoản/hội thoại, giờ làm việc; (5) 2 spec BE lệch chữ ký (`viettel-customer.revenue.spec.ts`, `viettelpost-sync.service.spec.ts`) — không chặn build.
+
+---
+
 ## 2026-07-17 — SẢN PHẨM overhaul + HỆ THỐNG KHO + điều tra "DB mất dữ liệu"
 
 > Mới nhất `7b1a3a5`. **Deploy CÓ MIGRATION** (`20260717090000_warehouses`): trên server chạy `npx prisma migrate deploy && npx prisma generate` TRƯỚC `yarn build` BE, rồi build FE, pm2 restart cả 2.
