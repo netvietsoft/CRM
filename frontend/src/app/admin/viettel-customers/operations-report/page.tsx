@@ -31,14 +31,22 @@ const defaultRange = () => {
 
 const num = (n: number) => new Intl.NumberFormat('vi-VN').format(n);
 
-function StatCard({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
-  return (
-    <div className={`${vtCard} px-[18px] py-[15px]`}>
-      <div className="text-xs text-[#6b7280] mb-1">{label}</div>
+function StatCard({ label, value, sub, tone, href }: { label: string; value: string; sub?: string; tone?: string; href?: string }) {
+  const body = (
+    <>
+      <div className="text-xs text-[#6b7280] mb-1">{label}{href && <span className="ml-1 text-[#9ca3af]">→</span>}</div>
       <div className={`text-[22px] font-extrabold tracking-[-0.3px] font-mono ${tone || 'text-[#111827]'}`}>{value}</div>
       {sub && <div className="text-xs text-[#9ca3af] mt-0.5">{sub}</div>}
-    </div>
+    </>
   );
+  if (href) {
+    return (
+      <a href={href} className={`${vtCard} block px-[18px] py-[15px] transition-all hover:border-[#2563eb] hover:shadow-md`} title="Xem danh sách đơn">
+        {body}
+      </a>
+    );
+  }
+  return <div className={`${vtCard} px-[18px] py-[15px]`}>{body}</div>;
 }
 
 export default function ViettelOperationsReportPage() {
@@ -100,8 +108,9 @@ export default function ViettelOperationsReportPage() {
           {/* Hàng 3: đang xử lý / chờ phát lại / hoàn-huỷ */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 max-w-[860px]">
             <StatCard label="Đơn đang xử lý" value={`${num(r.processing)} đơn`} tone="text-[#1d4ed8]" />
-            <StatCard label="Đơn chờ phát lại / chờ xử lý" value={`${num(r.pending)} đơn`} tone="text-[#c2410c]" />
-            <StatCard label="Đơn hoàn / huỷ" value={`${num(r.returnCancel)} đơn`} tone="text-[#dc2626]" />
+            <StatCard label="Đơn chờ phát lại / chờ xử lý" value={`${num(r.pending)} đơn`} tone="text-[#c2410c]" href="/admin/viettel-customers/pending" />
+            <StatCard label="Đơn hoàn / huỷ" value={`${num(r.returnCancel)} đơn`} tone="text-[#dc2626]"
+              href={`/admin/viettel-customers/ordercancel?dateFrom=${filters.dateFrom}&dateTo=${filters.dateTo}`} />
           </div>
           {/* Hàng 4: tỷ lệ hoàn-huỷ */}
           <div className={`${vtCard} px-[18px] py-[15px] max-w-[860px]`}>

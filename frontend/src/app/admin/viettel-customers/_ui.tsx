@@ -12,6 +12,7 @@ const TABS = [
   { label: 'Báo cáo vận hành', href: '/admin/viettel-customers/operations-report' },
   { label: 'Thống kê tiền hàng', href: '/admin/viettel-customers/revenue' },
   { label: 'Đơn cần xử lý', href: '/admin/viettel-customers/pending' },
+  { label: 'Đơn hoàn/huỷ', href: '/admin/viettel-customers/ordercancel' },
   { label: 'Danh sách KH', href: '/admin/viettel-customers/customers' },
   { label: 'Danh sách đơn', href: '/admin/viettel-customers' },
 ];

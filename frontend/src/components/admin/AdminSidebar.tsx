@@ -93,6 +93,7 @@ const navItems: NavGroup[] = [
           { name: 'Báo cáo vận hành', href: '/admin/viettel-customers/operations-report', roles: ADMIN_STAFF },
           { name: 'Thống kê tiền hàng', href: '/admin/viettel-customers/revenue', roles: ADMIN_STAFF },
           { name: 'Đơn cần xử lý', href: '/admin/viettel-customers/pending', roles: ADMIN_STAFF },
+          { name: 'Đơn hàng đã huỷ', href: '/admin/viettel-customers/ordercancel', roles: ADMIN_STAFF },
           { name: 'Danh sách khách hàng', href: '/admin/viettel-customers/customers', roles: ADMIN_STAFF },
           { name: 'Danh sách đơn', href: '/admin/viettel-customers', roles: ADMIN_STAFF },
         ],
