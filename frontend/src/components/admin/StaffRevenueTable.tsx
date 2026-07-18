@@ -4,6 +4,7 @@
 // Đơn "thành công" = DELIVERED/PAYMENT_COLLECTED hoặc vận đơn Viettel (orderReference) đạt 501.
 import { useCallback, useEffect, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import StaffAvatar from '@/components/ui/StaffAvatar';
 import { formatNumber, formatVndTight } from '@/lib/format';
 
 const PERIODS = [
@@ -18,6 +19,7 @@ const PERIODS = [
 interface StaffRow {
   staffId: string | null;
   name: string;
+  avatarUrl?: string | null;
   ordersCreated: number;
   ordersDelivered: number;
   revenue: number;
@@ -76,7 +78,10 @@ export default function StaffRevenueTable() {
                 {data.rows.map((r, i) => (
                   <tr key={r.staffId || 'none'} className={`border-t border-[#f3f4f6] ${i % 2 === 1 ? 'bg-[#f7f9fc]' : ''}`}>
                     <td className="px-4 py-3">
-                      <span className={`font-semibold ${r.staffId ? 'text-[#111827]' : 'text-[#9ca3af]'}`}>{r.name}</span>
+                      <span className="flex items-center gap-2">
+                        {r.staffId && <StaffAvatar src={r.avatarUrl} name={r.name} size={24} />}
+                        <span className={`font-semibold ${r.staffId ? 'text-[#111827]' : 'text-[#9ca3af]'}`}>{r.name}</span>
+                      </span>
                     </td>
                     <td className="px-3 py-3 text-right text-[#4b5563]">{formatNumber(r.ordersCreated)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-[#16a34a]">{formatNumber(r.ordersDelivered)}</td>

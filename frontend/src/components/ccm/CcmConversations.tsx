@@ -573,7 +573,7 @@ export default function CcmConversations() {
                         {c.staff.filter((s) => (s.name || s.phone || '').toLowerCase().includes(staffQuery.toLowerCase())).map((s) => (
                           <button key={s.id} onClick={() => { void c.assignTo(c.active!, s.id); setHdrMenu(null); setStaffQuery(''); }}
                             className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-[#f3f4f6] text-left">
-                            <span className="w-6 h-6 rounded-full bg-[#e0e7ff] text-[#4338ca] grid place-items-center text-[11px] font-bold shrink-0">{(s.name || s.phone || 'N').slice(0, 1).toUpperCase()}</span>
+                            <Avatar src={s.avatarUrl} name={s.name || s.phone} size={24} />
                             <span className="text-sm text-gray-700 truncate font-semibold">{s.name || s.phone}</span>
                             {c.active!.assignedUserId === s.id && <span className="ml-auto text-[#3c55e6]">✓</span>}
                           </button>

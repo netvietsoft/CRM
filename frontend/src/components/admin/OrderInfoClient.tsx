@@ -23,6 +23,7 @@ interface StaffMember {
   name?: string | null;
   phone?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
   role?: string | null;
   staffStoreId?: string | null;
   createdAt?: string | Date | null;
@@ -221,7 +222,7 @@ export default function OrderInfoClient({ order, metadata, isPancake, staffList 
 
   const staffMemberOptions = [
     { value: '', label: 'Chọn NV' },
-    ...(Array.isArray(staffMembers) ? staffMembers : []).map(s => ({ value: s.id, label: s.name || s.phone || 'Staff' }))
+    ...(Array.isArray(staffMembers) ? staffMembers : []).map(s => ({ value: s.id, label: s.name || s.phone || 'Staff', avatarUrl: s.avatarUrl ?? null }))
   ];
 
   const delayOptions = [

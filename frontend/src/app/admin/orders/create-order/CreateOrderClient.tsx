@@ -112,7 +112,8 @@ export default function CreateOrderClient({ currentUser }: { currentUser: { id: 
     { value: '', label: 'Không gắn' },
     ...staffList.map(s => ({
       value: s.id,
-      label: s.name || s.phone || 'User'
+      label: s.name || s.phone || 'User',
+      avatarUrl: (s as { avatarUrl?: string | null }).avatarUrl ?? null,
     }))
   ];
 

@@ -618,6 +618,7 @@ export class AdminService {
         name: true,
         email: true,
         phone: true,
+        avatarUrl: true,
         staffStoreId: true,
         staffPermissions: true,
         createdAt: true,
@@ -663,6 +664,7 @@ export class AdminService {
         name: true,
         email: true,
         phone: true,
+        avatarUrl: true,
         role: true,
         staffStoreId: true,
         createdAt: true,
@@ -771,14 +773,15 @@ export class AdminService {
 
     const staffIds = [...byStaff.keys()].filter(Boolean);
     const users = staffIds.length
-      ? await this.prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true, phone: true } })
+      ? await this.prisma.user.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true, phone: true, avatarUrl: true } })
       : [];
-    const nameOf = new Map(users.map((u) => [u.id, u.name || u.phone || u.id]));
+    const infoOf = new Map(users.map((u) => [u.id, u]));
 
     const rows = [...byStaff.entries()]
       .map(([staffId, r]) => ({
         staffId: staffId || null,
-        name: staffId ? nameOf.get(staffId) || staffId : 'Chưa gán nhân viên',
+        name: staffId ? infoOf.get(staffId)?.name || infoOf.get(staffId)?.phone || staffId : 'Chưa gán nhân viên',
+        avatarUrl: staffId ? infoOf.get(staffId)?.avatarUrl || null : null,
         ...r,
       }))
       .sort((a, b) => b.revenue - a.revenue);

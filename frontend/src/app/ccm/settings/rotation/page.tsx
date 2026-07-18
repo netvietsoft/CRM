@@ -5,9 +5,10 @@ export const dynamic = 'force-dynamic';
 // mode: OFF | SELF | GROUP | STAFF. Lưu qua POST /messenger/assign/settings.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
+import StaffAvatar from '@/components/ui/StaffAvatar';
 
 interface MsgPage { id: string; externalId: string; name: string | null }
-interface StaffUser { id: string; name: string | null; phone: string | null; role?: string; staffPermissions?: string[] | null }
+interface StaffUser { id: string; name: string | null; phone: string | null; avatarUrl?: string | null; role?: string; staffPermissions?: string[] | null }
 interface Group { name: string; memberIds: string[]; ratio: number }
 interface StaffRatio { userId: string; ratio: number }
 interface AssignConfig {
@@ -177,7 +178,8 @@ export default function SettingsRotation() {
               return (
                 <button key={s.id} type="button"
                   onClick={() => { setDirty(true); setDutyIds((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; }); }}
-                  className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${on ? 'bg-[#3c55e6] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}>
+                  className={`flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3.5 text-[13px] font-semibold transition-colors ${on ? 'bg-[#3c55e6] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}>
+                  <StaffAvatar src={s.avatarUrl} name={s.name || s.phone} size={22} />
                   {on ? '✓ ' : ''}{s.name || s.phone}
                 </button>
               );
@@ -267,8 +269,9 @@ export default function SettingsRotation() {
                     return (
                       <button key={s.id} type="button"
                         onClick={() => setGroups(groups.map((x, i) => (i === gi ? { ...x, memberIds: inG ? x.memberIds.filter((id) => id !== s.id) : [...x.memberIds, s.id] } : x)))}
-                        className={`rounded-full px-3 py-1 text-[12px] font-semibold ${inG ? 'bg-[#16a34a] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}
+                        className={`flex items-center gap-1.5 rounded-full py-[3px] pl-[3px] pr-3 text-[12px] font-semibold ${inG ? 'bg-[#16a34a] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}
                         title={hasCcm(s) ? undefined : 'NV chưa có quyền Tin nhắn CCM — sẽ tự được cấp khi Lưu'}>
+                        <StaffAvatar src={s.avatarUrl} name={s.name || s.phone} size={20} />
                         {inG ? '✓ ' : ''}{s.name || s.phone}{!hasCcm(s) && ' 🔓'}
                       </button>
                     );
@@ -303,8 +306,11 @@ export default function SettingsRotation() {
                   return (
                     <tr key={s.id} className="border-t border-[#f1f5f9]">
                       <td className="px-3 py-2 font-semibold">
-                        {s.name || s.phone}
-                        {!hasCcm(s) && <span className="ml-1.5 text-[11px] font-normal text-[#b45309]" title="Sẽ tự được cấp quyền Tin nhắn CCM khi Lưu">🔓 tự cấp quyền CCM khi lưu</span>}
+                        <span className="flex items-center gap-2">
+                          <StaffAvatar src={s.avatarUrl} name={s.name || s.phone} size={22} />
+                          {s.name || s.phone}
+                          {!hasCcm(s) && <span className="text-[11px] font-normal text-[#b45309]" title="Sẽ tự được cấp quyền Tin nhắn CCM khi Lưu">🔓 tự cấp quyền CCM khi lưu</span>}
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right">
                         <input type="number" min={0} max={100} value={r?.ratio ?? 0}

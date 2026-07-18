@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { apiClientClient } from '@/lib/apiClientClient';
 // Danh mục quyền theo module — dùng chung với /ccm/settings/permissions.
 import { PERM_MODULES } from '@/lib/staffPermissions';
+import StaffAvatar from '@/components/ui/StaffAvatar';
 import { Trash2, Shield, Store, UserCheck, Search, Edit2 } from 'lucide-react';
 
 interface StaffRecord {
@@ -13,6 +14,7 @@ interface StaffRecord {
   name: string | null;
   email: string | null;
   phone: string | null;
+  avatarUrl?: string | null;
   createdAt: string | Date;
   staffPermissions?: string[] | null;
   staffStore?: {
@@ -227,9 +229,7 @@ export default function StaffTableClient() {
                 >
                   <td className="px-4 py-[11px] whitespace-nowrap">
                     <div className="flex items-center gap-[10px]">
-                      <div className="w-8 h-8 rounded-full bg-[#2563eb] text-white flex items-center justify-center font-bold text-[13px] flex-shrink-0">
-                        {(s.name?.trim()?.charAt(0) || '?').toUpperCase()}
-                      </div>
+                      <StaffAvatar src={s.avatarUrl} name={s.name} size={32} />
                       <div>
                         <div className="font-semibold text-[#111827] whitespace-nowrap">{s.name}</div>
                         <div className="text-[11.5px] text-[#9ca3af]">{s.email}</div>

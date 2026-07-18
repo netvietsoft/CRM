@@ -6,8 +6,24 @@ import { createPortal } from 'react-dom';
 export interface SelectOption {
   value: string | number;
   label: string;
+  // Có key này (kể cả null) → option hiển thị avatar tròn trước label (ảnh hoặc chữ cái đầu).
+  avatarUrl?: string | null;
   triggerClassName?: string;
   optionClassName?: string;
+}
+
+// Avatar mini trong option/trigger — ảnh hoặc vòng tròn chữ cái.
+function OptionAvatar({ src, name, size = 18 }: { src?: string | null; name: string; size?: number }) {
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={name} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />;
+  }
+  return (
+    <span className="grid shrink-0 place-items-center rounded-full bg-[#2563eb] font-bold text-white"
+      style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.45)) }}>
+      {(name.trim().charAt(0) || '?').toUpperCase()}
+    </span>
+  );
 }
 
 interface SelectProps {
@@ -120,7 +136,10 @@ export default function Select({
           ${resolvedTriggerClassName}
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
-        <span className="truncate">{selectedLabel}</span>
+        <span className="flex min-w-0 items-center gap-1.5 truncate">
+          {selectedOption && 'avatarUrl' in selectedOption && <OptionAvatar src={selectedOption.avatarUrl} name={selectedOption.label} />}
+          <span className="truncate">{selectedLabel}</span>
+        </span>
       </button>
       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
         <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -152,7 +171,10 @@ export default function Select({
                       : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                {option.label}
+                <span className="flex min-w-0 items-center gap-1.5">
+                  {'avatarUrl' in option && <OptionAvatar src={option.avatarUrl} name={option.label} />}
+                  <span className="truncate">{option.label}</span>
+                </span>
               </button>
             );
           })}

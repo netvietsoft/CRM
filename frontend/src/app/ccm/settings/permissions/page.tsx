@@ -6,12 +6,14 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import { PERM_MODULES } from '@/lib/staffPermissions';
+import StaffAvatar from '@/components/ui/StaffAvatar';
 
 interface StaffRecord {
   id: string;
   name: string | null;
   phone: string | null;
   email: string | null;
+  avatarUrl?: string | null;
   staffPermissions?: string[] | null;
 }
 
@@ -105,8 +107,13 @@ export default function SettingsPermissions() {
               {filtered.map((u, i) => (
                 <tr key={u.id} className={`border-t border-[#f1f5f9] ${i % 2 === 1 ? 'bg-[#f9fafb]' : ''} ${savingId === u.id ? 'opacity-70' : ''}`}>
                   <td className="px-3.5 py-2.5 whitespace-nowrap">
-                    <div className="font-semibold">👤 {u.name || u.phone}</div>
-                    <div className="text-[11px] text-[#9ca3af]">{u.phone}</div>
+                    <div className="flex items-center gap-2">
+                      <StaffAvatar src={u.avatarUrl} name={u.name || u.phone} size={26} />
+                      <div>
+                        <div className="font-semibold">{u.name || u.phone}</div>
+                        <div className="text-[11px] text-[#9ca3af]">{u.phone}</div>
+                      </div>
+                    </div>
                   </td>
                   {PERM_MODULES.map((m) => (
                     <td key={m.name} className="p-2 text-center">
