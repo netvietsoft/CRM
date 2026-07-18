@@ -215,7 +215,9 @@ export class ViettelCustomerService {
 
     const DELIVERED = new Set([501]);
     const PENDING = new Set([505, 506, 507, 509]); // chờ xử lý + chờ phát lại
-    const RETURN_CANCEL = new Set([101, 102, 107, 201, 502, 503, 504, 510, 515, 551]);
+    // CHỈ hoàn/huỷ phía KHÁCH — hủy lấy chủ động (shop|VTP) tách bucket riêng, KHÔNG tính vào tỷ lệ hoàn.
+    const RETURN_CANCEL = new Set([502, 503, 504, 510, 515, 551]);
+    const CANCELLED_PICKUP = new Set([101, 102, 107, 201]); // shop/VTP hủy lấy
 
     let totalOrders = 0;
     let totalCod = 0;
@@ -223,6 +225,7 @@ export class ViettelCustomerService {
     let deliveredCod = 0;
     let pending = 0;
     let returnCancel = 0;
+    let cancelledPickup = 0;
     for (const r of rows) {
       const n = r._count._all;
       const cod = r._sum.cod || 0;
@@ -232,11 +235,12 @@ export class ViettelCustomerService {
       if (st != null && DELIVERED.has(st)) { delivered += n; deliveredCod += cod; }
       else if (st != null && PENDING.has(st)) pending += n;
       else if (st != null && RETURN_CANCEL.has(st)) returnCancel += n;
+      else if (st != null && CANCELLED_PICKUP.has(st)) cancelledPickup += n;
     }
-    const processing = totalOrders - delivered - pending - returnCancel;
+    const processing = totalOrders - delivered - pending - returnCancel - cancelledPickup;
     const returnRate = totalOrders > 0 ? Math.round((returnCancel / totalOrders) * 1000) / 10 : 0;
 
-    return { totalOrders, totalCod, delivered, deliveredCod, processing, pending, returnCancel, returnRate };
+    return { totalOrders, totalCod, delivered, deliveredCod, processing, pending, returnCancel, cancelledPickup, returnRate };
   }
 
   /** Danh sách trạng thái (mã + tên) đang có trong bảng — cho dropdown lọc. */

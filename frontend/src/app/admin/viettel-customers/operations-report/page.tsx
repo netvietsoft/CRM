@@ -18,6 +18,7 @@ interface Report {
   processing: number;
   pending: number;
   returnCancel: number;
+  cancelledPickup: number;
   returnRate: number;
 }
 
@@ -105,12 +106,13 @@ export default function ViettelOperationsReportPage() {
             <StatCard label="Đơn giao thành công" value={`${num(r.delivered)} đơn`} tone="text-[#047857]" sub={r.totalOrders ? `${Math.round((r.delivered / r.totalOrders) * 1000) / 10}% tổng đơn` : undefined} />
             <StatCard label="Doanh thu giao thành công" value={formatVndSymbol(r.deliveredCod)} tone="text-[#047857]" />
           </div>
-          {/* Hàng 3: đang xử lý / chờ phát lại / hoàn-huỷ */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 max-w-[860px]">
+          {/* Hàng 3: đang xử lý / chờ phát lại / hoàn-huỷ (khách) / hủy lấy (chủ động) */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5 max-w-[1120px]">
             <StatCard label="Đơn đang xử lý" value={`${num(r.processing)} đơn`} tone="text-[#1d4ed8]" />
             <StatCard label="Đơn chờ phát lại / chờ xử lý" value={`${num(r.pending)} đơn`} tone="text-[#c2410c]" href="/admin/viettel-customers/pending" />
-            <StatCard label="Đơn hoàn / huỷ" value={`${num(r.returnCancel)} đơn`} tone="text-[#dc2626]"
+            <StatCard label="Đơn hoàn / huỷ" value={`${num(r.returnCancel)} đơn`} tone="text-[#dc2626]" sub="phía khách — tính tỷ lệ hoàn"
               href={`/admin/viettel-customers/ordercancel?dateFrom=${filters.dateFrom}&dateTo=${filters.dateTo}`} />
+            <StatCard label="Hủy lấy (shop/VTP chủ động)" value={`${num(r.cancelledPickup ?? 0)} đơn`} tone="text-[#6b7280]" sub="không tính vào tỷ lệ hoàn" />
           </div>
           {/* Hàng 4: tỷ lệ hoàn-huỷ */}
           <div className={`${vtCard} px-[18px] py-[15px] max-w-[860px]`}>

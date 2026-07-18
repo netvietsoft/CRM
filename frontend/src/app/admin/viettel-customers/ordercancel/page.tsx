@@ -11,7 +11,8 @@ import { formatVndSymbol } from '@/lib/format';
 import { vtpStatusCls, vtpStatusLabel } from '@/lib/vtpStatus';
 import { VtTabs, vtCard } from '../_ui';
 
-const ALL_STATUSES = '101,102,107,201,502,503,504,510,515,551';
+// CHỈ hoàn/huỷ phía KHÁCH (không tính 101/102/107/201 = shop hoặc VTP chủ động hủy lấy).
+const ALL_STATUSES = '502,503,504,510,515,551';
 // Nhóm trạng thái con (theo nhóm chính thức VTP trong vtpStatus.ts).
 const STATUS_GROUPS: Array<{ label: string; value: string }> = [
   { label: 'Tất cả hoàn/huỷ', value: '' },
@@ -19,8 +20,6 @@ const STATUS_GROUPS: Array<{ label: string; value: string }> = [
   { label: 'Đang chuyển hoàn', value: '551' },
   { label: 'Đã trả (hoàn về shop)', value: '504' },
   { label: 'Đã hủy giao', value: '503' },
-  { label: 'Shop hủy lấy', value: '107' },
-  { label: 'VTP hủy lấy', value: '101,201' },
 ];
 
 interface Row {
