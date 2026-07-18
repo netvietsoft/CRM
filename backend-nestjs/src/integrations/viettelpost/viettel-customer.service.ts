@@ -191,10 +191,13 @@ export class ViettelCustomerService {
     });
   }
 
-  /** Xác nhận hàng hoàn (Nhận đủ/Thiếu/Tráo/Mất) + ghi chú cho đơn hoàn/huỷ. */
+  /** Xác nhận hàng hoàn (Nhận đủ/Thiếu/Tráo/Mất) + ghi chú — CHỈ khi hàng Đã trả về shop (504). */
   async setReturnCheck(trackingCode: string, body: { check?: string | null; note?: string | null }) {
-    const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode }, select: { id: true } });
+    const row = await this.prisma.viettelCustomer.findUnique({ where: { trackingCode }, select: { id: true, status: true } });
     if (!row) throw new NotFoundException('Không tìm thấy đơn ViettelPost');
+    if (row.status !== 504) {
+      throw new BadRequestException('Chỉ xác nhận/ghi chú khi đơn ở trạng thái Đã trả (hoàn về shop)');
+    }
     const VALID = ['RECEIVED_FULL', 'MISSING', 'SWAPPED', 'LOST'];
     const data: Record<string, string | null> = {};
     if (body.check !== undefined) data.returnCheck = body.check && VALID.includes(body.check) ? body.check : null;

@@ -249,21 +249,32 @@ export default function ViettelCancelledOrdersPage() {
                       <td className="px-3 py-3 whitespace-nowrap"><span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${vtpStatusCls(r.status)}`}>{vtpStatusLabel(r.status, r.statusName)}</span></td>
                       <td className="px-3 py-3 text-right font-bold font-mono whitespace-nowrap text-[#111827]">{formatVndSymbol(r.cod)}</td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap"><DateCell s={r.statusDate || r.updatedAt} /></td>
+                      {/* Xác nhận + ghi chú CHỈ mở khi hàng ĐÃ TRẢ VỀ SHOP (504) — chưa về thì chưa kiểm được. */}
                       <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <select value={r.returnCheck || ''} onChange={(e) => void saveCheck(r, e.target.value)}
-                          className={`rounded-[8px] border px-2 py-1.5 text-[12px] outline-none ${r.returnCheck ? 'border-[#86efac] bg-[#f0fdf4] font-semibold text-[#15803d]' : 'border-[#e5e7eb] bg-white text-[#6b7280]'}`}>
-                          {RETURN_CHECK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        {r.status === 504 ? (
+                          <select value={r.returnCheck || ''} onChange={(e) => void saveCheck(r, e.target.value)}
+                            className={`rounded-[8px] border px-2 py-1.5 text-[12px] outline-none ${r.returnCheck ? 'border-[#86efac] bg-[#f0fdf4] font-semibold text-[#15803d]' : 'border-[#e5e7eb] bg-white text-[#6b7280]'}`}>
+                            {RETURN_CHECK_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        ) : (
+                          <span className="text-[12px] text-[#d1d5db]" title="Chỉ xác nhận khi đơn Đã trả (hoàn về shop)">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3 max-w-[200px]" onClick={(e) => e.stopPropagation()}>
-                        {r.returnNote ? (
-                          <button onClick={() => openNote(r)} title="Sửa ghi chú"
-                            className="block max-w-[190px] truncate text-left text-[12.5px] font-semibold text-[#dc2626] hover:underline">
-                            {r.returnNote}
-                          </button>
+                        {r.status === 504 ? (
+                          r.returnNote ? (
+                            <button onClick={() => openNote(r)} title="Sửa ghi chú"
+                              className="block max-w-[190px] truncate text-left text-[12.5px] font-semibold text-[#dc2626] hover:underline">
+                              {r.returnNote}
+                            </button>
+                          ) : (
+                            <button onClick={() => openNote(r)} title="Thêm ghi chú"
+                              className="grid h-8 w-8 place-items-center rounded-lg text-[#9ca3af] transition-colors hover:bg-[#eef2ff] hover:text-[#3c55e6]">💬</button>
+                          )
+                        ) : r.returnNote ? (
+                          <span className="block max-w-[190px] truncate text-[12.5px] font-semibold text-[#dc2626]" title={r.returnNote}>{r.returnNote}</span>
                         ) : (
-                          <button onClick={() => openNote(r)} title="Thêm ghi chú"
-                            className="grid h-8 w-8 place-items-center rounded-lg text-[#9ca3af] transition-colors hover:bg-[#eef2ff] hover:text-[#3c55e6]">💬</button>
+                          <span className="text-[12px] text-[#d1d5db]" title="Chỉ ghi chú khi đơn Đã trả (hoàn về shop)">—</span>
                         )}
                       </td>
                     </tr>
