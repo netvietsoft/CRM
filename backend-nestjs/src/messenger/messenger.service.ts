@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MetaMessengerClient } from './meta-messenger.client';
 import { AdminNotificationsGateway } from '../modules/admin-notifications/admin-notifications.gateway';
 import { AiAgentService } from '../ai-agent/ai-agent.service';
+import { MessengerAssignService } from './messenger-assign.service';
 import { decryptToken } from '../integrations/facebook/token-vault';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -92,6 +93,11 @@ export class MessengerService {
     }
     this.gateway.emitMessengerMessage({ conversationId: conv.id, storeId: page.storeId, direction });
     if (direction === 'IN') {
+      // Chia hội thoại cho NV trực page (nếu chưa ai phụ trách) — best-effort, không chặn luồng.
+      try {
+        const assign = this.moduleRef.get(MessengerAssignService, { strict: false });
+        void assign?.assignIncoming({ id: conv.id, pageId: page.id, assignedUserId: conv.assignedUserId });
+      } catch { /* assign module chưa sẵn sàng */ }
       try { const ai = this.moduleRef.get(AiAgentService, { strict: false }); void ai?.onIncoming(conv.id); } catch { /* AI module chưa sẵn sàng */ }
     }
   }
@@ -120,12 +126,21 @@ export class MessengerService {
     });
   }
 
-  listConversations(effectiveStoreId: string | null, pageId?: string, q?: string) {
+  async listConversations(effectiveStoreId: string | null, pageId?: string, q?: string, user?: { id: string; role?: string }) {
+    // STAFF: áp quyền xem theo cài đặt chia hội thoại của từng page (được chia cho mình / chưa chia…).
+    let visibility: object | null = null;
+    if (user?.role === 'STAFF') {
+      try {
+        const assign = this.moduleRef.get(MessengerAssignService, { strict: false });
+        visibility = (await assign?.staffVisibilityWhere(user.id)) || null;
+      } catch { /* assign module chưa sẵn sàng */ }
+    }
     return this.prisma.msgConversation.findMany({
       where: {
         ...(pageId ? { pageId } : {}),
         page: this.pageScope(effectiveStoreId),
         ...(q ? { contact: { name: { contains: q } } } : {}),
+        ...(visibility ? { AND: [visibility] } : {}),
       },
       orderBy: { lastMessageAt: 'desc' },
       take: 200,
@@ -358,6 +373,11 @@ export class MessengerService {
       data: { lastMessageAt: new Date(), lastMessageText: p.text ?? '[đính kèm]', lastMessageDir: 'OUT' },
     });
     this.gateway.emitMessengerMessage({ conversationId: convId, storeId: conv.page.storeId, direction: 'OUT' });
+    // Chế độ NV tự phân công: trả lời hội thoại chưa ai nhận → tự gán mình.
+    try {
+      const assign = this.moduleRef.get(MessengerAssignService, { strict: false });
+      void assign?.claimOnReply(convId, conv.pageId, userId);
+    } catch { /* assign module chưa sẵn sàng */ }
     return { ok: true };
   }
 

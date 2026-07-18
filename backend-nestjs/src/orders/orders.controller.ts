@@ -73,6 +73,7 @@ export class OrdersController {
   @ApiOperation({ summary: 'Get all orders for admin/staff' })
   async findAdminOrders(
     @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @GetUser() user: { id: string; role?: string; staffPermissions?: string[] },
     @Query('page') page?: number,
     @Query('status') status?: string,
     @Query('search') search?: string,
@@ -83,8 +84,15 @@ export class OrdersController {
     @Query('dateFilterType') dateFilterType?: string,
     @Query('dateValue') dateValue?: string,
   ) {
+    // STAFF chỉ có ORDERS_VIEW_OWN (không có ORDERS_VIEW) → chỉ thấy đơn mình lên.
+    const perms = (user?.staffPermissions as string[]) || [];
+    const restrictSellerId =
+      user?.role === 'STAFF' && !perms.includes('ORDERS_VIEW') && perms.includes('ORDERS_VIEW_OWN')
+        ? user.id
+        : undefined;
     return this.ordersService.findAdminOrders({
       effectiveStoreId,
+      restrictSellerId,
       page: page ? Number(page) : undefined,
       status,
       search,

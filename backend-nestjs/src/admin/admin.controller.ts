@@ -33,13 +33,23 @@ export class AdminController {
   @ApiOperation({ summary: 'Revenue stats by period (orders)' })
   async getRevenueStats(
     @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @GetUser() user: { id: string; role?: string; staffPermissions?: string[] },
     @Query('period') period?: string,
     @Query('scope') scope?: string,
     @Query('dateField') dateField?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.adminService.getRevenueStats({ period, scope, dateField, startDate, endDate }, effectiveStoreId);
+    return this.adminService.getRevenueStats(
+      { period, scope, dateField, startDate, endDate, restrictSellerId: this.ownOnly(user) },
+      effectiveStoreId,
+    );
+  }
+
+  // STAFF không có ORDERS_VIEW (chỉ VIEW_OWN) → mọi số liệu đơn/doanh thu chỉ tính đơn mình lên.
+  private ownOnly(user: { id: string; role?: string; staffPermissions?: string[] }): string | undefined {
+    const perms = (user?.staffPermissions as string[]) || [];
+    return user?.role === 'STAFF' && !perms.includes('ORDERS_VIEW') ? user.id : undefined;
   }
 
   // Doanh thu theo NHÂN VIÊN lên đơn (đơn thành công = DELIVERED/PAYMENT_COLLECTED hoặc VTP 501).
@@ -47,12 +57,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Revenue per staff (assigningSeller, tracking VTP tới 501)' })
   async getRevenueByStaff(
     @GetEffectiveStoreId() effectiveStoreId: string | null,
+    @GetUser() user: { id: string; role?: string; staffPermissions?: string[] },
     @Query('period') period?: string,
     @Query('dateField') dateField?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    return this.adminService.getRevenueByStaff({ period, dateField, startDate, endDate }, effectiveStoreId);
+    return this.adminService.getRevenueByStaff(
+      { period, dateField, startDate, endDate, restrictSellerId: this.ownOnly(user) },
+      effectiveStoreId,
+    );
   }
 
   @Get('dashboard-meta')

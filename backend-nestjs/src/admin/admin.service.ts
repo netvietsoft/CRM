@@ -707,18 +707,19 @@ export class AdminService {
     return { start, end, label };
   }
 
-  private revenueWhere(q: { period?: string; scope?: string; dateField?: string; startDate?: string; endDate?: string }, effectiveStoreId: string | null) {
+  private revenueWhere(q: { period?: string; scope?: string; dateField?: string; startDate?: string; endDate?: string; restrictSellerId?: string }, effectiveStoreId: string | null) {
     const { start, end, label } = this.resolveRevenuePeriod(q.period || 'month', q.startDate, q.endDate);
     const dateField = q.dateField === 'updatedAt' ? 'updatedAt' : 'createdAt';
     const where: any = {};
     if (effectiveStoreId) where.storeId = effectiveStoreId;
+    if (q.restrictSellerId) where.assigningSellerId = q.restrictSellerId; // NV chỉ xem đơn của mình
     if (start || end) where[dateField] = { ...(start ? { gte: start } : {}), ...(end ? { lt: end } : {}) };
     // 'delivered' = đơn thành công (đã giao / đã thu COD); 'all' = mọi đơn.
     if ((q.scope || 'delivered') === 'delivered') where.status = { in: ['DELIVERED', 'PAYMENT_COLLECTED'] };
     return { where, start, end, label };
   }
 
-  async getRevenueStats(q: { period?: string; scope?: string; dateField?: string; startDate?: string; endDate?: string }, effectiveStoreId: string | null) {
+  async getRevenueStats(q: { period?: string; scope?: string; dateField?: string; startDate?: string; endDate?: string; restrictSellerId?: string }, effectiveStoreId: string | null) {
     const { where, start, end, label } = this.revenueWhere(q, effectiveStoreId);
     const agg = await this.prisma.order.aggregate({ where, _sum: { totalAmount: true }, _count: { _all: true } });
     return {
@@ -733,7 +734,7 @@ export class AdminService {
 
   // Doanh thu theo NHÂN VIÊN lên đơn (assigningSellerId). Đơn "thành công" = DELIVERED/PAYMENT_COLLECTED
   // HOẶC có vận đơn Viettel (orderReference = orderCode) đạt 501 — tracking từ lúc tạo đến giao thành công.
-  async getRevenueByStaff(q: { period?: string; dateField?: string; startDate?: string; endDate?: string }, effectiveStoreId: string | null) {
+  async getRevenueByStaff(q: { period?: string; dateField?: string; startDate?: string; endDate?: string; restrictSellerId?: string }, effectiveStoreId: string | null) {
     const { where, start, end, label } = this.revenueWhere({ ...q, scope: 'all' }, effectiveStoreId);
     const orders = await this.prisma.order.findMany({
       where,

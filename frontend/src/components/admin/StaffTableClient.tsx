@@ -24,6 +24,7 @@ interface StaffRecord {
 // Bảng quyền theo module: mỗi hàng 1 module, cột Xem / Sửa / Xoá (ô null = không áp dụng).
 const PERM_MODULES: Array<{ name: string; view: string | null; manage: string | null; del: string | null; note?: string }> = [
   { name: 'Đơn hàng', view: 'ORDERS_VIEW', manage: 'ORDERS_MANAGE', del: 'ORDERS_DELETE' },
+  { name: 'Đơn hàng — chỉ đơn mình lên', view: 'ORDERS_VIEW_OWN', manage: null, del: null, note: 'NV trực page: chỉ thấy đơn + doanh thu của mình (bỏ tick "Xem" ở hàng trên)' },
   { name: 'Sản phẩm', view: 'PRODUCTS_VIEW', manage: 'PRODUCTS_MANAGE', del: 'PRODUCTS_DELETE' },
   { name: 'Danh mục', view: 'CATEGORIES_VIEW', manage: 'CATEGORIES_MANAGE', del: 'CATEGORIES_DELETE' },
   { name: 'Khách hàng', view: 'CUSTOMERS_VIEW', manage: 'CUSTOMERS_MANAGE', del: 'CUSTOMERS_DELETE' },

@@ -9,13 +9,48 @@ import { Permission } from '../auth/enums/permissions.enum';
 import { GetEffectiveStoreId } from '../auth/decorators/get-effective-store-id.decorator';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { MessengerService } from './messenger.service';
+import { MessengerAssignService, AssignConfig } from './messenger-assign.service';
 
 @ApiTags('Messenger')
 @Controller('messenger')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiBearerAuth()
 export class MessengerController {
-  constructor(private readonly service: MessengerService) {}
+  constructor(
+    private readonly service: MessengerService,
+    private readonly assignService: MessengerAssignService,
+  ) {}
+
+  // ===== Trực page + chia hội thoại (rotation) =====
+  @Get('assign/settings')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Cài đặt chia hội thoại của page' })
+  getAssignSettings(@Query('pageId') pageId: string) {
+    return this.assignService.getSettings(pageId);
+  }
+
+  @Post('assign/settings')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Lưu cài đặt chia hội thoại (mode + config)' })
+  saveAssignSettings(@Body() body: { pageId: string; mode: string; config: AssignConfig }) {
+    return this.assignService.saveSettings(body.pageId, body.mode, body.config || {});
+  }
+
+  @Get('assign/staff')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Danh sách NV trực page' })
+  getPageStaff(@Query('pageId') pageId: string) {
+    return this.assignService.listPageStaff(pageId);
+  }
+
+  @Post('assign/staff')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Gán danh sách NV trực page (ghi đè)' })
+  setPageStaff(@Body() body: { pageId: string; userIds: string[] }) {
+    return this.assignService.setPageStaff(body.pageId, body.userIds || []);
+  }
 
   @Get('pages')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
@@ -69,10 +104,11 @@ export class MessengerController {
   @Permissions(Permission.MESSENGER_VIEW)
   conversations(
     @GetEffectiveStoreId() storeId: string | null,
+    @GetUser() user: { id: string; role?: string },
     @Query('pageId') pageId?: string,
     @Query('q') q?: string,
   ) {
-    return this.service.listConversations(storeId, pageId, q);
+    return this.service.listConversations(storeId, pageId, q, user);
   }
 
   @Get('conversations/:id/messages')

@@ -29,7 +29,9 @@ export class PermissionsGuard implements CanActivate {
       Permission.MESSAGING_MANAGE,
     ],
     [Permission.MESSAGING_MANAGE]: [Permission.MESSAGING_MANAGE],
-    [Permission.ORDERS_VIEW]: [Permission.ORDERS_VIEW],
+    // Xem đơn: quyền "chỉ đơn của mình" cũng qua cửa — service sẽ tự lọc theo NV.
+    [Permission.ORDERS_VIEW]: [Permission.ORDERS_VIEW, Permission.ORDERS_VIEW_OWN],
+    [Permission.ORDERS_VIEW_OWN]: [Permission.ORDERS_VIEW_OWN, Permission.ORDERS_VIEW],
     [Permission.ORDERS_MANAGE]: [Permission.ORDERS_MANAGE],
     [Permission.ORDERS_DELETE]: [Permission.ORDERS_DELETE],
     [Permission.PRODUCTS_VIEW]: [Permission.PRODUCTS_VIEW],

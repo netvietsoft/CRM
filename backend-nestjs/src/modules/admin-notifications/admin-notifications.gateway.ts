@@ -76,6 +76,7 @@ export class AdminNotificationsGateway implements OnGatewayConnection, OnGateway
       }
       (client.data as any).userId = payload.userId;
       (client.data as any).role = role;
+      this.trackOnline(payload.userId, +1);
       this.logger.log(`Admin socket connected: ${client.id} (user ${payload.userId}, ${role})`);
     } catch (e: any) {
       this.logger.warn(`Từ chối socket ${client.id}: ${e?.message || e}`);
@@ -84,7 +85,26 @@ export class AdminNotificationsGateway implements OnGatewayConnection, OnGateway
   }
 
   handleDisconnect(client: Socket) {
+    const userId = (client.data as any)?.userId;
+    if (userId) this.trackOnline(userId, -1);
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  // ===== Registry NV online (đếm số socket theo userId) — engine chia hội thoại dùng =====
+  private readonly onlineCounts = new Map<string, number>();
+
+  private trackOnline(userId: string, delta: number) {
+    const next = (this.onlineCounts.get(userId) || 0) + delta;
+    if (next <= 0) this.onlineCounts.delete(userId);
+    else this.onlineCounts.set(userId, next);
+  }
+
+  isUserOnline(userId: string): boolean {
+    return (this.onlineCounts.get(userId) || 0) > 0;
+  }
+
+  getOnlineUserIds(): Set<string> {
+    return new Set(this.onlineCounts.keys());
   }
 
   /**

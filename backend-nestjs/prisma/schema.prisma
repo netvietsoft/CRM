@@ -66,6 +66,7 @@ model User {
   staffStore                    Store?                       @relation("StoreStaff", fields: [staffStoreId], references: [id], onDelete: SetNull)
   staffPermissions              Json?                        @map("staff_permissions")
   ordersAsSeller                Order[]                      @relation("OrderSeller")
+  msgPageDuties                 MsgPageStaff[]               @relation("MsgPageStaffUser")
   ordersAsCare                  Order[]                      @relation("OrderCare")
   referrer                      User?                        @relation("ReferralNetwork", fields: [referrerId], references: [id])
   referees                      User[]                       @relation("ReferralNetwork")
@@ -1678,6 +1679,8 @@ model MsgPage {
   updatedAt     DateTime          @updatedAt @map("updated_at")
   contacts      MsgContact[]
   conversations MsgConversation[]
+  dutyStaff     MsgPageStaff[]
+  assignSetting MsgAssignSetting?
 
   @@unique([platform, externalId])
   @@map("msg_pages")
@@ -1725,6 +1728,38 @@ model MsgConversation {
   @@unique([pageId, contactId])
   @@index([pageId, lastMessageAt])
   @@map("msg_conversations")
+}
+
+// Nhân viên TRỰC PAGE — admin gán NV vào page để trả lời tin/lên đơn (nguồn danh sách cho engine chia hội thoại).
+model MsgPageStaff {
+  id        String   @id @default(uuid())
+  pageId    String   @map("page_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  page      MsgPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  user      User     @relation("MsgPageStaffUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, userId])
+  @@index([userId])
+  @@map("msg_page_staff")
+}
+
+// Cài đặt chia hội thoại theo page. mode: OFF | SELF | GROUP | STAFF.
+// config JSON giữ toàn bộ tuỳ chọn (selfClaim, visibility, groups[{name,memberIds,ratio}],
+// staffRatios[{userId,ratio}], onlineMode, shuffle, mainPerConv, extraAfterUnreadMin,
+// extraIfOffline, maxPendingEnabled, maxPending, schedule, outsideViewAll).
+// rrState JSON: trạng thái smooth-weighted-round-robin (con trỏ credit từng ứng viên).
+model MsgAssignSetting {
+  id        String   @id @default(uuid())
+  pageId    String   @unique @map("page_id")
+  mode      String   @default("OFF")
+  config    Json?
+  rrState   Json?    @map("rr_state")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  page      MsgPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@map("msg_assign_settings")
 }
 
 model MsgMessage {

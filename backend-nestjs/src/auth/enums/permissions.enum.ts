@@ -1,5 +1,6 @@
 export enum Permission {
   ORDERS_VIEW = 'ORDERS_VIEW',
+  ORDERS_VIEW_OWN = 'ORDERS_VIEW_OWN', // chỉ xem đơn mình lên (NV trực page)
   ORDERS_MANAGE = 'ORDERS_MANAGE',
   ORDERS_DELETE = 'ORDERS_DELETE',
   PRODUCTS_VIEW = 'PRODUCTS_VIEW',

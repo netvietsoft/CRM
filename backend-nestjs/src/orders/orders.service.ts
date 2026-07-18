@@ -1726,6 +1726,7 @@ export class OrdersService {
 
   async findAdminOrders(params: {
     effectiveStoreId?: string | null;
+    restrictSellerId?: string; // NV chỉ có ORDERS_VIEW_OWN → chỉ đơn NV đó lên
     page?: number;
     limit?: number;
     status?: string;
@@ -1755,6 +1756,12 @@ export class OrdersService {
     if (effectiveStoreId) {
       where.storeId = effectiveStoreId;
       baseWhere.storeId = effectiveStoreId;
+    }
+
+    // Quyền "chỉ đơn của mình": áp cả danh sách lẫn statusCounts.
+    if (params.restrictSellerId) {
+      where.assigningSellerId = params.restrictSellerId;
+      baseWhere.assigningSellerId = params.restrictSellerId;
     }
 
     if (search) {
