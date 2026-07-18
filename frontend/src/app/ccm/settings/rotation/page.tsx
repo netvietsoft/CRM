@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 
 interface MsgPage { id: string; externalId: string; name: string | null }
-interface StaffUser { id: string; name: string | null; phone: string | null; role?: string }
+interface StaffUser { id: string; name: string | null; phone: string | null; role?: string; staffPermissions?: string[] | null }
 interface Group { name: string; memberIds: string[]; ratio: number }
 interface StaffRatio { userId: string; ratio: number }
 interface AssignConfig {
@@ -82,6 +82,14 @@ export default function SettingsRotation() {
   useEffect(() => { void loadPage(pageId); }, [pageId, loadPage]);
 
   const dutyStaff = useMemo(() => allStaff.filter((s) => dutyIds.has(s.id)), [allStaff, dutyIds]);
+  // Nguồn chọn cho nhóm/tỷ lệ: NV CÓ QUYỀN vào /ccm/conversations (Tin nhắn CCM trong bảng phân quyền).
+  const ccmStaff = useMemo(
+    () => allStaff.filter((s) => {
+      const p = Array.isArray(s.staffPermissions) ? s.staffPermissions : [];
+      return p.includes('MESSENGER_VIEW') || p.includes('MESSENGER_SEND');
+    }),
+    [allStaff],
+  );
 
   const up = <K extends keyof AssignConfig>(k: K, v: AssignConfig[K]) => setCfg((p) => ({ ...p, [k]: v }));
 
@@ -98,7 +106,14 @@ export default function SettingsRotation() {
     if (!pageId) return;
     setSaving(true); setMsg(null);
     try {
-      await apiClientClient.post('/messenger/assign/staff', { pageId, userIds: [...dutyIds] });
+      // NV được dùng trong nhóm/tỷ lệ tự vào danh sách trực page (union) — khỏi phải tick 2 nơi.
+      const used = new Set<string>([
+        ...dutyIds,
+        ...(mode === 'GROUP' ? groups.flatMap((g) => g.memberIds) : []),
+        ...(mode === 'STAFF' ? ratios.filter((r) => r.ratio > 0).map((r) => r.userId) : []),
+      ]);
+      await apiClientClient.post('/messenger/assign/staff', { pageId, userIds: [...used] });
+      setDutyIds(used);
       await apiClientClient.post('/messenger/assign/settings', { pageId, mode, config: cfg });
       setMsg({ ok: true, text: 'Đã lưu cài đặt chia hội thoại.' });
     } catch (e) {
@@ -129,7 +144,7 @@ export default function SettingsRotation() {
       {/* NV trực page */}
       <div className={card}>
         <div className="text-base font-extrabold">Nhân viên trực page</div>
-        <div className="text-[13px] text-[#6b7280] my-1 mb-3">Chọn NV được trực page này (trả lời tin, lên đơn). Danh sách này là nguồn cho chế độ chia theo nhóm/nhân viên.</div>
+        <div className="text-[13px] text-[#6b7280] my-1 mb-3">Chọn NV được trực page này (trả lời tin, lên đơn). NV được add vào nhóm/bảng tỷ lệ bên dưới sẽ tự vào danh sách này khi Lưu.</div>
         {allStaff.length === 0 ? (
           <div className="text-[13px] text-[#9ca3af]">Chưa có nhân viên — tạo ở Quản trị → Nhân viên.</div>
         ) : (
@@ -200,6 +215,7 @@ export default function SettingsRotation() {
               className="rounded-[10px] bg-[#3c55e6] px-3 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#2f44c4]">＋ Thêm nhóm</button>
           </div>
           <div className="text-[13px] text-[#6b7280] my-1 mb-3">
+            Đặt tên nhóm → bấm chọn NV vào nhóm (danh sách = NV có quyền Tin nhắn CCM) → đặt tỷ lệ %.
             Tin chia xen kẽ theo tỷ lệ (VD 50/30/20: nhóm 1 tin 1, nhóm 2 tin 2, nhóm 3 tin 3, nhóm 1 tin 4…) — không dồn hết suất một nhóm.
             Tổng tỷ lệ hiện tại: <b className={groupSum === 100 ? 'text-[#16a34a]' : 'text-[#dc2626]'}>{groupSum}%</b> (phải bằng 100%).
           </div>
@@ -218,8 +234,12 @@ export default function SettingsRotation() {
                   <button onClick={() => setGroups(groups.filter((_, i) => i !== gi))} className="ml-auto rounded-lg px-2 py-1 text-[#dc2626] hover:bg-[#fee2e2]">🗑 Xoá nhóm</button>
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {dutyStaff.length === 0 && <span className="text-[12px] text-[#9ca3af]">Chọn NV trực page ở khối trên trước.</span>}
-                  {dutyStaff.map((s) => {
+                  {ccmStaff.length === 0 && (
+                    <span className="text-[12px] text-[#9ca3af]">
+                      Chưa có NV nào có quyền Tin nhắn CCM — cấp ở <a href="/admin/staff" className="font-bold underline">Quản trị → Nhân viên → Phân quyền</a> (hàng &quot;Tin nhắn CCM&quot;).
+                    </span>
+                  )}
+                  {ccmStaff.map((s) => {
                     const inG = g.memberIds.includes(s.id);
                     return (
                       <button key={s.id} type="button"
@@ -243,8 +263,10 @@ export default function SettingsRotation() {
           <div className="text-[13px] text-[#6b7280] my-1 mb-3">
             Chia xen kẽ theo tỷ lệ %. Tổng hiện tại: <b className={ratioSum === 100 ? 'text-[#16a34a]' : 'text-[#dc2626]'}>{ratioSum}%</b> (phải bằng 100%).
           </div>
-          {dutyStaff.length === 0 ? (
-            <div className="text-[13px] text-[#9ca3af]">Chọn NV trực page ở khối trên trước.</div>
+          {ccmStaff.length === 0 ? (
+            <div className="text-[13px] text-[#9ca3af]">
+              Chưa có NV nào có quyền Tin nhắn CCM — cấp ở <a href="/admin/staff" className="font-bold underline">Quản trị → Nhân viên → Phân quyền</a> (hàng &quot;Tin nhắn CCM&quot;).
+            </div>
           ) : (
             <table className="w-full max-w-[560px] border-collapse text-[13px]">
               <thead><tr className="bg-[#f8fafc]">
@@ -252,7 +274,7 @@ export default function SettingsRotation() {
                 <th className="w-[120px] px-3 py-2 text-right text-[11.5px] font-bold text-[#374151]">Tỷ lệ %</th>
               </tr></thead>
               <tbody>
-                {dutyStaff.map((s) => {
+                {ccmStaff.map((s) => {
                   const r = ratios.find((x) => x.userId === s.id);
                   return (
                     <tr key={s.id} className="border-t border-[#f1f5f9]">
