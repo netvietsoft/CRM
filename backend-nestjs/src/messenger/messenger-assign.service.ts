@@ -76,7 +76,7 @@ export class MessengerAssignService {
     return rows.map((r) => r.user);
   }
 
-  /** Ghi đè danh sách NV trực page. */
+  /** Ghi đè danh sách NV trực page. NV trực page tự được cấp quyền vào /ccm/conversations (VIEW+SEND). */
   async setPageStaff(pageId: string, userIds: string[]) {
     const clean = [...new Set((userIds || []).filter(Boolean))];
     await this.prisma.$transaction(async (tx) => {
@@ -85,6 +85,20 @@ export class MessengerAssignService {
         await tx.msgPageStaff.createMany({ data: clean.map((userId) => ({ pageId, userId })) });
       }
     });
+    // Auto-grant quyền Tin nhắn CCM cho STAFF trong danh sách còn thiếu (chỉ ADMIN/MOD gọi được route này).
+    if (clean.length) {
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: clean }, role: 'STAFF' },
+        select: { id: true, staffPermissions: true },
+      });
+      for (const u of users) {
+        const perms = new Set(Array.isArray(u.staffPermissions) ? (u.staffPermissions as string[]) : []);
+        if (perms.has('MESSENGER_VIEW') && perms.has('MESSENGER_SEND')) continue;
+        perms.add('MESSENGER_VIEW');
+        perms.add('MESSENGER_SEND');
+        await this.prisma.user.update({ where: { id: u.id }, data: { staffPermissions: [...perms] } });
+      }
+    }
     return { ok: true, count: clean.length };
   }
 

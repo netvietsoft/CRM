@@ -375,6 +375,8 @@ export class AdminService {
         name: true,
         email: true,
         phone: true,
+        avatarUrl: true,
+        staffStoreId: true,
         gender: true,
         dob: true,
         rank: true,
@@ -784,6 +786,38 @@ export class AdminService {
     return { label, start: start ? start.toISOString() : null, end: end ? end.toISOString() : null, rows };
   }
 
+  // Cập nhật hồ sơ nhân viên: tên/email/mật khẩu/avatar (avatar hiển thị khi được phân công hội thoại).
+  async updateStaffProfile(
+    staffId: string,
+    body: { name?: string; email?: string; password?: string; avatarUrl?: string | null },
+    moderatorStoreId?: string,
+  ) {
+    const staff = await this.prisma.user.findUnique({
+      where: { id: staffId },
+      select: { role: true, staffStoreId: true },
+    });
+    if (!staff || staff.role !== 'STAFF') throw new BadRequestException('Staff member not found');
+    if (moderatorStoreId && staff.staffStoreId !== moderatorStoreId) {
+      throw new ForbiddenException('You can only update staff of your own store');
+    }
+    const data: any = {};
+    if (body.name?.trim()) data.name = body.name.trim();
+    if (body.email !== undefined) data.email = body.email?.trim() ? body.email.trim().toLowerCase() : null;
+    if (body.avatarUrl !== undefined) data.avatarUrl = body.avatarUrl || null;
+    if (body.password?.trim()) data.password = await bcrypt.hash(body.password.trim(), 10);
+    const updated = await this.prisma.user.update({
+      where: { id: staffId },
+      data,
+      select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+    // Đồng bộ tên/avatar mới vào các hội thoại NV đang phụ trách (đang lưu snapshot).
+    await this.prisma.msgConversation.updateMany({
+      where: { assignedUserId: staffId },
+      data: { assignedUserName: updated.name || staffId, assignedUserAvatar: updated.avatarUrl },
+    });
+    return updated;
+  }
+
   // Cập nhật bảng quyền nhân viên (matrix Xem/Sửa/Xoá theo module). Chỉ nhận giá trị thuộc enum Permission.
   async updateStaffPermissions(staffId: string, permissions: string[], moderatorStoreId?: string) {
     const staff = await this.prisma.user.findUnique({
@@ -825,7 +859,7 @@ export class AdminService {
   }
 
   async createStaff(dto: CreateStaffDto) {
-    const { name, email, phone, password, storeId } = dto;
+    const { name, email, phone, password, storeId, avatarUrl } = dto;
     const username = dto.username?.trim() || undefined;
 
     if (!storeId) {
@@ -878,6 +912,7 @@ export class AdminService {
         role: 'STAFF',
         staffStoreId: storeId || null,
         staffPermissions,
+        avatarUrl: avatarUrl || null,
         onboardingComplete: true,
         referralCode: await this.generateUniqueReferralCode(),
       },

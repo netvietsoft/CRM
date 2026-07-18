@@ -3,7 +3,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClientClient } from '@/lib/apiClientClient';
-import { User, Lock, Mail, Phone, Check, AlertCircle, Loader2, UserPlus, Eye, EyeOff, ArrowLeft, Store, AtSign } from 'lucide-react';
+import { deleteFromR2, uploadToR2 } from '@/lib/uploadR2';
+import { User, Lock, Mail, Phone, Check, AlertCircle, Loader2, UserPlus, Eye, EyeOff, ArrowLeft, Store, AtSign, Camera, X } from 'lucide-react';
 
 interface StoreSummary {
   id: string;
@@ -21,6 +22,7 @@ interface StaffAssignUserDetail {
   name?: string | null;
   phone?: string | null;
   email?: string | null;
+  avatarUrl?: string | null;
   staffStoreId?: string | null;
 }
 
@@ -73,6 +75,8 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState<string>(() => getInitialStoreId(currentUser, stores));
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -91,6 +95,7 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
             username: '',
             password: ''
           });
+          setAvatarUrl(user.avatarUrl || '');
           if (user.staffStoreId) setSelectedStoreId(user.staffStoreId);
         } catch {
           setError('Không tìm thấy thông tin người dùng');
@@ -124,9 +129,17 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
           userId: editUserId,
           storeId: storeIdToUse
         });
+        // Lưu hồ sơ (tên/email/mật khẩu nếu nhập/avatar) — trước đây edit chỉ lưu store.
+        await apiClientClient.post(`/admin/staff/${editUserId}/profile`, {
+          name: formData.name,
+          email: formData.email,
+          ...(formData.password ? { password: formData.password } : {}),
+          avatarUrl: avatarUrl || null,
+        });
       } else {
         await apiClientClient.post('/admin/staff', {
           ...formData,
+          avatarUrl: avatarUrl || undefined,
           storeId: storeIdToUse
         });
       }
@@ -255,6 +268,49 @@ export default function StaffAssignForm({ stores, currentUser }: { stores: Store
             />
           </div>
           <div className="px-8 py-4 space-y-4">
+
+            {/* Avatar NV — hiển thị trên hội thoại khi được phân công */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider ml-1">Ảnh đại diện</label>
+              <div className="flex items-center gap-4">
+                <div className="relative h-16 w-16 shrink-0">
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatarUrl} alt="avatar" className="h-16 w-16 rounded-full border border-[#e5e7eb] object-cover" />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#2563eb] text-xl font-bold text-white">
+                      {(formData.name.trim().charAt(0) || '?').toUpperCase()}
+                    </div>
+                  )}
+                  {avatarUrl && (
+                    <button type="button" aria-label="Xóa ảnh"
+                      onClick={() => { void deleteFromR2(avatarUrl); setAvatarUrl(''); }}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-white bg-[#fee2e2] text-[#dc2626] shadow hover:bg-[#fecaca]">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <label className={`flex cursor-pointer items-center gap-2 rounded-[10px] border border-dashed border-[#c7ced9] px-4 py-2.5 text-[13px] font-semibold text-[#4b5563] transition-colors hover:border-[#2563eb] hover:text-[#2563eb] ${avatarUploading ? 'opacity-60 cursor-wait' : ''}`}>
+                  <Camera size={16} />
+                  {avatarUploading ? 'Đang tải lên…' : avatarUrl ? 'Đổi ảnh' : 'Tải ảnh lên'}
+                  <input type="file" accept="image/*" className="hidden" disabled={avatarUploading}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      if (f.size > 20 * 1024 * 1024) { setError('Ảnh tối đa 20MB'); return; }
+                      setAvatarUploading(true); setError(null);
+                      try {
+                        const { url } = await uploadToR2(f, 'images');
+                        if (avatarUrl) void deleteFromR2(avatarUrl);
+                        setAvatarUrl(url);
+                      } catch (err) { setError(err instanceof Error ? err.message : 'Upload ảnh thất bại'); }
+                      finally { setAvatarUploading(false); }
+                    }} />
+                </label>
+                <p className="text-[11px] text-[#9ca3af]">Hiển thị kèm tên NV trên hội thoại khi được phân công.</p>
+              </div>
+            </div>
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider ml-1">Họ và tên</label>

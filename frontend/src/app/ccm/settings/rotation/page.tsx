@@ -92,14 +92,11 @@ export default function SettingsRotation() {
   useEffect(() => { void loadPage(pageId); }, [pageId, loadPage]);
 
   const dutyStaff = useMemo(() => allStaff.filter((s) => dutyIds.has(s.id)), [allStaff, dutyIds]);
-  // Nguồn chọn cho nhóm/tỷ lệ: NV CÓ QUYỀN vào /ccm/conversations (Tin nhắn CCM trong bảng phân quyền).
-  const ccmStaff = useMemo(
-    () => allStaff.filter((s) => {
-      const p = Array.isArray(s.staffPermissions) ? s.staffPermissions : [];
-      return p.includes('MESSENGER_VIEW') || p.includes('MESSENGER_SEND');
-    }),
-    [allStaff],
-  );
+  // NV đã có quyền vào /ccm/conversations — NV chưa có sẽ được TỰ CẤP khi lưu (BE auto-grant).
+  const hasCcm = (s: StaffUser) => {
+    const p = Array.isArray(s.staffPermissions) ? s.staffPermissions : [];
+    return p.includes('MESSENGER_VIEW') || p.includes('MESSENGER_SEND');
+  };
 
   const up = <K extends keyof AssignConfig>(k: K, v: AssignConfig[K]) => { setDirty(true); setCfg((p) => ({ ...p, [k]: v })); };
 
@@ -149,25 +146,23 @@ export default function SettingsRotation() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px]">Chia hội thoại (trực page)</h1>
-        <div className="flex items-center gap-3">
-          <select value={pageId}
-            onChange={(e) => {
-              if (dirty && !window.confirm('Cài đặt page hiện tại CHƯA LƯU — đổi page sẽ mất thay đổi. Tiếp tục?')) return;
-              setPageId(e.target.value);
-            }}
-            className="rounded-[10px] border border-[#c7ced9] bg-white px-3 py-2 text-[13px] font-semibold outline-none">
-            {pages.map((p) => <option key={p.id} value={p.id}>{p.name || p.externalId}</option>)}
-          </select>
-          <button onClick={() => void save()} disabled={saving || !pageId}
-            className={`px-[18px] py-2.5 border-none rounded-[11px] text-white text-[13.5px] font-bold cursor-pointer disabled:opacity-50 ${dirty ? 'bg-[#dc2626] hover:bg-[#b91c1c] animate-pulse' : 'bg-[#4f68ee] hover:bg-[#3c55e6]'}`}>
-            {saving ? 'Đang lưu…' : dirty ? '⚠ Lưu thay đổi' : '💾 Lưu cài đặt'}
-          </button>
-        </div>
-      </div>
+      <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px]">Chia hội thoại (trực page)</h1>
       {msg && <div className={`rounded-[10px] border px-4 py-2.5 text-[13px] ${msg.ok ? 'border-[#a7f3d0] bg-[#d1fae5] text-[#047857]' : 'border-[#fecaca] bg-[#fee2e2] text-[#dc2626]'}`}>{msg.text}</div>}
       {pages.length === 0 && <div className={`${card} text-center text-[13px] text-[#9ca3af]`}>Chưa có page nào — kết nối fanpage ở mục Tích hợp trước.</div>}
+
+      {/* Chọn Page — đặt trên cùng, mọi cài đặt bên dưới là của page này */}
+      <div className={card}>
+        <div className="text-base font-extrabold">Chọn Page</div>
+        <div className="text-[13px] text-[#6b7280] my-1 mb-3">Mọi cài đặt bên dưới áp cho page được chọn.</div>
+        <select value={pageId}
+          onChange={(e) => {
+            if (dirty && !window.confirm('Cài đặt page hiện tại CHƯA LƯU — đổi page sẽ mất thay đổi. Tiếp tục?')) return;
+            setPageId(e.target.value);
+          }}
+          className="w-full max-w-[420px] rounded-[10px] border border-[#c7ced9] bg-white px-3 py-2.5 text-[14px] font-semibold outline-none">
+          {pages.map((p) => <option key={p.id} value={p.id}>{p.name || p.externalId}</option>)}
+        </select>
+      </div>
 
       {/* NV trực page */}
       <div className={card}>
@@ -243,7 +238,7 @@ export default function SettingsRotation() {
               className="rounded-[10px] bg-[#3c55e6] px-3 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#2f44c4]">＋ Thêm nhóm</button>
           </div>
           <div className="text-[13px] text-[#6b7280] my-1 mb-3">
-            Đặt tên nhóm → bấm chọn NV vào nhóm (danh sách = NV có quyền Tin nhắn CCM) → đặt tỷ lệ %.
+            Đặt tên nhóm → bấm chọn NV vào nhóm → đặt tỷ lệ %. NV chưa có quyền Tin nhắn CCM (🔓) sẽ tự được cấp khi Lưu.
             Tin chia xen kẽ theo tỷ lệ (VD 50/30/20: nhóm 1 tin 1, nhóm 2 tin 2, nhóm 3 tin 3, nhóm 1 tin 4…) — không dồn hết suất một nhóm.
             Tổng tỷ lệ hiện tại: <b className={groupSum === 100 ? 'text-[#16a34a]' : 'text-[#dc2626]'}>{groupSum}%</b> (phải bằng 100%).
           </div>
@@ -262,18 +257,19 @@ export default function SettingsRotation() {
                   <button onClick={() => setGroups(groups.filter((_, i) => i !== gi))} className="ml-auto rounded-lg px-2 py-1 text-[#dc2626] hover:bg-[#fee2e2]">🗑 Xoá nhóm</button>
                 </div>
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {ccmStaff.length === 0 && (
+                  {allStaff.length === 0 && (
                     <span className="text-[12px] text-[#9ca3af]">
-                      Chưa có NV nào có quyền Tin nhắn CCM — cấp ở <a href="/admin/staff" className="font-bold underline">Quản trị → Nhân viên → Phân quyền</a> (hàng &quot;Tin nhắn CCM&quot;).
+                      Chưa có nhân viên — tạo ở <a href="/admin/staff" className="font-bold underline">Quản trị → Nhân viên</a>.
                     </span>
                   )}
-                  {ccmStaff.map((s) => {
+                  {allStaff.map((s) => {
                     const inG = g.memberIds.includes(s.id);
                     return (
                       <button key={s.id} type="button"
                         onClick={() => setGroups(groups.map((x, i) => (i === gi ? { ...x, memberIds: inG ? x.memberIds.filter((id) => id !== s.id) : [...x.memberIds, s.id] } : x)))}
-                        className={`rounded-full px-3 py-1 text-[12px] font-semibold ${inG ? 'bg-[#16a34a] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}>
-                        {inG ? '✓ ' : ''}{s.name || s.phone}
+                        className={`rounded-full px-3 py-1 text-[12px] font-semibold ${inG ? 'bg-[#16a34a] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}
+                        title={hasCcm(s) ? undefined : 'NV chưa có quyền Tin nhắn CCM — sẽ tự được cấp khi Lưu'}>
+                        {inG ? '✓ ' : ''}{s.name || s.phone}{!hasCcm(s) && ' 🔓'}
                       </button>
                     );
                   })}
@@ -291,9 +287,9 @@ export default function SettingsRotation() {
           <div className="text-[13px] text-[#6b7280] my-1 mb-3">
             Chia xen kẽ theo tỷ lệ %. Tổng hiện tại: <b className={ratioSum === 100 ? 'text-[#16a34a]' : 'text-[#dc2626]'}>{ratioSum}%</b> (phải bằng 100%).
           </div>
-          {ccmStaff.length === 0 ? (
+          {allStaff.length === 0 ? (
             <div className="text-[13px] text-[#9ca3af]">
-              Chưa có NV nào có quyền Tin nhắn CCM — cấp ở <a href="/admin/staff" className="font-bold underline">Quản trị → Nhân viên → Phân quyền</a> (hàng &quot;Tin nhắn CCM&quot;).
+              Chưa có nhân viên — tạo ở <a href="/admin/staff" className="font-bold underline">Quản trị → Nhân viên</a>.
             </div>
           ) : (
             <table className="w-full max-w-[560px] border-collapse text-[13px]">
@@ -302,11 +298,14 @@ export default function SettingsRotation() {
                 <th className="w-[120px] px-3 py-2 text-right text-[11.5px] font-bold text-[#374151]">Tỷ lệ %</th>
               </tr></thead>
               <tbody>
-                {ccmStaff.map((s) => {
+                {allStaff.map((s) => {
                   const r = ratios.find((x) => x.userId === s.id);
                   return (
                     <tr key={s.id} className="border-t border-[#f1f5f9]">
-                      <td className="px-3 py-2 font-semibold">{s.name || s.phone}</td>
+                      <td className="px-3 py-2 font-semibold">
+                        {s.name || s.phone}
+                        {!hasCcm(s) && <span className="ml-1.5 text-[11px] font-normal text-[#b45309]" title="Sẽ tự được cấp quyền Tin nhắn CCM khi Lưu">🔓 tự cấp quyền CCM khi lưu</span>}
+                      </td>
                       <td className="px-3 py-2 text-right">
                         <input type="number" min={0} max={100} value={r?.ratio ?? 0}
                           onChange={(e) => {
@@ -430,6 +429,19 @@ export default function SettingsRotation() {
           </div>
         </div>
       )}
+
+      {/* Thanh Lưu sticky dưới chân — luôn thấy, đổi đỏ khi có thay đổi chưa lưu */}
+      <div className="sticky bottom-0 z-20 -mx-[30px] border-t border-[#e6e9f2] bg-white/95 px-[30px] py-3 backdrop-blur">
+        <div className="flex max-w-[1000px] items-center justify-between gap-3">
+          <span className={`text-[12.5px] ${dirty ? 'font-semibold text-[#dc2626]' : 'text-[#9ca3af]'}`}>
+            {dirty ? '⚠ Có thay đổi chưa lưu' : 'Mọi thay đổi đã được lưu'}
+          </span>
+          <button onClick={() => void save()} disabled={saving || !pageId}
+            className={`px-[22px] py-2.5 border-none rounded-[11px] text-white text-[13.5px] font-bold cursor-pointer disabled:opacity-50 ${dirty ? 'bg-[#dc2626] hover:bg-[#b91c1c] animate-pulse' : 'bg-[#4f68ee] hover:bg-[#3c55e6]'}`}>
+            {saving ? 'Đang lưu…' : dirty ? '⚠ Lưu thay đổi' : '💾 Lưu cài đặt'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

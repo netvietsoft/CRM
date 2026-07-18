@@ -31,6 +31,11 @@ export class CreateStaffDto {
   @IsOptional()
   storeId?: string;
 
+  @ApiProperty({ required: false, description: 'Ảnh đại diện NV — hiển thị khi được phân công hội thoại' })
+  @IsString()
+  @IsOptional()
+  avatarUrl?: string;
+
   @ApiProperty({ type: [String], required: false })
   @IsArray()
   @IsOptional()

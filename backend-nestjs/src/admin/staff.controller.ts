@@ -88,6 +88,19 @@ export class StaffController {
     return this.adminService.getStoreStaff(effectiveStoreId);
   }
 
+  // Cập nhật hồ sơ NV (tên/email/mật khẩu/avatar) — avatar hiện khi được phân công hội thoại.
+  @Post(':id/profile')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Update staff profile (name/email/password/avatar)' })
+  async updateProfile(
+    @GetUser() user: any,
+    @Param('id') staffId: string,
+    @Body() body: { name?: string; email?: string; password?: string; avatarUrl?: string | null },
+  ) {
+    const storeId = user.role === 'MODERATOR' ? user.store?.id : undefined;
+    return this.adminService.updateStaffProfile(staffId, body || {}, storeId);
+  }
+
   // Bảng quyền nhân viên: ghi đè danh sách staffPermissions (matrix Xem/Sửa/Xoá theo module).
   @Post(':id/permissions')
   @Roles('ADMIN', 'MODERATOR')
