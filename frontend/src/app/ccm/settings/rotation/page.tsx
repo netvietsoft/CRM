@@ -430,17 +430,12 @@ export default function SettingsRotation() {
         </div>
       )}
 
-      {/* Thanh Lưu sticky dưới chân — luôn thấy, đổi đỏ khi có thay đổi chưa lưu */}
-      <div className="sticky bottom-0 z-20 -mx-[30px] border-t border-[#e6e9f2] bg-white/95 px-[30px] py-3 backdrop-blur">
-        <div className="flex max-w-[1000px] items-center justify-between gap-3">
-          <span className={`text-[12.5px] ${dirty ? 'font-semibold text-[#dc2626]' : 'text-[#9ca3af]'}`}>
-            {dirty ? '⚠ Có thay đổi chưa lưu' : 'Mọi thay đổi đã được lưu'}
-          </span>
-          <button onClick={() => void save()} disabled={saving || !pageId}
-            className={`px-[22px] py-2.5 border-none rounded-[11px] text-white text-[13.5px] font-bold cursor-pointer disabled:opacity-50 ${dirty ? 'bg-[#dc2626] hover:bg-[#b91c1c] animate-pulse' : 'bg-[#4f68ee] hover:bg-[#3c55e6]'}`}>
-            {saving ? 'Đang lưu…' : dirty ? '⚠ Lưu thay đổi' : '💾 Lưu cài đặt'}
-          </button>
-        </div>
+      {/* Nút Lưu nổi sticky dưới chân — chỉ mỗi button, không dải nền */}
+      <div className="pointer-events-none sticky bottom-4 z-20 flex max-w-[1000px] justify-end">
+        <button onClick={() => void save()} disabled={saving || !pageId}
+          className={`pointer-events-auto px-[22px] py-2.5 border-none rounded-[11px] text-white text-[13.5px] font-bold cursor-pointer shadow-lg disabled:opacity-50 ${dirty ? 'bg-[#dc2626] hover:bg-[#b91c1c] animate-pulse' : 'bg-[#4f68ee] hover:bg-[#3c55e6]'}`}>
+          {saving ? 'Đang lưu…' : dirty ? '⚠ Lưu thay đổi' : '💾 Lưu cài đặt'}
+        </button>
       </div>
     </div>
   );
