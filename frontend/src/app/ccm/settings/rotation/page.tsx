@@ -53,6 +53,15 @@ export default function SettingsRotation() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [dirty, setDirty] = useState(false); // có thay đổi chưa lưu
+
+  // Rời trang khi chưa lưu → trình duyệt cảnh báo.
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
 
   // Nạp pages + toàn bộ NV (STAFF) 1 lần.
   useEffect(() => {
@@ -77,6 +86,7 @@ export default function SettingsRotation() {
       setMode(settings.mode || 'OFF');
       setCfg(settings.config || {});
       setDutyIds(new Set(duty.map((u) => u.id)));
+      setDirty(false);
     } catch { /* giữ mặc định */ }
   }, []);
   useEffect(() => { void loadPage(pageId); }, [pageId, loadPage]);
@@ -91,7 +101,7 @@ export default function SettingsRotation() {
     [allStaff],
   );
 
-  const up = <K extends keyof AssignConfig>(k: K, v: AssignConfig[K]) => setCfg((p) => ({ ...p, [k]: v }));
+  const up = <K extends keyof AssignConfig>(k: K, v: AssignConfig[K]) => { setDirty(true); setCfg((p) => ({ ...p, [k]: v })); };
 
   // ----- nhóm -----
   const groups = cfg.groups || [];
@@ -104,6 +114,17 @@ export default function SettingsRotation() {
 
   const save = async () => {
     if (!pageId) return;
+    // Chặn sớm với thông báo alert RÕ (banner đầu trang dễ bị bỏ qua → tưởng đã lưu).
+    if (mode === 'GROUP') {
+      if (!groups.length) { alert('Chưa có nhóm nào — bấm ＋ Thêm nhóm trước khi lưu.'); return; }
+      const empty = groups.filter((g) => !g.memberIds.length);
+      if (empty.length) { alert(`Nhóm chưa có nhân viên: ${empty.map((g) => g.name).join(', ')}.\nMỗi nhóm cần ít nhất 1 NV (NV phải có quyền Tin nhắn CCM).`); return; }
+      if (groupSum !== 100) { alert(`Tổng tỷ lệ các nhóm đang ${groupSum}% — phải đúng 100% mới lưu được.`); return; }
+    }
+    if (mode === 'STAFF') {
+      if (!ratios.filter((r) => r.ratio > 0).length) { alert('Chưa đặt tỷ lệ % cho nhân viên nào.'); return; }
+      if (ratioSum !== 100) { alert(`Tổng tỷ lệ nhân viên đang ${ratioSum}% — phải đúng 100% mới lưu được.`); return; }
+    }
     setSaving(true); setMsg(null);
     try {
       // NV được dùng trong nhóm/tỷ lệ tự vào danh sách trực page (union) — khỏi phải tick 2 nơi.
@@ -116,8 +137,11 @@ export default function SettingsRotation() {
       setDutyIds(used);
       await apiClientClient.post('/messenger/assign/settings', { pageId, mode, config: cfg });
       setMsg({ ok: true, text: 'Đã lưu cài đặt chia hội thoại.' });
+      setDirty(false);
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Lưu thất bại' });
+      const text = e instanceof Error ? e.message : 'Lưu thất bại';
+      setMsg({ ok: false, text });
+      alert(`Lưu thất bại: ${text}`); // alert để không bị bỏ sót banner
     } finally { setSaving(false); }
   };
 
@@ -128,13 +152,17 @@ export default function SettingsRotation() {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="m-0 text-2xl font-extrabold tracking-[-0.4px]">Chia hội thoại (trực page)</h1>
         <div className="flex items-center gap-3">
-          <select value={pageId} onChange={(e) => setPageId(e.target.value)}
+          <select value={pageId}
+            onChange={(e) => {
+              if (dirty && !window.confirm('Cài đặt page hiện tại CHƯA LƯU — đổi page sẽ mất thay đổi. Tiếp tục?')) return;
+              setPageId(e.target.value);
+            }}
             className="rounded-[10px] border border-[#c7ced9] bg-white px-3 py-2 text-[13px] font-semibold outline-none">
             {pages.map((p) => <option key={p.id} value={p.id}>{p.name || p.externalId}</option>)}
           </select>
           <button onClick={() => void save()} disabled={saving || !pageId}
-            className="px-[18px] py-2.5 border-none rounded-[11px] bg-[#4f68ee] text-white text-[13.5px] font-bold cursor-pointer hover:bg-[#3c55e6] disabled:opacity-50">
-            {saving ? 'Đang lưu…' : '💾 Lưu cài đặt'}
+            className={`px-[18px] py-2.5 border-none rounded-[11px] text-white text-[13.5px] font-bold cursor-pointer disabled:opacity-50 ${dirty ? 'bg-[#dc2626] hover:bg-[#b91c1c] animate-pulse' : 'bg-[#4f68ee] hover:bg-[#3c55e6]'}`}>
+            {saving ? 'Đang lưu…' : dirty ? '⚠ Lưu thay đổi' : '💾 Lưu cài đặt'}
           </button>
         </div>
       </div>
@@ -153,7 +181,7 @@ export default function SettingsRotation() {
               const on = dutyIds.has(s.id);
               return (
                 <button key={s.id} type="button"
-                  onClick={() => setDutyIds((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; })}
+                  onClick={() => { setDirty(true); setDutyIds((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; }); }}
                   className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${on ? 'bg-[#3c55e6] text-white' : 'bg-[#f1f5f9] text-[#4b5563] hover:bg-[#e5e7eb]'}`}>
                   {on ? '✓ ' : ''}{s.name || s.phone}
                 </button>
@@ -171,7 +199,7 @@ export default function SettingsRotation() {
           {MODES.map((m) => {
             const active = mode === m.key;
             return (
-              <div key={m.key} onClick={() => setMode(m.key)}
+              <div key={m.key} onClick={() => { setMode(m.key); setDirty(true); }}
                 className={`px-4 py-3.5 rounded-xl border cursor-pointer hover:border-[#c7d2fe] ${active ? 'border-[#3c55e6] bg-[#e9efff]' : 'border-[#e6e9f2]'}`}>
                 <div className="flex items-center gap-2.5">
                   <span className="text-[18px]">{m.icon}</span>
