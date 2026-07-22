@@ -424,7 +424,15 @@ export class MessengerService {
       throw new BadRequestException('Ngoài cửa sổ 24h — không thể nhắn chủ động cho khách này.');
     }
 
-    const r = await this.client.sendMessage(conv.page.accessToken, conv.contact.psid, p);
+    // Lỗi Meta Send API phải HIỆN RA lý do thật (trước đây thành 500 'Internal server error' vô nghĩa).
+    let r: { message_id: string };
+    try {
+      r = await this.client.sendMessage(conv.page.accessToken, conv.contact.psid, p);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Send API từ chối (conv ${convId}): ${reason}`);
+      throw new BadRequestException(`Meta từ chối gửi tin: ${reason}`);
+    }
     await this.prisma.msgMessage.create({
       data: {
         conversationId: convId, mid: r.message_id, direction: 'OUT', text: p.text ?? null,
