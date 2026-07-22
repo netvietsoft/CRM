@@ -367,6 +367,15 @@ export default function IntegrationsPage() {
 
               {['WHATSAPP'].includes(activePlatform) && (
                 <>
+                  {/* Lối vào trang đầy đủ: xác minh WABA + danh sách số + gửi tin test */}
+                  <button
+                    type="button"
+                    onClick={() => { setIsModalOpen(false); router.push('/admin/integrations/whatsapp'); }}
+                    className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-green-50 hover:bg-green-100 border border-green-100 transition-colors"
+                  >
+                    <span className="text-sm font-semibold text-green-700">🟢 Trang kết nối đầy đủ — xác minh WABA · số điện thoại · gửi tin test</span>
+                    <span className="text-green-500">→</span>
+                  </button>
                   <div className="rounded-xl border border-green-100 bg-green-50 p-3 text-xs text-green-800">
                     Token cần các quyền: <b>whatsapp_business_management</b> (quản lý WABA) + <b>whatsapp_business_messaging</b> (gửi/nhận tin).
                     Lấy ở App Meta → API Setup của WhatsApp, hoặc System User token trong Business Settings.
