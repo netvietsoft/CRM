@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-07-22 — APP META LIVE: webhook 33 page + chuỗi sự cố gửi tin/avatar/quota + phân quyền PAGE + WhatsApp
+
+> Mới nhất `5ba7f40`. **1 MIGRATION mới**: `20260722100000_msg_page_staff_access` (cột `access` FULL|VIEW). Deploy FE luôn `rm -rf .next`.
+
+**App Meta được XÁC MINH → Live — bật realtime toàn bộ:**
+- Chỉ 3/33 page bật webhook → subscribe đủ **33/33** qua API. Tin khách THẬT bắt đầu đổ về (Dev mode trước đó chỉ nhận tin admin/tester — vì thế "15/07 là tin cuối").
+- Chuỗi sự cố realtime đã xử: (1) `handleMessaging` AWAIT enrich (Graph treo 30-60s) TRƯỚC emit socket → emit TRƯỚC, enrich chạy nền (`3a8e58c`); (2) webhook chờ xử lý xong mới ACK → Meta timeout→retry/backoff → **ACK ngay, ingest nền** (idempotent theo mid); (3) FE thêm **poll nền 12s** làm lưới an toàn (`b89b1ae`). ĐO THẬT: Meta→DB **0.0 giây**; socket nhận event OK; phiên 20' qua mốc token 15' tự refresh, 100% call 200. Máy user còn chậm = extension trình duyệt (MetaMask chiếm console) — test Ẩn danh.
+- **Avatar khách không lấy được + CRM không gửi được tin cho khách thật — MỘT nguyên nhân**: quyền mới ở mức Standard Access. Lỗi thật (sau khi bỏ nuốt lỗi `833d621`/`c3ba690`): profile = "missing permissions", send = **(#230) Requires pages_messaging permission**. Việc user: App Review xin Advanced Access `pages_messaging` + `pages_show_list` + `pages_read_engagement` + `pages_manage_metadata` + **Business Asset User Profile Access** (KHÔNG xin paid_marketing/utility/marketing_messages — chưa có tính năng, không quay được video). Đã tạo API-usage: register 33 page, 30 subscribe, ~200 profile call, các call Send API. Tạm thời trả lời khách qua Business Suite (echo vẫn về CRM); gửi cho admin/tester từ CRM vẫn OK (chất liệu quay video).
+- **Sự cố quota (#4)**: token Marketing API mới (đã lưu vào META_ADS, sync chạy, số liệu cập nhật) → sync đầu nuốt quota app (đo 127%) → Messenger vạ lây vì CHUNG app. Fix `849369f`: MetaAdsClient đọc `x-app-usage`, ≥75% nghỉ 5', dính (#4) nghỉ 10', giãn 300ms/call — Ads nhường quota cho tin nhắn.
+
+**Phân quyền NV theo PAGE (`4009bdf`→`51bb881`, MIGRATION):**
+- Bảng "Phân quyền theo Page" ở /ccm/settings/permissions: ID Page·Tên Page·ID NV·Tên NV + tick **Truy cập đầy đủ / Chỉ xem** (lưu ngay; gỡ = 🗑; gán mới page+NV). VIEW = đọc được nhưng gửi tin bị 403 (chặn cả API); gán là tự cấp quyền inbox.
+- Fix chuỗi "gán rồi không thấy page": msg_pages có storeId=null mà STAFF scope theo store → STAFF giờ thấy page/hội thoại **theo bảng gán page**; mở thread hết 403 (chỉ chặn khi page có store KHÁC store NV). setPageStaff (rotation) giữ access đã đặt.
+
+**CCM UX (`b89b1ae`, `63e5bea`, `9a21dc5`):** poll nền 12s; nhớ page mặc định (localStorage); tab title "(N) CCM" luân phiên nội dung tin + favicon chấm đỏ số tin chưa đọc; click ảnh → lightbox zoom; nút ↩ reply trích dẫn (tin ảnh → hiện thumbnail + GỬI LẠI file ảnh khi trả lời); SĐT bắt buộc (sao đỏ + viền đỏ) ở panel Tạo đơn; chuông chỉ kêu tin ĐẾN.
+
+**WhatsApp Business (`66c5bb9`, `5ba7f40`):** card WHATSAPP ở /admin/integrations + trang đầy đủ `/admin/integrations/whatsapp`: lưu token (che khi đã lưu) + WABA ID + Phone Number ID → **Lưu & xác minh** (Graph trả tên WABA + bảng số điện thoại) + **gửi tin test hello_world** — sinh API-usage cho `whatsapp_business_management`/`whatsapp_business_messaging` + chất liệu quay video App Review. Lưu ở StoreIntegration(WHATSAPP), không migration.
+
+**Việc treo:** (1) **nộp App Review** (quyền như trên, video theo hướng dẫn); được duyệt → test gửi khách thật + chạy `POST /messenger/contacts/enrich` đổ avatar; (2) token VTP chính **hết hạn hôm nay 22/7 09:47Z** — dán token mới (SystemConfig VIETTEL_WEB_TOKEN) không thì cron 15' và COD ngừng; (3) pm2 resurrect + `pm2 startup` (nếu chưa); (4) TK VTP phụ vẫn 0.
+
+---
+
 ## 2026-07-18 — NHÂN VIÊN/PHÂN QUYỀN/CHIA HỘI THOẠI + VTP hoàn-huỷ/blacklist + cron 15' + avatar
 
 > Mới nhất `9b4822f`. **2 MIGRATION mới**: `20260718080000_msg_assign` + `20260718150000_vtp_return_check` — deploy phải `npx prisma migrate deploy && npx prisma generate` trước build BE. **Deploy FE luôn `rm -rf .next` trước `yarn build`** (xem sự cố ChunkLoadError bên dưới).
