@@ -70,8 +70,8 @@ export class MessengerController {
   @Get('pages')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_VIEW)
-  pages(@GetEffectiveStoreId() storeId: string | null) {
-    return this.service.listPages(storeId);
+  pages(@GetEffectiveStoreId() storeId: string | null, @GetUser() user: { id: string; role?: string }) {
+    return this.service.listPages(storeId, user);
   }
 
   @Get('stats')

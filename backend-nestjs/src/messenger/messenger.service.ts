@@ -155,9 +155,17 @@ export class MessengerService {
     return effectiveStoreId ? { storeId: effectiveStoreId } : {};
   }
 
-  listPages(effectiveStoreId: string | null) {
+  /** STAFF được gán page (msg_page_staff) → CHỈ thấy các page đó; chưa gán page nào → theo scope store như cũ. */
+  private async staffAssignedPageIds(user?: { id: string; role?: string }): Promise<string[] | null> {
+    if (user?.role !== 'STAFF') return null;
+    const rows = await this.prisma.msgPageStaff.findMany({ where: { userId: user.id }, select: { pageId: true } });
+    return rows.length ? rows.map((r) => r.pageId) : null;
+  }
+
+  async listPages(effectiveStoreId: string | null, user?: { id: string; role?: string }) {
+    const assigned = await this.staffAssignedPageIds(user);
     return this.prisma.msgPage.findMany({
-      where: this.pageScope(effectiveStoreId),
+      where: assigned ? { id: { in: assigned } } : this.pageScope(effectiveStoreId),
       orderBy: { name: 'asc' },
       select: { id: true, externalId: true, name: true, subscribed: true, storeId: true, lastSyncedAt: true },
     });
@@ -172,10 +180,14 @@ export class MessengerService {
         visibility = (await assign?.staffVisibilityWhere(user.id)) || null;
       } catch { /* assign module chưa sẵn sàng */ }
     }
+    // STAFF được gán page → chỉ thấy hội thoại các page đó (kể cả khi lọc pageId ngoài danh sách → rỗng).
+    const assigned = await this.staffAssignedPageIds(user);
+    const pageCond: Record<string, unknown> = assigned
+      ? { pageId: pageId ? (assigned.includes(pageId) ? pageId : '__none__') : { in: assigned } }
+      : { ...(pageId ? { pageId } : {}), page: this.pageScope(effectiveStoreId) };
     return this.prisma.msgConversation.findMany({
       where: {
-        ...(pageId ? { pageId } : {}),
-        page: this.pageScope(effectiveStoreId),
+        ...pageCond,
         ...(q ? { contact: { name: { contains: q } } } : {}),
         ...(visibility ? { AND: [visibility] } : {}),
       },
