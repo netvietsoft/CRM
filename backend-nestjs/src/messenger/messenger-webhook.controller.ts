@@ -37,7 +37,9 @@ export class MessengerWebhookController {
     if (!verifySignature(process.env.META_APP_SECRET || '', raw, sig)) {
       throw new ForbiddenException('Invalid signature');
     }
-    await this.service.ingestEvent(body);
+    // ACK Meta NGAY rồi xử lý nền — chờ xử lý xong (enrich có thể chậm) làm Meta timeout → retry/backoff
+    // → sự kiện về trễ hàng phút (tin đến "mất realtime"). Idempotent theo mid nên retry không sinh trùng.
+    void this.service.ingestEvent(body).catch(() => {});
     return 'EVENT_RECEIVED';
   }
 }

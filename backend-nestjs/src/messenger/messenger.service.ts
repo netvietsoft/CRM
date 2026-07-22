@@ -85,13 +85,19 @@ export class MessengerService {
       },
     });
 
-    if (!contact.name || !contact.avatarUrl) await this.enrichContact(page, contact.id, psid);
-    // Trích SĐT khách tự cung cấp trong tin đến (nếu contact chưa có).
+    // Trích SĐT khách tự cung cấp trong tin đến (nếu contact chưa có) — rẻ (regex + 1 update), giữ trước emit.
     if (direction === 'IN' && text && !(contact as { phone?: string }).phone) {
       const phone = extractPhone(text);
       if (phone) await this.prisma.msgContact.update({ where: { id: contact.id }, data: { phone } });
     }
+    // EMIT TRƯỚC — realtime không được chờ enrich (getProfile có thể treo 30-60s khi Graph lỗi/timeout,
+    // từng làm tin ĐẾN hiện trễ cả phút). Enrich avatar/tên chạy NỀN sau.
     this.gateway.emitMessengerMessage({ conversationId: conv.id, storeId: page.storeId, direction });
+    if (!contact.name || !contact.avatarUrl) {
+      void this.enrichContact(page, contact.id, psid)
+        .then(() => this.gateway.emitMessengerMessage({ conversationId: conv.id, storeId: page.storeId, direction: 'ENRICH' }))
+        .catch(() => {});
+    }
     if (direction === 'IN') {
       // Chia hội thoại cho NV trực page (nếu chưa ai phụ trách) — best-effort, không chặn luồng.
       try {
