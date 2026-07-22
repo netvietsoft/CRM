@@ -82,9 +82,9 @@ export function useMessengerChat() {
       },
     });
     socket.on('messenger:message', (p: { conversationId: string; direction?: string }) => {
-      // Phát âm thông báo khi có TIN ĐẾN (bỏ qua tin mình gửi đi). Bật/tắt ở Cài đặt chung.
+      // Phát âm thông báo CHỈ khi có TIN ĐẾN (không kêu cho tin gửi đi / event ENRICH avatar / ASSIGN).
       const pr = getPrefs();
-      if (pr.sound && p.direction !== 'OUT') void playSound(pr.newMsgSound);
+      if (pr.sound && p.direction === 'IN') void playSound(pr.newMsgSound);
       void loadConversations();
       if (p.conversationId === activeIdRef.current) {
         void apiClientClient.get<Message[]>(`/messenger/conversations/${p.conversationId}/messages`).then(setMessages).catch(() => {});
