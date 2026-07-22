@@ -379,7 +379,12 @@ export class MessengerService {
       include: { page: true, contact: true },
     });
     if (!conv) throw new NotFoundException('Không tìm thấy hội thoại');
-    if (effectiveStoreId && conv.page.storeId !== effectiveStoreId) throw new ForbiddenException('Ngoài phạm vi cửa hàng');
+    // Chỉ chặn khi page CÓ gắn store và khác store của NV. Page storeId=null (đăng ký qua OAuth,
+    // chưa gắn store) không chặn — quyền xem của STAFF đã bị lọc ở listConversations theo bảng gán page,
+    // còn quyền GỬI theo access FULL/VIEW kiểm tra riêng trong reply().
+    if (effectiveStoreId && conv.page.storeId && conv.page.storeId !== effectiveStoreId) {
+      throw new ForbiddenException('Ngoài phạm vi cửa hàng');
+    }
     return conv;
   }
 
