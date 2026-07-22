@@ -23,9 +23,18 @@ export interface Message {
   status: string | null; sentByUserId: string | null; createdAt: string;
 }
 
+const PAGE_DEFAULT_KEY = 'ccm_page_default';
+
 export function useMessengerChat() {
   const [pages, setPages] = useState<MsgPage[]>([]);
-  const [pageId, setPageId] = useState('');
+  // Page mặc định: nhớ lựa chọn lần trước (localStorage) — vào lại không phải chọn lại.
+  const [pageId, setPageIdRaw] = useState(() => {
+    try { return localStorage.getItem(PAGE_DEFAULT_KEY) || ''; } catch { return ''; }
+  });
+  const setPageId = useCallback((v: string) => {
+    setPageIdRaw(v);
+    try { localStorage.setItem(PAGE_DEFAULT_KEY, v); } catch { /* ignore */ }
+  }, []);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -66,6 +75,17 @@ export function useMessengerChat() {
 
   useEffect(() => { void loadPages(); }, [loadPages]);
   useEffect(() => { void loadConversations(); }, [loadConversations]);
+
+  // Lưới an toàn realtime: tự đồng bộ NỀN mỗi 12s (webhook/Meta có thể trễ) — list + thread đang mở.
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return; // tab ẩn thì thôi, đỡ tốn
+      void loadConversations();
+      const id = activeIdRef.current;
+      if (id) void apiClientClient.get<Message[]>(`/messenger/conversations/${id}/messages`).then(setMessages).catch(() => {});
+    }, 12000);
+    return () => window.clearInterval(t);
+  }, [loadConversations]);
 
   // Realtime: tin mới → reload list + thread đang mở.
   useEffect(() => {

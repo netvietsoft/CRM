@@ -92,6 +92,29 @@ const DirIcon = ({ dir }: { dir: string | null }) =>
 const ROW_BASE = 'w-full text-left px-3 py-3 flex gap-3 cursor-pointer transition-colors border-l-[3px]';
 const rowCls = (active: boolean) => `${ROW_BASE} ${active ? 'bg-[#e9efff] border-l-[#3c55e6]' : 'border-l-transparent hover:bg-[#f3f6ff]'}`;
 
+// Favicon tab: vẽ chấm đỏ + số tin chưa đọc lên icon (0 = trả icon gốc).
+let origFavicon: string | null = null;
+function setTabBadge(count: number): void {
+  try {
+    let link = document.querySelector<HTMLLinkElement>("link[rel*='icon']");
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    if (origFavicon === null) origFavicon = link.href || '/favicon.ico';
+    if (!count) { link.href = origFavicon; return; }
+    const cv = document.createElement('canvas'); cv.width = 32; cv.height = 32;
+    const ctx = cv.getContext('2d'); if (!ctx) return;
+    const draw = () => {
+      ctx.beginPath(); ctx.arc(16, 16, 14, 0, Math.PI * 2); ctx.fillStyle = '#dc2626'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 17px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(count > 9 ? '9+' : String(count), 16, 17);
+      link!.href = cv.toDataURL('image/png');
+    };
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 0, 0, 32, 32); draw(); };
+    img.onerror = draw;
+    img.src = origFavicon;
+  } catch { /* favicon là phụ — không làm hỏng trang */ }
+}
+
 // Chuẩn hoá attachment → ảnh / tệp để render. Hai shape:
 // - webhook realtime: [{type,payload:{url}}]
 // - Graph conversations (backfill): {data:[{mime_type,image_data:{url,preview_url},file_url,video_data:{url}}]}
@@ -109,9 +132,10 @@ function mediaOf(att: unknown): { images: string[]; files: string[] } {
 
 // 1 bong bóng tin: render ảnh (inline) + tệp (link) + text. `local` = preview chưa gửi thật.
 // `recalled` = tin đã thu hồi (ẩn nội dung); `onRecall` = hiện nút ⋮ thu hồi (chỉ tin OUT).
-function Bubble({ out, text, images, files, time, status, local, recalled, onRecall, onMediaLoad }: {
+// `onImageClick` = click ảnh mở lightbox zoom; `onQuote` = nút ↩ trích dẫn (tin khách).
+function Bubble({ out, text, images, files, time, status, local, recalled, onRecall, onMediaLoad, onImageClick, onQuote }: {
   out: boolean; text?: string | null; images: string[]; files: string[]; time: string; status?: string | null; local?: boolean;
-  recalled?: boolean; onRecall?: () => void; onMediaLoad?: () => void;
+  recalled?: boolean; onRecall?: () => void; onMediaLoad?: () => void; onImageClick?: (url: string) => void; onQuote?: () => void;
 }) {
   if (recalled) {
     return (
@@ -133,12 +157,20 @@ function Bubble({ out, text, images, files, time, status, local, recalled, onRec
         style={out
           ? { background: '#4f68ee', borderRadius: '16px 16px 5px 16px' }
           : { background: '#fff', border: '1px solid #e6e9f2', borderRadius: '16px 16px 16px 5px' }}>
-        {images.map((u, i) => <img key={i} src={u} alt="" onLoad={onMediaLoad} className="rounded-lg max-w-full max-h-60 mb-1 block" />)}
+        {images.map((u, i) => (
+          <img key={i} src={u} alt="" onLoad={onMediaLoad}
+            onClick={onImageClick ? () => onImageClick(u) : undefined}
+            className={`rounded-lg max-w-full max-h-60 mb-1 block ${onImageClick ? 'cursor-zoom-in hover:opacity-90' : ''}`} />
+        ))}
         {files.map((u, i) => <a key={i} href={u} target="_blank" rel="noreferrer" className={`block underline text-xs mb-1 ${out ? 'text-blue-100' : 'text-blue-600'}`}>📎 {u.split('/').pop()?.slice(0, 28) || 'tệp'}</a>)}
         {text && <div className="whitespace-pre-wrap break-words">{text}</div>}
         {!text && images.length === 0 && files.length === 0 && <span className="italic opacity-70">[đính kèm]</span>}
         <div className={`text-[10px] mt-1 ${out ? 'text-blue-100' : 'text-gray-400'}`}>{time}{local ? ' · ⚠ GỬI THẤT BẠI — khách không nhận được' : (status ? ` · ${status}` : '')}</div>
       </div>
+      {!out && onQuote && (
+        <button onClick={onQuote} title="Trả lời trích dẫn tin này"
+          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 w-6 h-6 grid place-items-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-700 text-sm leading-none">↩</button>
+      )}
     </div>
   );
 }
@@ -148,6 +180,34 @@ export default function CcmConversations() {
   const c = useMessengerChat();
   const { quickReplies, tags: tagCatalog, prefs } = useCcmSettings(); // nối Cài đặt ↔ chat
   const [draft, setDraft] = useState('');
+  const [lightbox, setLightbox] = useState<string | null>(null); // ảnh đang zoom
+  const [quote, setQuote] = useState<string | null>(null); // tin khách đang trích dẫn
+
+  // Esc đóng lightbox.
+  useEffect(() => {
+    if (!lightbox) return;
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [lightbox]);
+
+  // Tab trình duyệt: (N) tin chưa đọc + luân phiên hiện nội dung tin mới nhất; favicon chấm đỏ khi có tin.
+  useEffect(() => {
+    const unread = c.conversations.reduce((s, cv) => s + (cv.unreadCount || 0), 0);
+    const latest = c.conversations.find((cv) => (cv.unreadCount || 0) > 0);
+    setTabBadge(unread);
+    if (!unread) { document.title = 'CCM — Hội thoại'; return; }
+    let flip = false;
+    const apply = () => {
+      document.title = flip && latest
+        ? `💬 ${(latest.contact.name || 'Khách')}: ${String(latest.lastMessageText || 'Tin nhắn mới').slice(0, 40)}`
+        : `(${unread}) CCM — Hội thoại`;
+      flip = !flip;
+    };
+    apply();
+    const t = window.setInterval(apply, 1800);
+    return () => window.clearInterval(t);
+  }, [c.conversations]);
   const [showPanel, setShowPanel] = useState(true); // bật/tắt [CỘT 4] panel khách/đơn
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -266,7 +326,13 @@ export default function CcmConversations() {
   }, [c.conversations, railFilter, unansweredSort, staffFilter, dateFrom, dateTo, dateText]);
   const filterActive = railFilter !== 'all' || staffFilter.length > 0;
   const clearFilters = () => { setRailFilter('all'); setStaffFilter([]); setRailMenu(null); setDateFrom(''); setDateTo(''); setDateText(''); };
-  const doSend = async () => { const t = draft.trim(); if (!t) return; setDraft(''); if (!(await c.reply({ text: t }))) addPreview({ text: t }); };
+  const doSend = async () => {
+    let t = draft.trim(); if (!t) return;
+    // Trích dẫn: chèn đoạn trích của khách lên đầu tin gửi (Messenger không có API quote thật cho page).
+    if (quote) { t = `「${quote.slice(0, 120)}」\n${t}`; setQuote(null); }
+    setDraft('');
+    if (!(await c.reply({ text: t }))) addPreview({ text: t });
+  };
   // Chọn tệp từ máy → upload R2 → gửi; lỗi (local) → preview blob để xem.
   const sendFile = async (file?: File) => {
     if (!file) return;
@@ -634,6 +700,8 @@ export default function CcmConversations() {
                       status={m.direction === 'OUT' ? m.status : null}
                       recalled={m.status === 'RECALLED'}
                       onMediaLoad={scrollBottom}
+                      onImageClick={setLightbox}
+                      onQuote={m.direction === 'IN' ? () => setQuote(m.text || '[đính kèm]') : undefined}
                       onRecall={m.direction === 'OUT' && m.status !== 'RECALLED'
                         ? () => { if (window.confirm('Thu hồi tin nhắn này?\n\nLưu ý: tin chỉ ẨN TRÊN CRM — khách VẪN thấy trên Messenger (Meta không cho page thu hồi phía khách).')) void c.recall(m.id); }
                         : undefined} />
@@ -722,6 +790,16 @@ export default function CcmConversations() {
                   )}
                 </div>
               )}
+              {/* Khung trích dẫn (nút ↩ trên tin khách) — gửi sẽ chèn đoạn trích lên đầu tin */}
+              {quote && (
+                <div className="mb-2 flex items-start gap-2 rounded-[10px] border-l-4 border-[#3c55e6] bg-[#f5f7ff] px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-bold text-[#3c55e6]">↩ Trả lời {c.active?.contact.name || 'khách'}</div>
+                    <div className="truncate text-[12.5px] text-gray-600">{quote}</div>
+                  </div>
+                  <button onClick={() => setQuote(null)} className="shrink-0 text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+              )}
               {/* Hàng nhập: [cột ô nhập + icon canh phải thẳng mép ô nhập] + nút Gửi (cùng hàng với ô nhập) */}
               <div className="flex gap-2 items-start">
                 <div className="flex-1 flex flex-col gap-2">
@@ -754,6 +832,16 @@ export default function CcmConversations() {
           <div onMouseDown={startDrag('panel')} title="Kéo để chỉnh rộng" className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-[#3c55e6]/30 transition-colors" />
           <div className="shrink-0 h-full" style={{ width: panelW }}><CcmCustomerPanel conversation={c.active} /></div>
         </>
+      )}
+
+      {/* LIGHTBOX zoom ảnh hội thoại (click ảnh) — Esc/click nền để đóng */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/85 p-6" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-lg object-contain shadow-2xl" onClick={(e) => e.stopPropagation()} />
+          <button onClick={() => setLightbox(null)} className="absolute right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white text-xl hover:bg-white/20">✕</button>
+          <a href={lightbox} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-5 right-5 rounded-full bg-white/10 px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-white/20">Mở gốc ↗</a>
+        </div>
       )}
 
       {/* POPUP Thư mục ảnh (nút 🖼️) → gửi từng ảnh đã chọn qua reply(attachmentUrl) */}
