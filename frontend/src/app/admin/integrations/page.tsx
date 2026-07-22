@@ -19,6 +19,7 @@ const PLATFORMS = [
   { id: 'ZALO', name: 'Zalo OA', icon: '💬', color: 'bg-blue-500', desc: 'Gửi tin nhắn chăm sóc tự động' },
   { id: 'VIETTELPOST', name: 'ViettelPost', icon: '📦', color: 'bg-red-600', desc: 'Vận chuyển & đẩy đơn · nhiều tài khoản đồng bộ về CRM' },
   { id: 'META_ADS', name: 'Meta Ads', icon: '📣', color: 'bg-blue-600', desc: 'Kéo chiến dịch & chỉ số quảng cáo Facebook/Instagram' },
+  { id: 'WHATSAPP', name: 'WhatsApp Business', icon: '🟢', color: 'bg-green-600', desc: 'WABA — quản lý & nhắn tin WhatsApp (whatsapp_business_management)' },
 ];
 
 export default function IntegrationsPage() {
@@ -360,6 +361,33 @@ export default function IntegrationsPage() {
                         <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm" value={formMetadata?.senderAddress || ''} onChange={e => setFormMetadata({ ...formMetadata, senderAddress: e.target.value })} required />
                       </div>
                     </div>
+                  </div>
+                </>
+              )}
+
+              {['WHATSAPP'].includes(activePlatform) && (
+                <>
+                  <div className="rounded-xl border border-green-100 bg-green-50 p-3 text-xs text-green-800">
+                    Token cần các quyền: <b>whatsapp_business_management</b> (quản lý WABA) + <b>whatsapp_business_messaging</b> (gửi/nhận tin).
+                    Lấy ở App Meta → API Setup của WhatsApp, hoặc System User token trong Business Settings.
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Access Token (WhatsApp)</label>
+                    <div className="relative">
+                      <input type={showFields['accessToken'] ? 'text' : 'password'} className="w-full border border-gray-300 rounded-lg pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formAccessToken} onChange={e => setFormAccessToken(e.target.value)} required />
+                      <button type="button" onClick={() => toggleField('accessToken')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showFields['accessToken'] ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">WABA ID <span className="text-gray-400 font-normal">(WhatsApp Business Account ID)</span></label>
+                    <input type="text" placeholder="VD: 102290129340398" className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formShopId} onChange={e => setFormShopId(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number ID <span className="text-gray-400 font-normal">— tuỳ chọn</span></label>
+                    <input type="text" placeholder="VD: 106540352242922" className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" value={formApiKey} onChange={e => setFormApiKey(e.target.value)} />
+                    <p className="text-xs text-gray-500 mt-1">ID số điện thoại gửi tin (API Setup → Phone numbers). Để trống nếu chỉ cần quản lý WABA.</p>
                   </div>
                 </>
               )}
