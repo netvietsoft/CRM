@@ -360,11 +360,15 @@ export default function CcmCustomerPanel({ conversation, onOrderCreated }: { con
         ) : (
           /* --- FRAME 4C: FORM TẠO ĐƠN (THẬT) --- */
           <div className="space-y-4">
-            {/* Người nhận */}
+            {/* Người nhận — SĐT là trường BẮT BUỘC (chặn ở submit, viền đỏ khi trống) */}
             <div className="space-y-2">
               <div className="text-[11px] font-bold text-gray-500 uppercase tracking-[.06em]">Người nhận</div>
+              <label className="block text-[11px] font-semibold text-gray-500">Tên người nhận <span className="text-[#dc2626]">*</span></label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tên người nhận" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6]" />
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Số điện thoại" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6]" />
+              <label className="block text-[11px] font-semibold text-gray-500">Số điện thoại <span className="text-[#dc2626]">*</span></label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Số điện thoại (bắt buộc)" required
+                className={`w-full rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6] border ${phone.trim() ? 'border-[#e5e7eb]' : 'border-[#fca5a5] bg-[#fef2f2]'}`} />
+              {!phone.trim() && <p className="text-[11px] font-semibold text-[#dc2626]">⚠ Bắt buộc nhập SĐT mới tạo được đơn.</p>}
               <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Địa chỉ nhận hàng" className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13px] outline-none focus:border-[#3c55e6]" />
             </div>
 

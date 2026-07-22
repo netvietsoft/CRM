@@ -181,7 +181,8 @@ export default function CcmConversations() {
   const { quickReplies, tags: tagCatalog, prefs } = useCcmSettings(); // nối Cài đặt ↔ chat
   const [draft, setDraft] = useState('');
   const [lightbox, setLightbox] = useState<string | null>(null); // ảnh đang zoom
-  const [quote, setQuote] = useState<string | null>(null); // tin khách đang trích dẫn
+  // Tin khách đang trích dẫn: text + ảnh (reply tin ảnh → đính lại file ảnh khi gửi).
+  const [quote, setQuote] = useState<{ text: string | null; image: string | null } | null>(null);
 
   // Esc đóng lightbox.
   useEffect(() => {
@@ -328,9 +329,11 @@ export default function CcmConversations() {
   const clearFilters = () => { setRailFilter('all'); setStaffFilter([]); setRailMenu(null); setDateFrom(''); setDateTo(''); setDateText(''); };
   const doSend = async () => {
     let t = draft.trim(); if (!t) return;
-    // Trích dẫn: chèn đoạn trích của khách lên đầu tin gửi (Messenger không có API quote thật cho page).
-    if (quote) { t = `「${quote.slice(0, 120)}」\n${t}`; setQuote(null); }
+    const q = quote; setQuote(null);
+    // Trích dẫn: text → chèn 「trích」 lên đầu; ảnh → GỬI LẠI file ảnh đó trước rồi gửi text (Meta không có API quote thật).
+    if (q?.text) t = `「${q.text.slice(0, 120)}」\n${t}`;
     setDraft('');
+    if (q?.image) { if (!(await c.reply({ attachmentUrl: q.image }))) addPreview({ image: q.image }); }
     if (!(await c.reply({ text: t }))) addPreview({ text: t });
   };
   // Chọn tệp từ máy → upload R2 → gửi; lỗi (local) → preview blob để xem.
@@ -701,7 +704,7 @@ export default function CcmConversations() {
                       recalled={m.status === 'RECALLED'}
                       onMediaLoad={scrollBottom}
                       onImageClick={setLightbox}
-                      onQuote={m.direction === 'IN' ? () => setQuote(m.text || '[đính kèm]') : undefined}
+                      onQuote={m.direction === 'IN' ? () => setQuote({ text: m.text, image: md.images[0] || null }) : undefined}
                       onRecall={m.direction === 'OUT' && m.status !== 'RECALLED'
                         ? () => { if (window.confirm('Thu hồi tin nhắn này?\n\nLưu ý: tin chỉ ẨN TRÊN CRM — khách VẪN thấy trên Messenger (Meta không cho page thu hồi phía khách).')) void c.recall(m.id); }
                         : undefined} />
@@ -790,12 +793,16 @@ export default function CcmConversations() {
                   )}
                 </div>
               )}
-              {/* Khung trích dẫn (nút ↩ trên tin khách) — gửi sẽ chèn đoạn trích lên đầu tin */}
+              {/* Khung trích dẫn (nút ↩ trên tin khách) — text chèn 「trích」; ảnh sẽ được ĐÍNH LẠI khi gửi */}
               {quote && (
-                <div className="mb-2 flex items-start gap-2 rounded-[10px] border-l-4 border-[#3c55e6] bg-[#f5f7ff] px-3 py-2">
+                <div className="mb-2 flex items-start gap-2.5 rounded-[10px] border-l-4 border-[#3c55e6] bg-[#f5f7ff] px-3 py-2">
+                  {quote.image && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={quote.image} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-[#dbe3ff] object-cover" />
+                  )}
                   <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-bold text-[#3c55e6]">↩ Trả lời {c.active?.contact.name || 'khách'}</div>
-                    <div className="truncate text-[12.5px] text-gray-600">{quote}</div>
+                    <div className="text-[11px] font-bold text-[#3c55e6]">↩ Trả lời {c.active?.contact.name || 'khách'}{quote.image ? ' · ảnh sẽ được đính kèm lại' : ''}</div>
+                    <div className="truncate text-[12.5px] text-gray-600">{quote.text || (quote.image ? '(ảnh)' : '[đính kèm]')}</div>
                   </div>
                   <button onClick={() => setQuote(null)} className="shrink-0 text-gray-400 hover:text-gray-600">✕</button>
                 </div>
