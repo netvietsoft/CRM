@@ -1737,6 +1737,7 @@ model MsgPageStaff {
   id        String   @id @default(uuid())
   pageId    String   @map("page_id")
   userId    String   @map("user_id")
+  access    String   @default("FULL") // FULL = truy cập đầy đủ | VIEW = chỉ xem (không gửi tin)
   createdAt DateTime @default(now()) @map("created_at")
   page      MsgPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
   user      User     @relation("MsgPageStaffUser", fields: [userId], references: [id], onDelete: Cascade)

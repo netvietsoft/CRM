@@ -383,10 +383,21 @@ export class MessengerService {
   }
 
   // ===== Trả lời (Send API + cửa sổ 24h) =====
-  async reply(effectiveStoreId: string | null, userId: string, convId: string, p: { text?: string; attachmentUrl?: string }) {
+  async reply(effectiveStoreId: string | null, userId: string, convId: string, p: { text?: string; attachmentUrl?: string }, role?: string) {
     if (!p.text && !p.attachmentUrl) throw new BadRequestException('Tin nhắn rỗng');
     const conv = await this.getScopedConversation(effectiveStoreId, convId);
     if (!conv.page.accessToken) throw new BadRequestException('Page chưa có access token (đăng ký lại page).');
+    // NV bị giới hạn CHỈ XEM trên page này (bảng phân quyền page) → không gửi được tin.
+    if (role === 'STAFF') {
+      try {
+        const assign = this.moduleRef.get(MessengerAssignService, { strict: false });
+        if (assign && (await assign.isViewOnly(conv.pageId, userId))) {
+          throw new ForbiddenException('Bạn chỉ có quyền XEM page này — không gửi được tin nhắn.');
+        }
+      } catch (e) {
+        if (e instanceof ForbiddenException) throw e; // module chưa sẵn sàng thì bỏ qua check
+      }
+    }
 
     const lastIn = await this.prisma.msgMessage.findFirst({
       where: { conversationId: convId, direction: 'IN' },

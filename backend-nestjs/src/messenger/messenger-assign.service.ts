@@ -76,13 +76,18 @@ export class MessengerAssignService {
     return rows.map((r) => r.user);
   }
 
-  /** Ghi đè danh sách NV trực page. NV trực page tự được cấp quyền vào /ccm/conversations (VIEW+SEND). */
+  /** Ghi đè danh sách NV trực page (GIỮ quyền FULL/VIEW đã đặt). NV trực page tự được cấp quyền CCM (VIEW+SEND). */
   async setPageStaff(pageId: string, userIds: string[]) {
     const clean = [...new Set((userIds || []).filter(Boolean))];
     await this.prisma.$transaction(async (tx) => {
+      // Bảo toàn access đã cấu hình ở bảng phân quyền page (mặc định FULL cho NV mới).
+      const existing = await tx.msgPageStaff.findMany({ where: { pageId }, select: { userId: true, access: true } });
+      const accessOf = new Map(existing.map((r) => [r.userId, r.access]));
       await tx.msgPageStaff.deleteMany({ where: { pageId } });
       if (clean.length) {
-        await tx.msgPageStaff.createMany({ data: clean.map((userId) => ({ pageId, userId })) });
+        await tx.msgPageStaff.createMany({
+          data: clean.map((userId) => ({ pageId, userId, access: accessOf.get(userId) || 'FULL' })),
+        });
       }
     });
     // Auto-grant quyền Tin nhắn CCM cho STAFF trong danh sách còn thiếu (chỉ ADMIN/MOD gọi được route này).
@@ -100,6 +105,56 @@ export class MessengerAssignService {
       }
     }
     return { ok: true, count: clean.length };
+  }
+
+  /** Toàn bộ phân quyền NV↔page (bảng ở /ccm/settings/permissions). */
+  async listPageAccessMatrix() {
+    const rows = await this.prisma.msgPageStaff.findMany({
+      select: {
+        pageId: true,
+        userId: true,
+        access: true,
+        page: { select: { externalId: true, name: true } },
+        user: { select: { name: true, phone: true, avatarUrl: true } },
+      },
+      orderBy: [{ pageId: 'asc' }, { createdAt: 'asc' }],
+    });
+    return rows;
+  }
+
+  /** Đặt quyền NV trên page: FULL | VIEW; access=null → gỡ NV khỏi page. */
+  async setPageAccess(pageId: string, userId: string, access: string | null) {
+    if (!pageId || !userId) throw new BadRequestException('Thiếu pageId/userId');
+    if (access === null || access === '') {
+      await this.prisma.msgPageStaff.deleteMany({ where: { pageId, userId } });
+      return { ok: true, removed: true };
+    }
+    const a = access === 'VIEW' ? 'VIEW' : 'FULL';
+    await this.prisma.msgPageStaff.upsert({
+      where: { pageId_userId: { pageId, userId } },
+      create: { pageId, userId, access: a },
+      update: { access: a },
+    });
+    // Được gán page (kể cả chỉ xem) → tự cấp quyền vào inbox CCM nếu thiếu.
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true, staffPermissions: true } });
+    if (u?.role === 'STAFF') {
+      const perms = new Set(Array.isArray(u.staffPermissions) ? (u.staffPermissions as string[]) : []);
+      if (!perms.has('MESSENGER_VIEW') || (a === 'FULL' && !perms.has('MESSENGER_SEND'))) {
+        perms.add('MESSENGER_VIEW');
+        if (a === 'FULL') perms.add('MESSENGER_SEND');
+        await this.prisma.user.update({ where: { id: userId }, data: { staffPermissions: [...perms] } });
+      }
+    }
+    return { ok: true, access: a };
+  }
+
+  /** STAFF có bị giới hạn CHỈ XEM trên page này không (chặn gửi tin). */
+  async isViewOnly(pageId: string, userId: string): Promise<boolean> {
+    const row = await this.prisma.msgPageStaff.findUnique({
+      where: { pageId_userId: { pageId, userId } },
+      select: { access: true },
+    });
+    return row?.access === 'VIEW';
   }
 
   // ===== Cài đặt =====

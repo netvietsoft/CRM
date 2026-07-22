@@ -45,6 +45,21 @@ export class MessengerController {
     return this.assignService.listPageStaff(pageId);
   }
 
+  // Bảng phân quyền NV↔page (/ccm/settings/permissions): FULL = đầy đủ, VIEW = chỉ xem.
+  @Get('assign/matrix')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Toàn bộ phân quyền NV theo page' })
+  getAccessMatrix() {
+    return this.assignService.listPageAccessMatrix();
+  }
+
+  @Post('assign/access')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Đặt quyền NV trên page (FULL/VIEW; null = gỡ)' })
+  setAccess(@Body() body: { pageId: string; userId: string; access: string | null }) {
+    return this.assignService.setPageAccess(body?.pageId, body?.userId, body?.access ?? null);
+  }
+
   @Post('assign/staff')
   @Roles('ADMIN', 'MODERATOR')
   @ApiOperation({ summary: 'Gán danh sách NV trực page (ghi đè)' })
@@ -203,11 +218,11 @@ export class MessengerController {
   @ApiOperation({ summary: 'Trả lời khách (Send API, trong cửa sổ 24h)' })
   reply(
     @GetEffectiveStoreId() storeId: string | null,
-    @GetUser('id') userId: string,
+    @GetUser() user: { id: string; role?: string },
     @Param('id') id: string,
     @Body() body: { text?: string; attachmentUrl?: string },
   ) {
-    return this.service.reply(storeId, userId, id, body || {});
+    return this.service.reply(storeId, user.id, id, body || {}, user.role);
   }
 
   @Post('conversations/:id/messages/:messageId/recall')
