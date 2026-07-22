@@ -99,6 +99,17 @@ export class MessengerController {
     return this.service.listPagePosts(storeId, externalId);
   }
 
+  // Enrich lại avatar/tên khách còn thiếu (chạy tay sau khi app Meta được duyệt Live).
+  @Post('contacts/enrich')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Enrich lại contact thiếu avatar (trả lỗi Graph thật nếu có)' })
+  enrichContacts(
+    @GetEffectiveStoreId() storeId: string | null,
+    @Body() body: { pageId?: string; limit?: number },
+  ) {
+    return this.service.enrichMissingAvatars(storeId, body?.pageId, body?.limit ?? 100);
+  }
+
   @Get('conversations')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_VIEW)

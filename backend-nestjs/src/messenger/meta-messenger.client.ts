@@ -42,14 +42,23 @@ export class MetaMessengerClient {
     );
   }
 
-  /** Hồ sơ công khai của khách theo PSID (name, ảnh). Lỗi/thiếu quyền → {}. */
-  async getProfile(pageToken: string, psid: string): Promise<{ name?: string; profile_pic?: string }> {
-    const p: any = await this.call(`${psid}?fields=name,profile_pic`, { method: 'GET' }, pageToken).catch(() => ({}));
+  /** Hồ sơ công khai của khách theo PSID (name, ảnh). Lỗi/thiếu quyền → {error} để nơi gọi log được lý do thật. */
+  async getProfile(pageToken: string, psid: string): Promise<{ name?: string; profile_pic?: string; error?: string }> {
+    let err: string | undefined;
+    const p: any = await this.call(`${psid}?fields=name,profile_pic`, { method: 'GET' }, pageToken).catch((e) => {
+      err = e instanceof Error ? e.message : String(e);
+      return {};
+    });
     if (!p?.profile_pic) {
       // Fallback: edge /picture (quyền khác field profile_pic) — trả URL CDN dùng được không cần token.
-      const pic: any = await this.call(`${psid}/picture?redirect=false&width=200`, { method: 'GET' }, pageToken).catch(() => null);
+      const pic: any = await this.call(`${psid}/picture?redirect=false&width=200`, { method: 'GET' }, pageToken).catch((e) => {
+        err = err || (e instanceof Error ? e.message : String(e));
+        return null;
+      });
       if (pic?.data?.url && !pic?.data?.is_silhouette) p.profile_pic = pic.data.url;
+      else if (pic?.data?.is_silhouette) err = err || 'is_silhouette (khách không có ảnh công khai)';
     }
+    if (err) p.error = err;
     return p;
   }
 

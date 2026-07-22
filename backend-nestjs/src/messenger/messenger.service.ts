@@ -111,6 +111,37 @@ export class MessengerService {
         data: { name: p.name ?? undefined, avatarUrl: p.profile_pic ?? undefined, raw: p as any },
       });
     }
+    if (p?.error) this.logger.warn(`enrichContact ${psid}: ${p.error}`);
+  }
+
+  /** Enrich lại hàng loạt contact THIẾU avatar (chạy tay sau khi app Live) — trả lỗi Graph thật để chẩn đoán. */
+  async enrichMissingAvatars(effectiveStoreId: string | null, pageId?: string, limit = 100) {
+    const contacts = await this.prisma.msgContact.findMany({
+      where: {
+        avatarUrl: null,
+        ...(pageId ? { pageId } : {}),
+        page: { ...this.pageScope(effectiveStoreId), accessToken: { not: null } },
+      },
+      select: { id: true, psid: true, page: { select: { accessToken: true, name: true } } },
+      orderBy: { updatedAt: 'desc' }, // khách tương tác gần nhất trước
+      take: Math.min(Math.max(limit, 1), 500),
+    });
+    let gotAvatar = 0;
+    let gotName = 0;
+    const errors: string[] = [];
+    for (const c of contacts) {
+      const p = await this.client.getProfile(c.page.accessToken as string, c.psid).catch(() => ({} as any));
+      if (p?.name || p?.profile_pic) {
+        await this.prisma.msgContact.update({
+          where: { id: c.id },
+          data: { name: p.name ?? undefined, avatarUrl: p.profile_pic ?? undefined, raw: p as any },
+        });
+        if (p.profile_pic) gotAvatar++;
+        if (p.name) gotName++;
+      }
+      if (p?.error && errors.length < 10) errors.push(`[${c.page.name}] ${c.psid}: ${p.error}`);
+    }
+    return { checked: contacts.length, gotAvatar, gotName, sampleErrors: errors };
   }
 
   // ===== Đọc (scope theo store qua page.storeId) =====
