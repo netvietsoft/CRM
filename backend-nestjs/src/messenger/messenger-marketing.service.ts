@@ -25,6 +25,17 @@ export class MessengerMarketingService {
     });
     if (!conv) throw new NotFoundException('Không tìm thấy hội thoại');
     if (!conv.page.accessToken) throw new BadRequestException('Page chưa có access token');
+    // Lời mời opt-in là tin thường → chỉ gửi được TRONG CỬA SỔ 24H kể từ tin cuối của khách (luật Meta #10).
+    const lastIn = await this.prisma.msgMessage.findFirst({
+      where: { conversationId: convId, direction: 'IN' },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    });
+    if (!lastIn || Date.now() - lastIn.createdAt.getTime() > 24 * 60 * 60 * 1000) {
+      throw new BadRequestException(
+        'Chỉ gửi được lời mời trong 24h kể từ tin nhắn cuối của KHÁCH — nhờ khách nhắn 1 tin bất kỳ rồi gửi lời mời ngay.',
+      );
+    }
     try {
       const r = await this.client.sendOptinRequest(
         conv.page.accessToken,
