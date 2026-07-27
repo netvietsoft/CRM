@@ -7,6 +7,7 @@ const TABS = [
   { href: '/ccm/conversations', label: 'Hội thoại' },
   { href: '/ccm/orders', label: 'Đơn hàng' },
   { href: '/ccm/posts', label: 'Bài viết' },
+  { href: '/ccm/marketing', label: 'Marketing' },
   { href: '/ccm/stats', label: 'Thống kê' },
   { href: '/ccm/settings', label: 'Cài đặt' },
 ];

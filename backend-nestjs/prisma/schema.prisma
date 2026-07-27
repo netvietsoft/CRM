@@ -1682,6 +1682,7 @@ model MsgPage {
   contacts      MsgContact[]
   conversations MsgConversation[]
   dutyStaff     MsgPageStaff[]
+  marketingOptins MsgMarketingOptin[]
   assignSetting MsgAssignSetting?
 
   @@unique([platform, externalId])
@@ -1702,6 +1703,7 @@ model MsgContact {
   updatedAt     DateTime          @updatedAt @map("updated_at")
   page          MsgPage           @relation(fields: [pageId], references: [id], onDelete: Cascade)
   conversations MsgConversation[]
+  marketingOptins MsgMarketingOptin[]
 
   @@unique([pageId, psid])
   @@map("msg_contacts")
@@ -1726,6 +1728,7 @@ model MsgConversation {
   page            MsgPage      @relation(fields: [pageId], references: [id], onDelete: Cascade)
   contact         MsgContact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
   messages        MsgMessage[]
+  marketingOptin  MsgMarketingOptin?
 
   @@unique([pageId, contactId])
   @@index([pageId, lastMessageAt])
@@ -1763,6 +1766,57 @@ model MsgAssignSetting {
   page      MsgPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
 
   @@map("msg_assign_settings")
+}
+
+// Marketing Messages (Messenger): khách bấm ĐỒNG Ý nhận tin tiếp thị → Meta cấp notification_messages_token
+// (gửi ngoài cửa sổ 24h). 1 dòng / hội thoại — token mới đè cũ; STOP qua Messenger → OPTED_OUT (chặn gửi).
+model MsgMarketingOptin {
+  id             String    @id @default(uuid())
+  pageId         String    @map("page_id")
+  conversationId String    @unique @map("conversation_id")
+  contactId      String    @map("contact_id")
+  token          String?   @db.Text // notification_messages_token
+  tokenExpiry    DateTime? @map("token_expiry")
+  frequency      String? // DAILY | WEEKLY | MONTHLY
+  status         String    @default("OPTED_IN") // OPTED_IN | OPTED_OUT | EXPIRED
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  page           MsgPage         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  conversation   MsgConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  contact        MsgContact      @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  recipients     MsgMarketingRecipient[]
+
+  @@index([pageId, status])
+  @@map("msg_marketing_optins")
+}
+
+model MsgMarketingCampaign {
+  id         String    @id @default(uuid())
+  name       String
+  text       String    @db.Text
+  status     String    @default("DRAFT") // DRAFT | SENT
+  sentAt     DateTime? @map("sent_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  recipients MsgMarketingRecipient[]
+
+  @@map("msg_marketing_campaigns")
+}
+
+model MsgMarketingRecipient {
+  id         String    @id @default(uuid())
+  campaignId String    @map("campaign_id")
+  optinId    String    @map("optin_id")
+  status     String    @default("PENDING") // PENDING | SENT | DELIVERED | READ | FAILED
+  messageId  String?   @map("message_id") // mid Meta trả — khớp delivery/read receipt
+  error      String?   @db.Text
+  sentAt     DateTime? @map("sent_at")
+  campaign   MsgMarketingCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  optin      MsgMarketingOptin    @relation(fields: [optinId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, optinId])
+  @@index([messageId])
+  @@map("msg_marketing_recipients")
 }
 
 model MsgMessage {

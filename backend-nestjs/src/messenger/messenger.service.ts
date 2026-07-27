@@ -5,6 +5,7 @@ import { MetaMessengerClient } from './meta-messenger.client';
 import { AdminNotificationsGateway } from '../modules/admin-notifications/admin-notifications.gateway';
 import { AiAgentService } from '../ai-agent/ai-agent.service';
 import { MessengerAssignService } from './messenger-assign.service';
+import { MessengerMarketingService } from './messenger-marketing.service';
 import { decryptToken } from '../integrations/facebook/token-vault';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -43,7 +44,26 @@ export class MessengerService {
     const page = await this.prisma.msgPage.findUnique({
       where: { platform_externalId: { platform: 'META', externalId: pageExternalId } },
     });
-    if (!page || !m.message) return;
+    if (!page) return;
+
+    // Sự kiện Marketing Messages (không có m.message): optin (đồng ý/hủy nhận tin) + delivery/read receipt.
+    const marketing = () => {
+      try { return this.moduleRef.get(MessengerMarketingService, { strict: false }); } catch { return null; }
+    };
+    if (m.optin) {
+      await marketing()?.handleOptinEvent(page.id, String(m.sender?.id || ''), m.optin);
+      return;
+    }
+    if (m.delivery?.mids?.length) {
+      await marketing()?.handleDelivery(m.delivery.mids.map(String));
+      return;
+    }
+    if (m.read?.watermark) {
+      await marketing()?.handleRead(page.id, String(m.sender?.id || ''), Number(m.read.watermark));
+      return;
+    }
+
+    if (!m.message) return;
 
     const isEcho = !!m.message.is_echo;
     const psid = isEcho ? m.recipient?.id : m.sender?.id;

@@ -652,6 +652,17 @@ export default function CcmConversations() {
                     </>
                   )}
                 </div>
+                {/* (1b) 📣 Mời khách nhận tin tiếp thị (Marketing Messages opt-in) */}
+                <button
+                  onClick={async () => {
+                    if (!window.confirm('Gửi lời mời nhận tin tiếp thị cho khách này?\nKhách bấm đồng ý sẽ vào danh sách Marketing (tab Marketing).')) return;
+                    try {
+                      await apiClientClient.post(`/messenger/conversations/${c.active!.id}/marketing-optin-request`, {});
+                      c.flash('✅ Đã gửi lời mời nhận tin tiếp thị — chờ khách bấm đồng ý.');
+                    } catch (e) { c.flash(e instanceof Error ? e.message : 'Gửi lời mời thất bại'); }
+                  }}
+                  title="Mời nhận tin tiếp thị (Marketing Messages)"
+                  className="w-[36px] h-[36px] grid place-items-center rounded-[10px] hover:bg-[#eef2ff] hover:text-[#3c55e6]">📣</button>
                 {/* (2) ☷ Tất cả hội thoại của người dùng này → lọc danh sách theo tên/psid khách */}
                 <button onClick={() => c.setSearch(c.active!.contact.name || c.active!.contact.psid)} title="Tất cả hội thoại của người dùng này"
                   className="w-[36px] h-[36px] grid place-items-center rounded-[10px] hover:bg-[#eef2ff] hover:text-[#3c55e6]">☷</button>

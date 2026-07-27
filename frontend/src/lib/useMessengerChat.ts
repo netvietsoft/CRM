@@ -202,7 +202,7 @@ export function useMessengerChat() {
   const selectedPage = pages.find((p) => p.id === pageId) || pages.find((p) => p.externalId === active?.page.externalId) || null;
 
   return {
-    pages, pageId, setPageId, conversations, activeId, messages, search, setSearch, sending, loadingMsgs, msg,
+    pages, pageId, setPageId, conversations, activeId, messages, search, setSearch, sending, loadingMsgs, msg, flash,
     active, selectedPage, staff, open, reply, recall, toggleAssign, assignTo, setLabels, setStar, setContactDob, setContactGender, register, subscribe, backfill, loadConversations,
   };
 }

@@ -10,6 +10,7 @@ import { GetEffectiveStoreId } from '../auth/decorators/get-effective-store-id.d
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { MessengerService } from './messenger.service';
 import { MessengerAssignService, AssignConfig } from './messenger-assign.service';
+import { MessengerMarketingService } from './messenger-marketing.service';
 
 @ApiTags('Messenger')
 @Controller('messenger')
@@ -19,7 +20,48 @@ export class MessengerController {
   constructor(
     private readonly service: MessengerService,
     private readonly assignService: MessengerAssignService,
+    private readonly marketingService: MessengerMarketingService,
   ) {}
+
+  // ===== Marketing Messages: opt-in → chiến dịch → trạng thái =====
+  @Post('conversations/:id/marketing-optin-request')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_SEND)
+  @ApiOperation({ summary: 'Gửi lời mời nhận tin tiếp thị (template notification_messages)' })
+  sendOptinRequest(@Param('id') id: string, @Body() body: { title?: string }) {
+    return this.marketingService.sendOptinRequest(id, body?.title);
+  }
+
+  @Get('marketing/optins')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Danh sách khách đã opt-in nhận tin tiếp thị' })
+  listOptins() {
+    return this.marketingService.listOptins();
+  }
+
+  @Get('marketing/campaigns')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Danh sách chiến dịch marketing' })
+  listCampaigns() {
+    return this.marketingService.listCampaigns();
+  }
+
+  @Get('marketing/campaigns/:id')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_VIEW)
+  @ApiOperation({ summary: 'Chi tiết chiến dịch (người nhận + trạng thái)' })
+  campaignDetail(@Param('id') id: string) {
+    return this.marketingService.campaignDetail(id);
+  }
+
+  @Post('marketing/campaigns')
+  @Roles('ADMIN', 'MODERATOR')
+  @ApiOperation({ summary: 'Tạo + gửi chiến dịch tới khách đã opt-in (chặn opt-out)' })
+  sendCampaign(@Body() body: { name: string; text: string; optinIds: string[] }) {
+    return this.marketingService.sendCampaign(body?.name, body?.text, body?.optinIds || []);
+  }
 
   // ===== Trực page + chia hội thoại (rotation) =====
   @Get('assign/settings')

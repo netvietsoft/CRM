@@ -42,6 +42,45 @@ export class MetaMessengerClient {
     );
   }
 
+  /** Gửi LỜI MỜI nhận tin tiếp thị (template notification_messages) — khách bấm đồng ý → webhook optin trả token. */
+  async sendOptinRequest(pageToken: string, recipientPsid: string, title: string, imageUrl?: string): Promise<{ message_id: string }> {
+    return this.call(
+      'me/messages',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          recipient: { id: recipientPsid },
+          message: {
+            attachment: {
+              type: 'template',
+              payload: {
+                template_type: 'notification_messages',
+                title: title.slice(0, 65),
+                ...(imageUrl ? { image_url: imageUrl } : {}),
+                notification_messages_reoptin: 'ENABLE',
+              },
+            },
+          },
+        }),
+      },
+      pageToken,
+    );
+  }
+
+  /** Gửi tin TIẾP THỊ tới khách đã opt-in (recipient = notification_messages_token, ngoài cửa sổ 24h). */
+  async sendMarketingMessage(pageToken: string, notifToken: string, text: string): Promise<{ message_id: string }> {
+    return this.call(
+      'me/messages',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ recipient: { notification_messages_token: notifToken }, message: { text } }),
+      },
+      pageToken,
+    );
+  }
+
   /** Hồ sơ công khai của khách theo PSID (name, ảnh). Lỗi/thiếu quyền → {error} để nơi gọi log được lý do thật. */
   async getProfile(pageToken: string, psid: string): Promise<{ name?: string; profile_pic?: string; error?: string }> {
     let err: string | undefined;
