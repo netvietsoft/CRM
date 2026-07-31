@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-07-27→30 — MARKETING MESSAGES (opt-in→campaign→receipt→opt-out) + App Review ĐƯỢC DUYỆT (gửi tin khách thật OK)
+
+> Mới nhất `168661a` (đã deploy prod kèm MIGRATION `20260727090000_msg_marketing`). Xây theo đúng kịch bản video App Review.
+
+**Marketing Messages (`ac73f76`, `168661a`):**
+- Bảng mới: `msg_marketing_optins` (notification_messages_token, 1 dòng/hội thoại, OPTED_IN|OPTED_OUT) + `msg_marketing_campaigns` + `msg_marketing_recipients` (SENT|DELIVERED|READ|FAILED theo mid).
+- Nút 📣 trong hội thoại → gửi lời mời (template notification_messages, CHỈ trong cửa sổ 24h — chặn sớm kèm hướng dẫn thay vì lỗi #10); khách đồng ý → webhook optin lưu token; STOP trong Messenger → OPTED_OUT.
+- Tab **Marketing** trên CCM (`/ccm/marketing`): danh sách opt-in (tick chọn), form chiến dịch (tên + nội dung) → gửi bằng token (NGOÀI 24h được), bảng campaigns đếm Sent/Delivered/Read/Lỗi (delivery/read receipt webhook — webhook ingest mở rộng nhận optin/delivery/read). Khách opt-out bị CHẶN gửi (cả API).
+- Verified local bằng webhook ký HMAC: optin ✓ → campaign + recipient ✓ → STOP → OPTED_OUT ✓ → gửi lại bị chặn 400 ✓.
+
+**App Review — KẾT QUẢ (kiểm chứng 30/7):**
+- ✅ `pages_messaging` ĐÃ ĐƯỢC DUYỆT: gửi tin cho KHÁCH THẬT từ CRM trả `{ok:true}` — hết lỗi (#230) đeo bám từ 22/7.
+- ❌ Avatar/tên khách qua PSID VẪN bị "Unsupported get request/missing permissions" → feature **Business Asset User Profile Access** chưa được cấp — cần xin nốt trong App Review (mục riêng, không đi kèm pages_messaging). Được duyệt thì chạy `POST /messenger/contacts/enrich` là avatar đổ về (endpoint sẵn).
+- Quota app (#4) đã hồi từ 23/7 (0-3%), bản throttle Ads giữ ổn.
+
+**Việc treo (cập nhật 30/7):** (1) 🔴 **token VTP chính HẾT HẠN TỪ 22/7 — 8 ngày rồi**: cron 15'/COD/import ĐANG NGỪNG, đơn Viettel không tự về — dán token mới (DevTools portal → header `token`) là chạy lại, nên import bù `POST /viettelpost/import-history {days:10}`; (2) xin nốt Business Asset User Profile Access (avatar); (3) TK VTP phụ vẫn 0; (4) pm2 startup chưa xác nhận; (5) WhatsApp: điền token/WABA thật ở /admin/integrations/whatsapp khi cần quay video 2 quyền WhatsApp.
+
+---
+
 ## 2026-07-22 — APP META LIVE: webhook 33 page + chuỗi sự cố gửi tin/avatar/quota + phân quyền PAGE + WhatsApp
 
 > Mới nhất `5ba7f40`. **1 MIGRATION mới**: `20260722100000_msg_page_staff_access` (cột `access` FULL|VIEW). Deploy FE luôn `rm -rf .next`.
