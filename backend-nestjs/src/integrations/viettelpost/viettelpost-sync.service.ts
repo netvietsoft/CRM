@@ -120,7 +120,7 @@ export class ViettelpostSyncService {
           });
         } catch (err: any) {
           this.logger.error(
-            `[VTP] syncOrderVoucherActivation failed for order ${updatedOrder.orderCode}: ${err?.message || err}`,
+            `[VTP] syncOrderVoucherActivation failed for order ${updatedOrder?.orderCode || order.orderCode}: ${err?.message || err}`,
           );
         }
       }

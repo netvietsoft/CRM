@@ -1,0 +1,32 @@
+id: TASK-001
+title: "SEC-01: Bổ sung xác thực chữ ký HMAC-SHA256 cho Webhook Pancake"
+owner: antigravity
+status: done
+priority: critical
+category: security
+dependencies: []
+
+files_allowed:
+  - backend-nestjs/src/integrations/pancake/pancake.controller.ts
+  - backend-nestjs/src/integrations/pancake/pancake.service.ts
+  - backend-nestjs/src/integrations/pancake/pancake.module.ts
+  - backend-nestjs/src/integrations/pancake/pancake.service.spec.ts
+
+files_forbidden:
+  - frontend/**
+  - backend-nestjs/src/auth/**
+
+acceptance_criteria:
+  - Endpoint POST /api/integrations/pancake/webhook đọc header x-pancake-signature
+  - Tính toán HMAC-SHA256 trên rawBody với secretKey của StoreIntegration
+  - So sánh bằng crypto.timingSafeEqual để chống timing attack
+  - Trả về 403 Forbidden nếu chữ ký không hợp lệ
+  - Unit test pass với cả trường hợp chữ ký đúng và giả mạo
+
+commands:
+  test:
+    - cd backend-nestjs && npm run test -- pancake
+  typecheck:
+    - cd backend-nestjs && npx tsc --noEmit
+
+max_fix_cycles: 5

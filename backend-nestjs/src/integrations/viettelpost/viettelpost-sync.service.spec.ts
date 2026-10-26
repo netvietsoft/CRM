@@ -2,12 +2,22 @@ import { ViettelpostSyncService } from './viettelpost-sync.service';
 
 function makeService() {
   const prisma: any = {
-    order: { findMany: jest.fn(), update: jest.fn() },
+    order: {
+      findMany: jest.fn(),
+      update: jest.fn(async (args: any) => ({
+        id: args?.where?.id || 'o1',
+        orderCode: 'VTP1',
+        status: args?.data?.status || 'DELIVERED',
+        totalAmount: 100000,
+        isExchange: false,
+      })),
+    },
   };
   const authService: any = { get: jest.fn() };
   const customerService: any = { enrichFromDetail: jest.fn() };
-  const service = new ViettelpostSyncService(prisma, authService, customerService);
-  return { service, prisma, authService, customerService };
+  const vouchersService: any = { syncOrderVoucherActivation: jest.fn().mockResolvedValue(undefined) };
+  const service = new ViettelpostSyncService(prisma, authService, customerService, vouchersService);
+  return { service, prisma, authService, customerService, vouchersService };
 }
 
 describe('ViettelpostSyncService', () => {

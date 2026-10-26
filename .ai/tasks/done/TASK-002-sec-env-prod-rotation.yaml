@@ -1,0 +1,29 @@
+id: TASK-002
+title: "SEC-02: Gỡ bỏ .env.prod khỏi Git tracking và xoay vòng toàn bộ Production Secrets"
+owner: antigravity
+status: done
+priority: critical
+category: security
+dependencies: []
+
+files_allowed:
+  - .gitignore
+  - backend-nestjs/.gitignore
+  - frontend/.gitignore
+  - docs/Security/secrets.md
+
+files_forbidden:
+  - backend-nestjs/src/**
+  - frontend/src/**
+
+acceptance_criteria:
+  - .env.prod và các file .env chứa secret được thêm vào .gitignore
+  - Chạy git rm --cached cho các file .env.prod
+  - Tạo tài liệu hướng dẫn xoay vòng secret trong docs/Security/secrets.md
+  - Không còn credentials thực tế nào bị commit trong kho mã nguồn
+
+commands:
+  test:
+    - git status
+
+max_fix_cycles: 3

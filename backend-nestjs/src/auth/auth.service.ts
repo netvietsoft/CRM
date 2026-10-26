@@ -376,20 +376,31 @@ export class AuthService {
 
   /** Vé JWT 60 giây cho handshake socket.io — nginx không forward Cookie tới /socket.io nên FE gửi vé qua auth payload. */
   async issueSocketTicket(userId: string, role: string) {
-    const token = await this.jwtService.signAsync({ userId, role }, { expiresIn: '60s' });
+    const accessSecret = this.configService.get<string>('JWT_SECRET');
+    const token = await this.jwtService.signAsync(
+      { userId, role, type: 'access' },
+      { secret: accessSecret, expiresIn: '60s' },
+    );
     return { token };
   }
 
   private async generateTokens(userId: string, role: string) {
-    const payload = { userId, role };
+    const accessSecret = this.configService.get<string>('JWT_SECRET');
+    const refreshSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET') || `${accessSecret}_refresh`;
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRY', '15m'),
-      }),
       this.jwtService.signAsync(
-        { userId },
+        { userId, role, type: 'access' },
         {
+          secret: accessSecret,
+          expiresIn: this.configService.get<string>('JWT_ACCESS_EXPIRY', '15m'),
+        },
+      ),
+      this.jwtService.signAsync(
+        { userId, type: 'refresh' },
+        {
+          secret: refreshSecret,
           expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRY', '30d'),
         },
       ),

@@ -21,6 +21,15 @@ describe('OrdersService VietQR expiry', () => {
             findFirst: jest.fn().mockResolvedValue({ id: 'variant-1' }),
             update: jest.fn(),
           },
+          orderVoucher: {
+            findMany: jest.fn().mockResolvedValue([]),
+          },
+          userVoucher: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
+          voucher: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          },
         }),
       ),
     };
@@ -31,7 +40,7 @@ describe('OrdersService VietQR expiry', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { handleOrderStateChange: jest.fn().mockResolvedValue(undefined) } as any,
       {} as any,
     );
   });
@@ -66,6 +75,15 @@ describe('OrdersService VietQR expiry', () => {
         productVariant: {
           findFirst: jest.fn().mockResolvedValue({ id: 'variant-1' }),
           update: jest.fn(),
+        },
+        orderVoucher: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        userVoucher: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        },
+        voucher: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         },
       };
       return callback(txRef);
@@ -219,3 +237,404 @@ describe('updateAdminFields -> isExchange', () => {
     expect(captured.data.note).toBe('Giao giờ hành chính');
   });
 });
+
+describe('createAdminOrder -> Prisma $transaction and stock validation', () => {
+  let prisma: any;
+  let service: OrdersService;
+  let messagingService: any;
+
+  beforeEach(() => {
+    prisma = {
+      product: {
+        findUnique: jest.fn(),
+      },
+      productVariant: {
+        findFirst: jest.fn(),
+      },
+      user: {
+        findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => {
+        const tx = {
+          product: { update: jest.fn().mockResolvedValue({}) },
+          productVariant: { update: jest.fn().mockResolvedValue({}) },
+          order: {
+            create: jest.fn().mockResolvedValue({
+              id: 'new-order-id',
+              orderCode: 'ORD999888',
+            }),
+          },
+        };
+        return cb(tx);
+      }),
+    };
+
+    messagingService = {
+      handleOrderCreated: jest.fn().mockResolvedValue(undefined),
+    };
+
+    service = new OrdersService(
+      prisma,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      messagingService,
+      {} as any,
+    );
+  });
+
+  it('bọc toàn bộ trừ kho và order.create trong $transaction', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'prod-1',
+      name: 'Áo thun Polo',
+      isActive: true,
+      stockQuantity: 10,
+      originalPrice: 200000,
+      salePrice: 180000,
+      storeId: 'store-1',
+      variants: [
+        {
+          id: 'var-1',
+          stock: 5,
+          price: 180000,
+          size: { name: 'L' },
+          color: { name: 'Black' },
+        },
+      ],
+    });
+
+    const result = await service.createAdminOrder({
+      createOrderDto: {
+        items: [{ productId: 'prod-1', quantity: 2, size: 'L', color: 'Black' }],
+        shippingName: 'Nguyen Van A',
+        shippingPhone: '0901234567',
+        paymentMethod: 'COD',
+      } as any,
+      actorId: 'admin-1',
+      actorRole: 'ADMIN',
+      effectiveStoreId: 'store-1',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.orderId).toBe('new-order-id');
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('từ chối và ném lỗi nếu sản phẩm không đủ tồn kho', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'prod-1',
+      name: 'Áo thun Polo',
+      isActive: true,
+      stockQuantity: 1, // Chỉ còn 1 mà yêu cầu 2
+      originalPrice: 200000,
+      salePrice: 180000,
+      storeId: 'store-1',
+      variants: [],
+    });
+
+    await expect(
+      service.createAdminOrder({
+        createOrderDto: {
+          items: [{ productId: 'prod-1', quantity: 2 }],
+          shippingName: 'Nguyen Van A',
+          shippingPhone: '0901234567',
+        } as any,
+        actorId: 'admin-1',
+        actorRole: 'ADMIN',
+        effectiveStoreId: 'store-1',
+      }),
+    ).rejects.toThrow('không đủ tồn kho');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('từ chối và ném lỗi nếu biến thể (variant) không đủ tồn kho', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'prod-1',
+      name: 'Áo thun Polo',
+      isActive: true,
+      stockQuantity: 100,
+      originalPrice: 200000,
+      salePrice: 180000,
+      storeId: 'store-1',
+      variants: [
+        {
+          id: 'var-1',
+          stock: 1, // Variant chỉ còn 1 mà yêu cầu 2
+          price: 180000,
+          size: { name: 'XL' },
+          color: { name: 'White' },
+        },
+      ],
+    });
+
+    await expect(
+      service.createAdminOrder({
+        createOrderDto: {
+          items: [{ productId: 'prod-1', quantity: 2, size: 'XL', color: 'White' }],
+          shippingName: 'Nguyen Van A',
+          shippingPhone: '0901234567',
+        } as any,
+        actorId: 'admin-1',
+        actorRole: 'ADMIN',
+        effectiveStoreId: 'store-1',
+      }),
+    ).rejects.toThrow('không đủ tồn kho');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('rollback nếu order.create trong transaction bị lỗi', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'prod-1',
+      name: 'Áo thun Polo',
+      isActive: true,
+      stockQuantity: 10,
+      originalPrice: 200000,
+      salePrice: 180000,
+      storeId: 'store-1',
+      variants: [],
+    });
+
+    prisma.$transaction.mockImplementationOnce(async (cb: (tx: any) => Promise<any>) => {
+      const tx = {
+        product: { update: jest.fn().mockResolvedValue({}) },
+        productVariant: { update: jest.fn().mockResolvedValue({}) },
+        order: {
+          create: jest.fn().mockRejectedValue(new Error('DB Constraint Violation')),
+        },
+      };
+      return cb(tx);
+    });
+
+    await expect(
+      service.createAdminOrder({
+        createOrderDto: {
+          items: [{ productId: 'prod-1', quantity: 1 }],
+          shippingName: 'Nguyen Van A',
+          shippingPhone: '0901234567',
+        } as any,
+        actorId: 'admin-1',
+        actorRole: 'ADMIN',
+        effectiveStoreId: 'store-1',
+      }),
+    ).rejects.toThrow('DB Constraint Violation');
+  });
+});
+
+describe('create -> Voucher lifecycle status validation (TASK-005)', () => {
+  let prisma: any;
+  let service: OrdersService;
+  let rankConfigService: any;
+  let messagingService: any;
+
+  beforeEach(() => {
+    prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          name: 'Customer A',
+          phone: '0901112233',
+          totalSpent: 0,
+          commissionBalance: 0,
+        }),
+      },
+      product: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'prod-1',
+          name: 'Váy dạ hội',
+          isActive: true,
+          originalPrice: 500000,
+          salePrice: null,
+          storeId: 'store-1',
+          variants: [],
+          categories: [],
+        }),
+      },
+      order: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      voucher: {
+        findUnique: jest.fn(),
+      },
+      userVoucher: {
+        findMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      $transaction: jest.fn(async (cb: (tx: any) => Promise<any>) => {
+        const tx = {
+          product: { update: jest.fn() },
+          productVariant: { update: jest.fn() },
+          userVoucher: {
+            update: jest.fn().mockResolvedValue({ id: 'uv-active' }),
+            create: jest.fn().mockResolvedValue({ id: 'uv-new' }),
+          },
+          voucher: { update: jest.fn() },
+          user: { update: jest.fn() },
+          order: {
+            create: jest.fn().mockResolvedValue({
+              id: 'order-1',
+              orderCode: 'ORD123456',
+            }),
+          },
+        };
+        return cb(tx);
+      }),
+    };
+
+    rankConfigService = {
+      findAll: jest.fn().mockResolvedValue([]),
+      resolveRank: jest.fn().mockReturnValue('MEMBER'),
+      getDiscountPercentForRank: jest.fn().mockReturnValue(0),
+      applyRankDiscount: jest.fn((price) => price),
+    };
+
+    messagingService = {
+      handleOrderCreated: jest.fn().mockResolvedValue(undefined),
+      handleVoucherUsed: jest.fn().mockResolvedValue(undefined),
+    };
+
+    service = new OrdersService(
+      prisma,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      messagingService,
+      rankConfigService,
+    );
+  });
+
+  it('chặn và ném lỗi BadRequestException nếu UserVoucher bị REJECTED', async () => {
+    prisma.voucher.findUnique.mockResolvedValue({
+      id: 'voucher-1',
+      code: 'VOUCHER100',
+      isActive: true,
+      validFrom: null,
+      validTo: null,
+      type: 'FIXED_AMOUNT',
+      value: 50000,
+      minOrderValue: 200000,
+      perCustomerLimit: 1,
+      orderSources: [],
+      salesChannels: [],
+      customerSegments: [],
+      customerRanks: [],
+      customerOccasions: [],
+      shippingProvinces: [],
+      paymentMethods: [],
+      requiredCategoryId: null,
+      minProductCount: null,
+    });
+
+    prisma.userVoucher.findMany.mockResolvedValue([
+      {
+        id: 'uv-rejected',
+        userId: 'user-1',
+        voucherId: 'voucher-1',
+        status: 'REJECTED',
+        isUsed: false,
+        expiresAt: null,
+      },
+    ]);
+
+    await expect(
+      service.create('user-1', {
+        items: [{ productId: 'prod-1', quantity: 1 }],
+        voucherId: 'voucher-1',
+        paymentMethod: 'COD',
+      } as any),
+    ).rejects.toThrow('Voucher này đã bị từ chối và không thể áp dụng.');
+  });
+
+  it('chặn và ném lỗi nếu UserVoucher đang ở trạng thái PENDING', async () => {
+    prisma.voucher.findUnique.mockResolvedValue({
+      id: 'voucher-1',
+      code: 'VOUCHER100',
+      isActive: true,
+      validFrom: null,
+      validTo: null,
+      type: 'FIXED_AMOUNT',
+      value: 50000,
+      minOrderValue: 200000,
+      perCustomerLimit: 1,
+      orderSources: [],
+      salesChannels: [],
+      customerSegments: [],
+      customerRanks: [],
+      customerOccasions: [],
+      shippingProvinces: [],
+      paymentMethods: [],
+      requiredCategoryId: null,
+      minProductCount: null,
+    });
+
+    prisma.userVoucher.findMany.mockResolvedValue([
+      {
+        id: 'uv-pending',
+        userId: 'user-1',
+        voucherId: 'voucher-1',
+        status: 'PENDING',
+        isUsed: false,
+        expiresAt: null,
+      },
+    ]);
+
+    await expect(
+      service.create('user-1', {
+        items: [{ productId: 'prod-1', quantity: 1 }],
+        voucherId: 'voucher-1',
+        paymentMethod: 'COD',
+      } as any),
+    ).rejects.toThrow('Voucher này đang chờ duyệt/kích hoạt và chưa thể sử dụng.');
+  });
+
+  it('cho phép áp dụng thành công nếu UserVoucher ở trạng thái ACTIVE', async () => {
+    prisma.voucher.findUnique.mockResolvedValue({
+      id: 'voucher-1',
+      code: 'VOUCHER100',
+      isActive: true,
+      validFrom: null,
+      validTo: null,
+      type: 'FIXED_AMOUNT',
+      value: 50000,
+      minOrderValue: 200000,
+      perCustomerLimit: 1,
+      orderSources: [],
+      salesChannels: [],
+      customerSegments: [],
+      customerRanks: [],
+      customerOccasions: [],
+      shippingProvinces: [],
+      paymentMethods: [],
+      requiredCategoryId: null,
+      minProductCount: null,
+    });
+
+    prisma.userVoucher.findMany.mockResolvedValue([
+      {
+        id: 'uv-active',
+        userId: 'user-1',
+        voucherId: 'voucher-1',
+        status: 'ACTIVE',
+        isUsed: false,
+        expiresAt: null,
+      },
+    ]);
+
+    const result = await service.create('user-1', {
+      items: [{ productId: 'prod-1', quantity: 1 }],
+      voucherId: 'voucher-1',
+      paymentMethod: 'COD',
+    } as any);
+
+    expect(result.orderId).toBe('order-1');
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+});
+
+

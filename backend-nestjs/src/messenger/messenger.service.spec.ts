@@ -17,7 +17,7 @@ function makePrisma() {
   return {
     _messages: messages,
     msgPage: { findUnique: jest.fn(async () => ({ id: 'p1', externalId: 'PAGE1', storeId: null, accessToken: null })) },
-    msgContact: { upsert: jest.fn(async () => ({ id: 'c1', name: 'Khách' })) },
+    msgContact: { upsert: jest.fn(async () => ({ id: 'c1', name: 'Khách', avatarUrl: 'https://avatar.test/1.png' })) },
     msgConversation: { upsert: jest.fn(async () => ({ id: 'cv1' })), update: jest.fn(async () => ({})) },
     msgMessage: {
       findUnique: jest.fn(async ({ where }: any) => messages.find((m) => m.mid === where.mid) || null),
@@ -54,5 +54,52 @@ describe('MessengerService.ingestEvent', () => {
     const svc = new MessengerService(prisma, client, gateway, moduleRef);
     await svc.ingestEvent(event('mid-3'));
     expect(prisma.msgConversation.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('MessengerService.sendUtilityMessage', () => {
+  it('gọi client.sendUtilityMessage với MESSAGE_TAG và lưu tin nhắn OUT', async () => {
+    const prisma = {
+      msgConversation: {
+        findUnique: jest.fn(async () => ({
+          id: 'cv1',
+          pageId: 'p1',
+          page: { accessToken: 'PAGE_TOKEN', storeId: null },
+          contact: { psid: 'PSID_123' },
+        })),
+        update: jest.fn(async () => ({})),
+      },
+      msgMessage: {
+        create: jest.fn(async ({ data }: any) => ({ id: 'm1', ...data })),
+      },
+    } as any;
+    const client = {
+      sendUtilityMessage: jest.fn(async () => ({ message_id: 'mid_util_1' })),
+    } as any;
+    const gateway = { emitMessengerMessage: jest.fn() } as any;
+    const moduleRef = { get: jest.fn(() => undefined) } as any;
+
+    const svc = new MessengerService(prisma, client, gateway, moduleRef);
+    const res = await svc.sendUtilityMessage(null, 'cv1', 'user1', {
+      text: 'Order #ORD-8899 confirmed',
+      tag: 'POST_PURCHASE_UPDATE',
+    });
+
+    expect(res).toEqual({ ok: true, message_id: 'mid_util_1' });
+    expect(client.sendUtilityMessage).toHaveBeenCalledWith(
+      'PAGE_TOKEN',
+      'PSID_123',
+      'Order #ORD-8899 confirmed',
+      'POST_PURCHASE_UPDATE',
+    );
+    expect(prisma.msgMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          direction: 'OUT',
+          mid: 'mid_util_1',
+          text: 'Order #ORD-8899 confirmed',
+        }),
+      }),
+    );
   });
 });

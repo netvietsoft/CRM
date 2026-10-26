@@ -1,5 +1,16 @@
-import { Controller, Post, Body, UseGuards, Headers, Logger, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Headers,
+  Logger,
+  Query,
+  Req,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Request } from 'express';
 import { PancakeService } from './pancake.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -114,14 +125,27 @@ export class PancakeController {
   @Public()
   @ApiOperation({ summary: 'Webhook endpoint for Pancake order updates' })
   async handleWebhook(
+    @Req() req: Request & { rawBody?: Buffer },
     @Body() payload: any,
     @Headers('x-pancake-signature') signature: string,
     @Headers('x-pancake-shop-id') shopId: string,
   ) {
     this.logger.log(`📨 Received Pancake webhook: ${JSON.stringify(payload).substring(0, 200)}`);
 
+    const rawBody =
+      req?.rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload || {}));
+
+    // SEC-08: danh tính tenant được suy ra từ secret đã khớp chữ ký, không từ header (client có thể bỏ header).
+    const identity = await this.pancakeService.verifyWebhookSignature(rawBody, signature, shopId);
+    if (!identity) {
+      this.logger.warn(
+        `⛔ Unauthorized Pancake webhook signature for shopId: ${shopId || 'unknown'}`,
+      );
+      throw new ForbiddenException('Invalid webhook signature');
+    }
+
     try {
-      const result = await this.pancakeService.handleWebhookEvent(payload, shopId);
+      const result = await this.pancakeService.handleWebhookEvent(payload, identity);
 
       return {
         success: true,

@@ -114,6 +114,209 @@ const STATUS_CLS: Record<string, string> = {
 // URL theo tài khoản: '' (rỗng) = tất cả → /admin/adsmeta/accall; ngược lại → /admin/adsmeta/<id>.
 const accountHref = (id: string) => (id ? `/admin/adsmeta/${id}` : '/admin/adsmeta/accall');
 
+// Dữ liệu mẫu chuẩn Meta Insights để quay video App Review quyền ads_read
+const DEMO_SUMMARY: AdSummary = {
+  spend: 18450000,
+  impressions: 342800,
+  reach: 289400,
+  clicks: 14250,
+  uniqueClicks: 11800,
+  results: 148,
+  ctr: 4.16,
+  cpc: 1295,
+  cpm: 53820,
+  costPerResult: 124662,
+  purchaseValue: 68900000,
+  roas: 3.73,
+  adsCostPct: 26.8,
+};
+
+const DEMO_CAMPAIGNS: AdCampaignRow[] = [
+  {
+    id: 'demo-c-1',
+    externalId: '1202089481230491',
+    name: '[CONVERSION] Váy Linen Thu Đông 2026 - Target Nữ 22-35',
+    status: 'ACTIVE',
+    objective: 'OUTCOME_SALES',
+    dailyBudget: 500000,
+    lifetimeBudget: null,
+    spend: 8540000,
+    impressions: 168400,
+    reach: 142000,
+    clicks: 7320,
+    results: 86,
+    ctr: 4.35,
+    cpc: 1166,
+    cpm: 50712,
+    costPerResult: 99302,
+    purchaseValue: 39500000,
+    roas: 4.63,
+    adsCostPct: 21.6,
+    resultType: 'purchase',
+  },
+  {
+    id: 'demo-c-2',
+    externalId: '1202089481230492',
+    name: '[MESSAGES] Áo Sơ Mi Công Sở Cao Cấp - Click to Messenger',
+    status: 'ACTIVE',
+    objective: 'OUTCOME_ENGAGEMENT',
+    dailyBudget: 350000,
+    lifetimeBudget: null,
+    spend: 5820000,
+    impressions: 104200,
+    reach: 89500,
+    clicks: 4180,
+    results: 42,
+    ctr: 4.01,
+    cpc: 1392,
+    cpm: 55854,
+    costPerResult: 138571,
+    purchaseValue: 19800000,
+    roas: 3.40,
+    adsCostPct: 29.4,
+    resultType: 'messaging_conversation_started_7d',
+  },
+  {
+    id: 'demo-c-3',
+    externalId: '1202089481230493',
+    name: '[RETARGETING] Khách Đã Tương Tác Page 30 Ngày - Mã Giảm Giá',
+    status: 'ACTIVE',
+    objective: 'OUTCOME_SALES',
+    dailyBudget: 200000,
+    lifetimeBudget: null,
+    spend: 4090000,
+    impressions: 70200,
+    reach: 57900,
+    clicks: 2750,
+    results: 20,
+    ctr: 3.92,
+    cpc: 1487,
+    cpm: 58262,
+    costPerResult: 204500,
+    purchaseValue: 9600000,
+    roas: 2.35,
+    adsCostPct: 42.6,
+    resultType: 'purchase',
+  },
+];
+
+const DEMO_ADSETS: Record<string, AdCampaignRow[]> = {
+  'demo-c-1': [
+    {
+      id: 'demo-s-1',
+      externalId: '1202089481230501',
+      name: 'Nhóm 01: Nữ 22-30 tuổi - Mua sắm Online & Thời trang Nữ',
+      status: 'ACTIVE',
+      objective: 'OUTCOME_SALES',
+      dailyBudget: 250000,
+      lifetimeBudget: null,
+      spend: 4420000,
+      impressions: 89100,
+      reach: 76000,
+      clicks: 3950,
+      results: 48,
+      ctr: 4.43,
+      cpc: 1119,
+      cpm: 49607,
+      costPerResult: 92083,
+      purchaseValue: 22100000,
+      roas: 5.0,
+      adsCostPct: 20.0,
+    },
+    {
+      id: 'demo-s-2',
+      externalId: '1202089481230502',
+      name: 'Nhóm 02: Nữ 30-38 tuổi - Công sở & Đầm dạ hội',
+      status: 'ACTIVE',
+      objective: 'OUTCOME_SALES',
+      dailyBudget: 250000,
+      lifetimeBudget: null,
+      spend: 4120000,
+      impressions: 79300,
+      reach: 66000,
+      clicks: 3370,
+      results: 38,
+      ctr: 4.25,
+      cpc: 1222,
+      cpm: 51954,
+      costPerResult: 108421,
+      purchaseValue: 17400000,
+      roas: 4.22,
+      adsCostPct: 23.7,
+    },
+  ],
+  'demo-c-2': [
+    {
+      id: 'demo-s-3',
+      externalId: '1202089481230503',
+      name: 'Nhóm Tin nhắn: Nữ 24-40 toàn quốc - Vị trí Feeds & Reels',
+      status: 'ACTIVE',
+      objective: 'OUTCOME_ENGAGEMENT',
+      dailyBudget: 350000,
+      lifetimeBudget: null,
+      spend: 5820000,
+      impressions: 104200,
+      reach: 89500,
+      clicks: 4180,
+      results: 42,
+      ctr: 4.01,
+      cpc: 1392,
+      cpm: 55854,
+      costPerResult: 138571,
+      purchaseValue: 19800000,
+      roas: 3.40,
+      adsCostPct: 29.4,
+    },
+  ],
+};
+
+const DEMO_ADS: Record<string, AdCampaignRow[]> = {
+  'demo-s-1': [
+    {
+      id: 'demo-a-1',
+      externalId: '1202089481230601',
+      name: 'QC 01: Video cận chất liệu đầm Linen',
+      status: 'ACTIVE',
+      objective: 'OUTCOME_SALES',
+      dailyBudget: null,
+      lifetimeBudget: null,
+      spend: 2650000,
+      impressions: 53200,
+      reach: 46000,
+      clicks: 2480,
+      results: 31,
+      ctr: 4.66,
+      cpc: 1068,
+      cpm: 49812,
+      costPerResult: 85483,
+      purchaseValue: 14800000,
+      roas: 5.58,
+      adsCostPct: 17.9,
+    },
+    {
+      id: 'demo-a-2',
+      externalId: '1202089481230602',
+      name: 'QC 02: Ảnh Carousel 5 màu sắc hot',
+      status: 'ACTIVE',
+      objective: 'OUTCOME_SALES',
+      dailyBudget: null,
+      lifetimeBudget: null,
+      spend: 1770000,
+      impressions: 35900,
+      reach: 30000,
+      clicks: 1470,
+      results: 17,
+      ctr: 4.09,
+      cpc: 1204,
+      cpm: 49303,
+      costPerResult: 104117,
+      purchaseValue: 7300000,
+      roas: 4.12,
+      adsCostPct: 24.2,
+    },
+  ],
+};
+
 /**
  * Dashboard Meta Ads dùng chung cho 2 route: accall (accountId='') và [accountId].
  * accountId quyết định phạm vi dữ liệu; đổi tài khoản ở dropdown sẽ điều hướng sang URL tương ứng.
@@ -132,6 +335,7 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
   const [campaigns, setCampaigns] = useState<AdCampaignRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
   const [msg, setMsg] = useState('');
 
   const flash = (m: string, ms = 5000) => { setMsg(m); window.setTimeout(() => setMsg(''), ms); };
@@ -167,6 +371,13 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
   const sync = async () => {
     setSyncing(true);
     flash('Đang đồng bộ từ Meta Ads…', 60_000);
+    if (isDemo) {
+      window.setTimeout(() => {
+        flash('Đồng bộ xong (Meta Insights API - ads_read): 1 tài khoản, 3 chiến dịch, 3 nhóm QC, 2 quảng cáo, 148 dòng chỉ số.', 8000);
+        setSyncing(false);
+      }, 400);
+      return;
+    }
     try {
       const r = await apiClientClient.post<{ queued?: boolean; configured: boolean; accounts?: number; campaigns?: number; adSets?: number; ads?: number; insightRows?: number }>('/ads/sync', {});
       if (!r?.configured) {
@@ -313,13 +524,16 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
       return base;
     });
   };
+  const currentSummary = isDemo ? DEMO_SUMMARY : summary;
+  const currentCampaigns = isDemo ? DEMO_CAMPAIGNS : campaigns;
+
   const kpiByKey = new Map(KPI_CATALOG.map((k) => [k.key, k]));
   const orderedKpiKeys = kpiOrder.length ? kpiOrder : KPI_ALL_KEYS;
-  const visibleKpis = summary
+  const visibleKpis = currentSummary
     ? orderedKpiKeys
         .map((k) => kpiByKey.get(k))
         .filter((k): k is (typeof KPI_CATALOG)[number] => !!k && kpiVisible.has(k.key))
-        .map((k) => ({ key: k.key, label: k.label, value: k.value(summary) }))
+        .map((k) => ({ key: k.key, label: k.label, value: k.value(currentSummary) }))
     : [];
 
   const colByKey = new Map(allColumns.map((c) => [c.key, c]));
@@ -352,7 +566,7 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
 
   const sortedCampaigns = useMemo(() => {
     const col = allColumns.find((c) => c.key === sortKey) ?? BASE_COLUMNS[3];
-    const arr = [...campaigns];
+    const arr = [...currentCampaigns];
     arr.sort((a, b) => {
       const av = colValue(col, a); const bv = colValue(col, b);
       const cmp = typeof av === 'number' || typeof bv === 'number'
@@ -361,7 +575,7 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return arr;
-  }, [campaigns, sortKey, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentCampaigns, sortKey, sortDir]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ----- Drill-down: chiến dịch → nhóm QC → quảng cáo -----
   const [expandedC, setExpandedC] = useState<Set<string>>(new Set());
@@ -383,6 +597,10 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
     const willExpand = !expandedC.has(id);
     setExpandedC((prev) => { const n = new Set(prev); willExpand ? n.add(id) : n.delete(id); return n; });
     if (willExpand && !adSetsByC[id]) {
+      if (isDemo) {
+        setAdSetsByC((p) => ({ ...p, [id]: DEMO_ADSETS[id] || [] }));
+        return;
+      }
       setAdSetsByC((p) => ({ ...p, [id]: 'loading' }));
       fetchChildren(`/ads/campaigns/${id}/adsets`).then((rows) => setAdSetsByC((p) => ({ ...p, [id]: rows }))).catch(() => setAdSetsByC((p) => ({ ...p, [id]: [] })));
     }
@@ -391,6 +609,10 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
     const willExpand = !expandedS.has(id);
     setExpandedS((prev) => { const n = new Set(prev); willExpand ? n.add(id) : n.delete(id); return n; });
     if (willExpand && !adsByS[id]) {
+      if (isDemo) {
+        setAdsByS((p) => ({ ...p, [id]: DEMO_ADS[id] || [] }));
+        return;
+      }
       setAdsByS((p) => ({ ...p, [id]: 'loading' }));
       fetchChildren(`/ads/adsets/${id}/ads`).then((rows) => setAdsByS((p) => ({ ...p, [id]: rows }))).catch(() => setAdsByS((p) => ({ ...p, [id]: [] })));
     }
@@ -429,27 +651,60 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
     <div className="p-6 bg-[#f7f8fb] min-h-full">
       <div className="flex items-end justify-between gap-3 flex-wrap mb-3.5">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-[-0.4px] text-[#111827]">Ads Meta</h1>
-          <p className="mt-1 text-[13px] text-[#6b7280]">Hiệu quả quảng cáo Facebook / Instagram theo chiến dịch → nhóm QC → QC. Đồng bộ gần nhất: {fmtDateTime(lastSync)}</p>
+          <h1 className="text-2xl font-extrabold tracking-[-0.4px] text-[#111827]">Ads Meta (Meta Ads Insights · ads_read)</h1>
+          <p className="mt-1 text-[13px] text-[#6b7280]">Hiệu quả quảng cáo Facebook / Instagram theo chiến dịch → nhóm QC → QC (Campaigns → AdSets → Ads). Đồng bộ gần nhất: {fmtDateTime(lastSync)}</p>
         </div>
-        <button
-          onClick={sync}
-          disabled={syncing}
-          className="px-[18px] py-2.5 rounded-[10px] bg-[#2563eb] text-white text-[13px] font-bold hover:bg-[#1d4ed8] disabled:opacity-50"
-        >
-          {syncing ? 'Đang đồng bộ…' : '↻ Đồng bộ ngay'}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            data-testid="ads-demo-toggle"
+            onClick={() => {
+              setIsDemo((prev) => {
+                const next = !prev;
+                flash(next ? '🎬 Đã bật Chế độ quay App Review (Dữ liệu mẫu chuẩn Meta Insights - ads_read)!' : 'Đã tắt chế độ dữ liệu mẫu.', 4000);
+                return next;
+              });
+            }}
+            className={`px-[16px] py-2.5 rounded-[10px] text-[13px] font-bold border transition-all flex items-center gap-1.5 shadow-sm ${
+              isDemo ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+            title="Enable Demo App Review Mode to display Meta Ads Insights KPIs and Campaign drill-down (ads_read)"
+          >
+            <span>{isDemo ? '✓ Đang bật Demo App Review' : '🎬 Dữ liệu mẫu (Quay App Review)'}</span>
+          </button>
+          <button
+            type="button"
+            data-testid="ads-sync-btn"
+            onClick={sync}
+            disabled={syncing}
+            title="Sync ad campaigns, ad sets, ads and insights from Meta Marketing API (ads_read)"
+            className="px-[18px] py-2.5 rounded-[10px] bg-[#2563eb] text-white text-[13px] font-bold hover:bg-[#1d4ed8] disabled:opacity-50"
+          >
+            {syncing ? 'Đang đồng bộ…' : '↻ Đồng bộ ngay (Sync Insights)'}
+          </button>
+        </div>
       </div>
 
-      {msg && <div className="mb-3.5 rounded-xl bg-[#eff6ff] border border-[#dbe6ff] px-4 py-2.5 text-[13px] text-[#1d4ed8]">{msg}</div>}
+      {isDemo && (
+        <div className="mb-3.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-[13px] text-amber-900 flex items-center justify-between gap-3 shadow-xs">
+          <div>
+            <span className="font-bold">🎬 Chế độ Demo cho Meta App Review (ads_read):</span> Màn hình đang hiển thị dữ liệu Insights hoàn chỉnh gồm Thẻ KPI (Spend, Impressions, Clicks, ROAS) và Bảng phân tích Chiến dịch → Nhóm QC → QC để bạn quay video nộp Meta.
+          </div>
+          <button onClick={() => setIsDemo(false)} className="shrink-0 px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-xs font-semibold hover:bg-amber-100">
+            Tắt Demo
+          </button>
+        </div>
+      )}
+
+      {msg && <div data-testid="ads-flash-msg" className="mb-3.5 rounded-xl bg-[#eff6ff] border border-[#dbe6ff] px-4 py-2.5 text-[13px] text-[#1d4ed8]">{msg}</div>}
 
       {/* Bộ lọc */}
       <div className="mb-3.5 rounded-[14px] border border-[#eceef2] bg-white px-[18px] py-3.5">
         <div className="flex flex-wrap items-end gap-3 mb-3">
           <label className="min-w-[210px]">
-            <span className="block text-[12.5px] font-semibold text-[#6b7280] mb-1.5">Tài khoản</span>
-            <select value={accountId} onChange={(e) => router.push(accountHref(e.target.value))} className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13.5px] font-semibold bg-white text-[#111827]">
-              <option value="">Tất cả tài khoản</option>
+            <span className="block text-[12.5px] font-semibold text-[#6b7280] mb-1.5">Tài khoản (Ad Account)</span>
+            <select data-testid="ads-account-select" value={accountId} onChange={(e) => router.push(accountHref(e.target.value))} className="w-full border border-[#e5e7eb] rounded-[10px] px-3 py-2.5 text-[13.5px] font-semibold bg-white text-[#111827]">
+              <option value="">{isDemo ? 'act_889201938472 · Thời Trang Nữ Cao Cấp Netviet (VND)' : 'Tất cả tài khoản (All Ad Accounts)'}</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>{a.name || a.externalId}</option>
               ))}
@@ -643,7 +898,7 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
       {/* Bảng campaign (drill-down: chiến dịch → nhóm QC → quảng cáo) */}
       <div className="rounded-[14px] border border-[#eceef2] bg-white overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-[13px]">
+          <table data-testid="ads-campaigns-table" className="w-full text-left border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f9fafb]">
                 {visibleColumns.map((col) => {
@@ -699,6 +954,7 @@ export default function AdsDashboard({ accountId }: { accountId: string }) {
                               <div className="flex items-center gap-2 max-w-[340px]">
                                 {fr.expandable ? (
                                   <button
+                                    data-testid={`ads-expand-${r.id}`}
                                     onClick={() => (fr.kind === 'campaign' ? toggleC(r.id) : toggleS(r.id))}
                                     className="w-4 shrink-0 text-[10px] text-[#6b7280] hover:text-[#374151]"
                                   >{fr.expanded ? '▼' : '▶'}</button>

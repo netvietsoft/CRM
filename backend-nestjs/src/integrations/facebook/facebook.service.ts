@@ -9,6 +9,7 @@ import { encryptToken, decryptToken } from './token-vault';
 const SCOPES = [
   'public_profile', 'email', 'pages_show_list', 'pages_read_engagement', 'pages_manage_metadata',
   'pages_read_user_content', 'pages_manage_posts', 'pages_messaging', 'ads_read', 'ads_management', 'business_management',
+  'catalog_management',
 ].join(',');
 
 const GRAPH_DIALOG = (process.env.META_GRAPH_URL || 'https://graph.facebook.com/v19.0').match(/v[\d.]+/)?.[0] || 'v19.0';

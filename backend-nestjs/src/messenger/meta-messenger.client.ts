@@ -81,6 +81,29 @@ export class MetaMessengerClient {
     );
   }
 
+  /** Gửi tin TIỆN ÍCH / THÔNG BÁO ĐƠN HÀNG (template/utility message tag, ngoài cửa sổ 24h). */
+  async sendUtilityMessage(
+    pageToken: string,
+    recipientPsid: string,
+    text: string,
+    tag: string = 'POST_PURCHASE_UPDATE',
+  ): Promise<{ message_id: string }> {
+    return this.call(
+      'me/messages',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          recipient: { id: recipientPsid },
+          message: { text },
+          messaging_type: 'MESSAGE_TAG',
+          tag,
+        }),
+      },
+      pageToken,
+    );
+  }
+
   /** Hồ sơ công khai của khách theo PSID (name, ảnh). Lỗi/thiếu quyền → {error} để nơi gọi log được lý do thật. */
   async getProfile(pageToken: string, psid: string): Promise<{ name?: string; profile_pic?: string; error?: string }> {
     let err: string | undefined;

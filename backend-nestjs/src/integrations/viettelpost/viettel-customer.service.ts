@@ -624,4 +624,66 @@ export class ViettelCustomerService {
       },
     };
   }
+
+  /**
+   * Thống kê tiền hàng theo trạng thái, lọc theo ngày gửi (sendDate).
+   * Loại trừ đơn nháp (DRAFT-).
+   */
+  async getRevenueStats(q: { from?: string; to?: string }) {
+    const where: any = {
+      trackingCode: { not: { startsWith: 'DRAFT-' } },
+    };
+
+    if (q.from || q.to) {
+      where.sendDate = {};
+      if (q.from) {
+        where.sendDate.gte = new Date(q.from.includes('T') ? q.from : `${q.from}T00:00:00`);
+      }
+      if (q.to) {
+        const toDate = new Date(q.to.includes('T') ? q.to : `${q.to}T00:00:00`);
+        toDate.setDate(toDate.getDate() + 1);
+        where.sendDate.lt = toDate;
+      }
+    }
+
+    const rows = await this.prisma.viettelCustomer.groupBy({
+      by: ['status', 'statusName'],
+      where,
+      _count: { _all: true },
+      _sum: { cod: true, moneyTotalFee: true },
+      orderBy: { status: 'asc' },
+    });
+
+    let totalOrders = 0;
+    let totalCod = 0;
+    let totalFee = 0;
+
+    const byStatus = rows.map((r: any) => {
+      const count = r._count?._all || 0;
+      const cod = r._sum?.cod || 0;
+      const fee = r._sum?.moneyTotalFee || 0;
+
+      totalOrders += count;
+      totalCod += cod;
+      totalFee += fee;
+
+      return {
+        status: r.status,
+        statusName: r.statusName,
+        count,
+        cod,
+        fee,
+      };
+    });
+
+    return {
+      from: q.from,
+      to: q.to,
+      totalOrders,
+      totalCod,
+      totalFee,
+      byStatus,
+    };
+  }
 }
+

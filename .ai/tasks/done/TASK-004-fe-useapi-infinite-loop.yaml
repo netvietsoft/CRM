@@ -1,0 +1,27 @@
+id: TASK-004
+title: "FE-01: Khắc phục vòng lặp gọi API vô tận trong custom hook useApi bằng useRef"
+owner: antigravity
+status: done
+priority: critical
+category: frontend
+dependencies: []
+
+files_allowed:
+  - frontend/src/hooks/useApi.ts
+
+files_forbidden:
+  - backend-nestjs/**
+
+acceptance_criteria:
+  - Lưu onSuccess và onError vào useRef trong hook useApi
+  - fetchData không phụ thuộc vào onSuccess/onError trong useCallback dependency array
+  - Gọi useApi với inline callbacks không kích hoạt re-render liên tục
+  - Kiểm tra network tab không có request loop khi component render
+
+commands:
+  typecheck:
+    - cd frontend && npx tsc --noEmit
+  lint:
+    - cd frontend && npx eslint src/hooks/useApi.ts
+
+max_fix_cycles: 3

@@ -1,0 +1,38 @@
+id: TASK-008
+title: "SEC-08: Ràng buộc tenant cho chữ ký HMAC Webhook Pancake — định tuyến theo integration đã xác thực, chặn IDOR ghi xuyên Store"
+owner: claude-code
+status: review
+priority: medium
+category: security
+dependencies:
+  - TASK-001
+source_report: .ai/reports/SECURITY_REVIEW_2026-09-07.md
+
+files_allowed:
+  - backend-nestjs/src/integrations/pancake/pancake.controller.ts
+  - backend-nestjs/src/integrations/pancake/pancake.service.ts
+  - backend-nestjs/src/integrations/pancake/pancake.service.spec.ts
+  - docs/Security/threat-model.md
+  - docs/Changelog/CHANGELOG.md
+
+files_forbidden:
+  - frontend/**
+  - backend-nestjs/src/auth/**
+  - backend-nestjs/prisma/**
+
+acceptance_criteria:
+  - verifyWebhookSignature trả về danh tính integration đã khớp secret ({ integrationId, storeId, shopId }) hoặc null, không còn trả boolean
+  - Khi không có header x-pancake-shop-id và có nhiều integration PANCAKE active, sự kiện được định tuyến về đúng Store sở hữu secret đã xác thực (không dùng findFirst tuỳ ý)
+  - Khi >= 2 integration cùng khớp một chữ ký (secret trùng) mà không phân biệt được → từ chối 403 (mơ hồ danh tính)
+  - handleOrderWebhook / handleProductWebhook / handleInventoryWebhook không còn fallback storeIntegration.findFirst
+  - handleCustomerWebhook chỉ gán userId cho đơn PANCAKE thuộc storeId đã xác thực
+  - Unit test mới cho các nhánh trên PASS; toàn bộ test Pancake PASS; tsc --noEmit PASS
+  - Cập nhật dòng SEC-08 trong docs/Security/threat-model.md và ghi Changelog
+
+commands:
+  test:
+    - cd backend-nestjs && npm run test -- pancake
+  typecheck:
+    - cd backend-nestjs && npx tsc --noEmit
+
+max_fix_cycles: 5

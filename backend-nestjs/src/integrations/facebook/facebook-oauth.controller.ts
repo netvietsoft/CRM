@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiExcludeEndpoint } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -11,11 +11,15 @@ import { Public } from '../../auth/decorators/public.decorator';
 import { GetEffectiveStoreId } from '../../auth/decorators/get-effective-store-id.decorator';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 import { FacebookService } from './facebook.service';
+import { MetaCatalogService } from './meta-catalog.service';
 
 @ApiTags('Facebook OAuth')
 @Controller('integrations/facebook')
 export class FacebookOAuthController {
-  constructor(private readonly service: FacebookService) {}
+  constructor(
+    private readonly service: FacebookService,
+    private readonly catalogService: MetaCatalogService,
+  ) {}
 
   @Get('oauth/start')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
@@ -68,5 +72,45 @@ export class FacebookOAuthController {
   @Permissions(Permission.INTEGRATIONS_MANAGE)
   refresh(@Param('id') id: string) {
     return this.service.refresh(id);
+  }
+
+  @Get('catalogs')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.INTEGRATIONS_VIEW)
+  @ApiOperation({ summary: 'Lấy danh sách Meta Commerce Catalogs' })
+  getCatalogs(@GetEffectiveStoreId() storeId: string | null) {
+    return this.catalogService.getAvailableCatalogs(storeId);
+  }
+
+  @Get('catalogs/status')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.INTEGRATIONS_VIEW)
+  @ApiOperation({ summary: 'Lấy trạng thái đồng bộ Meta Catalog' })
+  getCatalogStatus(@GetEffectiveStoreId() storeId: string | null) {
+    return this.catalogService.getStatus(storeId);
+  }
+
+  @Post('catalogs/config')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @Roles('ADMIN', 'MODERATOR')
+  @Permissions(Permission.INTEGRATIONS_MANAGE)
+  @ApiOperation({ summary: 'Lưu Meta Catalog ID để đồng bộ' })
+  saveCatalogConfig(@GetEffectiveStoreId() storeId: string | null, @Body('catalogId') catalogId: string) {
+    return this.catalogService.saveConfig(storeId, catalogId);
+  }
+
+  @Post('catalogs/sync')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @ApiBearerAuth()
+  @Roles('ADMIN', 'MODERATOR')
+  @Permissions(Permission.INTEGRATIONS_MANAGE)
+  @ApiOperation({ summary: 'Đồng bộ sản phẩm CRM lên Meta Commerce Catalog (Batch API)' })
+  syncCatalog(@GetEffectiveStoreId() storeId: string | null, @Body('catalogId') catalogId?: string) {
+    return this.catalogService.syncProducts(storeId, catalogId);
   }
 }

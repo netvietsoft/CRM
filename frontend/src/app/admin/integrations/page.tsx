@@ -7,6 +7,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { apiClientClient } from '@/lib/apiClientClient';
 import type { Integration, IntegrationMetadata } from '@/types/integrations';
 import FacebookConnectCard from '@/components/admin/FacebookConnectCard';
+import MetaCatalogCard from '@/components/admin/MetaCatalogCard';
 
 interface CurrentUser {
   role?: string;
@@ -215,15 +216,38 @@ export default function IntegrationsPage() {
     </div>
   );
 
+  // Card vuông Meta Commerce Catalog — mở modal cấu hình và đồng bộ Catalog
+  const metaCatalogCard = (
+    <div
+      key="META_COMMERCE_CATALOG"
+      onClick={() => setFbOpen(true)}
+      className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all flex flex-col h-full group"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-2xl text-white font-bold shadow-md group-hover:scale-105 transition-transform">🛍️</div>
+        <span className="px-3 py-1 rounded-full text-xs font-bold border bg-blue-50 text-blue-700 border-blue-200">Catalog Batch API</span>
+      </div>
+      <h3 className="font-bold text-gray-900 text-lg">Meta Commerce Catalog</h3>
+      <p className="text-sm text-gray-500 mt-1 mb-6 flex-1">Đồng bộ kho sản phẩm CRM trực tiếp lên Meta Commerce Catalog (catalog_management).</p>
+      <button
+        onClick={(e) => { e.stopPropagation(); setFbOpen(true); }}
+        className="w-full py-2.5 rounded-xl font-semibold transition-colors bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+      >
+        🔄 Cấu hình & Đồng bộ
+      </button>
+    </div>
+  );
+
   return (
     <div className="w-full space-y-8">
-      {/* Connected Platforms (+ Facebook OAuth card) */}
+      {/* Connected Platforms (+ Facebook OAuth card + Meta Commerce Catalog) */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
           Cấu hình
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {facebookCard}
+          {metaCatalogCard}
           {connectedPlatforms.map(renderPlatformCard)}
         </div>
       </div>
@@ -240,12 +264,13 @@ export default function IntegrationsPage() {
         </div>
       )}
 
-      {/* Facebook OAuth Modal (card chi tiết: kết nối + danh sách connection) */}
+      {/* Facebook OAuth & Meta Catalog Modal */}
       {fbOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setFbOpen(false); }}>
-          <div className="w-full max-w-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <button onClick={() => setFbOpen(false)} className="absolute -top-3 -right-3 z-10 w-8 h-8 rounded-full bg-white shadow-md text-gray-500 hover:text-gray-800 grid place-items-center">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setFbOpen(false); }}>
+          <div className="w-full max-w-3xl my-8 relative animate-in fade-in zoom-in-95 duration-200 space-y-6 max-h-[90vh] overflow-y-auto pr-1">
+            <button onClick={() => setFbOpen(false)} className="fixed top-4 right-4 sm:absolute sm:-top-3 sm:-right-3 z-20 w-8 h-8 rounded-full bg-white shadow-md text-gray-500 hover:text-gray-800 grid place-items-center">✕</button>
             <FacebookConnectCard />
+            <MetaCatalogCard />
           </div>
         </div>
       )}

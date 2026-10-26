@@ -1,0 +1,55 @@
+project:
+  name: crm-netvietsoft
+  version: 1.2.0
+  status: development
+  standard_version: 1.1
+
+stack:
+  backend:
+    framework: nestjs
+    runtime: nodejs-20
+    port: 3901
+    api_prefix: /api
+  frontend:
+    framework: nextjs-16
+    router: app-router
+    ui_library: tailwindcss-4
+    port: 3900
+  database:
+    engine: mysql-8
+    orm: prisma
+  cache_queue:
+    engine: redis
+    queue: bullmq
+  storage:
+    provider: cloudflare-r2
+
+commands:
+  install:
+    backend: cd backend-nestjs && corepack yarn@stable install
+    frontend: cd frontend && corepack yarn@stable install
+  build:
+    backend: cd backend-nestjs && npm run build
+    frontend: cd frontend && npm run build
+  lint:
+    backend: cd backend-nestjs && npm run lint
+    frontend: cd frontend && npm run lint
+  typecheck:
+    backend: cd backend-nestjs && npx tsc --noEmit
+    frontend: cd frontend && npx tsc --noEmit
+  test:
+    backend: cd backend-nestjs && npm run test
+    frontend: cd frontend && npm run test
+
+git:
+  default_branch: main
+  use_worktree: true
+  branch_convention: "agent/{role}/{task_id}"
+
+ai:
+  max_fix_cycles: 5
+  require_task_id: true
+  require_review: true
+  require_security_review: true
+  verify_script: scripts/verify.ps1
+

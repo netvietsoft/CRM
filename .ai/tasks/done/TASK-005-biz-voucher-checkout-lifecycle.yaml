@@ -1,0 +1,29 @@
+id: TASK-005
+title: "BIZ-02: Sửa luồng áp dụng Voucher Checkout, ngăn chặn tự tạo mới UserVoucher khi bị REJECTED"
+owner: antigravity
+status: done
+priority: high
+category: business_logic
+dependencies: []
+
+files_allowed:
+  - backend-nestjs/src/orders/orders.service.ts
+  - backend-nestjs/src/vouchers/vouchers.service.ts
+  - backend-nestjs/src/orders/orders.service.spec.ts
+
+files_forbidden:
+  - frontend/**
+
+acceptance_criteria:
+  - Chỉ cho phép áp dụng voucher phát theo cá nhân nếu tìm thấy UserVoucher có status === 'ACTIVE' && isUsed === false
+  - Không tự ý tạo mới UserVoucher trong nhánh else nếu user có voucher ở trạng thái PENDING hoặc REJECTED
+  - Trả về BadRequestException giải thích rõ lý do voucher không đủ điều kiện sử dụng
+  - Unit test kiểm tra đơn hàng áp dụng voucher REJECTED bị chặn chính xác
+
+commands:
+  test:
+    - cd backend-nestjs && npm run test -- orders
+  typecheck:
+    - cd backend-nestjs && npx tsc --noEmit
+
+max_fix_cycles: 5

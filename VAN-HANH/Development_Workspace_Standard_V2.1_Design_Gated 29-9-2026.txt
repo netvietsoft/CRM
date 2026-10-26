@@ -1,0 +1,4017 @@
+DEVELOPMENT WORKSPACE STANDARD
+===========================================================
+
+Phiên bản: 2.1.2
+Phạm vi: AI Development Workspace + Design-Gated Product Development + APK-to-Full-Stack Reconstruction + Project Knowledge Learning Loop
+Nguyên tắc: Một hệ luật, một nguồn trạng thái vận hành, một pipeline hợp nhất.
+
+Mục tiêu
+--------
+Xây dựng một cấu trúc dự án chuẩn để nhiều AI Agent như Claude Code, Codex, DeepSeek, Aider,
+Cline, Roo Code... có thể cùng tham gia phát triển một dự án mà:
+
+- Không đạp chân nhau.
+- Không tự ý phá kiến trúc.
+- Không sửa test để "làm xanh".
+- Có phân công nhiệm vụ rõ ràng.
+- Có trạng thái dự án rõ ràng.
+- Có cơ chế rollback bằng Git.
+- Có test/review/security gate trước khi merge.
+- Có lịch sử đầy đủ mọi thay đổi.
+- Có thể mở rộng thành AI Coworker Project Mesh / AI Development Platform.
+- Có thể nhận APK/Java decompile và tái dựng Android Kotlin + Backend + CMS + Database + Infrastructure.
+- Mọi thay đổi UI/UX phải được phân loại design_impact; MEDIUM/HIGH đi qua Design
+  Gate đầy đủ, LOW dùng lightweight gate, NONE không cần Design Gate.
+- Antigravity/Claude/Codex/DeepSeek chỉ là execution adapter; luật, trạng thái, workflow và design system phải nằm trong PROJECT.
+- Phân biệt tuyệt đối dữ liệu quan sát được, dữ liệu suy luận và thiết kế mới.
+- Đo functional parity; không lấy độ giống source decompile làm mục tiêu.
+- Mọi Agent phải đọc lịch sử lỗi và kiến thức đã chưng cất trước khi thực hiện task.
+- Lỗi có khả năng tái diễn phải được ghi vào PROJECT_ERROR.md sau khi xác minh.
+- Kinh nghiệm/giải pháp có giá trị tái sử dụng phải được ghi vào ACQUIREMENTS.md.
+- Biến mỗi lỗi đã giải quyết thành test, guardrail hoặc kiến thức giúp dự án không lặp lại sai lầm.
+
+Tài liệu này là META-STANDARD và nguồn đặc tả governance đầy đủ. Trong mỗi project,
+canonical runtime law mà Agent bắt buộc nạp là AGENTS.md + Docs/rules.md. Hai file
+này phải triển khai đúng meta-standard và chỉ tham chiếu các mục chuyên ngành cần
+thiết; không sao chép toàn bộ tài liệu này vào context của mọi task.
+
+Reconstruction, Design và Project Knowledge không có bộ luật song song; chúng là
+pipeline chuyên dụng chạy bên trong Development Workspace Standard.
+
+
+======================================================================
+1. CẤU TRÚC THƯ MỤC CHUẨN
+======================================================================
+
+Không bắt mọi dự án tạo toàn bộ cây thư mục. Trước khi khởi tạo, chọn một profile
+trong .ai/project.yaml:
+
+CORE
+  Dự án nhỏ, library, CLI, prototype hoặc một ứng dụng đơn giản.
+
+PRODUCT
+  Web/mobile/desktop product có Backend, API, testing và release workflow.
+
+AI_DATA
+  AI/ML, data pipeline, model, evaluation và dataset governance.
+
+RECONSTRUCTION
+  APK/decompiled-source reconstruction có evidence, ledger và parity gate.
+
+ENTERPRISE
+  Nhiều app/service/agent, hạ tầng phức tạp và governance đầy đủ.
+
+Quy tắc profile:
+
+- README.md, AGENTS.md, Docs/rules.md, PROJECT_ERROR.md, ACQUIREMENTS.md, .ai/project.yaml,
+  task/state/lock tối thiểu và Git luôn là CORE bắt buộc.
+- Các folder không thuộc profile được bỏ qua hoặc đánh dấu not_required có lý do.
+- Không tạo folder rỗng chỉ để giống template.
+- Khi nâng profile, phải có ADR/migration plan nếu thay đổi kiến trúc hoặc workflow.
+- Cấu trúc dưới đây là SUPERSET tham chiếu, không phải yêu cầu tạo đồng loạt.
+
+PROJECT_ROOT/
+│
+├── Backend/
+│   ├── api/
+│   ├── feature/
+│   ├── services/
+│   ├── cms/
+│   └── docs/
+│
+├── apps/
+│   ├── android/
+│   ├── ios/
+│   ├── web/
+│   ├── cms/
+│   └── desktop/
+│
+├── services/
+│   ├── api/
+│   ├── workers/
+│   └── scheduler/
+│
+├── packages/
+│   ├── contracts/
+│   ├── domain/
+│   └── shared/
+│
+├── README.md
+├── AGENTS.md
+├── PROJECT_ERROR.md                 # Canonical durable error memory
+├── ACQUIREMENTS.md                  # Canonical distilled project knowledge
+├── CLAUDE.md
+├── .clinerules
+├── .agents/                         # Antigravity adapter layer; KHÔNG phải canonical law
+│   ├── rules/
+│   │   ├── workspace-standard.md
+│   │   └── design-gate.md
+│   ├── agents/
+│   │   └── ui-designer/
+│   │       └── agent.md
+│   └── skills/
+│       └── design-mode/
+│           └── SKILL.md
+├── .gitignore
+├── .env.example
+│
+├── Docs/
+│   │
+│   ├── README.md
+│   ├── rules.md
+│   ├── CAU_TRUC_THU_MUC.md
+│   │
+│   ├── Architecture/
+│   │   ├── overview.md
+│   │   ├── frontend.md
+│   │   ├── design-system.md
+│   │   ├── backend.md
+│   │   ├── api.md
+│   │   ├── database.md
+│   │   ├── authentication.md
+│   │   ├── ads.md
+│   │   ├── payment.md
+│   │   ├── storage.md
+│   │   ├── queue.md
+│   │   ├── cache.md
+│   │   ├── security.md
+│   │   ├── deployment.md
+│   │   └── observability.md
+│   │
+│   ├── ADR/
+│   │   ├── README.md
+│   │   ├── ADR-001-framework.md
+│   │   ├── ADR-002-database.md
+│   │   └── ...
+│   │
+│   ├── Contracts/
+│   │   ├── openapi.yaml
+│   │   ├── events.md
+│   │   ├── database-schema.md
+│   │   └── error-codes.md
+│   │
+│   ├── Specs/
+│   │   ├── product/
+│   │   ├── features/
+│   │   ├── behaviors/
+│   │   └── acceptance/
+│   │
+│   ├── superpowers/
+│   │   ├── plans/
+│   │   ├── specs/
+│   │   ├── tasks/
+│   │   └── research/
+│   │
+│   ├── Agents/
+│   │   ├── README.md
+│   │   ├── orchestrator.md
+│   │   ├── architect.md
+│   │   ├── backend.md
+│   │   ├── frontend.md
+│   │   ├── integration-api.md
+│   │   ├── payment.md
+│   │   ├── tester.md
+│   │   ├── fixer.md
+│   │   ├── reviewer.md
+│   │   ├── security.md
+│   │   ├── devops.md
+│   │   ├── designer.md
+│   │   └── documentation.md
+│   │
+│   ├── Workflows/
+│   │   ├── development.md
+│   │   ├── design.md
+│   │   ├── feature.md
+│   │   ├── bug-fix.md
+│   │   ├── review.md
+│   │   ├── release.md
+│   │   ├── emergency.md
+│   │   └── antigravity-loop.md
+│   │
+│   ├── Design/
+│   │   ├── DESIGN_SYSTEM.md
+│   │   ├── ui-principles.md
+│   │   ├── component-guidelines.md
+│   │   ├── responsive.md
+│   │   ├── accessibility.md
+│   │   └── visual-qa.md
+│   │
+│   ├── Runbooks/
+│   │   ├── deploy.md
+│   │   ├── rollback.md
+│   │   ├── database-recovery.md
+│   │   ├── incident.md
+│   │   └── server-recovery.md
+│   │
+│   ├── Security/
+│   │   ├── rules.md
+│   │   ├── secrets.md
+│   │   ├── permissions.md
+│   │   └── threat-model.md
+│   │
+│   ├── Testing/
+│   │   ├── testing-strategy.md
+│   │   ├── unit-test.md
+│   │   ├── integration-test.md
+│   │   ├── e2e-test.md
+│   │   └── regression-test.md
+│   │
+│   ├── Changelog/
+│   │   ├── CHANGELOG.md
+│   │   └── agent-log/
+│   │
+│   ├── Reconstruction/
+│   │   ├── overview.md
+│   │   ├── evidence-model.md
+│   │   ├── behavior-recovery.md
+│   │   ├── api-recovery.md
+│   │   ├── domain-recovery.md
+│   │   ├── database-recovery.md
+│   │   ├── backend-reconstruction.md
+│   │   ├── cms-reconstruction.md
+│   │   └── parity.md
+│   │
+│   └── Decisions/
+│       └── decision-log.md
+│
+├── .ai/
+│   │
+│   ├── project.yaml
+│   ├── agents.yaml
+│   ├── state.json
+│   ├── locks.json
+│   ├── schemas/
+│   │   ├── task.schema.json
+│   │   ├── result.schema.json
+│   │   ├── project-error.schema.json
+│   │   ├── acquirement.schema.json
+│   │   ├── design-task.schema.json
+│   │   ├── design-result.schema.json
+│   │   └── design-approval.schema.json
+│   │
+│   ├── tasks/
+│   │   ├── backlog/
+│   │   ├── ready/
+│   │   ├── running/
+│   │   ├── review/
+│   │   ├── blocked/
+│   │   └── done/
+│   │
+│   ├── bugs/
+│   │   ├── open/
+│   │   ├── fixed/
+│   │   └── rejected/
+│   │
+│   ├── handoffs/
+│   ├── checkpoints/
+│   ├── reports/
+│   │
+│   ├── design/
+│   │   ├── active/
+│   │   ├── review/
+│   │   ├── approved/
+│   │   └── rejected/
+│   │
+│   └── reconstruction/
+│       ├── ledger.json
+│       ├── evidence/
+│       ├── inventory/
+│       ├── callgraph/
+│       ├── api/
+│       ├── behaviors/
+│       ├── domain/
+│       ├── database/
+│       └── parity/
+│
+├── design/                           # Generated design artifacts; not canonical law
+│   ├── references/
+│   ├── prototypes/
+│   ├── screenshots/
+│   └── approved/
+│
+├── reconstruction-input/
+│   ├── apk/
+│   ├── java/
+│   ├── manifest/
+│   ├── resources/
+│   ├── assets/
+│   └── captures/
+│
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── e2e/
+│   ├── regression/
+│   ├── parity/
+│   └── fixtures/
+│
+├── infra/
+│
+├── scripts/
+│   ├── test.sh
+│   ├── lint.sh
+│   ├── typecheck.sh
+│   ├── verify.sh
+│   ├── validate-project-memory.sh
+│   ├── agent-runner.sh
+│   └── rollback.sh
+│
+├── worktrees/
+│
+└── ...
+
+
+======================================================================
+2. VAI TRÒ CỦA CÁC FILE GỐC
+======================================================================
+
+README.md
+---------
+Tài liệu giới thiệu dự án.
+
+Bao gồm:
+- Project là gì.
+- Mục tiêu dự án.
+- Tech stack.
+- Cách setup.
+- Cách chạy.
+- Link tới rules.
+- Link tới Architecture.
+- Link tới Workflow.
+- Link tới Testing.
+- Link tới Deployment.
+
+
+AGENTS.md
+---------
+Đây là "HIẾN PHÁP" dành cho tất cả AI Agent.
+
+Mọi Agent bắt buộc đọc trước khi code.
+
+Thứ tự bắt buộc:
+
+1. Đọc README.md
+2. Đọc AGENTS.md
+3. Đọc Docs/rules.md
+4. Đọc PROJECT_ERROR.md và tìm theo module, tag, error signature, dependency của task
+5. Đọc ACQUIREMENTS.md và áp dụng các entry VALIDATED/STANDARD liên quan
+6. Đọc Architecture liên quan
+7. Đọc SPEC của task
+8. Kiểm tra .ai/locks.json
+9. Kiểm tra git status
+10. Kiểm tra branch/worktree đang làm
+11. Không sửa file ngoài phạm vi task
+12. Không bắt đầu code nếu chưa hiểu acceptance criteria
+13. Được phép sử dụng mã nguồn, cấu trúc đã decompile
+14. Được phép sử dụng thư viện trong LIBRARY.MD
+15. Chỉ bắt buộc comment/JSDoc/docstring cho public API, business rule phức tạp,
+    thuật toán khó hiểu, security-critical logic và quyết định không hiển nhiên.
+    Không bắt mọi hàm/block phải có comment song ngữ; comment phải giải thích WHY,
+    contract và risk, không lặp lại WHAT đã rõ trong code.
+16. Đọc UPDATETODOS.md
+17. Thiết lập bộ nhớ vận hành: PROJECT_MEMORY.md lưu bối cảnh dự án hiện hành;
+    TASK_LOG.md ghi tiến độ task. PROJECT_ERROR.md và ACQUIREMENTS.md là bộ nhớ
+    bền vững, không được dùng thay cho TASK_LOG hoặc Changelog.
+18. Trước khi kết thúc task, đánh giá và cập nhật PROJECT_ERROR.md/ACQUIREMENTS.md
+    trong cùng commit/PR nếu task tạo ra lỗi hoặc kiến thức có giá trị tái sử dụng.
+
+
+PROJECT_ERROR.md
+----------------
+Canonical durable error memory của toàn dự án.
+
+Ghi:
+- Lỗi có khả năng tái diễn hoặc tốn công chẩn đoán.
+- Root cause đã xác minh hoặc trạng thái UNCONFIRMED rõ ràng.
+- Failed attempts cần tránh lặp lại.
+- Resolution, verification và prevention/guardrail.
+- Liên kết TASK ID, bug report, test, file, commit và ACQ-ID.
+
+Không thay thế bug_report.json/bug_report.md. Bug report ghi một lần lỗi cụ thể;
+PROJECT_ERROR.md lưu bài học lỗi xuyên task, xuyên agent và xuyên phiên làm việc.
+
+
+ACQUIREMENTS.md
+---------------
+Canonical distilled project knowledge của toàn dự án.
+
+Ghi:
+- Kinh nghiệm và nguyên tắc có thể tái sử dụng.
+- Giải pháp tối ưu hiện tại và lý do tốt hơn cách cũ.
+- Điều kiện nên dùng/không nên dùng.
+- Checklist áp dụng, bằng chứng, giới hạn và rủi ro.
+- Liên kết ERR-ID, TASK ID, ADR, test, file và commit.
+
+Không thay thế Changelog, TASK_LOG hoặc ADR. Changelog ghi thay đổi sản phẩm;
+TASK_LOG ghi hoạt động; ADR ghi quyết định kiến trúc; ACQUIREMENTS.md ghi kiến
+thức đã được chưng cất để Agent sau làm nhanh và đúng hơn.
+
+
+CLAUDE.md
+---------
+File hướng dẫn riêng cho Claude Code.
+
+Không nên copy toàn bộ luật.
+
+Chỉ ghi:
+
+- Claude phải đọc AGENTS.md.
+- Claude phải đọc Docs/rules.md.
+- Claude phải đọc PROJECT_ERROR.md và ACQUIREMENTS.md.
+- Claude phải tuân theo Task ID.
+- Claude phải kiểm tra file lock.
+- Claude phải test trước khi commit.
+
+
+.clinerules
+-----------
+File rule dành cho Cline / Roo Code.
+
+Chỉ tham chiếu tới:
+- AGENTS.md
+- Docs/rules.md
+- PROJECT_ERROR.md
+- ACQUIREMENTS.md
+- Docs/Architecture/
+- Task hiện tại
+
+
+.agents/
+--------
+Adapter layer dành cho Antigravity.
+
+QUY TẮC CỨNG:
+- .agents/ KHÔNG phải nguồn luật canonical.
+- .agents/rules/* chỉ tham chiếu AGENTS.md, Docs/rules.md, Docs/Workflows/* và Docs/Agents/*.
+- .agents/agents/* chỉ ánh xạ custom agent của Antigravity vào role canonical trong Docs/Agents/.
+- .agents/skills/* chỉ gọi workflow/skill canonical; không sao chép thành một bộ luật mới.
+- Nếu nội dung trong .agents/ mâu thuẫn canonical docs thì canonical docs thắng và conflict phải được báo Orchestrator.
+
+
+Docs/rules.md
+-------------
+Chứa luật code chung cho toàn dự án:
+
+- Framework sử dụng.
+- Version framework.
+- Naming convention.
+- Folder convention.
+- API convention.
+- Database convention.
+- Error handling convention.
+- Logging convention.
+- Test convention.
+- Security convention.
+- Dependency policy.
+- Git convention.
+- Deprecated libraries bị cấm.
+- Coding style.
+- Backend: [Tên framework, version, VD: Node.js 20, NestJS]
+- Frontend: [VD: Next.js 14, App Router, TailwindCSS]
+- Cấm tuyệt đối: Không dùng các thư viện đã deprecated (VD: moment.js -> dùng dayjs).
+- Tên biến, hàm: camelCase. Tên class, component: PascalCase.
+- Public API và logic phức tạp phải có JSDoc/docstring mô tả contract, input/output,
+  side effect, error và lý do thiết kế khi cần. Comment không được lặp lại code.
+- Nếu Agent gặp lỗi, BẮT BUỘC tìm PROJECT_ERROR.md trước, sau đó đọc bug_report liên quan và kiểm tra lịch sử các lần sửa trước để không đi vào vết xe đổ.
+- Khi lỗi được giải quyết và có giá trị tái sử dụng, BẮT BUỘC cập nhật PROJECT_ERROR.md; nếu rút ra nguyên tắc/giải pháp tối ưu, liên kết thêm ACQUIREMENTS.md.
+- Nếu vướng mắc quá 3 lần, dừng lệnh, báo cáo `[NEED_HUMAN_INTERVENTION]`.
+- Mọi commit phải theo định dạng: type(scope): subject.
+- Tuyệt đối không thao tác trên nhánh main.
+- Tuyệt đối không được báo cáo bịa đặt. phải ghi / báo cáo đúng sự thật
+
+
+RUNTIME CONTEXT LOADING POLICY
+------------------------------
+
+Không nạp toàn bộ Standard/Docs/codebase vào mọi Agent. Context được chia tầng:
+
+TIER 0 — ALWAYS LOAD
+- AGENTS.md.
+- Docs/rules.md.
+- Task/Request/Incident record hiện tại.
+- .ai/project.yaml và state/lock summary liên quan.
+- Các match liên quan trong PROJECT_ERROR.md và ACQUIREMENTS.md.
+
+TIER 1 — LOAD BY TASK
+- Architecture, Contract, Spec, Agent role và Workflow liên quan.
+- Design System/approved artifact khi có design impact.
+- Reconstruction evidence/ledger khi task thuộc reconstruction.
+
+TIER 2 — LOAD ON DEMAND
+- Full Standard.
+- Lịch sử, report, evidence, changelog và source module không liên quan trực tiếp.
+
+Quy tắc:
+- Agent phải search/index trước rồi chỉ tải đoạn/file cần thiết.
+- Context compiler phải ghi source path/version/section để truy vết.
+- Summary không được thay thế source khi quyết định quan trọng cần evidence gốc.
+- Khi context budget gần giới hạn, Agent tạo handoff/checkpoint; không âm thầm bỏ
+  luật hoặc evidence.
+- Full Standard là tài liệu tham chiếu/validation, không phải default runtime prompt.
+
+
+======================================================================
+3. NGUYÊN TẮC KHÔNG DUPLICATE LUẬT
+======================================================================
+
+Không tạo:
+
+CLAUDE.md      -> một bộ luật
+.clinerules    -> một bộ luật khác
+AGENTS.md      -> một bộ luật khác
+
+Vì sau vài tháng chúng sẽ lệch nhau.
+
+Phân tầng nguồn chuẩn:
+
+Development Workspace Standard
+  -> Meta-standard/template governance đầy đủ; không bắt Agent đọc toàn bộ mỗi task.
+
+AGENTS.md + Docs/rules.md
+  -> Canonical runtime law trong từng project; bắt buộc đọc khi bắt đầu task.
+
+Approved ADR / Contract / Spec
+  -> Quyết định và contract theo domain/task.
+
+Tool-specific adapter
+  -> Chỉ trỏ tới canonical runtime law và tài liệu liên quan.
+
+Luật runtime trung tâm:
+
+Docs/rules.md
+        +
+AGENTS.md
+
+Nếu runtime law lệch meta-standard, phải tạo conflict/migration record; không âm
+thầm để hai bộ luật cùng tồn tại. Các file tool-specific chỉ có nhiệm vụ trỏ về
+runtime law và không được sao chép toàn bộ meta-standard.
+
+
+======================================================================
+4. HỆ THỐNG AGENT
+======================================================================
+
+Agent 0 Name: CEO - ORCHESTRATOR
+Mỗi lần trao đổi với Chủ tịch Tony xong là bắt buộc phải đọc lại luật này D:\SetupC\WWW\crm\VAN-HANH\Development_Workspace_Standard_V2.1_Design_Gated 29-9-2026.txt. Đó là luật trao đổi với Chủ tịch
+Chủ tịch đưa yêu cầu , đưa ra kpi, CEO và đội ngũ phải hoàn thành , báo cáo hoàn thành, mức độ hoàn thành  tuyệt đôi cấm : báo cáo láo
+----------------------
+Không code feature.
+
+Nhiệm vụ:
+
+- Nhận yêu cầu từ User.
+- Phân tích requirement.
+- Kiểm tra requirement có xung đột kiến trúc không.
+- Gửi Architect tạo kiến trúc/SPEC.
+- Xây dựng codebase
+- Chia requirement thành Task Graph.
+- Xác định dependency giữa các task.
+- Xác định Agent phù hợp.
+- Giao task.
+- Kiểm tra trạng thái Agent.
+- Theo dõi task blocked.
+- Điều phối review.
+- Điều phối test.
+- Điều phối merge.
+- Điều phối release.
+- Cập nhật project state vào file UPDATETODOS.md
+- Tasks requiring : cập nhật các task dành cho user bổ sung để hoàn thiện ví dụ như : "Appkey, App id, Packet name,Key firebase, Key admob, Key AI, key license... Price cho sub.. : những giá trị còn thiếu cần bổ sung đã được điền demo, cập nhật vào file Tasksrequiring.md
+
++ Tự viết Bộ điều khiển trung tâm (Watchdog Script)**: [D:\SetupC\WWW\crm\VAN-HANH\SOURCE/scripts/always_on_watchdog.py]: Là Hệ thống giám sát và tự phục hồi đã được kích hoạt, vận hành liên tục không ngừng nghỉ.
+**Cơ chế hoạt động**: - Vòng lặp vô tận `while True` với cơ chế chống crash (Exception Handling & Auto-Restart tức thì sau 5 phút nếu có sự cố). Đội ngũ làm việc liên tục không nghỉ đạt mức hoàn thiện sản phẩm tới tay khách hàng.
+CEO - ORCHESTRATOR làm Spec, kế hoạch trình chủ tịch tại D:\SetupC\WWW\crm\VAN-HANH\KE-HOACH-CEO
+CEO - ORCHESTRATOR điều phối giao nhiệm vụ cho agent tại D:\SetupC\WWW\crm\VAN-HANH\NHIEM-VU
+CEO - ORCHESTRATOR đọc báo của các agent, worker tại D:\SetupC\WWW\crm\VAN-HANH\AGENT-BAO-CAO
+CEO - ORCHESTRATOR đọc báo đọc phản biện đối kháng, thanh tra, kiểm tra, giam sát của Agent 13: D:\SetupC\WWW\crm\VAN-HANH\PHAN-BIEN, điều chỉnh giao lại lại nhiệm vụ audit cho agent, worker tốt hơn
+CEO - ORCHESTRATOR giao lại nhiệm vụ mà Agent làm thiếu làm sai tại D:\SetupC\WWW\crm\VAN-HANH\NHIEM-VU-LAM-LAI
+Tất cả các Agent nhận nhiệm vụ ở D:\SetupC\WWW\crm\VAN-HANH\NHIEM-VU do CEO - ORCHESTRATOR giao cho
+Tất cả các Agent, worker tại báo tại D:\SetupC\WWW\crm\VAN-HANH\AGENT-BAO-CAO :Quy đinh báo cáo phải ghi theo luật <Agent_X>- Name_<Bao-cao-so-x> , ví dụ: "Agent 1- ARCHITECT_bao-cao- so -01"
+Tất cả các Agent, worker tại nhận lại nhiệm vụ audit, nhiệm vụ không hoàn thanh tại D:\SetupC\WWW\crm\VAN-HANH\NHIEM-VU-LAM-LAI
+
+
+
+Agent 1 - ARCHITECT
+-------------------
+
+Nhiệm vụ:
+
+- Thiết kế hệ thống.
+- Thiết kế module.
+- Database architecture.
+- API architecture.
+- Queue/cache architecture.
+- Security architecture.
+- Integration architecture.
+- Performance architecture.
+- Ghi Architecture Document.
+- Ghi ADR khi có quyết định kiến trúc.
+
+
+Agent 2 - BACKEND
+-----------------
+
+Nhiệm vụ:
+
+- Business logic.
+- Database services.
+- Queue.
+- Cache.
+- Worker.
+- Backend API internal.
+- Validation.
+- Logging.
+- Error handling.
+
+
+Agent 3 - FRONTEND
+------------------
+
+Nhiệm vụ:
+
+- UI implementation.
+- State management.
+- API integration phía frontend.
+- Form validation.
+- Routing.
+- Responsive.
+- Accessibility.
+- Frontend tests.
+
+
+Agent 4 - INTEGRATION/API
+-------------------------
+
+Nhiệm vụ:
+
+- External API.
+- Webhook.
+- OAuth.
+- Third-party integrations.
+- Retry logic.
+- Rate limit handling.
+- API contracts.
+
+
+Agent 5 - PAYMENT
+-----------------
+
+Nhiệm vụ:
+
+- Payment gateway.
+- Webhook.
+- Subscription.
+- Refund.
+- Reconciliation.
+- Idempotency.
+- Payment security.
+
+
+Agent 6 - TESTER
+----------------
+
+Nhiệm vụ:
+
+- Unit Test.
+- Integration Test.
+- E2E Test.
+- Regression Test.
+- Chạy test.
+- Test trên playwright cli , emulator android , browser test, real device mobile testing.. 
+- Phân tích lỗi.
+- Ghi bug report.
+
+QUY ĐỊNH:
+Tester KHÔNG được sửa production code.
+
+
+Agent 7 - FIXER
+---------------
+
+Nhiệm vụ:
+
+- Đọc bug_report.
+- Phân tích root cause.
+- Sửa production code.
+- Không tự thay đổi acceptance criteria.
+- Không tự sửa test để test pass.
+- Chạy lại kiểm tra cơ bản.
+
+
+Agent 8 - REVIEWER
+------------------
+
+Nhiệm vụ:
+
+- Code review.
+- Logic review.
+- Architecture review.
+- Performance review.
+- Backward compatibility.
+- Race condition.
+- Error handling.
+- Database query.
+- API contract.
+- Naming.
+- Duplicate code.
+- Maintainability.
+
+
+Agent 9 - SECURITY
+------------------
+
+Kiểm tra:
+
+- SQL Injection.
+- XSS.
+- CSRF.
+- SSRF.
+- Command Injection.
+- Path Traversal.
+- Broken Authentication.
+- Authorization.
+- Secret leakage.
+- Hard-coded credentials.
+- Unsafe dependency.
+- Webhook spoofing.
+- Missing rate limit.
+- Unsafe file upload.
+- Sensitive logs.
+
+
+Agent 10 - DEVOPS
+-----------------
+
+Nhiệm vụ:
+
+- Docker.
+- CI/CD.
+- Server.
+- Nginx.
+- Kubernetes nếu dùng.
+- Monitoring.
+- Deployment.
+- Backup.
+- Rollback.
+
+
+Agent 11 - DESIGNER
+-------------------
+
+Vai trò:
+
+- Product Designer.
+- UI/UX Designer.
+- Interaction Designer.
+- Design System Architect.
+- Visual QA owner cho design artifact.
+
+Nhiệm vụ:
+
+- Phân tích user goal, UX flow, information architecture.
+- UI inventory và đánh giá giao diện hiện tại.
+- Wireframe, high-fidelity design và interactive prototype.
+- Component system.
+- Design tokens.
+- Layout.
+- Responsive.
+- Accessibility.
+- Interaction states: hover/focus/active/disabled/loading/empty/error/success.
+- Design consistency.
+- Tạo visual comparison và design handoff cho Frontend Agent.
+- Quản lý design artifact trong design/ và machine-readable state trong .ai/design/.
+
+Quyền hạn:
+
+- CAN_DESIGN = YES.
+- CAN_CREATE_PROTOTYPE = YES.
+- CAN_MODIFY_PRODUCTION_UI = NO theo mặc định.
+- CAN_APPROVE_OWN_DESIGN = NO.
+- Production implementation owner = FRONTEND Agent.
+
+DESIGN GATE bắt buộc khi task thay đổi UI/UX:
+
+REQUIREMENT
+  -> UX ANALYSIS
+  -> INFORMATION ARCHITECTURE
+  -> WIREFRAME / HIGH-FIDELITY DESIGN
+  -> INTERACTIVE PROTOTYPE
+  -> VISUAL QA
+  -> DESIGN REVIEW
+  -> HUMAN APPROVAL
+  -> DESIGN FREEZE
+  -> FRONTEND IMPLEMENTATION
+  -> BROWSER VISUAL QA
+
+Designer không được coi việc design hoàn tất chỉ vì HTML/CSS render được.
+Design chỉ APPROVED khi có human approval record hợp lệ.
+
+
+Agent 12 - DOCUMENTATION
+------------------------
+
+Nhiệm vụ:
+
+- Update Docs.
+- Update README.
+- Update API docs.
+- Update Architecture docs.
+- Update Changelog.
+- Update handoff.
+- Kiểm tra docs có lệch code không.
+
+Agent 13 - Adversary Auditor / Red Team Critic - Agent Đối Kháng (Game & App,Web, Soft Reconstruction)
+--------------------------------------------------------------------------------------------
+
+Nhiệm vụ:
+Đóng vai trò Công tố viên kỹ thuật độc lập — chuyên soi mói, chất vấn, kiểm toán đối kháng toàn bộ
+code, kiến trúc, logic gameplay, thuật toán AI, vật lý, tài nguyên (assets), giao diện UI/UX và
+báo cáo của mọi Agent khác; bác bỏ mọi tuyên bố hoàn thành khi chưa có bằng chứng thực thi,
+bằng chứng đối chiếu mã nguồn (Code/AST diff), bằng chứng toán học và kết quả build/test thực tế.
+
+Quy tắc hoạt động cốt lõi:
+- Agent 13 mặc định NGHI NGỜ MỌI BÁO CÁO ("Guilty until proven 100% verified").
+- Agent 13 liên tục rà soát mã nguồn tái dựng tại CONVERT/ đối chiếu với SOURCE/, phát hiện:
+  1. Code giả / Hàm rỗng (Stub/TODO/Mock) / Cắt xén nhánh logic hoặc luật chơi.
+  2. Sai lệch thuật toán AI Bot, công thức tính điểm, xác suất, thông số vật lý (Box2D/Scene2D),
+     tọa độ vùng chạm (Hitbox/PolygonMask) hoặc trạng thái màn chơi (State Machine).
+  3. Lệch đường dẫn hoặc thiếu hụt tài nguyên thực tế (TextureAtlas region, PNG, Spine .skel,
+     BitmapFont .fnt, Audio .ogg/.mp3, Particle .p, khóa đa ngôn ngữ I18n Bundle).
+  4. Rò rỉ bộ nhớ / VRAM (không unload asset khi chuyển màn), xung đột luồng (UI Thread vs GLThread),
+     hoặc lỗi biên dịch Gradle / crash runtime.
+  5. Báo cáo hoàn thành khống khi chưa chạy build/test thật hoặc tự ý sửa test để làm xanh.
+- Khi phát hiện nghi vấn hoặc trước khi công nhận một Module / Màn hình / Mini-Game hoàn tất,
+  Agent 13 phát hành Trát Thách Thức Kỹ Thuật (`CHALLENGE_*.md` và `CHALLENGE_*.json`) tại thư mục
+  `D:\SetupC\WWW\crm\VAN-HANH\PHAN-BIEN\YEU-CAU-CHUNG-MINH\`.
+- CEO - Orchestrator (Agent 0) cùng các Agent chuyên môn (Agent 1, 2, 3, 4, 5, 6, 7, 11) có trách
+  nhiệm tiếp nhận trát thách thức, trích xuất bằng chứng đối chiếu từng dòng lệnh, công thức toán học,
+  bảng kiểm tra tài nguyên, log build APK/test và kết quả chạy thực tế, nộp vào
+  `D:\SetupC\WWW\crm\VAN-HANH\PHAN-BIEN\BANG-CHUNG-XAC-MINH\`.
+- Nếu bằng chứng không đạt hoặc phát hiện làm sai/làm thiếu, Agent 13 bác bỏ (`REJECTED`) để
+  CEO - Orchestrator đẩy sang `D:\SetupC\WWW\crm\VAN-HANH\NHIEM-VU-LAM-LAI\`.
+- Chỉ khi Agent 13 thẩm định bằng chứng đạt chuẩn 100% qua đủ 6 Cổng Phản Biện thì Module /
+  Màn hình / Mini-Game mới được cấp chứng nhận `VERIFIED_AND_ACCEPTED` trong Sổ Cái Đối Kháng
+  `SO-CAI-DOI-KHANG/LEDGER_DOI_KHANG.json`.
+
+Cấu trúc thư mục Phản Biện chuẩn tại VAN-HANH/PHAN-BIEN/:
+D:\SetupC\WWW\crm\VAN-HANH\PHAN-BIEN\
+├── README_QUY_TRINH_PHAN_BIEN.md           # Hiến định quy trình 6 cổng phản biện đối kháng Game/App
+├── YEU-CAU-CHUNG-MINH/                     # Agent 13 phát hành trát thách thức & đòi bằng chứng
+│   ├── CHALLENGE_CORE_ENGINE.md            # Thách thức kiến trúc lõi, AssetLoader, "fire" decoder, Bridges
+│   ├── CHALLENGE_GAME_<game_id>.md         # Thách thức luật chơi, AI Bot, vật lý Box2D, tọa độ, asset từng game
+│   └── CHALLENGE_<module>.json             # Dữ liệu thách thức máy đọc (Machine-readable)
+├── BANG-CHUNG-XAC-MINH/                    # Agent 0 & các Agent nộp bằng chứng chứng minh thực tế
+│   ├── PROOF_CORE_ENGINE.md                # Bằng chứng giải mã, nạp asset, lifecycle & Gradle build log
+│   ├── PROOF_GAME_<game_id>.md             # Bằng chứng đối soát code, công thức AI, vật lý & test từng game
+│   └── PROOF_<module>.json                 # Dữ liệu bằng chứng & kết quả kiểm thử tự động
+└── SO-CAI-DOI-KHANG/                       # Sổ cái trọng tài đối kháng độc lập
+    ├── LEDGER_DOI_KHANG.json               # Sổ cái JSON đối kiểm 100% Core Modules + 52 Screens (50 Mini-Games)
+    └── AUDIT_SUMMARY.md                    # Báo cáo tổng kết thẩm định độc lập đệ trình Chủ tịch Tony
+
+
+
+
+======================================================================
+5. LUỒNG PHÁT TRIỂN CHUẨN
+======================================================================
+
+USER REQUIREMENT
+       |
+       v
+ORCHESTRATOR
+       |
+       v
+REQUIREMENT CLASSIFICATION
+       |
+       +-------------------------------+
+       |                               |
+       | NO UI/UX IMPACT               | UI/UX IMPACT
+       |                               |
+       |                               v
+       |                           DESIGNER
+       |                               |
+       |                               v
+       |                        DESIGN PROTOTYPE
+       |                               |
+       |                               v
+       |                          VISUAL REVIEW
+       |                               |
+       |                         +-----+-----+
+       |                         |           |
+       |                      REJECT       APPROVE
+       |                         |           |
+       |                         v           v
+       |                      ITERATE   DESIGN FREEZE
+       |                         |           |
+       |                         +-----------+
+       |                                     |
+       +---------------------+---------------+
+                             |
+                             v
+                         ARCHITECT
+                             |
+                             v
+                            SPEC
+                             |
+                             v
+                         TASK GRAPH
+                             |
+                   +---------+---------+
+                   |                   |
+                   v                   v
+                BACKEND             FRONTEND
+                                       |
+                                       v
+                                 BROWSER VISUAL QA
+                                       |
+                                       v
+                                  DESIGN COMPARE
+                                       |
+                   +-------------------+-------------------+
+                   |                                       |
+                 FAIL                                    PASS
+                   |                                       |
+                   v                                       v
+              BUG REPORT                              TEST RUNNER
+                   |                                       |
+                   v                                  +----+----+
+                 FIXER                                |         |
+                   |                                FAIL      PASS
+                   +---------------> TEST <-----------+         |
+                                                             v
+                                                          REVIEWER
+                                                             |
+                                                             v
+                                                          SECURITY
+                                                             |
+                                                             v
+                                                          CI GATE
+                                                             |
+                                                             v
+                                                           MERGE
+                                                             |
+                                                             v
+                                                          RELEASE
+                                                             |
+                                                             v
+                                           CHANGELOG + STATE + PROJECT KNOWLEDGE
+
+Quy tắc phân loại:
+
+- Backend/API/DB/infra thuần túy không bắt buộc Design Gate.
+- Task UI/UX phải khai báo design_impact: NONE | LOW | MEDIUM | HIGH.
+- MEDIUM/HIGH bắt buộc Design Gate đầy đủ.
+- LOW dùng lightweight gate: approved design system + visual QA + reviewer;
+  prototype/human approval chỉ bắt buộc nếu project.yaml quy định.
+- NONE không cần Design Gate.
+- Full feature chỉ nhánh UI/UX phải qua Design Gate; các nhánh khác vẫn có thể chạy song song nếu dependency cho phép.
+- Khi design_impact/project.yaml yêu cầu Human approval, đây là hard gate; không
+  được giả lập approval bằng suy luận của Agent.
+
+
+======================================================================
+6. TASK PHẢI MACHINE-READABLE
+======================================================================
+
+Không dùng task dạng:
+
+"làm payment"
+
+Mỗi task phải có ID và metadata rõ ràng.
+
+Task mode:
+
+READ_ONLY_AUDIT
+  Chỉ đọc/đánh giá/báo cáo; không sửa file và không thay đổi external state.
+
+DIAGNOSTIC
+  Điều tra/reproduce/đo lường; chỉ được tạo artifact báo cáo được giao.
+
+RESEARCH
+  Nghiên cứu và đề xuất; không triển khai production code.
+
+DESIGN
+  Tạo design artifact; chưa được sửa production UI khi chưa approved.
+
+IMPLEMENTATION
+  Được sửa file trong scope sau khi có TASK ID và lock/worktree hợp lệ.
+
+REVIEW
+  Review/test/security; quyền write theo role, không tự mở rộng scope.
+
+INCIDENT_HOTFIX
+  Xử lý khẩn cấp bằng INCIDENT ID; phải backfill TASK ID, evidence, review và
+  post-incident record ngay sau khi ổn định hệ thống.
+
+Quy tắc ID:
+
+- READ_ONLY_AUDIT/DIAGNOSTIC/RESEARCH không sửa project có thể dùng REQUEST ID hoặc
+  AUDIT ID thay TASK ID.
+- Mọi thay đổi file/code/config/data bắt buộc TASK ID.
+- INCIDENT_HOTFIX có thể bắt đầu bằng INCIDENT ID khi chờ TASK ID, nhưng không
+  được bỏ qua audit trail, backup, verification và hậu kiểm.
+
+Ví dụ:
+
+schema_version: "2.1.2"
+
+id: TASK-0154
+
+mode: IMPLEMENTATION
+
+title: Implement Stripe webhook
+
+owner: agent-payment
+
+status: running
+
+priority: high
+
+dependencies:
+  - TASK-0151
+
+files_allowed:
+  - src/payment/**
+  - tests/payment/**
+
+files_forbidden:
+  - src/auth/**
+  - database/migrations/**
+
+acceptance_criteria:
+  - verifies Stripe signature
+  - supports payment_intent.succeeded
+  - supports payment_intent.failed
+  - idempotent
+  - unit tests pass
+
+commands:
+  test:
+    - npm run test:payment
+  lint:
+    - npm run lint
+  typecheck:
+    - npm run typecheck
+
+max_fix_cycles: 5
+
+related_error_ids:
+  - ERR-20260929-001
+
+related_acquirement_ids:
+  - ACQ-20260929-001
+
+
+Trạng thái task:
+
+backlog
+ready
+running
+review
+blocked
+done
+
+
+======================================================================
+7. FILE LOCK / OWNERSHIP
+======================================================================
+
+Bắt buộc dùng:
+
+.ai/locks.json
+
+Ví dụ:
+
+{
+  "schema_version": "2.1.2",
+  "revision": 42,
+  "src/payment/**": {
+    "agent": "payment-agent",
+    "task": "TASK-154",
+    "lease_id": "LEASE-01J...",
+    "fencing_token": 108,
+    "acquired_at": "2026-09-29T01:30:00Z",
+    "heartbeat_at": "2026-09-29T01:34:00Z",
+    "expires_at": "2026-09-29T01:40:00Z"
+  }
+}
+
+Mọi Agent trước khi sửa file phải kiểm tra lock.
+
+Quy tắc concurrency bắt buộc:
+
+- Chỉ Orchestrator/Lock Manager hoặc cơ chế atomic được chỉ định được ghi locks.json.
+- Mọi lock phải có lease_id, expires_at và fencing_token tăng đơn điệu.
+- Agent phải heartbeat trước khi lease hết hạn.
+- Agent mất lease không được tiếp tục ghi dù process cũ vẫn đang chạy.
+- Mọi write/commit/result phải mang fencing_token hiện hành khi hệ thống hỗ trợ.
+- Cập nhật bằng atomic replace + optimistic revision; không chỉnh từng phần JSON
+  đồng thời từ nhiều Agent.
+- Unlock/reassign phải ghi audit history.
+- Lock hết hạn không tự đồng nghĩa task an toàn để chạy lại; Orchestrator phải
+  kiểm tra worktree, provider/external side effect và partial changes.
+
+Nếu file bị lock:
+
+LOCKED
+DO NOT MODIFY
+
+Nếu cần sửa file đã bị Agent khác giữ:
+- Gửi request cho Orchestrator.
+- Orchestrator quyết định handoff hoặc unlock.
+- Không tự ý phá lock.
+
+
+======================================================================
+8. GIT LÀ BẮT BUỘC
+======================================================================
+
+Mỗi thay đổi phải có thể rollback.
+
+Cấm code trực tiếp vào main.
+
+Branch convention:
+
+agent/backend/TASK-101
+agent/frontend/TASK-102
+agent/payment/TASK-103
+agent/fixer/TASK-104
+
+
+Khuyến nghị dùng Git Worktree:
+
+main
+
+worktrees/
+├── backend-TASK-101
+├── frontend-TASK-102
+├── payment-TASK-103
+├── test-TASK-104
+└── designer-TASK-105
+
+Vị trí worktree:
+
+- Ưu tiên đặt worktree ngoài repository root, ví dụ ../project-worktrees/.
+- Nếu đặt trong PROJECT_ROOT/worktrees/, folder phải nằm trong .gitignore và CI
+  phải chặn nested repository/worktree artifact bị commit.
+- Mỗi worktree gắn một TASK ID/Agent/branch; không dùng chung cho hai Agent ghi song song.
+
+
+Mục đích:
+
+- Nhiều AI Agent cùng code một repo.
+- Không đạp filesystem.
+- Giảm conflict.
+- Dễ rollback.
+- Dễ kiểm tra Agent nào thay đổi gì.
+
+
+======================================================================
+9. QUY TẮC COMMIT
+======================================================================
+
+Không nên commit mỗi lần AI sửa một dòng.
+
+Workflow:
+
+AI Edit
+   |
+   v
+Lint
+   |
+   v
+TypeCheck
+   |
+   v
+Unit Test
+   |
+   v
+PASS?
+   |
+  YES
+   |
+   v
+Checkpoint Commit
+
+
+Commit convention:
+
+[TASK-154][payment-agent] Implement Stripe webhook handler
+
+Tests: PASS
+Lint: PASS
+Typecheck: PASS
+
+
+CẤM:
+
+git push --force
+git reset --hard tự động
+git clean -fd tự động
+commit trực tiếp main
+xóa lịch sử Git
+
+
+======================================================================
+10. ANTIGRAVITY LOOP
+======================================================================
+
+Mục tiêu:
+
+Tự động:
+
+Code
+-> Test
+-> Detect Error
+-> Bug Report
+-> Fix
+-> Test lại
+-> PASS
+-> Review
+
+
+Luồng:
+
+              +---------------+
+              |   CODE AGENT  |
+              +-------+-------+
+                      |
+                      v
+              +---------------+
+              |  TEST RUNNER  |
+              +-------+-------+
+                      |
+                    FAILED
+                      |
+                      v
+              bug_report.json
+                      |
+                      v
+              +---------------+
+              |  FIXER AGENT  |
+              +-------+-------+
+                      |
+                      v
+                    CODE
+                      |
+                      v
+                  TEST AGAIN
+                      |
+          +-----------+-----------+
+          |                       |
+        FAILED                   PASS
+          |                       |
+          v                       v
+       FIXER                  REVIEWER
+          |                       |
+          +-----------> TEST <----+
+                      |
+                     PASS
+                      |
+                      v
+                    CI GATE
+                      |
+                      v
+                    MERGE
+
+
+======================================================================
+11. LOOP GUARD
+======================================================================
+
+Tuyệt đối không cho AI sửa vô hạn.
+
+Ví dụ:
+
+max_cycles: 5
+max_minutes: 30
+max_cost_usd: 5
+
+Nếu vượt:
+
+STATUS = BLOCKED
+
+Chuyển task:
+
+.ai/tasks/blocked/TASK-154.yaml
+
+Tạo:
+
+ESCALATION_REQUIRED
+
+Orchestrator hoặc người thật phải xử lý.
+
+
+======================================================================
+12. BUG REPORT
+======================================================================
+
+Không chỉ dùng bug_report.md.
+
+Khuyến nghị tạo:
+
+bug_report.json
++
+bug_report.md
+
+
+Ví dụ bug_report.json:
+
+{
+  "schema_version": "2.1.2",
+  "task": "TASK-154",
+  "project_error_id": "ERR-20260929-001",
+  "status": "FAILED",
+  "command": "npm test",
+  "failed_tests": [
+    {
+      "name": "payment webhook idempotency",
+      "file": "tests/payment/webhook.test.ts",
+      "error": "Expected 1 payment but received 2"
+    }
+  ],
+  "attempt": 2
+}
+
+
+bug_report.md dành cho người đọc.
+
+bug_report.json dành cho AI / Orchestrator / automation đọc.
+
+Quan hệ bắt buộc:
+
+- bug_report.json/bug_report.md = một lần lỗi cụ thể của một task/run.
+- PROJECT_ERROR.md = tri thức lỗi bền vững sau khi lỗi đáng lưu được phân tích.
+- Một ERR-ID có thể liên kết nhiều bug report nếu cùng root cause.
+- Nếu root cause khác, phải tạo ERR-ID mới dù triệu chứng giống nhau.
+- Không đánh dấu ERR-ID là RESOLVED nếu chưa có verification lặp lại được.
+
+
+======================================================================
+13. QUYỀN CỦA TESTER
+======================================================================
+
+Tester được phép sửa:
+
+tests/**
+.ai/bugs/**
+Docs/Testing/**
+
+
+Tester KHÔNG được phép sửa:
+
+src/**
+app/**
+database/**
+production/**
+server/**
+payment/**
+auth/**
+
+
+Tester chỉ có nhiệm vụ:
+
+- Viết test.
+- Chạy test.
+- Phân tích lỗi.
+- Ghi bug report.
+
+
+======================================================================
+14. CẤM AI SỬA TEST ĐỂ LÀM XANH
+======================================================================
+
+Luật bắt buộc:
+
+NEVER change expected test results merely to make tests pass.
+
+NEVER:
+- delete failing tests
+- skip failing tests
+- disable tests
+- loosen assertions
+- remove edge cases
+- mock away real failures
+- lower coverage threshold
+- change acceptance criteria
+
+trừ khi có approval rõ ràng.
+
+
+======================================================================
+15. REVIEW GATE
+======================================================================
+
+Test PASS không có nghĩa code đúng.
+
+Reviewer phải kiểm tra:
+
+- Logic.
+- Architecture.
+- Code quality.
+- Security implications.
+- Performance.
+- Database query.
+- Concurrency.
+- Race condition.
+- Transaction safety.
+- Error handling.
+- Retry logic.
+- API compatibility.
+- Naming.
+- Duplication.
+- Maintainability.
+- Backward compatibility.
+
+
+Reviewer trả về:
+
+APPROVED
+
+hoặc:
+
+REQUEST_CHANGES
+
+
+======================================================================
+16. SECURITY GATE
+======================================================================
+
+Security Agent kiểm tra:
+
+- SQL injection.
+- XSS.
+- CSRF.
+- SSRF.
+- Command injection.
+- Path traversal.
+- Authentication.
+- Authorization.
+- Secret leakage.
+- Hardcoded key/token.
+- Webhook verification.
+- Rate limiting.
+- File upload.
+- Unsafe dependency.
+- Sensitive logging.
+- Encryption.
+- Session/token handling.
+
+
+Agent mặc định KHÔNG được tự đọc:
+
+.env
+*.pem
+private keys
+production tokens
+production credentials
+
+trừ khi task được cấp quyền rõ ràng.
+
+
+======================================================================
+17. DEPENDENCY POLICY
+======================================================================
+
+AI không được tùy tiện:
+
+npm install xxx
+pip install xxx
+cargo add xxx
+composer require xxx
+
+
+Trước khi thêm dependency phải kiểm tra:
+
+1. Project đã có thư viện tương tự chưa?
+2. Có thể dùng standard library không?
+3. Project còn maintained không?
+4. Có deprecated không?
+5. License là gì?
+6. Có security issue không?
+7. Bundle size / runtime cost?
+8. Có ảnh hưởng architecture không?
+
+
+Nếu dependency ảnh hưởng kiến trúc:
+
+phải tạo ADR.
+
+
+======================================================================
+18. ADR - ARCHITECTURE DECISION RECORD
+======================================================================
+
+Mọi quyết định lớn phải ghi tại:
+
+Docs/ADR/
+
+
+Ví dụ:
+
+ADR-027
+Title:
+Use Redis/BullMQ for payment jobs
+
+Context:
+Webhook processing có thể lâu.
+
+Decision:
+Dùng Redis + BullMQ.
+
+Reason:
+- Retry.
+- Queue.
+- Observability.
+- Không block API.
+
+Rejected:
+- In-memory queue.
+- Cron polling.
+
+Impact:
+- Cần Redis.
+- Cần worker.
+- Cần monitoring.
+
+
+======================================================================
+19. QUALITY GATE
+======================================================================
+
+Gate phải được tạo từ task mode + files changed + risk + workspace profile.
+Không ép mọi task chạy mọi gate, nhưng gate bị bỏ qua phải ghi `not_required`
+kèm reason machine-readable; Agent không được tự dùng `skipped` để né kiểm tra.
+
+Gate matrix tối thiểu:
+
+READ_ONLY_AUDIT / RESEARCH
+  Evidence + source traceability + reviewer khi cần; không yêu cầu build/test code.
+
+DOCS_ONLY
+  Link check + format/lint + consistency review + secret scan.
+
+CODE / IMPLEMENTATION
+  Build/lint/typecheck/unit; integration/e2e/security theo impact.
+
+DATABASE
+  Migration + backup/rollback + data validation + integration test + review.
+
+UI_LOW
+  Design system compliance + browser/device visual QA + reviewer.
+
+UI_MEDIUM/HIGH
+  Design Gate theo impact + implementation visual QA + accessibility phù hợp.
+
+INCIDENT_HOTFIX
+  Minimal safety/smoke/security gate trước deploy; full regression/review/postmortem
+  phải backfill trong thời hạn được quy định.
+
+Task không được chuyển DONE nếu gate applicable chưa đạt:
+
+[ ] Build PASS
+[ ] Lint PASS
+[ ] TypeCheck PASS
+[ ] Unit Test PASS
+[ ] Integration Test PASS
+[ ] E2E Test nếu cần
+[ ] Security Scan PASS
+[ ] Reviewer APPROVED
+[ ] Architecture compliance PASS
+[ ] Design approval PASS nếu design_impact yêu cầu
+[ ] Browser visual QA PASS nếu task có UI/UX impact
+[ ] Approved-design comparison PASS nếu task có UI/UX impact
+[ ] Documentation updated
+[ ] Changelog updated
+[ ] Handoff updated
+[ ] PROJECT_ERROR.md reviewed; updated nếu có lỗi/bài học lỗi tái sử dụng
+[ ] ACQUIREMENTS.md reviewed; updated nếu có kiến thức/giải pháp tái sử dụng
+[ ] ERR-ID/ACQ-ID liên quan đã link vào task/result/handoff
+[ ] Entry RESOLVED có verification và prevention
+[ ] Entry STANDARD có evidence và approval
+[ ] Project-memory secret scan PASS
+
+
+Nếu gate applicable thiếu hoặc gate not_required không có reason:
+
+status != DONE
+
+
+======================================================================
+20. CHANGELOG
+======================================================================
+
+Tách thành 2 loại.
+
+
+A. Product Changelog
+--------------------
+
+Docs/Changelog/CHANGELOG.md
+
+Ví dụ:
+
+2026-08-28
+
+Added:
+- Stripe PaymentIntent
+
+Fixed:
+- Duplicate webhook processing
+
+
+B. Agent Activity Log
+---------------------
+
+Docs/Changelog/agent-log/2026-08-28.log
+
+Ví dụ:
+
+10:00 agent-backend
+TASK-101
+Created payment service.
+
+10:12 agent-test
+TASK-101
+Unit test failed:
+payment duplication.
+
+10:16 agent-fixer
+TASK-101
+Added idempotency guard.
+
+10:19 agent-test
+TASK-101
+PASS.
+
+10:22 agent-review
+TASK-101
+APPROVED.
+
+
+C. Phân biệt Changelog và Project Knowledge
+--------------------------------------------
+
+- Changelog: sản phẩm/code thay đổi gì.
+- Agent Activity Log: agent đã làm hoạt động gì.
+- PROJECT_ERROR.md: dự án đã gặp lỗi gì, root cause/cách sửa/phòng ngừa là gì.
+- ACQUIREMENTS.md: dự án đã chưng cất được kiến thức hoặc giải pháp tối ưu nào.
+
+Không sao chép toàn bộ cùng một nội dung sang bốn nơi. Mỗi file lưu đúng mục đích
+và dùng ID/link để tham chiếu.
+
+
+======================================================================
+21. HANDOFF
+======================================================================
+
+Mỗi Agent trước khi kết thúc session phải tạo handoff.
+
+Folder:
+
+.ai/handoffs/
+
+
+Ví dụ:
+
+task: TASK-154
+
+schema_version: "2.1.2"
+
+agent: payment-agent
+
+completed:
+  - webhook endpoint
+  - signature verification
+
+changed:
+  - src/payment/webhook.ts
+
+remaining:
+  - refund webhook
+
+known_issue:
+  - timeout test not implemented
+
+related_errors:
+  - ERR-20260929-001
+
+related_acquirements:
+  - ACQ-20260929-001
+
+project_memory_updates:
+  project_error: updated
+  acquirements: not_applicable
+  reason: "No new reusable project knowledge"
+
+tests:
+  unit: pass
+  integration: pass
+
+next_action:
+  implement refund webhook
+
+next_agent:
+  payment-agent
+
+
+Mục tiêu:
+
+Agent tiếp theo không cần đọc lại toàn bộ repo để hiểu việc đang làm.
+
+
+======================================================================
+22. PROJECT STATE
+======================================================================
+
+File:
+
+.ai/state.json
+
+
+Ví dụ:
+
+{
+  "schema_version": "2.1.2",
+  "revision": 128,
+  "updated_at": "2026-09-29T01:40:00Z",
+  "updated_by": "orchestrator",
+  "project_status": "development",
+  "active_tasks": 7,
+  "blocked_tasks": 1,
+
+  "agents": {
+    "backend": "working",
+    "frontend": "idle",
+    "payment": "working",
+    "tester": "testing"
+  },
+
+  "current_release": "v0.8.1",
+
+  "health": {
+    "build": "pass",
+    "unit_test": "pass",
+    "integration_test": "fail"
+  }
+}
+
+
+Orchestrator đọc state.json để biết tình trạng tổng thể.
+
+State write policy:
+
+- .ai/state.json là source of truth cho trạng thái vận hành, nhưng không phải nơi
+  nhiều Agent cùng ghi trực tiếp.
+- Chỉ Orchestrator/State Manager hoặc command atomic được quy định được phép ghi.
+- Mọi update dùng optimistic revision: expected_revision phải khớp revision hiện tại.
+- Ghi bằng temp file + fsync + atomic rename hoặc transactional store tương đương.
+- Mỗi transition phải validate schema và transition hợp lệ.
+- Event/result đến muộn không được ghi đè terminal/newer state.
+- Khi scale lớn, dùng append-only event log/transactional database làm write path;
+  state.json trở thành materialized snapshot cho Agent đọc.
+- Schema phải versioned; thay schema cần migration và backward-compatibility plan.
+
+
+======================================================================
+23. PROJECT.YAML
+======================================================================
+
+.ai/project.yaml
+
+Ví dụ:
+
+schema_version: "2.1.2"
+
+project:
+  name: example-project
+  version: 0.8.1
+  status: development
+  workspace_profile: PRODUCT
+
+profiles:
+  enabled:
+    - CORE
+    - PRODUCT
+  optional_modules:
+    reconstruction: false
+    design_gate: true
+    ai_data: false
+
+stack:
+  frontend:
+    framework: nextjs
+  backend:
+    framework: nestjs
+  database:
+    engine: postgresql
+  cache:
+    engine: redis
+
+commands:
+  install: npm install
+  build: npm run build
+  lint: npm run lint
+  typecheck: npm run typecheck
+  test: npm test
+
+git:
+  default_branch: main
+  use_worktree: true
+
+ai:
+  max_fix_cycles: 5
+  require_task_id: true
+  require_review: true
+  require_security_review: true
+
+project_knowledge:
+  project_error_file: PROJECT_ERROR.md
+  acquirements_file: ACQUIREMENTS.md
+  read_before_task: true
+  review_before_done: true
+  update_in_same_commit: true
+  require_verification_for_resolved: true
+  require_evidence_for_standard: true
+  secret_scan: true
+  error_id_pattern: "ERR-YYYYMMDD-NNN"
+  acquirement_id_pattern: "ACQ-YYYYMMDD-NNN"
+
+design:
+  require_gate_for_ui_changes: true
+  impact_levels:
+    NONE: no_design_gate
+    LOW: lightweight_visual_gate
+    MEDIUM: full_design_gate
+    HIGH: full_design_gate_plus_human_approval
+  require_human_approval_for:
+    - MEDIUM
+    - HIGH
+  require_visual_qa: true
+  designer_can_modify_production_ui: false
+  implementation_owner: frontend
+  artifact_root: design/
+  state_root: .ai/design/
+
+
+======================================================================
+24. AGENTS.YAML
+======================================================================
+
+.ai/agents.yaml
+
+Ví dụ:
+
+agents:
+
+  orchestrator:
+    role: coordinator
+    can_code: false
+
+  architect:
+    role: architecture
+    can_code: false
+
+  backend:
+    role: backend
+    writable:
+      - src/backend/**
+      - tests/backend/**
+
+  frontend:
+    role: frontend
+    writable:
+      - src/frontend/**
+      - tests/frontend/**
+      - design/approved/**
+
+  designer:
+    role: design
+    can_code: false
+    can_create_prototype: true
+    writable:
+      - design/**
+      - .ai/design/**
+      - Docs/Design/**
+    forbidden:
+      - src/**
+      - Backend/**
+      - services/**
+    requires_human_approval_before_handoff: true
+
+  tester:
+    role: testing
+    writable:
+      - tests/**
+      - .ai/bugs/**
+    forbidden:
+      - src/**
+
+  fixer:
+    role: bugfix
+    writable:
+      - src/**
+
+  reviewer:
+    role: review
+    can_code: false
+
+  security:
+    role: security
+    can_code: false
+
+
+======================================================================
+25. WORKFLOW FEATURE
+======================================================================
+
+1. User gửi yêu cầu.
+2. Orchestrator phân tích và phân loại UI/UX impact.
+3. Nếu có UI/UX impact -> tạo DESIGN TASK và giao Designer.
+4. Designer tạo UX analysis / wireframe / high-fidelity / interactive prototype theo scope.
+5. Chạy visual QA trên design artifact.
+6. Chuyển design sang REVIEW.
+7. Human APPROVE hoặc REJECT. Nếu REJECT -> Designer iterate; chưa được production implementation.
+8. Khi APPROVED -> freeze design artifact và tạo design handoff.
+9. Architect kiểm tra kiến trúc.
+10. Tạo SPEC.
+11. Tạo Task Graph.
+12. Xác định dependency.
+13. Lock phạm vi code.
+14. Tạo branch/worktree.
+15. Giao Agent.
+16. Backend/Frontend/Integration/... implement theo task; Frontend bám approved design nếu có.
+17. Lint.
+18. TypeCheck.
+19. Unit Test.
+20. Integration Test.
+21. Browser visual QA + approved-design comparison nếu có UI/UX impact.
+22. Nếu fail -> bug_report.
+23. Fixer sửa trong scope được giao.
+24. Test/visual QA lại.
+25. Reviewer review.
+26. Security review.
+27. Quality Gate.
+28. Commit.
+29. Merge.
+30. Update state/design state.
+31. Update Changelog.
+32. Update Docs.
+33. Review/update PROJECT_ERROR.md nếu có lỗi hoặc failed attempt đáng lưu.
+34. Review/update ACQUIREMENTS.md nếu có kiến thức/giải pháp tái sử dụng.
+35. Link ERR-ID/ACQ-ID vào task, result và handoff.
+36. Close task.
+
+
+======================================================================
+26. WORKFLOW BUG FIX
+======================================================================
+
+BUG
+ |
+ v
+Search PROJECT_ERROR.md + ACQUIREMENTS.md
+ |
+ v
+Tester reproduce
+ |
+ v
+Create bug_report.json
+ |
+ v
+Orchestrator create TASK-BUG-XXX
+ |
+ v
+Fixer assigned
+ |
+ v
+Fix production code
+ |
+ v
+Run failing test
+ |
+ v
+Run regression tests
+ |
+ v
+Reviewer
+ |
+ v
+Security if needed
+ |
+ v
+Merge
+ |
+ v
+Update PROJECT_ERROR.md
+ |
+ v
+Distill ACQUIREMENTS.md if reusable
+ |
+ v
+Changelog + State + Handoff
+
+Quy tắc:
+
+- Nếu lỗi đã tồn tại và cùng root cause: cập nhật entry cũ, tăng recurrence_count.
+- Nếu chỉ có cùng triệu chứng nhưng root cause khác: tạo ERR-ID mới.
+- Nếu chưa xác minh root cause: status = INVESTIGATING, không ghi kết luận chắc chắn.
+- Sau khi RESOLVED: phải có test/command/kết quả verification và prevention.
+- Kiến thức rút ra chỉ được nâng VALIDATED/STANDARD khi có evidence phù hợp.
+
+
+======================================================================
+27. QUY TẮC DATABASE
+======================================================================
+
+AI không được:
+
+- Tự thay schema production.
+- DROP TABLE.
+- DROP DATABASE.
+- Truncate dữ liệu production.
+- Xóa migration cũ.
+- Rewrite migration đã chạy production.
+
+Mọi schema change phải:
+
+1. Có task.
+2. Có migration.
+3. Có rollback strategy.
+4. Có backup nếu migration nguy hiểm.
+5. Có review.
+
+
+======================================================================
+28. QUY TẮC API
+======================================================================
+
+API mới phải có:
+
+- Endpoint specification.
+- Request schema.
+- Response schema.
+- Error schema.
+- Validation.
+- Authentication.
+- Authorization.
+- Rate limit nếu cần.
+- Logging.
+- Test.
+- OpenAPI update.
+
+
+Không tự thay response contract đang dùng nếu chưa có approval.
+
+
+======================================================================
+29. QUY TẮC LOGGING
+======================================================================
+
+Log phải:
+
+- Có timestamp.
+- Có request/task correlation id.
+- Có module.
+- Có severity.
+- Không log password.
+- Không log access token.
+- Không log secret.
+- Không log full payment card data.
+- Không log private key.
+
+
+======================================================================
+30. QUY TẮC AI KHÔNG ĐƯỢC "ĐOÁN"
+======================================================================
+
+Nếu chưa biết:
+
+- Kiểm tra source code.
+- Kiểm tra docs.
+- Kiểm tra schema.
+- Kiểm tra config.
+- Kiểm tra git history.
+- Kiểm tra task.
+- Kiểm tra state.
+
+
+Không được tự bịa:
+
+- File tồn tại.
+- API tồn tại.
+- Table tồn tại.
+- Function tồn tại.
+- Environment variable tồn tại.
+- Package đã cài.
+- Service đang chạy.
+- Port đang mở.
+
+
+======================================================================
+31. 24 LUẬT CỨNG DÀNH CHO TẤT CẢ AI AGENT
+======================================================================
+
+1. Never modify code/config/data without TASK ID. Read-only audit, diagnostic and
+   research may use REQUEST/AUDIT ID; emergency hotfix may use INCIDENT ID and
+   must backfill TASK ID after stabilization.
+
+2. Never modify files outside assigned task scope.
+
+3. Never modify a locked file.
+
+4. Never commit directly to main.
+
+5. Never modify tests merely to make them pass.
+
+6. Never delete failing tests.
+
+7. Never skip/disable tests without explicit approval.
+
+8. Never disable lint, typecheck or security checks.
+
+9. Never install dependencies without justification.
+
+10. Never alter architecture without ADR.
+
+11. Never change database schema without migration.
+
+12. Never expose secrets.
+
+13. Never use destructive Git commands automatically.
+
+14. Never git push --force.
+
+15. Always run verification before checkpoint commit.
+
+16. Always update task state.
+
+17. Always update changelog for meaningful changes.
+
+18. Always create handoff before ending an unfinished session.
+
+19. Stop autonomous fix loop after configured maximum attempts.
+
+20. If uncertain, inspect project state/code/docs first. Never invent project state.
+
+21. Always read PROJECT_ERROR.md and ACQUIREMENTS.md before planning or changing the project.
+
+22. Never mark an error RESOLVED without repeatable verification and prevention/guardrail.
+
+23. Always update durable project knowledge in the same commit/PR when a reusable error or lesson is discovered.
+
+24. Never store secrets, credentials, personal data or active signed URLs in project-memory files.
+
+
+======================================================================
+32. MÔ HÌNH TỔNG THỂ
+======================================================================
+
+                         USER
+                           |
+                           v
+                    ORCHESTRATOR
+                           |
+              +------------+------------+
+              |                         |
+              v                         v
+          ARCHITECT                  DESIGNER
+              |
+              v
+             SPEC
+              |
+              v
+          TASK GRAPH
+              |
+ +------------+-------------+----------------+
+ |            |             |                |
+ v            v             v                v
+BACKEND     FRONTEND      PAYMENT       INTEGRATION
+AGENT       AGENT         AGENT           AGENT
+ |            |             |                |
+ +------------+-------------+----------------+
+                           |
+                           v
+                     TEST RUNNER
+                           |
+              +------------+------------+
+              |                         |
+             FAIL                      PASS
+              |                         |
+              v                         v
+          BUG REPORT                REVIEWER
+              |                         |
+              v                         v
+          FIXER AGENT               SECURITY
+              |                         |
+              +---------- TEST <--------+
+                           |
+                          PASS
+                           |
+                           v
+                        CI GATE
+                           |
+                           v
+                         MERGE
+                           |
+                           v
+                        RELEASE
+                           |
+                           v
+          STATE + CHANGELOG + PROJECT KNOWLEDGE
+
+
+======================================================================
+33. NGUYÊN TẮC CỐT LÕI
+======================================================================
+
+Mục tiêu không phải là:
+
+"Cho Claude đọc Docs rồi code."
+
+
+Mục tiêu là xây hệ thống:
+
+SPEC
+  |
+  v
+TASK GRAPH
+  |
+  v
+AGENT ASSIGNMENT
+  |
+  v
+FILE OWNERSHIP
+  |
+  v
+ISOLATED WORKTREE
+  |
+  v
+CODE
+  |
+  v
+AUTOMATED TEST LOOP
+  |
+  v
+REVIEW
+  |
+  v
+SECURITY
+  |
+  v
+QUALITY GATE
+  |
+  v
+MERGE
+  |
+  v
+STATE + OPERATIONAL MEMORY + DURABLE PROJECT KNOWLEDGE + CHANGELOG
+
+
+Khi toàn bộ trạng thái, kiến trúc, nhiệm vụ, quyền hạn và lịch sử nằm trong project,
+Claude, Codex, DeepSeek, Aider hoặc AI Agent khác có thể thay thế lẫn nhau.
+
+Trí nhớ của hệ thống nằm trong PROJECT,
+không phụ thuộc vào trí nhớ của một AI cụ thể.
+
+
+======================================================================
+34. ĐỀ XUẤT NÂNG CẤP SAU
+======================================================================
+
+Có thể tiếp tục bổ sung:
+
+- Task dependency graph tự động.
+- Agent scheduler.
+- Agent heartbeat.
+- Agent lease/lock timeout.
+- Conflict detector.
+- Cost/token accounting.
+- Model routing:
+  Claude -> architecture/review.
+  Codex -> coding.
+  DeepSeek -> bulk fix.
+  Gemini -> research/UI multimodal.
+- Context compiler.
+- Auto handoff compiler.
+- RAG over Docs.
+- Code graph.
+- Knowledge graph.
+- CI event bus.
+- Agent dashboard.
+- Approval analytics / approval SLA dashboard.
+- Production deployment approval.
+- Rollback bot.
+- Incident agent.
+- Release manager.
+- SLA/SLO monitoring.
+- MCP gateway.
+- Plugin/Skill registry.
+- Workspace-level permissions.
+- Multi-project orchestration.
+
+
+======================================================================
+35. KIẾN TRÚC HỢP NHẤT
+======================================================================
+
+Hệ thống chỉ có một chuỗi quản trị:
+
+DEVELOPMENT WORKSPACE STANDARD
+Task / Agent / Git / Lock / Review / Security / State / Handoff / CI
+                              ↓
+DESIGN GATE (khi task có UI/UX impact)
+Requirement → Design → Prototype → Review → Human Approval → Handoff → Visual QA
+                              ↓
+RECONSTRUCTION ENGINE (khi dự án có đầu vào APK/decompiled source)
+APK → Evidence → Behavior → API → Domain → DB → Specs → Parity
+                              ↓
+PRODUCT
+Android Kotlin + Backend + CMS + Database + Infrastructure
+
+Quy tắc hợp nhất:
+
+1. AGENTS.md và Docs/rules.md là luật chuẩn duy nhất.
+2. Không tạo AI/ song song với .ai/.
+3. .ai/state.json quản lý trạng thái vận hành toàn dự án.
+4. .ai/reconstruction/ledger.json quản lý mức hoàn thành của từng feature tái dựng.
+5. Docs/ mô tả cho con người; .ai/ chứa dữ liệu machine-readable.
+6. Agent là vai trò chịu trách nhiệm; Reconstruction là tập skill chuyên môn.
+7. Task, lock, worktree, test, review, security và loop guard áp dụng cho mọi pipeline.
+
+
+======================================================================
+36. PHẠM VI VÀ RÀNG BUỘC RECONSTRUCTION
+======================================================================
+
+Mục đích chính của Reconstruction Pipeline là dùng code và các artifact kỹ thuật
+được phép để phân tích cấu trúc hệ thống, xác định hành vi và ánh xạ code từ hệ
+thống tham chiếu sang kiến trúc đích. Pipeline không chỉ đọc tên class hoặc sao
+chép từng file; Agent phải hiểu vai trò, quan hệ phụ thuộc, luồng dữ liệu và hành
+vi thực tế trước khi thiết kế hoặc viết lại code.
+
+Đầu vào có thể gồm:
+
+- Source code do project sở hữu hoặc được cấp quyền sử dụng.
+- APK, binary, bytecode hoặc decompiled code được phép phân tích.
+- Resource, manifest, configuration, database schema và migration.
+- API contract, request/response, log, network trace và runtime behavior hợp lệ.
+- UI screenshot, screen recording, design asset và thao tác người dùng quan sát được.
+
+Agent được phép thực hiện trong phạm vi task đã phê duyệt:
+
+- Đọc, tìm kiếm, lập chỉ mục và phân tích code.
+- Decompile, inspect, trace hoặc chạy artifact trong môi trường kiểm soát.
+- Xác định module, package, class, function, API, data model và dependency.
+- Phân tích call flow, state flow, data flow, navigation và business rule.
+- Đối chiếu code với UI, API, database, log và hành vi runtime.
+- Ánh xạ thành phần nguồn sang module, file, interface hoặc service của hệ thống đích.
+- Viết lại hoặc tái cấu trúc code theo kiến trúc mới sau khi ánh xạ đã có evidence.
+
+CODE MAPPING — đầu ra bắt buộc:
+
+Mỗi thành phần quan trọng phải được ghi nhận theo cấu trúc tối thiểu:
+
+source_artifact: ...
+source_symbol: package/class/function/resource/endpoint
+observed_responsibility: ...
+dependencies: [...]
+inputs_outputs: ...
+target_module: ...
+target_file_or_symbol: ...
+mapping_type: reuse | adapt | rewrite | replace | omit
+evidence: [...]
+confidence: high | medium | low
+implementation_status: pending | mapped | implemented | verified | blocked
+
+Quy tắc ánh xạ code:
+
+1. Ánh xạ theo trách nhiệm và hành vi, không ánh xạ máy móc theo tên class.
+2. Một class nguồn có thể được tách thành nhiều module đích; nhiều class nguồn có
+   thể được hợp nhất nếu cùng một trách nhiệm.
+3. Code bị obfuscate phải được đặt tên lại theo hành vi đã quan sát và có evidence.
+4. Không kết luận business rule chỉ từ một dấu hiệu; phải đối chiếu code, runtime,
+   API, dữ liệu hoặc UI khi có thể.
+5. Mọi giả định phải ghi confidence và chuyển thành task xác minh.
+6. Chỉ triển khai sau khi thành phần nguồn, trách nhiệm và vị trí đích đã được xác định.
+7. Mapping phải truy vết được hai chiều: source → target và target → source/evidence.
+8. Không sao chép secret, token, credential, dữ liệu người dùng hoặc cấu hình nhạy cảm
+   từ artifact tham chiếu sang project mới.
+
+PHẠM VI VÀ QUYỀN PHÂN TÍCH:
+
+Pipeline chỉ áp dụng cho code/artifact do project sở hữu, được khách hàng bàn giao,
+được cấp phép phân tích hoặc thuộc phạm vi migration, interoperability, audit, phục
+hồi và phát triển lại hợp pháp. Task phải ghi rõ căn cứ sử dụng và phạm vi được phép.
+
+Task reconstruction tối thiểu phải có:
+
+authorization_reference: owner | contract | license | written_approval | internal_project
+authorization_status: approved | blocked | expired
+allowed_artifacts: [...]
+allowed_operations: [...]
+prohibited_operations: [...]
+data_handling_policy: ...
+reviewed_by: ...
+reviewed_at: ...
+
+Nếu quyền phân tích không rõ, vượt quá phạm vi được giao hoặc có xung đột về dữ
+liệu và sở hữu trí tuệ, task phải chuyển sang BLOCKED để Owner/Security/Legal xác
+nhận. Không được dùng pipeline để vượt access control, DRM, payment, anti-abuse,
+đánh cắp bí mật, chiếm quyền tài khoản hoặc giả mạo dịch vụ.
+
+Mục tiêu:
+
+- Structure parity: hiểu và ánh xạ đúng module, component, dependency và luồng code.
+- Behavior parity: tái tạo đúng hành vi người dùng và luồng nghiệp vụ có evidence.
+- UI parity: tái tạo bố cục, trạng thái, navigation và tương tác quan sát được.
+- API parity: tái tạo endpoint, request, response, error và auth trong phạm vi cho phép.
+- Data parity: tái tạo model, local storage, migration và đồng bộ có evidence.
+- Full-product viability: Android + API + CMS + DB + infra vận hành độc lập.
+
+Không phải mục tiêu:
+
+- Sao chép nguyên trạng toàn bộ code mà không phân tích trách nhiệm và kiến trúc.
+- Dịch máy từng class Java sang Kotlin theo tỷ lệ 1:1.
+- Coi tên class bị obfuscate là kiến trúc source gốc.
+- Khẳng định logic backend hoặc business rule khi chưa có evidence.
+- Mang secret, credential, dữ liệu thật hoặc thành phần không được cấp quyền sang
+  hệ thống mới.
+
+
+======================================================================
+37. EVIDENCE MODEL — LUẬT CHỐNG SUY DIỄN SAI
+======================================================================
+
+Mọi phát hiện phải thuộc đúng một classification:
+
+OBSERVED
+--------
+Thực sự thấy trong APK, Java, resource, manifest, traffic/capture hợp lệ, runtime
+hoặc response của API. Phải có source_reference và confidence.
+
+INFERRED
+--------
+Suy luận kiến trúc/nghiệp vụ từ một hoặc nhiều evidence. Phải ghi reasoning,
+supporting_evidence, confidence và validation_needed.
+
+NEW_DESIGN
+----------
+Thiết kế mới chủ động thêm để sản phẩm an toàn, đầy đủ hoặc dễ vận hành hơn.
+Không được mô tả nó như hành vi của hệ thống gốc.
+
+Ví dụ evidence record:
+
+{
+  "evidence_id": "EVD-API-0001",
+  "feature_id": "FEAT-AUTH",
+  "classification": "OBSERVED",
+  "kind": "api_endpoint",
+  "claim": "POST /api/login returns token and user",
+  "source_reference": {
+    "path": "reconstruction-input/java/.../ApiService.java",
+    "symbol": "ApiService.login",
+    "line_hint": "method annotation and response model"
+  },
+  "confidence": 0.99,
+  "captured_by": "api-intelligence",
+  "timestamp": "ISO-8601"
+}
+
+Confidence guideline:
+
+- 0.95–1.00: trực tiếp và có thể kiểm chứng lặp lại.
+- 0.75–0.94: evidence mạnh nhưng còn một phần suy luận.
+- 0.50–0.74: giả thuyết hợp lý, bắt buộc validation.
+- Dưới 0.50: không được dùng làm contract hoặc implementation requirement.
+
+Không có evidence_id thì không được gắn nhãn OBSERVED.
+
+
+======================================================================
+38. PIPELINE APK → FULL STACK (PHASE 00–20)
+======================================================================
+
+PHASE 00 — SOURCE INGESTION
+Nhận APK, Java decompile, AndroidManifest, resources, assets và capture hợp lệ;
+tạo checksum, provenance và inventory đầu vào. Không chỉnh sửa bản gốc.
+
+PHASE 01 — STATIC DISCOVERY
+Lập inventory package, class, method, component, resource, dependency, permission,
+Activity, Service, Receiver, Provider, native library và obfuscation indicator.
+
+PHASE 02 — CLIENT REVERSE ENGINEERING
+Phục hồi screen, navigation, state, client logic, validation, local DB, cache,
+background work, notification, deep link và feature mapping.
+
+PHASE 03 — NETWORK DISCOVERY
+Quét Retrofit, OkHttp, Volley, HttpURLConnection, REST, WebSocket, Socket.IO,
+GraphQL, gRPC, Firebase, WebView bridge và MQTT. Secrets không được ghi vào report.
+
+PHASE 04 — API KNOWLEDGE GRAPH
+Nối endpoint ↔ caller ↔ request ↔ response ↔ auth ↔ side effect ↔ feature.
+
+PHASE 05 — DOMAIN DISCOVERY
+Suy ra bounded context, entity, value object, lifecycle, permission và relationship.
+
+PHASE 06 — BEHAVIOR SPECIFICATION
+Viết Given/When/Then, happy path, error path, state transition và acceptance criteria.
+
+PHASE 07 — CLIENT ARCHITECTURE
+Thiết kế Android Kotlin mới theo module, contract và behavior; không dịch máy code.
+
+PHASE 08 — SERVER ARCHITECTURE
+Thiết kế API/domain service/auth/payment/storage/queue/worker/notification/audit.
+
+PHASE 09 — DATABASE RECONSTRUCTION
+Tổng hợp toàn bộ API/domain trước khi tạo schema; ghi rõ OBSERVED/INFERRED/NEW_DESIGN,
+migration, indexes, constraints, retention và rollback.
+
+PHASE 10 — OPENAPI CONTRACT
+Sinh OpenAPI và schema dùng chung. Contract là nguồn chuẩn cho Android, Backend, CMS.
+
+PHASE 11 — BACKEND DEVELOPMENT
+Triển khai business rules quan sát được và phần thiết kế mới đã duyệt; có idempotency,
+validation, authorization, audit và error mapping.
+
+PHASE 12 — CMS GENERATION
+Ánh xạ entity/API thành CRUD, publish state, roles, permission, logs, settings và reports.
+CMS không cần giống UI gốc; phải phục vụ đúng domain và an toàn vận hành.
+
+PHASE 13 — ANDROID KOTLIN DEVELOPMENT
+Triển khai UI/navigation/state/network/storage/background theo contract và behavior spec.
+
+PHASE 14 — INFRASTRUCTURE
+Docker, Nginx/API gateway, PostgreSQL, Redis, queue, object storage, secrets,
+observability, backup, deployment và rollback.
+
+PHASE 15 — INTEGRATION TEST
+Kiểm tra Android ↔ API ↔ DB ↔ CMS ↔ worker và external sandbox.
+
+PHASE 16 — ORIGINAL APP PARITY TEST
+So sánh screen, flow, API, error, state, data và side effect bằng test case có evidence.
+
+PHASE 17 — SERVER LOGIC VALIDATION
+Kiểm tra missing logic: inventory reservation, pricing, voucher, fraud, payment,
+reconciliation, notification, scheduled jobs và authorization.
+
+PHASE 18 — SECURITY TEST
+SAST, dependency scan, secret scan, authz, injection, transport, storage và abuse case.
+
+PHASE 19 — PERFORMANCE TEST
+Latency, throughput, resource, queue backlog, DB query, cold start và mobile performance.
+
+PHASE 20 — DEPLOYMENT
+Quality gate → release candidate → migration/backup → deploy → smoke test → monitoring.
+
+Mỗi phase phải có: input, output, owner, dependency, acceptance criteria, evidence,
+status, report và handoff. Không được bỏ phase chỉ bằng cách đổi status sang complete.
+
+
+======================================================================
+39. AGENT = VAI TRÒ, SKILL = NĂNG LỰC
+======================================================================
+
+Không tạo 33 agent thường trực. Giữ core roles trong mục 4 và gắn các skill sau:
+
+01. Source Ingestion & Provenance
+02. APK/Manifest Inventory
+03. Resource & UI Discovery
+04. Class/Module Classification
+05. Call Graph Recovery
+06. Navigation & Screen Recovery
+07. Behavior Extraction
+08. Local Data & Storage Recovery
+09. API Intelligence
+10. API Knowledge Graph
+11. Domain Recovery
+12. Database Reconstruction
+13. Backend Architecture
+14. CMS/Admin Reconstruction
+15. Android Kotlin Architecture
+16. Build & Static QA
+17. Functional/Integration Testing
+18. Original-App Parity
+19. Security & Performance Validation
+20. Infrastructure & Release
+
+Gợi ý ownership:
+
+- Orchestrator: phân phase, task graph, budget, dependency, escalation.
+- Architect: skills 04, 05, 10, 11, 13, 15.
+- Android/Frontend: skills 03, 06, 07, 08, 15.
+- Integration/API: skills 09, 10 và OpenAPI.
+- Backend: skills 11, 12, 13.
+- Payment: payment discovery, webhook, signature, idempotency, refund, reconciliation.
+- Designer: UI inventory, design token, visual parity.
+- Tester: skills 16, 17; chỉ viết test và bug report.
+- Parity/Reviewer: skill 18; không tự sửa production code.
+- Security: skill 19 security.
+- DevOps: skills 19 performance và 20.
+- Fixer: nhận bug đã định danh; sửa trong scope được cấp.
+- Documentation: evidence index, specs, ADR, contract, changelog, handoff.
+
+Một agent có thể có nhiều skill; một skill có thể được giao cho agent khác tùy dự án.
+Mọi assignment phải được ghi trong .ai/agents.yaml và task record.
+
+
+======================================================================
+40. BATCHING VÀ CONTEXT CHO CODEBASE LỚN
+======================================================================
+
+Với 10.000–50.000 class/file, không agent nào được đọc và kết luận toàn bộ trong một
+session. Orchestrator phải:
+
+1. Inventory trước, không code trước.
+2. Chia batch ổn định theo package/module/feature/callgraph; mỗi file thuộc một batch.
+3. Gán batch_id, checksum, file range và owner.
+4. Sinh summary machine-readable cho từng batch.
+5. Gộp summary thành semantic map và feature map.
+6. Chỉ tải context liên quan tới feature/task hiện tại.
+7. Ghi progress vào ledger và handoff; session sau không phân tích lại batch hoàn tất.
+8. Khi evidence mới mâu thuẫn summary cũ, tạo conflict record; không âm thầm ghi đè.
+
+Batch manifest tối thiểu:
+
+{
+  "batch_id": "BATCH-JAVA-0042",
+  "scope": ["com.example.order/**"],
+  "input_checksums": ["sha256:..."],
+  "status": "ready",
+  "owner": null,
+  "depends_on": ["BATCH-MODEL-0007"],
+  "outputs": [],
+  "evidence_ids": []
+}
+
+
+======================================================================
+41. API KNOWLEDGE GRAPH VÀ OPENAPI
+======================================================================
+
+Mỗi endpoint record phải có:
+
+- method, path, base URL/environment nếu quan sát được.
+- called_by và feature_id.
+- request: path/query/header/body/content type.
+- response: success/error/status/schema.
+- auth và permission.
+- retry, timeout, pagination, idempotency nếu quan sát được.
+- side_effects_observed.
+- evidence_ids, classification và confidence.
+- unresolved_questions.
+
+Ví dụ:
+
+{
+  "endpoint_id": "API-AUTH-LOGIN",
+  "method": "POST",
+  "path": "/api/login",
+  "called_by": ["LoginViewModel.login"],
+  "request_schema": "LoginRequest",
+  "response_schema": "LoginResponse",
+  "authentication": {"required": false},
+  "side_effects_observed": ["save_token", "save_user", "navigate_home"],
+  "classification": "OBSERVED",
+  "confidence": 0.99,
+  "evidence_ids": ["EVD-API-0001"]
+}
+
+OpenAPI chỉ được phát hành từ endpoint records đã validate. Android, CMS và Backend
+không tự định nghĩa ba contract riêng. Có thể có Public API, Mobile API và Admin API,
+nhưng tất cả dùng chung domain services, schema và error catalog.
+
+
+======================================================================
+42. BACKEND, DATABASE, CMS VÀ MISSING SERVER LOGIC
+======================================================================
+
+Backend được xây theo chuỗi:
+
+Client evidence → API contract → Behavior spec → Domain model → Implementation.
+
+Không suy ra DB chỉ từ một response. Database Agent phải tổng hợp toàn bộ endpoint,
+behavior, relation và lifecycle rồi mới đề xuất schema.
+
+API → CMS mapping:
+
+- Mobile READ entity thường yêu cầu CMS CREATE/READ/UPDATE/DELETE.
+- Entity có thứ tự cần SORT/REORDER.
+- Nội dung có lifecycle cần DRAFT/PUBLISH/UNPUBLISH/SCHEDULE.
+- Dữ liệu nhạy cảm cần permission, audit và field masking.
+- Order/payment không được hard-delete; dùng status, audit và reconciliation.
+
+Missing Server Logic Detector phải rà soát tối thiểu:
+
+- validation phía server.
+- authentication và authorization.
+- pricing/inventory/voucher consistency.
+- idempotency, replay protection và concurrency.
+- fraud/risk check khi phù hợp.
+- payment confirmation, webhook, refund, reconciliation.
+- queue, cron, retry, dead-letter và notification.
+- audit, moderation, accounting/BI integration nếu domain yêu cầu.
+
+Mọi mục phát hiện phải ghi OBSERVED, INFERRED hoặc NEW_DESIGN. Một logic hợp lý cần có
+không đồng nghĩa server gốc thực sự có logic đó.
+
+Kiến trúc runtime mặc định chỉ là đề xuất, phải ADR trước khi khóa:
+
+Internet → Nginx/API Gateway → Backend API → PostgreSQL
+                                      ├────→ Redis
+                                      ├────→ Object Storage
+                                      └────→ Queue → Workers/Scheduler
+
+
+======================================================================
+43. JSON SCHEMA GIAO TIẾP GIỮA AGENT
+======================================================================
+
+Các schema canonical đặt tại .ai/schemas/. Tối thiểu gồm:
+
+- task.schema.json
+- result.schema.json
+- evidence.schema.json
+- behavior.schema.json
+- endpoint.schema.json
+- domain.schema.json
+- feature.schema.json
+- bug-report.schema.json
+- handoff.schema.json
+- reconstruction-ledger.schema.json
+
+Task envelope tối thiểu:
+
+{
+  "task_id": "TASK-RECON-0001",
+  "feature_id": "FEAT-AUTH",
+  "phase": "04_API_KNOWLEDGE_GRAPH",
+  "assigned_role": "integration-api",
+  "required_skills": ["api-intelligence", "api-knowledge-graph"],
+  "scope": {"read": [], "write": []},
+  "inputs": [{"type": "evidence", "ref": "EVD-API-0001"}],
+  "depends_on": [],
+  "acceptance_criteria": [],
+  "verification": [],
+  "budget": {
+    "max_cycles": 5,
+    "max_minutes": 30,
+    "max_tokens": null,
+    "max_cost_usd": 5
+  },
+  "status": "ready"
+}
+
+Result envelope tối thiểu:
+
+{
+  "task_id": "TASK-RECON-0001",
+  "status": "completed",
+  "outputs": [],
+  "evidence_created": [],
+  "files_changed": [],
+  "tests": [],
+  "unresolved_questions": [],
+  "risks": [],
+  "next_recommended_tasks": []
+}
+
+Không trao đổi trạng thái quan trọng chỉ bằng chat tự do. Chat có thể giải thích;
+schema record mới là dữ liệu bàn giao chính thức.
+
+
+======================================================================
+44. RECONSTRUCTION LEDGER
+======================================================================
+
+.ai/state.json trả lời: dự án/agent/task hiện đang vận hành thế nào.
+.ai/reconstruction/ledger.json trả lời: mỗi feature đã được tái dựng đến đâu.
+
+Ledger không thay state.json và không sao chép task queue.
+
+Ví dụ:
+
+{
+  "schema_version": "2.0",
+  "features": {
+    "FEAT-AUTH": {
+      "classification_summary": {
+        "observed": 14,
+        "inferred": 3,
+        "new_design": 2
+      },
+      "discovery": "complete",
+      "evidence": "complete",
+      "behavior": "complete",
+      "api": "complete",
+      "domain": "complete",
+      "contract": "complete",
+      "android": "complete",
+      "backend": "complete",
+      "cms": "not_required",
+      "build": "pass",
+      "test": "pass",
+      "security": "pass",
+      "parity": {
+        "behavior": 0.99,
+        "ui": 0.98,
+        "api": 1.00,
+        "data": 0.99
+      },
+      "open_risks": [],
+      "evidence_ids": []
+    }
+  }
+}
+
+Status hợp lệ phải định nghĩa trong schema. Không dùng phần trăm nếu chưa có test case
+và mẫu số rõ ràng.
+
+
+======================================================================
+45. RECONSTRUCTION ANTIGRAVITY LOOP VÀ PARITY GATE
+======================================================================
+
+SPEC/CONTRACT
+      ↓
+IMPLEMENT
+      ↓
+BUILD → TEST → PARITY
+                 ↓ FAIL
+             BUG REPORT
+                 ↓
+           ORCHESTRATOR
+                 ↓
+               FIXER
+                 ↓
+        BUILD → TEST → PARITY
+                 ↓ PASS
+          REVIEW → SECURITY → QUALITY GATE
+
+Tester và Parity Agent không sửa production code. Fixer không sửa test trừ khi bug
+report chứng minh test sai và Reviewer phê duyệt thay đổi test.
+
+Parity score phải tách theo feature và chiều đo:
+
+- behavior_parity.
+- ui_parity.
+- api_parity.
+- data_parity.
+- error_parity.
+- side_effect_parity.
+
+Mỗi score phải trỏ tới test cases, expected result, actual result và evidence.
+Không được công bố 99% chỉ dựa trên cảm nhận hoặc số màn hình đã code.
+
+Ngưỡng release do project.yaml cấu hình. Ví dụ:
+
+reconstruction:
+  parity_gate:
+    behavior: 0.95
+    ui: 0.95
+    api: 1.00
+    data: 0.98
+    critical_features_must_pass: true
+  uncertainty_gate:
+    max_unvalidated_inference_for_critical_feature: 0
+
+Loop Guard tại mục 11 áp dụng nguyên vẹn. Quá budget phải chuyển BLOCKED hoặc
+ESCALATION_REQUIRED; không tự tăng budget.
+
+
+======================================================================
+46. DEFINITION OF DONE — FULL PRODUCT RECONSTRUCTION
+======================================================================
+
+Một feature chỉ DONE khi:
+
+1. Có feature_id, task records và owner.
+2. Evidence đã index; OBSERVED/INFERRED/NEW_DESIGN tách rõ.
+3. Behavior spec và acceptance criteria được duyệt.
+4. API/domain/data contract được validate.
+5. Android/Backend/CMS phần liên quan đã triển khai hoặc đánh dấu not_required có lý do.
+6. Migration/rollback/seed/backup rule hoàn tất khi có DB change.
+7. Unit, integration, e2e và parity test liên quan PASS.
+8. Security/performance gate phù hợp PASS.
+9. Reviewer chấp thuận; không còn critical blocker.
+10. Ledger, state, changelog, docs và handoff đã cập nhật.
+11. PROJECT_ERROR.md đã review/update nếu có lỗi hoặc failed attempt tái sử dụng.
+12. ACQUIREMENTS.md đã review/update nếu có kiến thức/giải pháp tái sử dụng.
+13. ERR-ID/ACQ-ID liên quan đã link vào feature/task/result/handoff.
+
+Toàn sản phẩm chỉ RELEASE khi:
+
+- Critical features đạt parity gate.
+- OpenAPI và deployed API không drift.
+- Android/CMS dùng đúng contract.
+- Backup, migration, rollback và smoke test đã diễn tập.
+- Secrets không nằm trong code/log/report/evidence.
+- Monitoring, alerting và runbook hoạt động.
+- Các phần chưa thể xác minh được công khai là limitation, không bị che giấu.
+
+
+======================================================================
+47. START PROTOCOL CHO ANTIGRAVITY / CLAUDE / OMP / CODEX / DEEPSEEK
+======================================================================
+
+Khi mở agent tại PROJECT_ROOT, bắt buộc thực hiện theo thứ tự:
+
+1. Đọc README.md, AGENTS.md và Docs/rules.md.
+2. Đọc PROJECT_ERROR.md; tìm module, error signature, dependency và tag của task.
+3. Đọc ACQUIREMENTS.md; nạp các entry VALIDATED/STANDARD liên quan.
+4. Đọc .ai/project.yaml, .ai/agents.yaml và .ai/state.json.
+5. Nếu task có UI/UX impact, đọc Docs/Agents/designer.md, Docs/Workflows/design.md và Docs/Design/DESIGN_SYSTEM.md.
+6. Nếu là reconstruction, đọc Docs/Reconstruction/overview.md và ledger.json.
+7. Kiểm tra git status, branch/worktree và .ai/locks.json.
+8. Nhận đúng TASK/REQUEST/AUDIT/INCIDENT ID theo task mode; trước mọi write phải có
+   TASK ID hoặc INCIDENT ID hợp lệ, scope, dependency, budget, evidence và acceptance criteria.
+9. Nếu UI/UX impact: xác nhận DESIGN ID, design status và approval trước production implementation.
+10. Chỉ tải Architecture/Contract/Spec/Evidence/Design và project knowledge liên quan.
+11. Làm việc trong worktree và phạm vi write được giao.
+12. Sinh result record, test evidence, visual evidence nếu cần, report và handoff.
+13. Review/update PROJECT_ERROR.md và ACQUIREMENTS.md khi có thông tin tái sử dụng.
+14. Cập nhật state/design state/ledger qua Orchestrator hoặc cơ chế atomic được quy định.
+15. Dừng khi complete, blocked, conflict hoặc chạm Loop Guard.
+
+Prompt khởi động tối thiểu:
+
+"Bạn đang làm việc trong Development Workspace Standard V2.1.2. Hãy đọc các file chuẩn,
+PROJECT_ERROR.md và ACQUIREMENTS.md theo Start Protocol; không ghi code/config/data khi
+chưa có TASK ID hoặc INCIDENT ID hợp lệ, không sửa file bị lock, không
+đoán trạng thái dự án. Với reconstruction, mọi claim phải là OBSERVED, INFERRED hoặc
+NEW_DESIGN và phải ghi evidence/confidence theo schema. Hãy báo task hiện tại, scope,
+dependency, acceptance criteria và bước an toàn tiếp theo trước khi thay đổi file."
+
+
+======================================================================
+48. QUY TẮC CHỐNG TÁCH THÀNH HAI BỘ LUẬT
+======================================================================
+
+1. Không tạo Reconstruction/RULES.md chứa bản sao của AGENTS.md hoặc Docs/rules.md.
+2. Tài liệu Reconstruction chỉ mô tả domain, pipeline, schema và acceptance riêng.
+3. Khi luật chung thay đổi, sửa đúng canonical file và dùng link/reference ở nơi khác.
+4. Khi quy tắc chỉ áp dụng reconstruction, đặt trong mục Reconstruction của tài liệu này
+   và schema tương ứng; không sao chép task/Git/security rules.
+5. CI phải phát hiện schema trùng tên, hai state store cùng chức năng và contract drift.
+6. Nếu hai hướng dẫn mâu thuẫn, ưu tiên theo thứ tự:
+   Security/Legal → AGENTS.md → Docs/rules.md → approved ADR/Contract/Spec → task.
+7. Agent phát hiện xung đột phải dừng phần bị ảnh hưởng, ghi conflict và báo Orchestrator.
+8. .agents/ chỉ là tool adapter; không chứa bản sao đầy đủ của AGENTS.md hoặc Docs/rules.md.
+9. .agents/agents/* phải tham chiếu role canonical trong Docs/Agents/.
+10. .agents/skills/* phải tham chiếu workflow/skill canonical; không tạo state store riêng.
+11. Không tạo Design/RULES.md, Antigravity/RULES.md hoặc một bộ governance song song.
+
+
+======================================================================
+49. DESIGN GOVERNANCE — NGUYÊN TẮC CANONICAL
+======================================================================
+
+Design là một pipeline chính thức của Development Workspace Standard, không phải tiện ích riêng
+của Antigravity hoặc bất kỳ model nào.
+
+Canonical sources:
+
+1. AGENTS.md + Docs/rules.md               -> luật chung.
+2. Docs/Agents/designer.md                 -> vai trò Designer.
+3. Docs/Workflows/design.md                -> design workflow.
+4. Docs/Design/DESIGN_SYSTEM.md            -> design system canonical.
+5. .ai/design/*                            -> trạng thái machine-readable.
+6. design/*                                -> artifact đầu ra để review/implementation.
+
+Nguyên tắc:
+
+- Design artifact không tự trở thành production code.
+- Prototype là bằng chứng thiết kế, không phải bằng chứng implementation đã hoàn tất.
+- Designer không được tự APPROVE design của chính mình.
+- Human approval phải được ghi machine-readable trước khi Frontend bắt đầu production UI nếu gate được yêu cầu.
+- Khi design đã APPROVED, thay đổi lớn phải tạo revision mới; không âm thầm ghi đè approved artifact.
+- Business logic, API contract và security rule không được thay đổi chỉ để khớp prototype.
+
+
+======================================================================
+50. DESIGN WORKFLOW — DESIGN → APPROVAL → IMPLEMENTATION
+======================================================================
+
+TRIGGER:
+
+Task được coi là UI/UX IMPACT nếu thay đổi một hoặc nhiều mục sau:
+
+- screen/page/view.
+- navigation/user flow.
+- layout/information hierarchy.
+- component visual/interaction behavior.
+- typography/color/token/spacing.
+- responsive behavior.
+- accessibility interaction.
+- loading/empty/error/success state người dùng nhìn thấy.
+
+DESIGN IMPACT CLASSIFICATION:
+
+NONE
+- Không thay đổi UI/UX hoặc user-facing behavior.
+
+LOW
+- Sửa text, icon, spacing/token nhỏ, lỗi hiển thị cục bộ hoặc thay đổi bám design
+  system hiện có và không đổi interaction/user flow.
+- Gate: design system compliance + visual QA + reviewer.
+
+MEDIUM
+- Thay component behavior, layout đáng kể, responsive, accessibility interaction
+  hoặc thêm state người dùng nhìn thấy.
+- Gate: design task + review + approval theo project.yaml + implementation visual QA.
+
+HIGH
+- Thay navigation, user journey, information architecture, branding, conversion
+  flow hoặc luồng nhạy cảm như payment/auth/privacy.
+- Gate đầy đủ: prototype + visual QA + human approval + design freeze + handoff.
+
+Nếu không chắc LOW hay MEDIUM, chọn MEDIUM. Agent không được tự hạ impact để bỏ gate.
+
+PIPELINE:
+
+PHASE D00 — DESIGN INTAKE
+- Tạo DESIGN ID.
+- Link TASK ID / FEATURE ID.
+- Ghi target platform, viewport, user goal, references, constraints.
+
+PHASE D01 — DISCOVERY
+- Inspect UI hiện tại, component system, design token, assets, user references.
+- Không sửa production UI.
+
+PHASE D02 — UX / INFORMATION ARCHITECTURE
+- Xác định user flow, hierarchy, primary/secondary action, states.
+
+PHASE D03 — WIREFRAME / HIGH-FIDELITY DESIGN
+- Tạo phương án thiết kế phù hợp scope.
+- Không tự thêm chức năng ngoài requirement nếu chưa ghi NEW_DESIGN / proposal.
+
+PHASE D04 — INTERACTIVE PROTOTYPE
+- Tạo artifact reviewable: HTML prototype / Generative UI / platform-specific preview.
+- Lưu trong design/prototypes/.
+
+PHASE D05 — VISUAL QA
+- Kiểm tra hierarchy, alignment, typography, spacing, responsiveness, accessibility, states.
+- Tạo screenshot/evidence khi phù hợp.
+
+PHASE D06 — HUMAN REVIEW
+- status = awaiting_approval.
+- Human có thể APPROVE / REJECT / REQUEST_CHANGES.
+
+PHASE D07 — DESIGN FREEZE
+- Khi APPROVED, copy/version artifact vào design/approved/.
+- Ghi approval record.
+- Sinh design handoff cho Frontend.
+
+PHASE D08 — IMPLEMENTATION
+- Frontend Agent implement trong production code.
+- Preserve API/business logic/state flow trừ khi task/spec cho phép thay đổi.
+
+PHASE D09 — IMPLEMENTATION VISUAL QA
+- Chạy app thật trong browser/device/simulator phù hợp.
+- So sánh với approved artifact.
+
+PHASE D10 — DESIGN PARITY GATE
+- PASS -> tiếp tục Test/Review/Security/Quality Gate.
+- FAIL -> bug report / design discrepancy record -> Fixer/Frontend xử lý theo ownership.
+
+
+======================================================================
+51. DESIGN TASK VÀ DESIGN STATE MACHINE-READABLE
+======================================================================
+
+Canonical folders:
+
+.ai/design/active/
+.ai/design/review/
+.ai/design/approved/
+.ai/design/rejected/
+
+Design task record tối thiểu:
+
+{
+  "schema_version": "2.1",
+  "design_id": "DESIGN-0042",
+  "task_id": "TASK-0102",
+  "feature_id": "FEAT-DASHBOARD",
+  "owner": "designer",
+  "status": "awaiting_approval",
+  "ui_impact": true,
+  "targets": ["desktop", "mobile"],
+  "inputs": {
+    "references": [],
+    "design_system": "Docs/Design/DESIGN_SYSTEM.md"
+  },
+  "artifacts": {
+    "prototype": "design/prototypes/DESIGN-0042/",
+    "screenshots": []
+  },
+  "approval": {
+    "required": true,
+    "decision": null,
+    "approved_by": null,
+    "approved_at": null
+  },
+  "implementation": {
+    "allowed": false,
+    "owner": "frontend"
+  },
+  "acceptance_criteria": [],
+  "visual_qa": [],
+  "risks": []
+}
+
+Status chuẩn:
+
+- draft
+- designing
+- visual_qa
+- awaiting_approval
+- changes_requested
+- approved
+- rejected
+- implementing
+- implementation_visual_qa
+- completed
+- blocked
+
+Rule:
+
+implementation.allowed chỉ được true khi status = approved hoặc task có explicit approved bypass
+được human ghi nhận. Agent không được tự set approval thay human.
+
+
+======================================================================
+52. DESIGN SYSTEM VÀ ARTIFACT POLICY
+======================================================================
+
+Docs/Design/DESIGN_SYSTEM.md phải chứa tối thiểu:
+
+- Brand principles.
+- Color tokens.
+- Typography.
+- Spacing scale.
+- Radius/border/shadow.
+- Layout/grid/container.
+- Breakpoints.
+- Component states.
+- Accessibility rules.
+- Motion/transition nếu dùng.
+- Iconography/assets.
+- Forbidden patterns / deprecated UI patterns.
+
+Artifact locations:
+
+- design/references/   -> screenshot, moodboard, external design references được phép dùng.
+- design/prototypes/   -> artifact đang thiết kế.
+- design/screenshots/  -> visual QA evidence.
+- design/approved/     -> version đã human-approved; không ghi đè không version.
+
+Approved artifact phải có:
+
+- design_id.
+- revision/version.
+- timestamp.
+- approval record.
+- target viewport/platform.
+- link TASK/FEATURE.
+
+
+======================================================================
+53. ANTIGRAVITY ADAPTER STANDARD
+======================================================================
+
+Mục tiêu: cho Antigravity tự động tham gia Development Workspace Standard mà không sinh
+một bộ luật mới.
+
+Cấu trúc:
+
+.agents/
+├── rules/
+│   ├── workspace-standard.md
+│   └── design-gate.md
+├── agents/
+│   └── ui-designer/
+│       └── agent.md
+└── skills/
+    └── design-mode/
+        └── SKILL.md
+
+A. .agents/rules/workspace-standard.md
+
+Chỉ làm adapter:
+
+- tham chiếu AGENTS.md.
+- tham chiếu Docs/rules.md.
+- yêu cầu đọc .ai/project.yaml / agents.yaml / state.json / locks.json.
+- không copy toàn bộ canonical law.
+
+B. .agents/rules/design-gate.md
+
+- Khi phát hiện UI/UX impact, bắt buộc đọc Docs/Workflows/design.md.
+- Không cho production UI implementation nếu design approval bắt buộc nhưng chưa APPROVED.
+- Không được tự coi câu trả lời nội bộ của model là human approval.
+
+C. .agents/agents/ui-designer/agent.md
+
+- Map Antigravity custom agent -> Docs/Agents/designer.md.
+- Không định nghĩa role song song.
+- Production implementation vẫn thuộc Frontend Agent.
+
+D. .agents/skills/design-mode/SKILL.md
+
+- Gọi workflow canonical Docs/Workflows/design.md.
+- Gọi design system canonical Docs/Design/DESIGN_SYSTEM.md.
+- Không lưu state riêng ngoài .ai/design/.
+
+Nếu Antigravity thay đổi format/tooling trong tương lai, chỉ sửa adapter .agents/.
+Canonical Development Workspace Standard không phụ thuộc vendor.
+
+
+======================================================================
+54. DESIGN QA, VISUAL PARITY VÀ REVIEW GATE
+======================================================================
+
+Visual QA tối thiểu phải kiểm tra khi applicable:
+
+- viewport desktop/tablet/mobile.
+- spacing/alignment.
+- typography hierarchy.
+- token/color consistency.
+- component state.
+- focus/keyboard/accessibility.
+- loading/empty/error/success.
+- overflow/truncation/long content.
+- responsive breakpoints.
+- dark/light mode nếu project hỗ trợ.
+- browser/device compatibility theo acceptance criteria.
+
+Design comparison không được chỉ ghi “looks good”.
+Phải trả về machine-readable result, ví dụ:
+
+{
+  "design_id": "DESIGN-0042",
+  "task_id": "TASK-0102",
+  "status": "pass",
+  "checks": [
+    {"name": "desktop-layout", "status": "pass", "evidence": "..."},
+    {"name": "mobile-responsive", "status": "pass", "evidence": "..."}
+  ],
+  "critical_differences": [],
+  "noncritical_differences": []
+}
+
+Nếu project reconstruction có UI parity gate, approved design parity và original-app UI parity
+là hai chiều đo khác nhau; không được nhập làm một score nếu chưa định nghĩa mẫu số/test case.
+
+
+======================================================================
+55. DEFINITION OF DONE — UI/UX FEATURE
+======================================================================
+
+Một feature có UI/UX impact chỉ DONE khi:
+
+[ ] Có TASK ID và DESIGN ID.
+[ ] UI/UX impact được classify đúng.
+[ ] Design task có owner và scope.
+[ ] Design system/reference đã được load.
+[ ] Prototype hoặc design artifact hoàn tất nếu gate yêu cầu.
+[ ] Visual QA của design artifact PASS.
+[ ] Human approval record hợp lệ.
+[ ] Approved artifact đã freeze/version.
+[ ] Frontend implementation bám approved design.
+[ ] Build PASS.
+[ ] Lint PASS.
+[ ] TypeCheck PASS.
+[ ] Unit/Integration/E2E liên quan PASS.
+[ ] Browser/device visual QA PASS.
+[ ] Approved-design comparison PASS.
+[ ] Accessibility gate phù hợp PASS.
+[ ] Reviewer APPROVED.
+[ ] Security gate phù hợp PASS.
+[ ] Docs/Changelog/State/Handoff đã cập nhật.
+[ ] PROJECT_ERROR.md đã review/update nếu có lỗi hoặc failed attempt tái sử dụng.
+[ ] ACQUIREMENTS.md đã review/update nếu có kiến thức/giải pháp tái sử dụng.
+[ ] ERR-ID/ACQ-ID liên quan đã link vào task/result/handoff.
+
+Nếu thiếu Human approval trong task bắt buộc Design Gate:
+
+status != DONE
+production UI implementation != authorized
+
+
+======================================================================
+56. MIGRATION V2.0 → V2.1
+======================================================================
+
+V2.1 không thay thế các luật Task/Git/Lock/Test/Review/Security/Reconstruction của V2.0.
+Nó bổ sung một Design-Gated pipeline thống nhất.
+
+Migration tối thiểu:
+
+1. Giữ AGENTS.md và Docs/rules.md làm canonical law.
+2. Nâng Docs/Agents/designer.md theo mục 4/49-55.
+3. Tạo Docs/Workflows/design.md.
+4. Tạo Docs/Design/DESIGN_SYSTEM.md và các guideline cần thiết.
+5. Tạo .ai/design/ + design schemas.
+6. Cập nhật .ai/agents.yaml quyền Designer/Frontend.
+7. Cập nhật .ai/project.yaml design gate config.
+8. Tạo .agents/ adapter nếu dùng Antigravity.
+9. Không copy luật sang .agents/.
+10. CI/Orchestrator phải chặn UI task chưa approved khi gate bắt buộc.
+
+Mục tiêu cuối:
+
+REQUIREMENT
+   ↓
+ORCHESTRATION
+   ↓
+[UI IMPACT?] ── NO ──> NORMAL ENGINEERING PIPELINE
+   │
+  YES
+   ↓
+DESIGNER
+   ↓
+PROTOTYPE
+   ↓
+VISUAL QA
+   ↓
+HUMAN APPROVAL
+   ↓
+DESIGN FREEZE
+   ↓
+FRONTEND IMPLEMENTATION
+   ↓
+IMPLEMENTATION VISUAL QA
+   ↓
+TEST → REVIEW → SECURITY → QUALITY GATE → MERGE → RELEASE
+
+Hệ thống nhớ bằng PROJECT.
+Agent/model chỉ là executor có thể thay thế.
+Design cũng phải được quản trị bằng task, state, evidence, approval và handoff như code.
+
+
+======================================================================
+57. PROJECT KNOWLEDGE LEARNING LOOP
+======================================================================
+
+57.1. MỤC TIÊU
+----------------
+
+Project Knowledge Learning Loop biến lỗi và kinh nghiệm trong quá trình phát triển
+thành bộ nhớ bền vững mà mọi Agent có thể đọc và áp dụng.
+
+Hai file canonical tại PROJECT_ROOT:
+
+PROJECT_ERROR.md
+ACQUIREMENTS.md
+
+Mục tiêu:
+
+- Agent mới không lặp lại lỗi Agent trước đã gặp.
+- Failed attempt có giá trị không bị mất sau khi kết thúc session.
+- Root cause, resolution và verification có thể truy vết.
+- Kinh nghiệm được chưng cất thành nguyên tắc/checklist/guardrail.
+- Giải pháp tốt hơn thay thế cách cũ bằng evidence, không bằng cảm tính.
+- Project học qua mỗi task nhưng không biến tài liệu thành log dài vô dụng.
+
+
+57.2. RANH GIỚI VỚI CÁC FILE HIỆN CÓ
+------------------------------------
+
+PROJECT_MEMORY.md
+  -> Bối cảnh và bộ nhớ vận hành hiện hành của project.
+
+TASK_LOG.md / Agent Activity Log
+  -> Tiến độ và hoạt động theo thời gian.
+
+bug_report.json + bug_report.md
+  -> Một lần lỗi cụ thể trong một task/run.
+
+.ai/bugs/**
+  -> Bug record machine-readable và trạng thái xử lý từng bug.
+
+PROJECT_ERROR.md
+  -> Lỗi có giá trị dài hạn: root cause, failed attempts, resolution,
+     verification và prevention xuyên task/xuyên agent.
+
+ACQUIREMENTS.md
+  -> Kiến thức/kinh nghiệm/giải pháp tối ưu đã chưng cất, có điều kiện áp dụng
+     và evidence rõ ràng.
+
+CHANGELOG.md
+  -> Product/code thay đổi gì theo release.
+
+ADR
+  -> Quyết định kiến trúc và trade-off được phê duyệt.
+
+Không sao chép toàn bộ nội dung giữa các file. Dùng TASK ID, BUG ID, ERR-ID,
+ACQ-ID, ADR ID, commit và link để kết nối.
+
+
+57.3. PROJECT_ERROR.md — DURABLE ERROR MEMORY
+------------------------------------------------
+
+Khi nào phải ghi:
+
+- Lỗi có khả năng tái diễn.
+- Lỗi tốn nhiều thời gian chẩn đoán.
+- Root cause không hiển nhiên.
+- Lỗi liên quan nhiều module/service/agent.
+- Lỗi ảnh hưởng dữ liệu, bảo mật, chi phí, hiệu năng hoặc người dùng.
+- Lỗi cần rollback, workaround hoặc operational runbook.
+- Lỗi đã RESOLVED nhưng tái xuất hiện.
+- Lỗi chỉ ra thiếu test, validation, monitoring hoặc rule.
+
+Không cần tạo durable entry riêng cho lỗi chính tả/cú pháp nhỏ được sửa ngay và
+không tạo ra bài học tái sử dụng.
+
+ID:
+
+ERR-YYYYMMDD-NNN
+
+Ví dụ:
+
+ERR-20260929-001
+
+Status:
+
+INVESTIGATING
+  Có lỗi, root cause chưa xác minh.
+
+OPEN
+  Đã hiểu vấn đề, chưa có resolution hoàn chỉnh.
+
+MITIGATED
+  Đã giảm tác động nhưng chưa sửa tận gốc.
+
+RESOLVED
+  Đã sửa và có verification lặp lại được.
+
+REOPENED
+  Lỗi tái diễn sau khi từng RESOLVED.
+
+WONT_FIX
+  Chủ động không sửa; phải ghi lý do và người phê duyệt.
+
+Severity:
+
+S0 CRITICAL
+  Mất dữ liệu, lộ secret, vi phạm nghiêm trọng, chi phí nghiêm trọng hoặc toàn hệ
+  thống dừng.
+
+S1 HIGH
+  Chức năng chính dừng hoặc ảnh hưởng nhiều người dùng.
+
+S2 MEDIUM
+  Chức năng suy giảm nhưng có workaround.
+
+S3 LOW
+  Ảnh hưởng nhỏ, không chặn luồng chính.
+
+Trường bắt buộc:
+
+- ID.
+- Status.
+- Severity.
+- Component/module.
+- Environment.
+- Version/build/commit.
+- First seen, last seen, resolved at.
+- Owner/Agent.
+- Recurrence count.
+- Tags.
+- Tóm tắt.
+- Triệu chứng và error signature đã redacted.
+- Phạm vi ảnh hưởng.
+- Cách tái hiện tối thiểu.
+- Expected behavior.
+- Actual behavior.
+- Root cause hoặc UNCONFIRMED.
+- Failed attempts cần tránh lặp lại.
+- Resolution/mitigation.
+- Verification có thể lặp lại.
+- Prevention/guardrail.
+- Related task/bug/file/test/commit.
+- Related ERR-ID và ACQ-ID.
+- Lịch sử cập nhật.
+
+Điều kiện RESOLVED:
+
+[ ] Có reproduction hoặc evidence trước sửa.
+[ ] Root cause đã CONFIRMED hoặc mitigation limitation được công khai.
+[ ] Resolution mô tả đúng thay đổi thực tế.
+[ ] Có test/command/log đã redacted xác minh sau sửa.
+[ ] Regression test đã thêm hoặc ghi lý do không thể thêm.
+[ ] Có prevention/guardrail hoặc giải thích vì sao không cần.
+[ ] Không còn critical uncertainty bị che giấu.
+
+
+57.4. ACQUIREMENTS.md — DISTILLED PROJECT KNOWLEDGE
+----------------------------------------------------
+
+Trong Standard này, “acquirement” là kiến thức, kinh nghiệm hoặc năng lực dự án
+đã thu được và chưng cất. Đây không phải danh sách “đã hoàn thành task nào”.
+
+Khi nào phải ghi:
+
+- Có giải pháp nhanh, ổn định, an toàn hoặc rẻ hơn cách cũ.
+- Có nguyên tắc giúp tránh một nhóm lỗi.
+- Có benchmark/metric làm thay đổi lựa chọn kỹ thuật.
+- Có cách debug, test, deploy, rollback hoặc review hiệu quả.
+- Hiểu giới hạn quan trọng của framework/tool/API/dependency.
+- Có checklist dùng lại cho nhiều task.
+- Có cách tối ưu workflow giữa nhiều Agent.
+- Có kinh nghiệm đủ bằng chứng để thành tiêu chuẩn dự án.
+
+Không ghi:
+
+- Chỉ ghi “đã hoàn thành feature X”.
+- Ý tưởng chưa kiểm chứng nhưng được trình bày như sự thật.
+- Nội dung chỉ đúng cho một lần chạy và không có giá trị tái sử dụng.
+- Bản sao của README, ADR, Changelog hoặc tài liệu bên ngoài.
+
+ID:
+
+ACQ-YYYYMMDD-NNN
+
+Ví dụ:
+
+ACQ-20260929-001
+
+Status:
+
+CANDIDATE
+  Bài học mới, chưa đủ bằng chứng rộng.
+
+VALIDATED
+  Đã áp dụng và kiểm chứng.
+
+STANDARD
+  Trở thành giải pháp/guardrail chuẩn bắt buộc của project.
+
+DEPRECATED
+  Không còn phù hợp; phải ghi lý do và entry thay thế nếu có.
+
+Category gợi ý:
+
+- ARCHITECTURE
+- PRODUCT
+- REQUIREMENTS
+- DESIGN_UX
+- FRONTEND
+- BACKEND
+- MOBILE
+- DESKTOP
+- GAME
+- AI_DATA
+- DATABASE
+- API_INTEGRATION
+- INFRASTRUCTURE
+- SECURITY
+- TESTING
+- PERFORMANCE
+- DEPLOYMENT
+- OBSERVABILITY
+- PROCESS
+
+Trường bắt buộc:
+
+- ID.
+- Status.
+- Category.
+- Component/module.
+- Created at/updated at.
+- Owner/Agent.
+- Tags.
+- Supersedes/superseded by.
+- Bối cảnh/vấn đề.
+- Kiến thức đã chưng cất.
+- Giải pháp tối ưu hiện tại.
+- Vì sao tốt hơn cách cũ.
+- Khi nào nên dùng.
+- Khi nào không nên dùng.
+- Checklist áp dụng.
+- Evidence/verification.
+- Giới hạn/rủi ro.
+- Related ERR-ID/TASK ID/ADR/file/test/issue/commit.
+- Lịch sử cập nhật.
+
+Điều kiện STANDARD:
+
+[ ] Đã áp dụng thành công trong bối cảnh thực tế.
+[ ] Có test, benchmark, metric hoặc evidence kỹ thuật.
+[ ] Nêu rõ điều kiện áp dụng.
+[ ] Nêu rõ giới hạn và khi không nên dùng.
+[ ] Không xung đột Security/Legal/Architecture đang hiệu lực.
+[ ] Được Reviewer/Architect hoặc người có quyền phê duyệt.
+
+
+57.5. FACT / HYPOTHESIS / DECISION
+-----------------------------------
+
+Mọi entry phải phân biệt:
+
+FACT
+  Quan sát, log, test hoặc kết quả đã xác minh.
+
+HYPOTHESIS
+  Giả thuyết đang kiểm tra.
+
+UNCONFIRMED
+  Chưa đủ evidence để kết luận.
+
+DECISION
+  Lựa chọn đã được phê duyệt.
+
+DEPRECATED
+  Kiến thức/rule không còn hiệu lực.
+
+Không được viết HYPOTHESIS như FACT. Khi hypothesis được xác minh hoặc bác bỏ,
+Agent phải cập nhật entry, không để kết luận sai tồn tại cho Agent sau.
+
+
+57.6. WORKFLOW BẮT BUỘC
+------------------------
+
+TRƯỚC TASK:
+
+1. Đọc PROJECT_ERROR.md.
+2. Tìm theo module, tag, error signature, dependency và từ khóa task.
+3. Đọc ACQUIREMENTS.md.
+4. Nạp entry VALIDATED/STANDARD liên quan vào plan/checklist.
+5. Không lặp failed attempt nếu không có hypothesis/evidence mới.
+
+TRONG TASK:
+
+1. Khi gặp lỗi, tìm entry cũ trước khi tạo mới.
+2. Ghi bug_report cho occurrence cụ thể.
+3. Nếu chưa rõ root cause, dùng INVESTIGATING/UNCONFIRMED.
+4. Ghi failed attempt có giá trị.
+5. Không ghi secret hoặc dữ liệu nhạy cảm.
+6. Lỗi S0/S1 ảnh hưởng Agent khác phải cập nhật/báo ngay.
+
+SAU TASK:
+
+1. Cập nhật root cause/resolution/verification/prevention.
+2. Chạy verification trước khi dùng RESOLVED.
+3. Nếu có nguyên tắc tái sử dụng, tạo/cập nhật ACQ-ID.
+4. Link ERR-ID/ACQ-ID vào task/result/handoff/commit.
+5. Cập nhật trong cùng commit/PR khi có thể.
+6. Nếu NOT_APPLICABLE, ghi reason trong result/handoff; không tạo entry rỗng.
+
+
+57.7. CHỐNG TRÙNG LẶP
+----------------------
+
+Trước khi tạo entry, tìm theo:
+
+- Error message/code/signature.
+- Component/module.
+- Dependency/tool/framework.
+- Tag.
+- Root cause.
+- ERR-ID/ACQ-ID liên quan.
+
+Quy tắc:
+
+- Cùng triệu chứng + cùng root cause -> cập nhật entry, tăng recurrence_count.
+- Cùng triệu chứng + root cause khác -> tạo ERR-ID mới, link related error.
+- Cùng kiến thức + evidence mới -> cập nhật ACQ-ID hiện có.
+- Giải pháp mới thay đổi nguyên tắc lớn -> tạo ACQ-ID mới, DEPRECATED entry cũ.
+- Không xóa lịch sử có giá trị; dùng DEPRECATED/SUPERSEDED.
+- Không âm thầm viết lại root cause/decision; phải ghi update history.
+
+
+57.8. MULTI-AGENT OWNERSHIP
+----------------------------
+
+- Agent tạo entry là owner ban đầu.
+- Mỗi Agent dùng ID duy nhất.
+- Agent khác có thể thêm evidence nhưng không âm thầm thay kết luận.
+- Chỉ chỉnh entry thuộc scope hoặc đã được Orchestrator giao.
+- Nếu file lock áp dụng, Agent phải lock PROJECT_ERROR.md/ACQUIREMENTS.md trước write.
+- Không format/sắp xếp lại toàn file trong task không liên quan.
+- Nếu merge conflict thường xuyên, giữ hai file gốc làm index và tách chi tiết:
+
+Docs/ProjectKnowledge/
+├── Errors/
+│   └── ERR-YYYYMMDD-NNN.md
+└── Acquirements/
+    └── ACQ-YYYYMMDD-NNN.md
+
+Không tạo nguồn canonical thứ hai. File gốc vẫn là index và entry chi tiết chỉ có
+một nguồn sự thật.
+
+
+57.9. SECURITY VÀ PRIVACY
+--------------------------
+
+Không ghi vào project knowledge:
+
+- Password.
+- API key.
+- Access/refresh token.
+- Cookie/session.
+- Private key/certificate bí mật.
+- Signed URL còn hiệu lực.
+- Dữ liệu cá nhân không cần thiết.
+- Database dump/log thật chưa redacted.
+- Chi tiết hướng dẫn vượt cơ chế bảo vệ.
+
+Nếu lỗi là secret leak:
+
+- Không chép secret vào entry.
+- Ghi loại secret, phạm vi, thời gian ảnh hưởng.
+- Revoke/rotate ngay theo incident process.
+- Ghi evidence đã rotate/revoke ở dạng an toàn.
+
+
+57.10. CI / VALIDATION GATE
+----------------------------
+
+scripts/validate-project-memory.sh tối thiểu kiểm tra:
+
+- Hai file tồn tại.
+- ID đúng format.
+- ID không trùng.
+- Link nội bộ không hỏng.
+- RESOLVED có Verification và Prevention.
+- STANDARD có Evidence, when-to-use và when-not-to-use.
+- DEPRECATED có lý do hoặc entry thay thế.
+- Không có secret qua secret scanner.
+- Markdown/table cơ bản hợp lệ.
+
+PR template phải hỏi:
+
+- PR có sửa bug không?
+- ERR-ID nào liên quan?
+- Có kiến thức tái sử dụng mới không?
+- ACQ-ID nào liên quan?
+- Nếu không cập nhật hai file, NOT_APPLICABLE reason là gì?
+
+Không bắt buộc mọi task tạo entry. Bắt buộc mọi Agent phải review và khai báo
+applicable/not_applicable trung thực.
+
+
+57.11. MẪU PROJECT_ERROR.md
+----------------------------
+
+# PROJECT_ERROR.md
+
+## Index
+
+| ID | Status | Severity | Component | Error signature | Updated | Owner |
+|---|---|---|---|---|---|---|
+
+## ERR-YYYYMMDD-NNN — Tên lỗi ngắn
+
+- Status:
+- Severity:
+- Component/Module:
+- Environment:
+- Version/Commit:
+- First seen:
+- Last seen:
+- Resolved at:
+- Owner/Agent:
+- Recurrence count:
+- Tags:
+
+### Summary
+
+### Symptoms / Error signature
+
+### Impact
+
+### Minimal reproduction
+
+### Expected behavior
+
+### Actual behavior
+
+### Root cause
+
+UNCONFIRMED cho đến khi có evidence.
+
+### Failed attempts
+
+| Attempt | Result | Why it failed |
+|---|---|---|
+
+### Resolution / Mitigation
+
+### Verification
+
+- Test/command:
+- Result:
+- Environment:
+- Regression/negative test:
+
+### Prevention / Guardrail
+
+### Links
+
+- Task/Bug:
+- Files/Tests:
+- PR/Commit:
+- Related ERR-ID:
+- Related ACQ-ID:
+
+### Update history
+
+| Time | Agent | Change |
+|---|---|---|
+
+
+57.12. MẪU ACQUIREMENTS.md
+---------------------------
+
+# ACQUIREMENTS.md
+
+## Index
+
+| ID | Status | Category | Component | Summary | Updated | Owner |
+|---|---|---|---|---|---|---|
+
+## ACQ-YYYYMMDD-NNN — Tên kiến thức/nguyên tắc
+
+- Status:
+- Category:
+- Component/Module:
+- Created at:
+- Updated at:
+- Owner/Agent:
+- Tags:
+- Supersedes:
+- Superseded by:
+
+### Context / Problem
+
+### Distilled knowledge
+
+### Current optimal solution
+
+### Why better than previous approach
+
+| Approach | Advantages | Disadvantages | Conclusion |
+|---|---|---|---|
+
+### When to use
+
+### When not to use
+
+### Application checklist
+
+### Evidence / Verification
+
+- Test/benchmark/metric:
+- Before:
+- After:
+- Environment/version:
+
+### Limitations / Risks
+
+### Links
+
+- Related ERR-ID:
+- Task/ADR:
+- Files/Tests:
+- Issue/PR/Commit:
+
+### Update history
+
+| Time | Agent | Change |
+|---|---|---|
+
+
+57.13. REVIEW ĐỊNH KỲ
+----------------------
+
+Mỗi sprint/tuần:
+
+- Review INVESTIGATING/OPEN/REOPENED lâu ngày.
+- Review CANDIDATE cần thêm evidence.
+- Hợp nhất entry trùng.
+- Sửa link hỏng.
+- Kiểm tra failed attempt/prevention có còn đúng.
+
+Mỗi release lớn:
+
+- Xác minh STANDARD còn phù hợp version/architecture hiện tại.
+- Deprecate kiến thức cũ.
+- Kiểm tra regression guardrail vẫn chạy.
+- Archive entry không còn active nhưng giữ audit trail.
+
+
+57.14. THỨ TỰ ƯU TIÊN KHI XUNG ĐỘT
+-----------------------------------
+
+1. Security / Legal / Compliance hiện hành.
+2. AGENTS.md và Docs/rules.md.
+3. Approved ADR / Contract / Spec.
+4. Test và behavior đã xác minh trên version hiện tại.
+5. ACQUIREMENTS status STANDARD/VALIDATED.
+6. PROJECT_ERROR status RESOLVED.
+7. Entry CANDIDATE/INVESTIGATING.
+
+PROJECT_ERROR.md và ACQUIREMENTS.md là knowledge/evidence, không được tự ý ghi đè
+canonical law. Nếu phát hiện xung đột, Agent phải dừng phần bị ảnh hưởng, tạo
+conflict record và yêu cầu review/update/deprecate entry.
+
+
+======================================================================
+58. MIGRATION V2.1 → V2.1.1 — PROJECT KNOWLEDGE LEARNING LOOP
+======================================================================
+
+V2.1.1 giữ nguyên Design Gate, Reconstruction pipeline, Task/Git/Lock/Test/Review/
+Security/State/Handoff của V2.1 và bổ sung durable project knowledge.
+
+Migration tối thiểu:
+
+1. Tạo PROJECT_ERROR.md tại PROJECT_ROOT từ mẫu mục 57.11.
+2. Tạo ACQUIREMENTS.md tại PROJECT_ROOT từ mẫu mục 57.12.
+3. Thêm hai file vào Start Protocol của AGENTS.md.
+4. Tool-specific rules chỉ tham chiếu hai file; không copy thành bộ nhớ riêng.
+5. Cập nhật Docs/rules.md: gặp lỗi phải search PROJECT_ERROR.md trước.
+6. Cập nhật task/result/handoff schema với related_error_ids và related_acquirement_ids.
+7. Cập nhật bug report với project_error_id khi applicable.
+8. Cập nhật .ai/project.yaml với project_knowledge config.
+9. Cập nhật Feature/Bug Fix workflow theo mục 25/26/57.
+10. Cập nhật Quality Gate và Definition of Done.
+11. Tạo project-error.schema.json và acquirement.schema.json nếu dùng automation.
+12. Tạo scripts/validate-project-memory.sh.
+13. Bật secret scan cho hai file.
+14. Import lỗi/kinh nghiệm cũ có giá trị; không copy log thô.
+15. Review định kỳ theo mục 57.13.
+
+Mục tiêu cuối:
+
+TASK / INCIDENT / BUG
+         |
+         v
+BUG REPORT + EVIDENCE
+         |
+         v
+ROOT CAUSE + RESOLUTION + VERIFICATION
+         |
+         v
+PROJECT_ERROR.md
+         |
+         v
+DISTILLED REUSABLE KNOWLEDGE
+         |
+         v
+ACQUIREMENTS.md
+         |
+         v
+TEST / RULE / CHECKLIST / GUARDRAIL
+         |
+         v
+AGENT ĐỌC TRƯỚC TASK TIẾP THEO
+
+Project không chỉ lưu trạng thái đã làm gì; Project còn lưu vì sao đã sai, cách
+đã sửa, bằng chứng đã xác minh và nguyên tắc giúp lần sau làm tốt hơn.
+
+
+======================================================================
+59. MIGRATION V2.1.1 → V2.1.2 — OPERATIONAL OPTIMIZATION
+======================================================================
+
+V2.1.2 giữ nguyên toàn bộ gate an toàn của V2.1.1 nhưng giảm context, tránh
+bottleneck và làm rõ concurrency/canonical authority.
+
+Migration tối thiểu:
+
+1. Xác định tài liệu này là meta-standard; AGENTS.md + Docs/rules.md là canonical
+   runtime law trong từng project.
+2. Rút AGENTS.md về hard rules + Start Protocol + precedence; không copy full Standard.
+3. Áp dụng Runtime Context Loading Policy TIER 0/1/2.
+4. Chọn workspace_profile: CORE | PRODUCT | AI_DATA | RECONSTRUCTION | ENTERPRISE.
+5. Thêm task mode: READ_ONLY_AUDIT, DIAGNOSTIC, RESEARCH, DESIGN, IMPLEMENTATION,
+   REVIEW, INCIDENT_HOTFIX.
+6. Cập nhật Task ID rule: chỉ write bắt buộc TASK/INCIDENT ID; read-only dùng
+   REQUEST/AUDIT ID.
+7. Nâng locks.json với revision, lease_id, TTL, heartbeat và fencing_token.
+8. Quy định Orchestrator/State Manager là single writer; state update atomic và
+   optimistic revision.
+9. Đưa worktree ra ngoài repo hoặc bắt buộc gitignore/nested-repo CI check.
+10. Phân loại design_impact NONE/LOW/MEDIUM/HIGH.
+11. Áp dụng task-specific Quality Gate và not_required reason.
+12. Giảm comment bắt buộc: chỉ public API, complex logic, security/risk và WHY.
+13. Thêm formal Authorization Gate cho Reconstruction.
+14. Thêm schema_version/migration cho mọi machine-readable artifact.
+15. Cập nhật CI/schema/validator và migration test tương ứng.
+
+Definition of migrated:
+
+[ ] Canonical precedence không còn mâu thuẫn.
+[ ] Agent không cần nạp toàn bộ Standard cho task thông thường.
+[ ] Project profile và task mode được khai báo.
+[ ] State/lock concurrent write có guard.
+[ ] Design/Quality Gate tỷ lệ thuận impact/risk.
+[ ] Reconstruction không chạy khi authorization thiếu/hết hạn.
+[ ] Machine-readable artifact có schema version và migration path.
+
+
+======================================================================
+END OF STANDARD V2.1.2 — OPERATIONALLY OPTIMIZED DESIGN/RECONSTRUCTION/KNOWLEDGE EDITION
+======================================================================

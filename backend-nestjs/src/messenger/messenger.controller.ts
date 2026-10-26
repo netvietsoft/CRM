@@ -267,6 +267,19 @@ export class MessengerController {
     return this.service.reply(storeId, user.id, id, body || {}, user.role);
   }
 
+  @Post('conversations/:id/utility-message')
+  @Roles('ADMIN', 'MODERATOR', 'STAFF')
+  @Permissions(Permission.MESSENGER_SEND)
+  @ApiOperation({ summary: 'Gửi tin nhắn mẫu tiện ích (Message Tag POST_PURCHASE_UPDATE / CONFIRMED_EVENT_UPDATE)' })
+  sendUtilityMessage(
+    @GetEffectiveStoreId() storeId: string | null,
+    @GetUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() body: { text: string; tag?: string },
+  ) {
+    return this.service.sendUtilityMessage(storeId, id, user.id, body || { text: '' });
+  }
+
   @Post('conversations/:id/messages/:messageId/recall')
   @Roles('ADMIN', 'MODERATOR', 'STAFF')
   @Permissions(Permission.MESSENGER_SEND)

@@ -1,65 +1,36 @@
-# CLAUDE.md
+# 🤖 HƯỚNG DẪN DÀNH CHO CLAUDE CODE (CLAUDE.md)
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-## 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-## 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+> Theo nguyên tắc **Không Duplicate Luật (§3)** của *Development Workspace Standard*, toàn bộ hiến pháp và quy tắc lập trình được lưu trữ tập trung tại `AGENTS.md` và `docs/rules.md`.
 
 ---
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+## 📌 NGUYÊN TẮC BẮT BUỘC ĐỐI VỚI CLAUDE CODE
+
+1. **Hiến pháp AI**: Bắt buộc đọc và tuân thủ [AGENTS.md](file:///d:/SetupC/WWW/crm/AGENTS.md) trước khi thực hiện bất kỳ thay đổi nào.
+2. **Quy chuẩn Code**: Tuân thủ nghiêm ngặt [docs/rules.md](file:///d:/SetupC/WWW/crm/docs/rules.md) (NestJS, Next.js, Prisma, Naming, Error handling, Security).
+3. **Quản lý Task**:
+   - Chỉ làm việc khi có Task ID cụ thể trong thư mục `.ai/tasks/running/` hoặc `.ai/tasks/ready/`.
+   - Chỉ sửa các file được phép trong `files_allowed` của Task.
+   - Sau khi hoàn thành hoặc đổi trạng thái task, chạy `python scripts/update-todos.py` để cập nhật [TODOS.md](file:///d:/SetupC/WWW/crm/TODOS.md).
+4. **Kiểm tra File Lock**: Luôn kiểm tra `.ai/locks.json` trước khi sửa file.
+5. **Cấm sửa Test để làm xanh**: Tuyệt đối không xóa, nới lỏng assertion hoặc bỏ qua test lỗi.
+6. **Kiểm tra trước khi commit**: Chạy verification (lint, typecheck, test) trước khi commit.
+
+---
+
+## 🛠️ LỆNH THƯỜNG DÙNG
+
+```bash
+# Cập nhật Dashboard Task tự động
+python scripts/update-todos.py
+
+# Chạy kiểm tra toàn diện Quality Gate
+bash scripts/verify.sh       # Linux / WSL / Git Bash
+powershell ./scripts/verify.ps1 # Windows PowerShell
+
+# Chạy Backend (Port 3901)
+cd backend-nestjs && npm run start:dev
+
+# Chạy Frontend (Port 3900)
+cd frontend && npm run dev
+```

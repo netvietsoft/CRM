@@ -1,0 +1,144 @@
+agents:
+  orchestrator:
+    role: coordinator
+    can_code: false
+    description: "Nhận requirement, tạo Task Graph, điều phối và quản lý lock."
+    writable:
+      - .ai/**
+      - TODOS.md
+    forbidden:
+      - backend-nestjs/**
+      - frontend/**
+
+  architect:
+    role: architecture
+    can_code: false
+    description: "Thiết kế hệ thống, viết SPEC và ADR."
+    writable:
+      - docs/Architecture/**
+      - docs/ADR/**
+      - docs/Contracts/**
+    forbidden:
+      - backend-nestjs/**
+      - frontend/**
+
+  backend:
+    role: backend
+    can_code: true
+    description: "Phát triển nghiệp vụ NestJS, Prisma, API nội bộ, Auth, Queue, DB Service."
+    writable:
+      - backend-nestjs/src/**
+      - backend-nestjs/test/**
+      - backend-nestjs/prisma/**
+    forbidden:
+      - frontend/**
+
+  frontend:
+    role: frontend
+    can_code: true
+    description: "Phát triển giao diện Next.js, React component, Tailwind, API hook."
+    writable:
+      - frontend/src/**
+      - frontend/public/**
+    forbidden:
+      - backend-nestjs/**
+
+  integration-api:
+    role: integration
+    can_code: true
+    description: "Tích hợp Pancake, ViettelPost, Facebook OAuth, Meta Ads, Casso Webhook."
+    writable:
+      - backend-nestjs/src/integrations/**
+      - backend-nestjs/src/webhooks/**
+    forbidden:
+      - frontend/**
+
+  payment:
+    role: payment
+    can_code: true
+    description: "Xử lý thanh toán VietQR, hóa đơn, ví hoa hồng, reconciliation."
+    writable:
+      - backend-nestjs/src/orders/**
+      - backend-nestjs/src/commissions/**
+      - backend-nestjs/src/webhooks/casso.*
+    forbidden:
+      - frontend/**
+
+  tester:
+    role: testing
+    can_code: true
+    description: "Viết Unit/Integration/E2E test, chạy test, tạo bug_report.json."
+    writable:
+      - tests/**
+      - .ai/bugs/**
+      - docs/Testing/**
+      - backend-nestjs/src/**/*.spec.ts
+    forbidden:
+      - backend-nestjs/src/**/!(*.spec.ts)
+      - frontend/src/**/!(*.test.tsx|*.spec.ts)
+
+  fixer:
+    role: bugfix
+    can_code: true
+    description: "Đọc bug_report.json, sửa root cause trong production code."
+    writable:
+      - backend-nestjs/src/**
+      - frontend/src/**
+    forbidden:
+      - tests/**
+      - docs/rules.md
+
+  reviewer:
+    role: review
+    can_code: false
+    description: "Review logic, bảo mật, hiệu năng, duyệt Quality Gate."
+    writable:
+      - .ai/reports/**
+    forbidden:
+      - backend-nestjs/**
+      - frontend/**
+
+  security:
+    role: security
+    can_code: false
+    description: "Kiểm tra bảo mật, quét SQLi, XSS, CSRF, IDOR, Webhook HMAC, Token Leak."
+    writable:
+      - docs/Security/**
+      - .ai/reports/**
+    forbidden:
+      - backend-nestjs/**
+      - frontend/**
+
+  devops:
+    role: devops
+    can_code: true
+    description: "Quản lý Docker, Nginx, deploy script, recovery, CI/CD."
+    writable:
+      - deploy.sh
+      - scripts/**
+      - docs/Runbooks/**
+    forbidden:
+      - backend-nestjs/src/**
+      - frontend/src/**
+
+  designer:
+    role: designer
+    can_code: true
+    description: "Thiết kế UI/UX, Design tokens, styling Tailwind, component consistency."
+    writable:
+      - frontend/src/components/**
+      - frontend/src/app/**/*.css
+    forbidden:
+      - backend-nestjs/**
+
+  documentation:
+    role: documentation
+    can_code: false
+    description: "Cập nhật docs, Changelog, README, rà soát lệch docs vs code."
+    writable:
+      - docs/**
+      - README.md
+    forbidden:
+      - backend-nestjs/**
+      - frontend/**
+

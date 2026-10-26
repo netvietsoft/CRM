@@ -89,6 +89,103 @@ export default function FacebookConnectCard() {
           </div>
         )}
       </div>
+
+      {/* Trung tâm hỗ trợ duyệt Meta App Review */}
+      <div className="mt-5 pt-4 border-t border-blue-50">
+        <div className="flex items-center justify-between gap-2 flex-wrap mb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🎬</span>
+            <h4 className="text-sm font-bold text-gray-800">Bộ Công Cụ Quay Video Duyệt Meta App Review</h4>
+          </div>
+          <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+            Chuẩn bị xét duyệt lại
+          </span>
+        </div>
+
+        <p className="text-xs text-gray-600 mb-3">
+          Để quay video đạt chuẩn Meta (Facebook), mở song song CRM và cửa sổ Facebook cá nhân. Dùng các phím tắt bên dưới để truy cập nhanh trang demo:
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-3">
+          <a
+            href="/admin/messenger"
+            target="_blank"
+            rel="noreferrer"
+            className="p-2.5 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-colors flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                <span>💬</span> <span>Hộp thư Messenger</span>
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Quay quyền <strong>pages_messaging</strong> (Chat 2 chiều realtime)</div>
+            </div>
+            <span className="text-[11px] text-blue-600 font-semibold mt-2 inline-block">Mở giao diện →</span>
+          </a>
+
+          <a
+            href="/admin/adsmeta/accall"
+            target="_blank"
+            rel="noreferrer"
+            className="p-2.5 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-colors flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                <span>📊</span> <span>Báo cáo Ads Meta</span>
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Quay quyền <strong>ads_read</strong> (Đọc KPI, chi tiêu, ROAS)</div>
+            </div>
+            <span className="text-[11px] text-blue-600 font-semibold mt-2 inline-block">Mở giao diện →</span>
+          </a>
+
+          <a
+            href="/ccm/marketing"
+            target="_blank"
+            rel="noreferrer"
+            className="p-2.5 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-colors flex flex-col justify-between"
+          >
+            <div>
+              <div className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                <span>📣</span> <span>Marketing Messages</span>
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Quay quyền <strong>marketing_messages</strong> (Opt-in và chiến dịch)</div>
+            </div>
+            <span className="text-[11px] text-blue-600 font-semibold mt-2 inline-block">Mở giao diện →</span>
+          </a>
+        </div>
+
+        <div className="rounded-xl bg-gray-50 border border-gray-200/80 p-3 space-y-2 text-xs text-gray-700">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="font-semibold text-gray-800">📋 Văn bản mô tả use-case tiếng Anh (sao chép nộp Meta):</span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `Our CRM is a multi-channel customer support platform. Customer service agents use the CRM Messenger Inbox to receive customer inquiries sent to our Facebook Pages in real-time and send direct replies to assist customers with product consultation, order placement, and support. This permission is required for real-time bidirectional messaging between our Facebook Pages and customers.\n\nInstructions for reviewer:\n1. Log in to CRM dashboard using provided test credentials.\n2. Open Messenger Inbox at /admin/messenger.\n3. Send a test message from a Facebook user to our connected Page.\n4. Notice the incoming message appearing in the CRM inbox in real-time.\n5. Reply directly from CRM and verify delivery to the customer on Messenger.`;
+                  void navigator.clipboard.writeText(text);
+                  flash('Đã sao chép mô tả quyền pages_messaging!', 3000);
+                }}
+                className="px-2 py-1 rounded-md bg-white border border-gray-300 hover:bg-gray-100 text-[11px] font-medium"
+              >
+                Copy pages_messaging
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `Our CRM provides a direct product catalog synchronization engine (/admin/integrations). We use catalog_management to query merchant catalogs and push batch product updates (SKU, title, price, stock status, image link, product url) from our CRM database directly to Meta Commerce Manager using the /{catalog_id}/items_batch Graph API. This allows merchants to maintain unified inventory between CRM and Meta Shop.\n\nInstructions for reviewer:\n1. Log in to CRM dashboard.\n2. Navigate to /admin/integrations and open Meta Commerce Catalog.\n3. Verify connected Catalog ID or select a catalog.\n4. Click "Đồng bộ ngay (Sync Now)" to push product feed directly to Meta Commerce Catalog via items_batch API.`;
+                  void navigator.clipboard.writeText(text);
+                  flash('Đã sao chép mô tả quyền catalog_management!', 3000);
+                }}
+                className="px-2 py-1 rounded-md bg-white border border-gray-300 hover:bg-gray-100 text-[11px] font-medium text-indigo-700"
+              >
+                Copy catalog_management
+              </button>
+            </div>
+          </div>
+          <div className="text-[11px] text-emerald-800 bg-emerald-50/70 rounded-lg p-2 border border-emerald-200/50">
+            ✅ <strong>Quyền catalog_management:</strong> CRM đã tích hợp trực tiếp module <em>Meta Commerce Catalog Sync</em> (Batch API). Bạn có thể quay video tính năng này ngay bên dưới để Meta duyệt quyền này. Chỉ cần bỏ tick quyền <code>paid_marketing_messages</code> (vì CRM không chạy sponsored ad messaging).
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,29 @@
+id: TASK-003
+title: "BIZ-01: Bọc Prisma $transaction cho OrdersService.createAdminOrder đảm bảo toàn vẹn tồn kho"
+owner: antigravity
+status: done
+priority: critical
+category: business_logic
+dependencies: []
+
+files_allowed:
+  - backend-nestjs/src/orders/orders.service.ts
+  - backend-nestjs/src/orders/orders.controller.ts
+  - backend-nestjs/src/orders/orders.service.spec.ts
+
+files_forbidden:
+  - frontend/**
+
+acceptance_criteria:
+  - Toàn bộ thao tác trừ kho variant/product và order.create trong createAdminOrder nằm trọn trong 1 tx.$transaction
+  - Nếu order.create thất bại, tồn kho các sản phẩm được rollback nguyên vẹn
+  - Trả về lỗi rõ ràng nếu có sản phẩm không đủ tồn kho trước khi tạo đơn
+  - Unit test mô phỏng lỗi tạo đơn và kiểm tra rollback tồn kho thành công
+
+commands:
+  test:
+    - cd backend-nestjs && npm run test -- orders
+  typecheck:
+    - cd backend-nestjs && npx tsc --noEmit
+
+max_fix_cycles: 5

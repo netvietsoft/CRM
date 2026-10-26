@@ -474,6 +474,64 @@ export class MessengerService {
     return { ok: true };
   }
 
+  /** Gửi tin tiện ích (Message Tag POST_PURCHASE_UPDATE / CONFIRMED_EVENT_UPDATE) có template / placeholders. */
+  async sendUtilityMessage(
+    effectiveStoreId: string | null,
+    convId: string,
+    userId: string,
+    payload: { text: string; tag?: string },
+  ) {
+    const conv = await this.getScopedConversation(effectiveStoreId, convId);
+    if (!conv.page.accessToken) throw new BadRequestException('Page chưa có access token');
+    if (!payload.text?.trim()) throw new BadRequestException('Nội dung tin nhắn không được để trống');
+
+    if (userId) {
+      try {
+        const assign = this.moduleRef.get(MessengerAssignService, { strict: false });
+        if (assign && (await assign.isViewOnly(conv.pageId, userId))) {
+          throw new ForbiddenException('Bạn chỉ có quyền XEM page này — không gửi được tin nhắn.');
+        }
+      } catch (e) {
+        if (e instanceof ForbiddenException) throw e;
+      }
+    }
+
+    const tag = payload.tag || 'POST_PURCHASE_UPDATE';
+    let r: { message_id: string };
+    try {
+      r = await this.client.sendUtilityMessage(conv.page.accessToken, conv.contact.psid, payload.text, tag);
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Send Utility API từ chối (conv ${convId}): ${reason}`);
+      throw new BadRequestException(`Meta từ chối gửi tin tiện ích: ${reason}`);
+    }
+
+    await this.prisma.msgMessage.create({
+      data: {
+        conversationId: convId,
+        mid: r.message_id,
+        direction: 'OUT',
+        text: payload.text,
+        status: 'SENT',
+        sentByUserId: userId,
+      },
+    });
+
+    await this.prisma.msgConversation.update({
+      where: { id: convId },
+      data: { lastMessageAt: new Date(), lastMessageText: payload.text, lastMessageDir: 'OUT' },
+    });
+
+    this.gateway.emitMessengerMessage({ conversationId: convId, storeId: conv.page.storeId, direction: 'OUT' });
+
+    try {
+      const assign = this.moduleRef.get(MessengerAssignService, { strict: false });
+      void assign?.claimOnReply(convId, conv.pageId, userId);
+    } catch {}
+
+    return { ok: true, message_id: r.message_id };
+  }
+
   /** Thu hồi tin đã gửi = ẩn phía CRM (Meta KHÔNG có API unsend cho page — khách vẫn thấy trên Messenger). */
   async recallMessage(effectiveStoreId: string | null, convId: string, messageId: string) {
     await this.getScopedConversation(effectiveStoreId, convId);

@@ -1,0 +1,36 @@
+id: TASK-007
+title: "FEAT: Tích hợp đồng bộ sản phẩm trực tiếp lên Meta Commerce Catalog (catalog_management)"
+owner: antigravity
+status: done
+priority: high
+category: feature
+dependencies: []
+
+files_allowed:
+  - backend-nestjs/src/integrations/facebook/**
+  - frontend/src/components/admin/**
+  - frontend/src/app/admin/integrations/**
+  - .ai/reports/META_APP_REVIEW_ACTION_PLAN.md
+
+files_forbidden:
+  - backend-nestjs/src/auth/**
+  - backend-nestjs/src/orders/**
+
+acceptance_criteria:
+  - Thêm scope catalog_management vào danh sách OAuth scope trong FacebookService
+  - Backend cung cấp MetaCatalogService gọi Meta Graph API /{catalog_id}/items_batch đồng bộ sản phẩm
+  - Endpoint GET/POST /integrations/facebook/catalogs/sync và /status hoạt động ổn định
+  - Frontend có thẻ MetaCatalogCard tại /admin/integrations/facebook cho phép nhập Catalog ID, bấm Đồng bộ ngay
+  - Hỗ trợ chế độ Demo (Quay App Review) hiển thị bảng sản phẩm đã sync lên Meta Catalog để quay video duyệt quyền catalog_management
+  - Unit test cho MetaCatalogService pass 100%
+  - Toàn bộ Quality Gate (lint, typecheck, test) pass thành công
+
+commands:
+  test:
+    - cd backend-nestjs && npm run test -- meta-catalog
+  typecheck:
+    - cd backend-nestjs && npx tsc --noEmit
+    - cd frontend && npx tsc --noEmit
+
+max_fix_cycles: 5
+completed_at: 2026-09-07T11:10:00Z

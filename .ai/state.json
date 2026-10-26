@@ -1,0 +1,35 @@
+{
+  "project_status": "development",
+  "last_updated": "2026-10-26T05:07:39Z",
+  "summary": {
+    "total_tasks": 9,
+    "backlog": 0,
+    "ready": 0,
+    "running": 0,
+    "review": 1,
+    "blocked": 0,
+    "done": 8
+  },
+  "violations": [],
+  "agents_status": {
+    "orchestrator": "idle",
+    "architect": "idle",
+    "backend": "idle",
+    "frontend": "idle",
+    "integration-api": "idle",
+    "payment": "idle",
+    "tester": "idle",
+    "fixer": "idle",
+    "reviewer": "idle",
+    "security": "idle",
+    "devops": "idle",
+    "designer": "idle",
+    "documentation": "active"
+  },
+  "health": {
+    "backend_build": "pass",
+    "frontend_build": "pass",
+    "unit_tests": "pass",
+    "security_status": "audited_with_findings"
+  }
+}

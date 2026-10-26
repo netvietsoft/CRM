@@ -23,3 +23,15 @@ pnpm-debug.log*
 # Local Codex skills for this repo
 /frontend/.codex/skills/
 /backend-nestjs/.codex/skills/
+
+# Environment & secrets
+.env*
+.env.prod
+.env.production
+.env.local
+.env.*.local
+*.env
+
+# Code knowledge graph indexes (may cua tung nguoi, khong chia se qua git)
+/.codegraph/
+/.graphify/

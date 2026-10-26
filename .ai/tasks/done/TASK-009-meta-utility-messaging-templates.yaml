@@ -1,0 +1,41 @@
+id: TASK-009
+title: "FEAT: Tích hợp & Kiểm thử E2E Playwright 6 Quyền Meta App Review (pages_utility_messaging, paid_marketing_messages, marketing_messages_messenger, pages_messaging, catalog_management, ads_read)"
+owner: antigravity
+status: done
+priority: high
+category: feature
+dependencies: []
+
+files_allowed:
+  - backend-nestjs/src/messenger/**
+  - frontend/src/components/ccm/**
+  - frontend/src/components/admin/**
+  - frontend/src/app/ccm/marketing/**
+  - frontend/e2e/**
+  - frontend/playwright.config.ts
+  - docs/Changelog/**
+
+files_forbidden:
+  - backend-nestjs/src/auth/**
+  - backend-nestjs/src/orders/**
+
+acceptance_criteria:
+  - MetaMessengerClient bổ sung sendUtilityMessage với messaging_type MESSAGE_TAG và tag POST_PURCHASE_UPDATE (PASS)
+  - MessengerService và MessengerController cung cấp endpoint POST /messenger/conversations/:id/utility-message (PASS)
+  - UtilityTemplateModal hỗ trợ chọn mẫu tin, điền biến placeholder động, Live Native Preview và gửi thành công cả ở chế độ thật và Demo App Review (PASS)
+  - Trang /ccm/marketing hỗ trợ chọn Marketing Message Template, điền biến placeholder động, Live Native Preview, Demo App Review Mode và gửi chiến dịch tới khách Opt-in (PASS)
+  - Trang /admin/messenger, /ccm/conversations, /admin/integrations, /admin/adsmeta/accall hiển thị song ngữ & chú giải rõ ràng phục vụ quay Screencast nộp Meta (PASS)
+  - Kiểm thử tự động bằng Playwright CLI nhiều lần liên tiếp (8/8 lượt) đạt 100% PASS trên tất cả 6 quyền Meta App Review (PASS)
+  - Backend và Frontend build local thành công 0 lỗi (PASS)
+
+commands:
+  test:
+    - cd backend-nestjs && npx jest src/messenger/messenger.service.spec.ts
+    - python -u frontend/e2e/meta-app-review.e2e.py --runs 5
+  typecheck:
+    - cd backend-nestjs && npx tsc --noEmit
+    - cd frontend && npx tsc --noEmit
+
+max_fix_cycles: 5
+created_at: 2026-10-17T11:41:00Z
+completed_at: 2026-10-26T12:07:30Z

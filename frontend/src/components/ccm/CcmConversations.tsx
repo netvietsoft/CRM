@@ -9,6 +9,7 @@ import { uploadToR2, folderOf } from '@/lib/uploadR2';
 import { primeAudio } from '@/lib/ccmSounds';
 import CcmCustomerPanel from './CcmCustomerPanel';
 import CcmImagePicker from './CcmImagePicker';
+import { UtilityTemplateModal } from './UtilityTemplateModal';
 
 /* ============================================================================
  * CCM CHAT — bố cục & tên các phần (để dễ tìm chỗ sửa)
@@ -183,6 +184,7 @@ export default function CcmConversations() {
   const [lightbox, setLightbox] = useState<string | null>(null); // ảnh đang zoom
   // Tin khách đang trích dẫn: text + ảnh (reply tin ảnh → đính lại file ảnh khi gửi).
   const [quote, setQuote] = useState<{ text: string | null; image: string | null } | null>(null);
+  const [showUtilityModal, setShowUtilityModal] = useState(false);
 
   // Esc đóng lightbox.
   useEffect(() => {
@@ -663,6 +665,14 @@ export default function CcmConversations() {
                   }}
                   title="Mời nhận tin tiếp thị (Marketing Messages)"
                   className="w-[36px] h-[36px] grid place-items-center rounded-[10px] hover:bg-[#eef2ff] hover:text-[#3c55e6]">📣</button>
+                {/* (1c) 📋 Mẫu tin tiện ích (Utility Templates with placeholders) */}
+                <button
+                  onClick={() => setShowUtilityModal(true)}
+                  title="Mẫu tin tiện ích / xác nhận đơn hàng (Utility Message Templates - Meta Tag)"
+                  className="w-[36px] h-[36px] grid place-items-center rounded-[10px] hover:bg-[#eef2ff] hover:text-[#3c55e6] text-[#3c55e6] font-bold transition-transform active:scale-95"
+                >
+                  📋
+                </button>
                 {/* (2) ☷ Tất cả hội thoại của người dùng này → lọc danh sách theo tên/psid khách */}
                 <button onClick={() => c.setSearch(c.active!.contact.name || c.active!.contact.psid)} title="Tất cả hội thoại của người dùng này"
                   className="w-[36px] h-[36px] grid place-items-center rounded-[10px] hover:bg-[#eef2ff] hover:text-[#3c55e6]">☷</button>
@@ -867,6 +877,24 @@ export default function CcmConversations() {
         <CcmImagePicker
           onClose={() => setShowImagePicker(false)}
           onSend={async (urls) => { setShowImagePicker(false); for (const u of urls) { if (!(await c.reply({ attachmentUrl: u }))) addPreview({ image: u }); } }}
+        />
+      )}
+
+      {/* MODAL Mẫu tin tiện ích (Utility Templates with placeholders) */}
+      {showUtilityModal && c.active && (
+        <UtilityTemplateModal
+          isOpen={showUtilityModal}
+          onClose={() => setShowUtilityModal(false)}
+          conversationId={c.active.id}
+          recipientName={c.active.contact.name || undefined}
+          onSuccess={(renderedText, tag) => {
+            c.flash(`✅ Đã gửi tin nhắn mẫu tiện ích [${tag}] thành công!`);
+            if (c.active!.id.startsWith('demo-')) {
+              addPreview({ text: `${renderedText} [Tag: ${tag}]` });
+            } else {
+              void c.open(c.active!.id);
+            }
+          }}
         />
       )}
     </div>

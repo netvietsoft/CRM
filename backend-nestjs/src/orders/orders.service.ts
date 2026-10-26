@@ -944,23 +944,44 @@ export class OrdersService {
         },
       });
 
+      if (!targetVoucher || !targetVoucher.isActive) {
+        throw new BadRequestException('Voucher không tồn tại hoặc đã ngưng áp dụng.');
+      }
+
       const isVoucherInDateRange =
-        targetVoucher &&
         (!targetVoucher.validFrom || targetVoucher.validFrom <= now) &&
         (!targetVoucher.validTo || targetVoucher.validTo > now);
+      if (!isVoucherInDateRange) {
+        throw new BadRequestException('Voucher chưa đến thời gian áp dụng hoặc đã hết hạn.');
+      }
+
       const hasVoucherStock =
-        targetVoucher &&
-        (targetVoucher.totalUsageLimit === null ||
-          targetVoucher._count.userVouchers < targetVoucher.totalUsageLimit);
+        targetVoucher.totalUsageLimit == null ||
+        (targetVoucher._count?.userVouchers ?? 0) < targetVoucher.totalUsageLimit;
+      if (!hasVoucherStock) {
+        throw new BadRequestException('Voucher đã hết lượt sử dụng toàn hệ thống.');
+      }
+
       const isVoucherForOrderStore =
-        targetVoucher &&
-        (!targetVoucher.storeId || targetVoucher.storeId === (orderStoreId || null));
+        !targetVoucher.storeId || targetVoucher.storeId === (orderStoreId || null);
+      if (!isVoucherForOrderStore) {
+        throw new BadRequestException('Voucher không áp dụng cho cửa hàng đã chọn.');
+      }
+
       const voucherOrderSources = Array.isArray((targetVoucher as any)?.orderSources)
         ? ((targetVoucher as any).orderSources as string[])
         : [];
       const voucherSalesChannels = Array.isArray((targetVoucher as any)?.salesChannels)
         ? ((targetVoucher as any).salesChannels as string[])
         : [];
+      const matchesOrderSource =
+        voucherOrderSources.length === 0 || voucherOrderSources.includes(currentOrderSource);
+      const matchesSalesChannel =
+        voucherSalesChannels.length === 0 || voucherSalesChannels.includes(currentSalesChannel);
+      if (!matchesOrderSource || !matchesSalesChannel) {
+        throw new BadRequestException('Voucher không áp dụng cho kênh đặt hàng hiện tại.');
+      }
+
       const voucherCustomerSegments = Array.isArray((targetVoucher as any)?.customerSegments)
         ? ((targetVoucher as any).customerSegments as string[])
         : [];
@@ -970,198 +991,229 @@ export class OrdersService {
       const voucherCustomerOccasions = Array.isArray((targetVoucher as any)?.customerOccasions)
         ? ((targetVoucher as any).customerOccasions as string[])
         : [];
+      const matchesCustomerSegment =
+        voucherCustomerSegments.length === 0 ||
+        voucherCustomerSegments.some((segment) => currentCustomerSegments.includes(segment));
+      const matchesCustomerRank =
+        voucherCustomerRanks.length === 0 || voucherCustomerRanks.includes(currentCustomerRank);
+      const matchesCustomerOccasion =
+        voucherCustomerOccasions.length === 0 ||
+        voucherCustomerOccasions.some((occasion) => currentCustomerOccasions.includes(occasion));
+      if (!matchesCustomerSegment || !matchesCustomerRank || !matchesCustomerOccasion) {
+        throw new BadRequestException('Khách hàng không đủ điều kiện áp dụng voucher này.');
+      }
+
       const voucherShippingProvinces = Array.isArray((targetVoucher as any)?.shippingProvinces)
         ? ((targetVoucher as any).shippingProvinces as string[])
         : [];
+      const matchesShippingProvince =
+        voucherShippingProvinces.length === 0 ||
+        (normalizedShippingProvince.length > 0 &&
+          voucherShippingProvinces.some(
+            (province) => this.normalizeProvinceName(province) === normalizedShippingProvince,
+          ));
+      if (!matchesShippingProvince) {
+        throw new BadRequestException('Voucher không hỗ trợ khu vực giao hàng này.');
+      }
+
       const voucherPaymentMethods = Array.isArray((targetVoucher as any)?.paymentMethods)
         ? ((targetVoucher as any).paymentMethods as string[])
         : [];
-      const matchesOrderSource =
-        targetVoucher &&
-        (voucherOrderSources.length === 0 || voucherOrderSources.includes(currentOrderSource));
-      const matchesSalesChannel =
-        targetVoucher &&
-        (voucherSalesChannels.length === 0 || voucherSalesChannels.includes(currentSalesChannel));
-      const matchesCustomerSegment =
-        targetVoucher &&
-        (voucherCustomerSegments.length === 0 ||
-          voucherCustomerSegments.some((segment) => currentCustomerSegments.includes(segment)));
-      const matchesCustomerRank =
-        targetVoucher &&
-        (voucherCustomerRanks.length === 0 || voucherCustomerRanks.includes(currentCustomerRank));
-      const matchesCustomerOccasion =
-        targetVoucher &&
-        (voucherCustomerOccasions.length === 0 ||
-          voucherCustomerOccasions.some((occasion) => currentCustomerOccasions.includes(occasion)));
-      const matchesShippingProvince =
-        targetVoucher &&
-        (voucherShippingProvinces.length === 0 ||
-          (normalizedShippingProvince.length > 0 &&
-            voucherShippingProvinces.some(
-              (province) => this.normalizeProvinceName(province) === normalizedShippingProvince,
-            )));
       const matchesPaymentMethod =
-        targetVoucher &&
-        (voucherPaymentMethods.length === 0 ||
-          voucherPaymentMethods.includes(currentPaymentMethod));
-      const matchesRequiredCategory =
-        targetVoucher &&
-        (!targetVoucher.requiredCategoryId ||
-          orderCategoryIds.has(targetVoucher.requiredCategoryId));
-      const matchesMinProductCount =
-        targetVoucher &&
-        (!targetVoucher.minProductCount || totalProductQuantity >= targetVoucher.minProductCount);
+        voucherPaymentMethods.length === 0 ||
+        voucherPaymentMethods.includes(currentPaymentMethod);
+      if (!matchesPaymentMethod) {
+        throw new BadRequestException('Voucher không áp dụng cho phương thức thanh toán đã chọn.');
+      }
 
-      if (
-        targetVoucher &&
-        targetVoucher.isActive &&
-        isVoucherInDateRange &&
-        hasVoucherStock &&
-        isVoucherForOrderStore &&
-        matchesOrderSource &&
-        matchesSalesChannel &&
-        matchesCustomerSegment &&
-        matchesCustomerRank &&
-        matchesCustomerOccasion &&
-        matchesShippingProvince &&
-        matchesPaymentMethod &&
-        matchesRequiredCategory &&
-        matchesMinProductCount
-      ) {
-        if (targetVoucher.code.startsWith('QR-ORDER-')) {
-          let resolvedStatus = (targetVoucher as any).status || 'AUTO';
-          if (resolvedStatus === 'AUTO') {
-            const orderCode = targetVoucher.code.replace('QR-ORDER-', '');
-            const sourceOrder = await this.prisma.order.findUnique({
-              where: { orderCode },
-              select: { status: true, updatedAt: true },
-            });
-            if (!sourceOrder) {
-              resolvedStatus = 'PENDING';
-            } else {
-              const isDelivered =
-                sourceOrder.status === 'DELIVERED' ||
-                sourceOrder.status === 'PAYMENT_COLLECTED' ||
-                sourceOrder.status === 'COMPLETED';
-              if (isDelivered && sourceOrder.updatedAt) {
-                const deliveredDate = new Date(sourceOrder.updatedAt);
-                const diffTime = Math.abs(now.getTime() - deliveredDate.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                if (diffDays >= 7) {
-                  resolvedStatus = 'ACTIVE';
-                } else {
-                  resolvedStatus = 'PENDING';
-                }
-              } else if (
-                sourceOrder.status === 'CANCELLED' ||
-                sourceOrder.status === 'REFUNDED' ||
-                sourceOrder.status === 'RETURNING'
-              ) {
-                resolvedStatus = 'LOCKED';
+      const matchesRequiredCategory =
+        !targetVoucher.requiredCategoryId ||
+        orderCategoryIds.has(targetVoucher.requiredCategoryId);
+      if (!matchesRequiredCategory) {
+        throw new BadRequestException(
+          'Đơn hàng không chứa sản phẩm thuộc danh mục yêu cầu của voucher.',
+        );
+      }
+
+      const matchesMinProductCount =
+        !targetVoucher.minProductCount || totalProductQuantity >= targetVoucher.minProductCount;
+      if (!matchesMinProductCount) {
+        throw new BadRequestException(
+          `Đơn hàng cần tối thiểu ${targetVoucher.minProductCount} sản phẩm để áp dụng voucher.`,
+        );
+      }
+
+      if (targetVoucher.code.startsWith('QR-ORDER-')) {
+        let resolvedStatus = (targetVoucher as any).status || 'AUTO';
+        if (resolvedStatus === 'AUTO') {
+          const orderCode = targetVoucher.code.replace('QR-ORDER-', '');
+          const sourceOrder = await this.prisma.order.findUnique({
+            where: { orderCode },
+            select: { status: true, updatedAt: true },
+          });
+          if (!sourceOrder) {
+            resolvedStatus = 'PENDING';
+          } else {
+            const isDelivered =
+              sourceOrder.status === 'DELIVERED' ||
+              sourceOrder.status === 'PAYMENT_COLLECTED' ||
+              sourceOrder.status === 'COMPLETED';
+            if (isDelivered && sourceOrder.updatedAt) {
+              const deliveredDate = new Date(sourceOrder.updatedAt);
+              const diffTime = Math.abs(now.getTime() - deliveredDate.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              if (diffDays >= 7) {
+                resolvedStatus = 'ACTIVE';
               } else {
                 resolvedStatus = 'PENDING';
               }
+            } else if (
+              sourceOrder.status === 'CANCELLED' ||
+              sourceOrder.status === 'REFUNDED' ||
+              sourceOrder.status === 'RETURNING'
+            ) {
+              resolvedStatus = 'LOCKED';
+            } else {
+              resolvedStatus = 'PENDING';
             }
-          }
-
-          if (resolvedStatus !== 'ACTIVE') {
-            throw new BadRequestException('Voucher chưa đủ điều kiện sử dụng hoặc đã bị tạm khoá.');
           }
         }
 
-        const userUsedCount = await this.prisma.userVoucher.count({
-          where: { userId, voucherId: currentVoucherId, isUsed: true },
-        });
-
-        if (
-          userUsedCount < targetVoucher.perCustomerLimit &&
-          subtotal >= targetVoucher.minOrderValue
-        ) {
-          let voucherDiscount = 0;
-
-          if (targetVoucher.type === 'STACK') {
-            const distinctProductCount = new Set(items.map((i) => i.productId)).size;
-            const tiers = (targetVoucher as any).stackTiers as Array<{
-              minProducts?: number;
-              minAmount?: number;
-              conditionType?: string;
-              discount: number;
-              type?: string;
-              maxDiscount?: number;
-            }> | null;
-
-            if (tiers && Array.isArray(tiers) && tiers.length > 0) {
-              const sortedTiers = [...tiers].sort((a, b) => {
-                const aVal = a.conditionType === 'amount' ? a.minAmount || 0 : a.minProducts || 0;
-                const bVal = b.conditionType === 'amount' ? b.minAmount || 0 : b.minProducts || 0;
-                return bVal - aVal;
-              });
-
-              const matchedTier = sortedTiers.find((t) => {
-                if (t.conditionType === 'amount') {
-                  return subtotal >= (t.minAmount || 0);
-                }
-                return distinctProductCount >= (t.minProducts || 0);
-              });
-
-              if (matchedTier) {
-                if (matchedTier.type === 'PERCENT') {
-                  voucherDiscount = subtotal * (matchedTier.discount / 100);
-                  if (matchedTier.maxDiscount && voucherDiscount > matchedTier.maxDiscount) {
-                    voucherDiscount = matchedTier.maxDiscount;
-                  }
-                } else {
-                  voucherDiscount = matchedTier.discount;
-                }
-              }
-            }
-          } else if (targetVoucher.type === 'PERCENT') {
-            voucherDiscount = subtotal * (targetVoucher.value / 100);
-          } else {
-            voucherDiscount = targetVoucher.value;
-          }
-
-          if (targetVoucher.maxDiscount && voucherDiscount > targetVoucher.maxDiscount) {
-            voucherDiscount = targetVoucher.maxDiscount;
-          }
-
-          if (voucherDiscount > subtotal) {
-            voucherDiscount = subtotal;
-          }
-
-          const remainingVoucherDiscountCap = Math.max(
-            0,
-            maxVoucherDiscountAmount - discountAmount,
-          );
-          if (voucherDiscount > remainingVoucherDiscountCap) {
-            voucherDiscount = remainingVoucherDiscountCap;
-          }
-
-          if (voucherDiscount <= 0) {
-            continue;
-          }
-
-          discountAmount += voucherDiscount;
-
-          const existingUserVoucher = await this.prisma.userVoucher.findFirst({
-            where: {
-              userId,
-              voucherId: targetVoucher.id,
-              isUsed: false,
-              status: { notIn: ['PENDING', 'REJECTED'] },
-              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            },
-            orderBy: { createdAt: 'asc' },
-          });
-
-          // Hoãn ghi (isUsed + usedCount) để chạy trong transaction cùng order.create.
-          voucherOps.push({
-            existingUserVoucherId: existingUserVoucher ? existingUserVoucher.id : null,
-            voucherId: targetVoucher.id,
-            usedAt: now,
-          });
+        if (resolvedStatus !== 'ACTIVE') {
+          throw new BadRequestException('Voucher chưa đủ điều kiện sử dụng hoặc đã bị tạm khoá.');
         }
       }
+
+      const userVoucherRecords = await this.prisma.userVoucher.findMany({
+        where: { userId, voucherId: targetVoucher.id },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      let targetUserVoucherId: string | null = null;
+
+      if (userVoucherRecords.length > 0) {
+        const activeVoucher = userVoucherRecords.find(
+          (uv) => uv.status === 'ACTIVE' && !uv.isUsed && (!uv.expiresAt || uv.expiresAt > now),
+        );
+
+        if (!activeVoucher) {
+          const hasRejected = userVoucherRecords.some((uv) => uv.status === 'REJECTED');
+          if (hasRejected) {
+            throw new BadRequestException('Voucher này đã bị từ chối và không thể áp dụng.');
+          }
+
+          const hasPending = userVoucherRecords.some((uv) => uv.status === 'PENDING');
+          if (hasPending) {
+            throw new BadRequestException(
+              'Voucher này đang chờ duyệt/kích hoạt và chưa thể sử dụng.',
+            );
+          }
+
+          const allUsed = userVoucherRecords.every((uv) => uv.isUsed);
+          if (allUsed) {
+            throw new BadRequestException('Voucher này đã được sử dụng hết số lần cho phép.');
+          }
+
+          const allExpired = userVoucherRecords.every((uv) => uv.expiresAt && uv.expiresAt <= now);
+          if (allExpired) {
+            throw new BadRequestException('Voucher này đã hết hạn sử dụng.');
+          }
+
+          throw new BadRequestException('Voucher này không đủ điều kiện sử dụng.');
+        }
+
+        targetUserVoucherId = activeVoucher.id;
+      } else {
+        if (targetVoucher.code.startsWith('QR-ORDER-')) {
+          throw new BadRequestException('Voucher này chỉ áp dụng cho tài khoản đã nhận mã.');
+        }
+      }
+
+      const userUsedCount = userVoucherRecords.filter((uv) => uv.isUsed).length;
+      if (userUsedCount >= targetVoucher.perCustomerLimit) {
+        throw new BadRequestException(
+          `Bạn đã sử dụng hết giới hạn (${targetVoucher.perCustomerLimit} lần) của voucher này.`,
+        );
+      }
+
+      if (subtotal < targetVoucher.minOrderValue) {
+        throw new BadRequestException(
+          `Đơn hàng chưa đạt giá trị tối thiểu ${targetVoucher.minOrderValue.toLocaleString('vi-VN')}đ để áp dụng voucher.`,
+        );
+      }
+
+      let voucherDiscount = 0;
+
+      if (targetVoucher.type === 'STACK') {
+        const distinctProductCount = new Set(items.map((i) => i.productId)).size;
+        const tiers = (targetVoucher as any).stackTiers as Array<{
+          minProducts?: number;
+          minAmount?: number;
+          conditionType?: string;
+          discount: number;
+          type?: string;
+          maxDiscount?: number;
+        }> | null;
+
+        if (tiers && Array.isArray(tiers) && tiers.length > 0) {
+          const sortedTiers = [...tiers].sort((a, b) => {
+            const aVal = a.conditionType === 'amount' ? a.minAmount || 0 : a.minProducts || 0;
+            const bVal = b.conditionType === 'amount' ? b.minAmount || 0 : b.minProducts || 0;
+            return bVal - aVal;
+          });
+
+          const matchedTier = sortedTiers.find((t) => {
+            if (t.conditionType === 'amount') {
+              return subtotal >= (t.minAmount || 0);
+            }
+            return distinctProductCount >= (t.minProducts || 0);
+          });
+
+          if (matchedTier) {
+            if (matchedTier.type === 'PERCENT') {
+              voucherDiscount = subtotal * (matchedTier.discount / 100);
+              if (matchedTier.maxDiscount && voucherDiscount > matchedTier.maxDiscount) {
+                voucherDiscount = matchedTier.maxDiscount;
+              }
+            } else {
+              voucherDiscount = matchedTier.discount;
+            }
+          }
+        }
+      } else if (targetVoucher.type === 'PERCENT') {
+        voucherDiscount = subtotal * (targetVoucher.value / 100);
+      } else {
+        voucherDiscount = targetVoucher.value;
+      }
+
+      if (targetVoucher.maxDiscount && voucherDiscount > targetVoucher.maxDiscount) {
+        voucherDiscount = targetVoucher.maxDiscount;
+      }
+
+      if (voucherDiscount > subtotal) {
+        voucherDiscount = subtotal;
+      }
+
+      const remainingVoucherDiscountCap = Math.max(
+        0,
+        maxVoucherDiscountAmount - discountAmount,
+      );
+      if (voucherDiscount > remainingVoucherDiscountCap) {
+        voucherDiscount = remainingVoucherDiscountCap;
+      }
+
+      if (voucherDiscount <= 0) {
+        continue;
+      }
+
+      discountAmount += voucherDiscount;
+
+      // Hoãn ghi (isUsed + usedCount) để chạy trong transaction cùng order.create.
+      voucherOps.push({
+        existingUserVoucherId: targetUserVoucherId,
+        voucherId: targetVoucher.id,
+        usedAt: now,
+      });
     }
 
     let commissionDiscount = 0;
@@ -1401,6 +1453,8 @@ export class OrdersService {
       size: string | null;
       color: string | null;
     }> = [];
+    const productStockDecrements: Array<{ productId: string; quantity: number }> = [];
+    const variantStockDecrements: Array<{ variantId: string; quantity: number }> = [];
 
     for (const item of items) {
       const product = await this.prisma.product.findUnique({
@@ -1423,6 +1477,12 @@ export class OrdersService {
         throw new BadRequestException('Cannot mix products from different stores in one order');
       }
 
+      if (product.stockQuantity < item.quantity) {
+        throw new BadRequestException(
+          `Sản phẩm ${product.name} không đủ tồn kho (còn ${product.stockQuantity}, yêu cầu ${item.quantity})`,
+        );
+      }
+
       let itemPrice = product.salePrice ?? product.originalPrice;
 
       if (item.size || item.color) {
@@ -1438,13 +1498,19 @@ export class OrdersService {
           );
         }
 
+        if (matchingVariant.stock < item.quantity) {
+          throw new BadRequestException(
+            `Sản phẩm ${product.name} (phân loại ${item.size || ''} ${item.color || ''}) không đủ tồn kho (còn ${matchingVariant.stock}, yêu cầu ${item.quantity})`.trim(),
+          );
+        }
+
         if (matchingVariant.price !== null && matchingVariant.price !== undefined) {
           itemPrice = matchingVariant.price;
         }
 
-        await this.prisma.productVariant.update({
-          where: { id: matchingVariant.id },
-          data: { stock: { decrement: item.quantity } },
+        variantStockDecrements.push({
+          variantId: matchingVariant.id,
+          quantity: item.quantity,
         });
       }
 
@@ -1452,9 +1518,9 @@ export class OrdersService {
         itemPrice = item.unitPrice;
       }
 
-      await this.prisma.product.update({
-        where: { id: product.id },
-        data: { stockQuantity: { decrement: item.quantity } },
+      productStockDecrements.push({
+        productId: product.id,
+        quantity: item.quantity,
       });
 
       subtotal += itemPrice * item.quantity;
@@ -1474,39 +1540,55 @@ export class OrdersService {
     );
     const totalAmount = Math.max(0, subtotal - parsedDiscountAmount + parsedShippingFee);
 
-    const order = await this.prisma.order.create({
-      data: {
-        userId: user?.id || null,
-        orderCode: this.generateOrderCode(),
-        status: (status || 'PENDING') as any,
-        shippingName: shippingName || user?.name || null,
-        shippingPhone: shippingPhone || user?.phone || null,
-        shippingStreet: shippingStreet || user?.addressStreet || null,
-        shippingWard: shippingWard || user?.addressWard || null,
-        shippingProvince: shippingProvince || user?.addressProvince || null,
-        subtotal,
-        discountAmount: parsedDiscountAmount,
-        shippingFee: parsedShippingFee,
-        totalAmount,
-        paymentMethod: (paymentMethod || 'COD') as any,
-        paymentStatus: 'UNPAID',
-        note: adminNote || null,
-        customerNote: customerNote || null,
-        source: orderSource,
-        storeId: orderStoreId || null,
-        conversationId: clientMetadata?.conversationId || null, // I6: cột thật + index (tra CCM không quét JSON)
-        assigningSellerId: clientMetadata?.assigningSellerId || null,
-        assigningCareId: clientMetadata?.assigningCareId || null,
-        metadata: {
-          createdBy: actorId,
-          createdByRole: actorRole,
-          isGuestOrder: !user?.id,
-          ...(clientMetadata || {}),
+    const order = await this.prisma.$transaction(async (tx) => {
+      for (const dec of variantStockDecrements) {
+        await tx.productVariant.update({
+          where: { id: dec.variantId },
+          data: { stock: { decrement: dec.quantity } },
+        });
+      }
+
+      for (const dec of productStockDecrements) {
+        await tx.product.update({
+          where: { id: dec.productId },
+          data: { stockQuantity: { decrement: dec.quantity } },
+        });
+      }
+
+      return tx.order.create({
+        data: {
+          userId: user?.id || null,
+          orderCode: this.generateOrderCode(),
+          status: (status || 'PENDING') as any,
+          shippingName: shippingName || user?.name || null,
+          shippingPhone: shippingPhone || user?.phone || null,
+          shippingStreet: shippingStreet || user?.addressStreet || null,
+          shippingWard: shippingWard || user?.addressWard || null,
+          shippingProvince: shippingProvince || user?.addressProvince || null,
+          subtotal,
+          discountAmount: parsedDiscountAmount,
+          shippingFee: parsedShippingFee,
+          totalAmount,
+          paymentMethod: (paymentMethod || 'COD') as any,
+          paymentStatus: 'UNPAID',
+          note: adminNote || null,
+          customerNote: customerNote || null,
+          source: orderSource,
+          storeId: orderStoreId || null,
+          conversationId: clientMetadata?.conversationId || null, // I6: cột thật + index (tra CCM không quét JSON)
+          assigningSellerId: clientMetadata?.assigningSellerId || null,
+          assigningCareId: clientMetadata?.assigningCareId || null,
+          metadata: {
+            createdBy: actorId,
+            createdByRole: actorRole,
+            isGuestOrder: !user?.id,
+            ...(clientMetadata || {}),
+          },
+          items: {
+            create: orderItemsToCreate,
+          },
         },
-        items: {
-          create: orderItemsToCreate,
-        },
-      },
+      });
     });
 
     await this.messagingAutomationService.handleOrderCreated(order.id, 'ADMIN_ORDER_CREATED', {

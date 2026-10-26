@@ -1,9 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsersService } from '../../users/users.service';
 import { AdminNotificationsService } from '../../modules/admin-notifications/admin-notifications.service';
 import { OrderStatus } from '@prisma/client';
+
+/**
+ * Danh tính tenant đã được chứng minh bằng chữ ký HMAC hợp lệ.
+ * SEC-08: mọi handler webhook chỉ được ghi dữ liệu vào `storeId` này — không suy lại store từ header.
+ */
+export interface PancakeWebhookIdentity {
+  integrationId: string;
+  storeId: string;
+  shopId: string | null;
+}
 
 @Injectable()
 export class PancakeService {
@@ -15,6 +26,89 @@ export class PancakeService {
     private usersService: UsersService,
     private adminNotificationsService: AdminNotificationsService,
   ) {}
+
+  /**
+   * Xác thực chữ ký webhook HMAC-SHA256 từ Pancake và trả về DANH TÍNH integration đã khớp.
+   * Tính HMAC-SHA256 trên rawBody với secret của từng StoreIntegration ứng viên, so sánh bằng timingSafeEqual.
+   * Trả về `null` nếu thiếu chữ ký, không khớp, hoặc mơ hồ (≥ 2 integration cùng khớp → không xác định được tenant).
+   * SEC-08: tenant đích phải được suy ra từ secret đã khớp, không suy từ header `x-pancake-shop-id` (client có thể bỏ đi);
+   * header này chỉ dùng để thu hẹp tập ứng viên.
+   */
+  async verifyWebhookSignature(
+    rawBody: Buffer | string,
+    signature?: string,
+    shopId?: string,
+  ): Promise<PancakeWebhookIdentity | null> {
+    if (!signature) {
+      this.logger.warn('[Pancake] Webhook rejected: Missing x-pancake-signature header');
+      return null;
+    }
+
+    const whereClause: any = { platform: 'PANCAKE', isActive: true };
+    if (shopId) {
+      whereClause.shopId = shopId;
+    }
+
+    const integrations = await this.prisma.storeIntegration.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        storeId: true,
+        shopId: true,
+        apiKey: true,
+        apiSecret: true,
+        metadata: true,
+      },
+    });
+
+    if (integrations.length === 0) {
+      this.logger.warn(
+        `[Pancake] Webhook rejected: No active Pancake integration found for shopId: ${shopId || 'any'}`,
+      );
+      return null;
+    }
+
+    const cleanSignature = signature.trim().toLowerCase();
+    const sigBuf = Buffer.from(cleanSignature, 'utf8');
+    const rawBodyBuffer = typeof rawBody === 'string' ? Buffer.from(rawBody, 'utf8') : rawBody;
+
+    const matched: PancakeWebhookIdentity[] = [];
+    for (const integration of integrations) {
+      const meta = (integration.metadata as Record<string, any>) || {};
+      const secret = integration.apiSecret || meta.webhookSecret || integration.apiKey;
+      if (!secret) continue;
+
+      const computedHex = crypto
+        .createHmac('sha256', secret)
+        .update(rawBodyBuffer)
+        .digest('hex')
+        .toLowerCase();
+      const computedBuf = Buffer.from(computedHex, 'utf8');
+
+      if (computedBuf.length === sigBuf.length && crypto.timingSafeEqual(computedBuf, sigBuf)) {
+        matched.push({
+          integrationId: integration.id,
+          storeId: integration.storeId,
+          shopId: integration.shopId ?? null,
+        });
+      }
+    }
+
+    if (matched.length === 1) {
+      return matched[0];
+    }
+
+    if (matched.length > 1) {
+      const stores = matched.map((m) => m.storeId).join(', ');
+      this.logger.warn(
+        `[Pancake] Webhook rejected: ${matched.length} integrations share the same secret (stores: ${stores}) — không xác định được tenant. Đặt apiSecret riêng cho từng Store hoặc gửi header x-pancake-shop-id.`,
+      );
+      return null;
+    }
+
+    this.logger.warn('[Pancake] Webhook rejected: Signature mismatch');
+    return null;
+  }
 
   private normalizePhone(phone: string) {
     return phone.replace(/\D/g, '');
@@ -1509,34 +1603,34 @@ export class PancakeService {
     return m[s] || OrderStatus.PENDING;
   }
 
-  async handleWebhookEvent(payload: any, shopId?: string) {
+  /**
+   * Xử lý sự kiện webhook trong phạm vi tenant đã được chứng minh bởi chữ ký (SEC-08).
+   * `identity` PHẢI đến từ `verifyWebhookSignature`; mọi handler chỉ ghi vào `identity.storeId`.
+   */
+  async handleWebhookEvent(payload: any, identity: PancakeWebhookIdentity) {
     const type = payload.type || payload.event_type,
       data = payload.data || payload;
+    const storeId = identity.storeId;
     switch (type) {
       case 'orders':
       case 'order':
-        return await this.handleOrderWebhook(data, shopId);
+        return await this.handleOrderWebhook(data, storeId);
       case 'customers':
       case 'customer':
-        return await this.handleCustomerWebhook(data);
+        return await this.handleCustomerWebhook(data, storeId);
       case 'products':
       case 'product':
-        return await this.handleProductWebhook(shopId);
+        return await this.handleProductWebhook(storeId);
       case 'variations_warehouses':
       case 'inventory':
-        return await this.handleInventoryWebhook(data, shopId);
+        return await this.handleInventoryWebhook(data, storeId);
       default:
         return { processed: false };
     }
   }
 
-  private async handleOrderWebhook(orderData: any, shopId?: string) {
-    const integration = await this.prisma.storeIntegration.findFirst({
-      where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) },
-      include: { store: true },
-    });
-    if (!integration?.store) return { processed: false };
-    const result = await this.syncSingleOrder(orderData, integration.store.id);
+  private async handleOrderWebhook(orderData: any, storeId: string) {
+    const result = await this.syncSingleOrder(orderData, storeId);
     if (result.synced) {
       const orderCode = `PCK-${orderData.id}`,
         existing = await this.prisma.order.findFirst({ where: { orderCode } });
@@ -1573,7 +1667,7 @@ export class PancakeService {
     return { processed: true };
   }
 
-  private async handleCustomerWebhook(customerData: any) {
+  private async handleCustomerWebhook(customerData: any, storeId: string) {
     const customerInfo = this.extractCustomerWebhookInfo(customerData);
     if (!customerInfo.phone && !customerInfo.email) {
       return { processed: false };
@@ -1591,9 +1685,11 @@ export class PancakeService {
       : [];
 
     if (phoneTerms.length > 0) {
+      // SEC-08: chỉ gán khách cho đơn Pancake thuộc Store đã xác thực chữ ký.
       await this.prisma.order.updateMany({
         where: {
           source: 'PANCAKE',
+          storeId,
           userId: null,
           shippingPhone: { in: phoneTerms },
         },
@@ -1611,19 +1707,13 @@ export class PancakeService {
     };
   }
 
-  private async handleProductWebhook(shopId?: string) {
-    const integration = await this.prisma.storeIntegration.findFirst({
-      where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) },
-    });
-    if (integration?.storeId) this.syncAllProducts(integration.storeId).catch(() => {});
+  private async handleProductWebhook(storeId: string) {
+    this.syncAllProducts(storeId).catch(() => {});
     return { processed: true };
   }
 
-  private async handleInventoryWebhook(inventoryData: any, shopId?: string) {
-    const integration = await this.prisma.storeIntegration.findFirst({
-      where: { platform: 'PANCAKE', isActive: true, ...(shopId ? { shopId } : {}) },
-    });
-    if (integration?.storeId) this.syncAllProducts(integration.storeId).catch(() => {});
+  private async handleInventoryWebhook(_inventoryData: any, storeId: string) {
+    this.syncAllProducts(storeId).catch(() => {});
     return { processed: true };
   }
 

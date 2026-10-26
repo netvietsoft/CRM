@@ -5,7 +5,7 @@
  * const { data, loading, error, refetch } = useApi('/api/customers');
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClientClient } from '@/lib/apiClientClient';
 
 interface UseApiOptions<TData> {
@@ -23,21 +23,29 @@ export function useApi<T = unknown>(
   const [loading, setLoading] = useState(!skip);
   const [error, setError] = useState<Error | null>(null);
 
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  }, [onSuccess, onError]);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const result = await apiClientClient.get<T>(url);
       setData(result);
-      onSuccess?.(result);
+      onSuccessRef.current?.(result);
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
-      onError?.(error);
+      onErrorRef.current?.(error);
     } finally {
       setLoading(false);
     }
-  }, [onError, onSuccess, url]);
+  }, [url]);
 
   useEffect(() => {
     if (!skip) {
