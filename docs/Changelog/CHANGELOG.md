@@ -5,9 +5,9 @@
 
 ---
 
-## 2026-10-26 — META APP REVIEW REJECTION REMEDIATION & PLAYWRIGHT E2E MULTI-RUN VERIFICATION (TASK-009)
+## 2026-10-26→28 — META APP REVIEW REJECTION REMEDIATION, PLAYWRIGHT E2E (8/8 PASS) & DEPLOY PROD (TASK-009 · `4430ed1`)
 
-> Đã hoàn thành. Task: `TASK-009` (`.ai/tasks/done/`). Kế hoạch: `VAN-HANH/KE-HOACH-CEO/KE_HOACH_DUYET_META_APP_REVIEW.md`.
+> Đã hoàn thành & push `origin/main` (`4430ed1`). Task: `TASK-009` (`.ai/tasks/done/`). Handoff: `.ai/handoffs/HANDOFF-TASK-009.yaml`. Kế hoạch & Kịch bản quay: `VAN-HANH/KE-HOACH-CEO/KE_HOACH_DUYET_META_APP_REVIEW.md`.
 
 **Bối cảnh:** Meta phê duyệt 14 quyền/tính năng (bao gồm `Business Asset User Profile Access`, `Marketing API Access Tier`, `business_management`, `pages_manage_ads`, `ads_management`, `leads_retrieval`, `pages_show_list`, `pages_manage_metadata`, `pages_read_engagement`, `pages_user_gender`, `pages_user_locale`, `pages_user_timezone`, `public_profile`, `email`), nhưng từ chối 6 quyền (`paid_marketing_messages`, `pages_utility_messaging`, `marketing_messages_messenger`, `pages_messaging`, `catalog_management`, `ads_read`) do video quay màn hình chưa thể hiện trọn vẹn trải nghiệm end-to-end theo Chính sách 1.6 (chọn asset, chọn template, điền biến placeholder động, xem trước và gửi hiển thị tin nhắn đã giao).
 
@@ -30,6 +30,12 @@
 - **Build Local & Kiểm thử tự động Playwright CLI (`frontend/e2e/meta-app-review.e2e.py`)**:
   - Clean build cả Backend (`npm run build`) và Frontend (`npm run build` — 78/78 routes): **PASS 100% (0 lỗi)**.
   - Chạy kiểm thử E2E bằng **Playwright CLI** nhiều lần liên tiếp (3 lượt + 5 lượt = **8 lượt liên tiếp**) trên trình duyệt Chromium thực tế kiểm tra toàn bộ 6 quyền: **PASS 100% (8/8 lượt, ~8.5s/lượt)**.
+- **Chẩn đoán sự cố `ChunkLoadError 500` trên Production (`lestgoai.com`) & Quy tắc Deploy FE Next.js 16**:
+  - **Nguyên nhân gốc rễ**: Trong Next.js 16 (`router-server.js`), khi `next start` khởi động sẽ sinh tiến trình con `next-server` và nạp danh sách file `.next/static/chunks/` vào bộ nhớ RAM (`fsChecker`). Nếu chạy `rm -rf .next` khi tiến trình `next-server` cũ trên cổng `3069` chưa bị tắt hẳn (hoặc `pm2 reload` không giết được tiến trình con mồ côi), tiến trình cũ vẫn trả về HTML với Build ID cũ (`"b":"5jLKi-xTliy5rDaGbiQ6T"`) yêu cầu chunk cũ (`0bsl7~t71_4hk.js`, `0vs33nb4xb0fh.js`). Khi trình duyệt tải chunk đó, `fsChecker` trong RAM báo có nhưng `serveStatic` đọc ổ cứng bị `ENOENT` (do đã xóa) → `router-server.js` ép lỗi sang `/400` không tồn tại → trả về `500 Internal Server Error` (`etag: "66fci67lppl"`). Ngoài ra, Cloudflare CDN giữ cache `immutable` cho file runtime `turbopack-*.js`.
+  - **Quy trình khắc phục chuẩn**: Trước khi `rm -rf .next && yarn build`, bắt buộc chạy `pm2 delete chy_crm_fe chy_crm_backend || true` kèm `fuser -k 3069/tcp 8070/tcp || true`, sau khi build xong chạy `pm2 start ecosystem.config.js` và Purge Everything trên Cloudflare.
+- **Hướng dẫn nộp lại Meta App Review (`app-review/submissions`)**:
+  - Đơn đã duyệt/từ chối ngày 12/08/2026 ở trạng thái Lịch sử (Read-Only, không sửa trực tiếp được).
+  - Để upload lại video: Tại khung **Chưa gửi (Draft)** ở đầu trang `app-review/submissions`, bấm `tùy chỉnh trường hợp sử dụng` để thêm đủ 4 quyền Messenger (`pages_messaging`, `pages_utility_messaging`, `marketing_messages_messenger`, `paid_marketing_messages`) cùng 2 quyền `catalog_management`, `ads_read` vào mục **Yêu cầu mới**, sau đó bấm nút màu xanh **`[ Tiếp ]`** ở góc dưới bên phải khung `Chưa gửi` để mở form Upload Screencast và dán Ghi chú tiếng Anh.
 - **Hệ thống vận hành (`VAN-HANH/`)**:
   - Triển khai watchdog script `always_on_watchdog.py` giám sát tự phục hồi tại `VAN-HANH/SOURCE/scripts/`.
   - Thiết lập khung phản biện đối kháng của Agent 13 tại `VAN-HANH/PHAN-BIEN/` với báo cáo `AUDIT_SUMMARY.md` xác nhận đạt chuẩn 100%.

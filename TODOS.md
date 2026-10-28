@@ -2,7 +2,7 @@
 
 > **CẢNH BÁO**: File này được sinh tự động bởi `python scripts/update-todos.py` từ nguồn sự thật `.ai/tasks/`.
 > **CẤM SỬA TAY FILE NÀY**. Thay đổi trạng thái bằng cách di chuyển file YAML giữa các thư mục trạng thái.
-> **Cập nhật lần cuối**: `2026-10-26 12:07:39`
+> **Cập nhật lần cuối**: `2026-10-28 21:51:47`
 
 ## 📊 TỔNG QUAN TIẾN ĐỘ
 

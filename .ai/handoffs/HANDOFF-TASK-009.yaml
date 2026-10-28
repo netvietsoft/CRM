@@ -1,0 +1,40 @@
+task: TASK-009
+agent: orchestrator-antigravity
+timestamp: 2026-10-28T21:48:30+07:00
+status: done
+commit: 4430ed1
+completed:
+  - Hoàn thiện Backend Utility Message API (POST /messenger/conversations/:id/utility-message với MESSAGE_TAG = POST_PURCHASE_UPDATE) và Unit Test 4/4 PASS
+  - Hoàn thiện UtilityTemplateModal.tsx hỗ trợ chọn mẫu tin Utility/Marketing, điền biến placeholders động ({{customer_name}}, {{order_id}}, {{tracking_code}}, {{discount_code}}), Live Native Preview và gửi hiển thị trực tiếp trong luồng hội thoại (/admin/messenger & /ccm/conversations)
+  - Nâng cấp toàn diện trang /ccm/marketing thành Marketing Messages & Template Builder (chọn khách OPTED_IN, khóa khách OPTED_OUT, chọn mẫu tin, điền biến placeholders, Live Native Preview, gửi chiến dịch và bảng thống kê Sent/Delivered/Read)
+  - Hoàn thiện chế độ Demo App Review kèm chú giải song ngữ Việt-Anh cho cả 6 quyền bị từ chối (pages_utility_messaging, paid_marketing_messages, marketing_messages_messenger, pages_messaging, catalog_management, ads_read)
+  - Xây dựng bộ kiểm thử tự động E2E bằng Playwright CLI (frontend/e2e/meta-app-review.e2e.py) và chạy 8/8 lượt liên tiếp đạt 100% PASS trên trình duyệt Chromium thực tế
+  - Commit & Push lên origin/main (commit 4430ed1) an toàn, không lộ bất kỳ biến môi trường hay credentials nào
+  - Chẩn đoán chính xác nguyên nhân lỗi ChunkLoadError 500 trên Production (tiến trình next-server cũ giữ cổng 3069 trong RAM với danh sách fsChecker cũ sau khi rm -rf .next + cache Cloudflare CDN) và cung cấp quy trình xử lý dứt điểm
+  - Cung cấp kịch bản quay video 5 cảnh (Click-by-Click), ghi chú tiếng Anh cho Reviewer và hướng dẫn mở form Upload Video trong mục Chưa gửi -> [ Tiếp ] trên Meta for Developers
+changed_files:
+  - backend-nestjs/src/messenger/meta-messenger.client.ts
+  - backend-nestjs/src/messenger/messenger.service.ts
+  - backend-nestjs/src/messenger/messenger.controller.ts
+  - backend-nestjs/src/messenger/messenger.service.spec.ts
+  - frontend/src/components/ccm/UtilityTemplateModal.tsx
+  - frontend/src/components/ccm/CcmConversations.tsx
+  - frontend/src/components/admin/MessengerInbox.tsx
+  - frontend/src/components/admin/MetaCatalogCard.tsx
+  - frontend/src/components/admin/AdsDashboard.tsx
+  - frontend/src/app/ccm/marketing/page.tsx
+  - frontend/e2e/meta-app-review.e2e.py
+  - docs/Changelog/CHANGELOG.md
+  - .ai/tasks/done/TASK-009-meta-utility-messaging-templates.yaml
+remaining:
+  - Chủ tịch Tony quay lại video Screencast theo kịch bản 5 cảnh trên giao diện CRM đã cập nhật
+  - Trên trang Meta App Review (apps/2422763314901404/app-review/submissions), thêm đủ 4 quyền Messenger vào mục Chưa gửi -> bấm nút [ Tiếp ] để upload video mới và dán ghi chú tiếng Anh nộp lại cho Meta
+known_issues:
+  - Khi deploy Frontend Next.js 16 trên VPS có dùng Cloudflare, luôn phải dừng tiến trình next-server cũ trên cổng 3069 (pm2 delete chy_crm_fe && fuser -k 3069/tcp) trước khi rm -rf .next && yarn build, và Purge Cache trên Cloudflare sau khi khởi động lại PM2 để tránh xung đột fsChecker và cache chunk cũ
+tests_status:
+  unit: pass (4/4 in messenger.service.spec.ts)
+  e2e_playwright: pass (8/8 consecutive full runs across all 6 Meta permissions)
+  typecheck: pass (backend & frontend 0 errors)
+  build: pass (backend & frontend 78/78 routes)
+next_action: Quay video Screencast 6 quyền và bấm [ Tiếp ] tại trang App Review Submissions để gửi duyệt lại
+next_agent: human-ceo
